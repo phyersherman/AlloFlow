@@ -7,7 +7,6 @@
 
     window.AlloModules = window.AlloModules || {};
     window.AlloModules.StemLab = function StemLabModal(props) {
-      const t = props.t || (k => k);
       const {
         ArrowLeft,
         Calculator,
@@ -121,7 +120,6 @@
         stemLabTab,
         stemLabTool,
         submitExploreScore,
-        t,
         toolSnapshots,
         nlAnswer,
         nlChallenge,
@@ -139,6 +137,8 @@
         setLabToolData,
         gradeLevel
       } = props;
+      // t (translation function) — pulled from props with a safe fallback
+      var t = props.t || function (k) { return k; };
 
       // ── STEM Lab XP System (per-activity cap: 100 XP) ──
       var stemXpData = (labToolData && labToolData._stemXP) || {};
