@@ -1,16 +1,19 @@
 # AlloFlow Architecture Guide
 
 > **For AI Assistants:** Read this at the start of every conversation. It will save you significant ramp-up time.
+>
+> **Last Updated:** 2026-02-27
 
 ## Overview
 
 **AlloFlow** (Adaptive Levels, Layers, & Outputs) is a **single-file React monolith** for K-12 literacy education and Universal Design for Learning (UDL). Created by **Aaron Pomeranz, PsyD**. Licensed AGPL-3.0. The monolith also hosts two separate projects — the **Digital Kinship Parenting Tool** and the **Report Writing App** — which are independent applications colocated for deployment convenience (see *Separate Projects* section below).
 
-- **Primary file:** `AlloFlowANTI.txt` (~4.5 MB, ~71,400 lines) — the entire app
+- **Primary file:** `AlloFlowANTI.txt` (~4.27 MB, ~66,900 lines) — the core app
+- **Externalized modules:** `word_sounds_module.js` (~909 KB), `stem_lab_module.js` (~350 KB) — loaded at runtime from GitHub CDN
 - **Target platforms:** Google Gemini Canvas (via `@mode react`) + Firebase Hosting
 - **Firebase project:** `prismflow-911fe` → `https://prismflow-911fe.web.app`
-- **GitHub repo:** `Apomera/AlloFlow` (externalized content)
-- **56 React.memo components**, no router — state-driven panel switching
+- **GitHub repo:** `Apomera/AlloFlow` (externalized content + CDN modules)
+- **53 React.memo components**, no router — state-driven panel switching
 
 ---
 
@@ -19,9 +22,13 @@
 | What | Source of Truth | Notes |
 |---|---|---|
 | **Application code** | `AlloFlowANTI.txt` (local) | This file IS the codebase. Everything else derives from it. |
-| **English UI strings** | `ui_strings.js` (local) | Pushed to GitHub for CDN fetch. Generated from code extraction. |
-| **Help tooltips** | `help_strings.js` (local) | Pushed to GitHub for lazy fetch. Generated from code extraction. |
-| **Language packs** | `lang/{language}.js` (GitHub) | Generated via in-app Gemini translation + export. |
+| **Word Sounds Studio** | `word_sounds_module.js` (GitHub) | Externalized module, loaded at runtime via CDN. Local copy exists. |
+| **STEM Lab** | `stem_lab_module.js` (GitHub) | Externalized module, loaded at runtime via CDN. Local copy exists. |
+| **English UI strings** | `ui_strings.js` (GitHub) | Async-fetched on startup → cached in `localStorage`. |
+| **Help tooltips** | `help_strings.js` (GitHub) | Lazy-fetched on first help activation → cached in `localStorage`. |
+| **Language packs** | `lang/{language}.js` (GitHub) | Generated via in-app Gemini translation + export. `lang/` directory needs creation. |
+| **Psychometric probes** | `psychometric_*.json` (GitHub) | Literacy, math, and combined probe banks. Loaded on demand. |
+| **Audio banks** | `word_audio_bank_part1-4.json` (GitHub) | Pre-recorded word audio for phonics (~63 MB total across 4 files). |
 | **Firebase build** | `prismflow-deploy/src/App.jsx` | Copy of `AlloFlowANTI.txt` at deploy time. Not independently edited. |
 | **Canvas version** | Gemini Canvas paste | Copy of `AlloFlowANTI.txt` pasted into Canvas. Not independently edited. |
 
@@ -33,19 +40,52 @@
 
 Files hosted on GitHub serve as a free CDN via `raw.githubusercontent.com`:
 
+### Runtime Modules (Loaded via `loadModule()`)
+
 | File | Size | Purpose | How It's Loaded |
 |---|---|---|---|
-| `ui_strings.js` | ~262 KB | English UI labels, buttons, menus, tour text | Async on app startup → cached in `localStorage` |
-| `help_strings.js` | ~328 KB | Context-sensitive help tooltips (621 entries) | Lazy on first help activation → cached in `localStorage` |
-| `lang/spanish.js` | ~250 KB | Pre-translated language pack (example) | On language switch → cached in IndexedDB |
-| `lang/{language}.js` | ~250 KB each | Other pre-translated packs | Same pattern. Slug format: `language.toLowerCase().replace(/\s+/g, '_')` |
+| `word_sounds_module.js` | ~461 KB (on GH) | Complete Word Sounds Studio — 13+ phonics activities | `loadModule()` on first access → `new Function()` eval |
+| `stem_lab_module.js` | ~129 KB (on GH) | STEM Lab — experiments, simulations, lab tools | `loadModule()` on first access → `new Function()` eval |
+
+### Localization & UI
+
+| File | Size | Purpose | How It's Loaded |
+|---|---|---|---|
+| `ui_strings.js` | ~285 KB | English UI labels, buttons, menus, tour text | Async on app startup → cached in `localStorage` |
+| `help_strings.js` | ~1,104 KB | Context-sensitive help tooltips (621+ entries) | Lazy on first help activation → cached in `localStorage` |
+| `lang/{language}.js` | ~250 KB each | Pre-translated language packs | On language switch → cached in IndexedDB |
+
+### Assessment Data
+
+| File | Size | Purpose |
+|---|---|---|
+| `psychometric_probes.json` | ~243 KB | Combined assessment probe bank |
+| `psychometric_literacy_probes.json` | ~19 KB | Literacy-specific probes |
+| `psychometric_math_probes.json` | ~107 KB | Math-specific probes |
+
+### Audio Banks
+
+| File | Size | Purpose |
+|---|---|---|
+| `audio_bank.json` | ~16 MB | Phoneme-level audio (base64) |
+| `word_audio_bank_part1-4.json` | ~63 MB total | Pre-recorded word audio for TTS fallback |
+
+### Other Assets
+
+| File | Purpose |
+|---|---|
+| `shared.css` | Shared stylesheet |
+| `calculator.html` | Embedded calculator tool |
+| `features.html` | Feature showcase page |
+| `index.html` | Landing page |
+| `library.html` | Resource library page |
+| `allobot.png` / `allobot.svg` | AlloBot mascot assets |
+| `profile-image.jpg` / `rainbow-book.jpg` | Static images |
 
 **Files NOT yet on GitHub (need to be pushed):**
-- `ui_strings.js` — exists locally, needs push
-- `help_strings.js` — exists locally, needs push
-- `lang/` directory — needs creation, language packs generated via export
+- `lang/` directory — needs creation, language packs generated via in-app export
 
-**Format:** Both `ui_strings.js` and `help_strings.js` are plain JavaScript object literals (not JSON, not modules). They are evaluated via `new Function('return ' + text)()` after fetch.
+**Format:** `ui_strings.js` and `help_strings.js` are plain JavaScript object literals (not JSON, not modules). They are evaluated via `new Function('return ' + text)()` after fetch. Runtime modules (`word_sounds_module.js`, `stem_lab_module.js`) follow the same pattern.
 
 ---
 
@@ -53,28 +93,26 @@ Files hosted on GitHub serve as a free CDN via `raw.githubusercontent.com`:
 
 | Region | Line Range | Contents |
 |---|---|---|
-| **Imports** | L1-53 | React, Lucide icons, Firebase SDK |
-| **Config & Setup** | L54-14385 | Constants, API keys, data banks, Word Sounds components |
-| **Localization** | L14386-14403 | `UI_STRINGS` async loader (from GitHub) |
-| **Helpers & Utilities** | L14404-15162 | Grade helpers, `useTranslation` hook, `t()` function |
-| **Contexts & Providers** | L15163-15203 | `LanguageContext`, `LanguageProvider`, RTL support |
-| **UI Components** | L15204-28971 | All major panels/features (~13,700 lines) |
-| **Main Application** | L28972-71393 | `AlloFlowApp` component, state, API calls |
-| **App Export** | L71394+ | `ReactDOM.render` call |
+| **Imports** | L1–66 | React, Lucide icons, Firebase SDK |
+| **Config & Setup** | L67–8514 | Constants, API keys, data banks (audio bank URL, Firebase config) |
+| **Localization** | L8515–8576 | `UI_STRINGS` async loader (from GitHub CDN) |
+| **Helpers & Utilities** | L8577–9395 | Grade helpers, `useTranslation` hook, `t()` function |
+| **Contexts & Providers** | L9396–9436 | `LanguageContext`, `LanguageProvider`, RTL support |
+| **UI Components** | L9437–23986 | All major panels/features (~14,500 lines) |
+| **Main Application** | L23987–67964 | `AlloFlowApp` component, state, API calls |
+| **App Export** | L67965+ | `ReactDOM.render` call |
+
+> **Note:** Word Sounds Studio and STEM Lab code have been externalized to GitHub modules. The monolith contains stubs and `loadModule()` calls for these features.
 
 ### Key Data Banks (Config Region)
 
 | Constant | Purpose |
 |---|---|
-| `WORD_SOUNDS_STRINGS` | Activity-specific UI text for Word Sounds |
-| `WORD_FAMILY_PRESETS` | Phonics word family definitions |
-| `INSTRUCTION_AUDIO` | Pre-recorded instruction audio (base64) |
-| `SOUND_MATCH_POOL` | Sound matching game word lists |
-| `PHONEME_AUDIO_BANK` | Individual phoneme audio (base64) |
-| `IPA_TO_AUDIO` | IPA symbol → audio mapping |
-| `PHONEME_GUIDE` | Phonics teaching reference data |
 | `BENCHMARK_PROBE_BANKS` | Standardized literacy assessment items |
 | `LETTER_SVG_PATHS` | SVG path data for letter tracing |
+| `DOM_TO_TOOL_ID_MAP` | Help system — DOM element → tool ID mapping |
+
+> **Previously in-file, now on GitHub:** `WORD_SOUNDS_STRINGS`, `WORD_FAMILY_PRESETS`, `INSTRUCTION_AUDIO`, `SOUND_MATCH_POOL`, `PHONEME_AUDIO_BANK`, `IPA_TO_AUDIO`, `PHONEME_GUIDE` (all moved into `word_sounds_module.js`)
 
 ---
 
@@ -117,7 +155,8 @@ When generating a language pack via Gemini, help strings are automatically fetch
 
 | System | Description |
 |---|---|
-| **Word Sounds Studio** | 13+ phonics activities (isolation, blending, segmentation, rhyming, tracing, etc.) |
+| **Word Sounds Studio** | 13+ phonics activities (isolation, blending, segmentation, rhyming, tracing, etc.) — externalized to `word_sounds_module.js` |
+| **STEM Lab** | Science experiments, simulations, virtual instruments, data tables, quizzes — externalized to `stem_lab_module.js` |
 | **Screening Dashboard** | Universal literacy screener, composite scoring, RTI/MTSS monitoring |
 | **Bridge Mode** | Gemini conversational interface for student engagement |
 | **Adventure Mode** | Gamified learning (XP, shop, narrative progression) |
@@ -125,9 +164,10 @@ When generating a language pack via Gemini, help strings are automatically fetch
 | **Escape Room** | Puzzle-based gamification with XP, streaks, and team play |
 | **Help System** | Context-sensitive tooltips via `HELP_STRINGS` + `DOM_TO_TOOL_ID_MAP` |
 | **Lesson Plan** | AI-generated differentiated lesson plans |
-| **AlloBot** | Contextual tips system triggered by user actions |
+| **AlloBot** | Contextual, dynamic tips system triggered by user actions (context-aware suggestions based on current activity) |
 | **ORF / Fluency** | Oral Reading Fluency assessment with prosody scoring |
 | **Live Session** | Real-time teacher-student sync |
+| **Report Writer** | User report profiles, blueprint mode, adaptation studio, multilingual generation |
 
 ---
 
@@ -138,7 +178,6 @@ The following are **independent applications** that share the same monolith file
 | Project | Description | Target Audience |
 |---|---|---|
 | **Digital Kinship Parenting Tool** | Indigenous-centric parenting platform (Hearth Hub, Parent Wellness Studio, Conflict Resolution Lab, Tribal Nations Explorer) | Parents, families, community |
-| **Report Writing App** | User report profiles, adaptation studio, multilingual report generation, AI-assisted fidelity checking | Psychologists, evaluators, researchers |
 
 ---
 
@@ -167,6 +206,7 @@ npx firebase deploy --only hosting
 8. **Line endings are `\n`** after Python processing, not `\r\n`.
 9. **Test in Canvas too** — a webpack pass doesn't guarantee Canvas compilation.
 10. **Edit `AlloFlowANTI.txt` only** — `App.jsx` is a derivative copy.
+11. **Externalized modules use `new Function()` eval** — syntax errors in `word_sounds_module.js` or `stem_lab_module.js` will silently fail at runtime.
 
 ---
 
@@ -183,24 +223,29 @@ grep "#region" AlloFlowANTI.txt
 grep "t('" AlloFlowANTI.txt | grep "key_name"
 # Find help key assignments
 grep "data-help-key" AlloFlowANTI.txt
+# Find loadModule calls
+grep "loadModule" AlloFlowANTI.txt
 ```
 
 ---
 
 ## Project Directory Notes
 
-The project directory contains ~295 files + 16 subdirectories. Most `_*.txt` files and `*_audit.txt` / `*_result.txt` files are **temporary artifacts from past debugging sessions** and can be ignored. Key files:
+The project directory contains ~92 files + 23 subdirectories. Most `_*.txt` and `analyze_*.txt` files are **temporary artifacts from past debugging sessions** and can be ignored. Key files:
 
 | File/Dir | Purpose |
 |---|---|
 | `AlloFlowANTI.txt` | **THE app** — source of truth |
-| `ui_strings.js` | Externalized English UI strings |
-| `help_strings.js` | Externalized help tooltips |
+| `word_sounds_module.js` | Local copy of externalized Word Sounds module |
+| `stem_lab_module.js` | Local copy of externalized STEM Lab module |
+| `ui_strings.js` | Externalized English UI strings (also on GitHub) |
+| `help_strings.js` | Externalized help tooltips (also on GitHub) |
+| `psychometric_*.js/.json` | Probe bank data files |
 | `prismflow-deploy/` | Firebase build directory |
 | `.agent/workflows/` | Agent workflow definitions |
-| `ARCHITECTURE.md` | This file |
-| `scripts/` | ~751 utility scripts from past sessions |
-| `_archive/` | ~486 archived files |
+| `ARCHITECTURE.md` | This file (in `_archive/`) |
+| `scripts/` | ~544 utility scripts from past sessions |
+| `_archive/` | ~1,104 archived files |
 | `AlloFlowANTI.bak*.txt` | Backup snapshots (various stages) |
 
 ---
@@ -214,7 +259,8 @@ The project directory contains ~295 files + 16 subdirectories. Most `_*.txt` fil
 | UI_STRINGS externalized | 4.88 MB | 72,012 | -262 KB |
 | Inline comments stripped | 4.83 MB | 72,005 | -19 KB |
 | HELP_STRINGS externalized | 4.51 MB | 71,417 | -327 KB |
-| **Current** | **4.51 MB** | **71,417** | **-787 KB total (14.9%)** |
+| Word Sounds + STEM Lab externalized, localization patches | 4.27 MB | 66,915 | -240 KB |
+| **Current** | **4.27 MB** | **66,915** | **-1,024 KB total (19.4%)** |
 
 ---
 
@@ -222,20 +268,25 @@ The project directory contains ~295 files + 16 subdirectories. Most `_*.txt` fil
 
 > **Instructions:** Update this list as work progresses. Mark `[x]` when done, `[/]` when in progress.
 
+### Completed
+- [x] Push `ui_strings.js` to GitHub (`Apomera/AlloFlow`)
+- [x] Push `help_strings.js` to GitHub
+- [x] Externalize `word_sounds_module.js` to GitHub
+- [x] Externalize `stem_lab_module.js` to GitHub
+- [x] Push `psychometric_*.json` probe banks to GitHub
+- [/] Fix JSX text localization gaps (add keys to `ui_strings.js`, wrap in `t()`) — partially done
+
 ### High Priority
-- [ ] Push `ui_strings.js` to GitHub (`Apomera/AlloFlow`)
-- [ ] Push `help_strings.js` to GitHub
 - [ ] Create `lang/` directory on GitHub
-- [ ] Fix 125 JSX text localization gaps (add keys to `ui_strings.js`, wrap in `t()`)
 - [ ] Generate pre-built language packs for top 12 languages
+- [ ] Continue fixing remaining JSX text localization gaps
 
 ### Medium Priority
-- [ ] Fix 714 `aria-label`/`title` attribute localization gaps
-- [ ] Fix 2 toast message localization gaps
-- [ ] Clean up ~200+ temp files in project root (move to `_archive/`)
+- [ ] Fix remaining `aria-label`/`title` attribute localization gaps
+- [ ] Fix remaining toast message localization gaps
+- [ ] Clean up temp files in project root (move to `_archive/`)
 
 ### Low Priority / Future
-- [ ] Consider externalizing `WORD_SOUNDS_STRINGS` (10 KB)
-- [ ] Consider externalizing `BENCHMARK_PROBE_BANKS` (10 KB)
-- [ ] Consider externalizing `DOM_TO_TOOL_ID_MAP` (14 KB)
+- [ ] Consider externalizing `BENCHMARK_PROBE_BANKS`
+- [ ] Consider externalizing `DOM_TO_TOOL_ID_MAP`
 - [ ] Explore further dead code removal for file size reduction
