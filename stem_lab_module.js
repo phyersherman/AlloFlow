@@ -1,4 +1,5 @@
-﻿(function () {
+﻿// stem_lab_module.js — v2.3.0 (a11y enhancements)
+(function () {
   if (window.AlloModules && window.AlloModules.StemLab) { console.log('[CDN] StemLab already loaded, skipping duplicate'); } else {
     // stem_lab_module.js
     // Auto-extracted from AlloFlowANTI.txt
