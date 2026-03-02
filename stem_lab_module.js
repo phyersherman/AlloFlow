@@ -1849,7 +1849,7 @@
                 msg: '✅ Correct! ' + base10Challenge.target + ' = ' + (base10Value.thousands > 0 ? base10Value.thousands + ' thousands + ' : '') + (base10Value.hundreds > 0 ? base10Value.hundreds + ' hundreds + ' : '') + base10Value.tens + ' tens + ' + base10Value.ones + ' ones'
               } : {
                 correct: false,
-                msg: '❌ Your blocks show ' + totalValue + ', target is ' + base10Challenge.target
+                msg: '❌ Your blocks show ' + totalValue + ', target is ' + base10Challenge.target, _wrongAnswer: String(totalValue), _correctAnswer: String(base10Challenge.target), _question: 'Represent ' + base10Challenge.target + ' using base-10 blocks'
               });
               setExploreScore(prev => ({
                 correct: prev.correct + (ok ? 1 : 0),
@@ -6955,7 +6955,9 @@
                   React.createElement("p", { className: "text-3xl mb-1" }, d.craftResult.compound.emoji),
                   React.createElement("p", { className: "text-lg font-black text-emerald-700" }, (d.craftResult.isNew ? '\uD83C\uDF89 NEW! ' : '\u2705 ') + d.craftResult.compound.name),
                   React.createElement("p", { className: "text-sm font-bold text-emerald-600" }, d.craftResult.compound.formula),
-                  React.createElement("p", { className: "text-xs text-emerald-500 mt-1" }, d.craftResult.compound.desc)
+                  React.createElement("p", { className: "text-xs text-emerald-500 mt-1" }, d.craftResult.compound.desc),
+                  StemAIBar('Compound Creator', d.craftResult.compound.name, d.craftResult.compound.desc, 'Formula: ' + d.craftResult.compound.formula),
+                  StemAIResponsePanel('Compound Creator')
                 )
                 : React.createElement("div", { className: "bg-amber-50 border-2 border-amber-200 rounded-xl p-3 text-center" },
                   React.createElement("p", { className: "text-sm font-bold text-amber-700" }, "\uD83E\uDD14 No known compound matches this combination. Try different elements!"))
@@ -6983,7 +6985,9 @@
                     React.createElement("div", { className: "flex-1 min-w-0" },
                       React.createElement("p", { className: "text-lg font-bold text-slate-800" }, d.selectedElement.name),
                       React.createElement("p", { className: "text-xs text-slate-500" }, "Atomic #" + d.selectedElement.n + " \u2022 " + (d.selectedElement.cat || 'element').replace(/^\w/, c => c.toUpperCase())),
-                      detail && React.createElement("p", { className: "text-xs text-slate-600 mt-1 italic" }, detail.desc)
+                      detail && React.createElement("p", { className: "text-xs text-slate-600 mt-1 italic" }, detail.desc),
+                      StemAIBar('Periodic Table', d.selectedElement.name, (detail && detail.desc) || '', 'Element: ' + d.selectedElement.s + ', Atomic #' + d.selectedElement.n + ', Category: ' + (d.selectedElement.cat || 'element')),
+                      StemAIResponsePanel('Periodic Table')
                     ),
                     React.createElement("button", { onClick: () => upd('selectedElement', null), className: "p-1 text-slate-400 hover:text-slate-600 flex-shrink-0" }, "\u2715")
                   ),
@@ -7525,7 +7529,9 @@
                 React.createElement("p", { className: "text-sm text-slate-600 italic bg-indigo-50 rounded-lg p-2 border border-indigo-100 mb-2" }, "\uD83D\uDCA1 " + sel.fact),
                 sel.surfaceDesc && React.createElement("div", { className: "bg-gradient-to-r from-sky-50 to-blue-50 rounded-lg p-2 border border-sky-200 mb-2" },
                   React.createElement("p", { className: "text-[11px] font-bold text-sky-700 mb-0.5" }, "\uD83C\uDF0D Surface Description"),
-                  React.createElement("p", { className: "text-[10px] text-sky-600 leading-relaxed" }, sel.surfaceDesc)
+                  React.createElement("p", { className: "text-[10px] text-sky-600 leading-relaxed" }, sel.surfaceDesc),
+                  StemAIBar('Solar System', sel.name, sel.fact + '. ' + (sel.surfaceDesc || ''), 'Diameter: ' + sel.diameter + ', ' + sel.atmosphere + ', Temp: ' + sel.temp),
+                  StemAIResponsePanel('Solar System')
                 ),
                 sel.notableFeatures && sel.notableFeatures.length > 0 && React.createElement("div", { className: "bg-gradient-to-r from-violet-50 to-purple-50 rounded-lg p-2 border border-violet-200 mb-2" },
                   React.createElement("p", { className: "text-[11px] font-bold text-violet-700 mb-1" }, "\uD83C\uDFAF Notable Features"),
@@ -8989,7 +8995,9 @@
       React.createElement("div", { className: "mb-3 px-3 py-2 bg-gradient-to-r from-indigo-50 to-violet-50 rounded-lg border border-indigo-100 text-[11px]" },
         React.createElement("span", { className: "font-bold text-indigo-700" }, gType.icon + " " + gType.label + ": "),
         React.createElement("span", { className: "text-slate-600" }, gType.desc),
-        React.createElement("span", { className: "text-indigo-400 ml-1" }, "(e.g. " + gType.example + ")")
+        React.createElement("span", { className: "text-indigo-400 ml-1" }, "(e.g. " + gType.example + ")"),
+        StemAIBar('Galaxy Explorer', gType.label, gType.desc, 'Galaxy type example: ' + gType.example),
+        StemAIResponsePanel('Galaxy Explorer')
       ),
 
       // ── 3D Canvas ──
@@ -11983,6 +11991,8 @@
               React.createElement("span", { className: "px-2 py-0.5 bg-white rounded-full text-sm font-mono font-bold text-slate-700 border border-slate-200 shadow-sm" }, sel.formula)
             ),
             React.createElement("p", { className: "text-xs text-slate-500 mt-1 leading-relaxed" }, sel.desc),
+            StemAIBar('Molecule Viewer', sel.name, sel.desc, 'Formula: ' + sel.formula + ', Bond type: ' + sel.bondType + ', State: ' + sel.state),
+            StemAIResponsePanel('Molecule Viewer'),
             React.createElement("div", { className: "flex gap-3 mt-2 text-[10px] font-bold" },
               React.createElement("span", { className: "text-cyan-600" }, "🔗 " + sel.bondType),
               React.createElement("span", { className: "text-indigo-600" }, "📊 " + sel.state),
