@@ -7705,18 +7705,19 @@
                   React.createElement("div", { className: "relative rounded-xl overflow-hidden border-2 border-purple-300 shadow-lg", style: { height: '450px' } },
                     React.createElement("canvas", {
                       "data-drone-canvas": "true",
+                      style: { width: '100%', height: '100%', display: 'block', cursor: 'crosshair' },
                       ref: function (canvasEl) {
                         if (!canvasEl || canvasEl._droneInit === sel.name) return;
                         canvasEl._droneInit = sel.name;
 
                         function doInit(THREE) {
-                          var W = canvasEl.offsetWidth, H = canvasEl.offsetHeight;
+                          var W = canvasEl.clientWidth || canvasEl.offsetWidth, H = canvasEl.clientHeight || canvasEl.offsetHeight;
                           var scene = new THREE.Scene();
                           var isGas = sel.terrainType === 'gasgiant' || sel.terrainType === 'icegiant';
                           var camera = new THREE.PerspectiveCamera(70, W / H, 0.1, 500);
                           camera.position.set(0, isGas ? 5 : 1.6, 0);
                           var renderer = new THREE.WebGLRenderer({ canvas: canvasEl, antialias: true });
-                          renderer.setSize(W, H); renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                          renderer.setSize(W, H, false); renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
                           renderer.setClearColor(new THREE.Color(sel.skyColor || '#000000'));
 
                           // ── Sky dome ──
@@ -8413,9 +8414,8 @@
 
                           // Resize handler
                           var ro3d = new ResizeObserver(function () {
-                            W = canvasEl.offsetWidth; H = canvasEl.offsetHeight;
-                            camera.aspect = W / H; camera.updateProjectionMatrix();
-                            renderer.setSize(W, H);
+                            W = canvasEl.clientWidth; H = canvasEl.clientHeight;
+                            if (W && H) { camera.aspect = W / H; camera.updateProjectionMatrix(); renderer.setSize(W, H, false); }
                           });
                           ro3d.observe(canvasEl);
 
