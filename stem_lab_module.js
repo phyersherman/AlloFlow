@@ -17878,8 +17878,45 @@
             const showTable = d.showTable || false;
             const showWindow = d.showWindow || false;
             const showChallenge = d.showChallenge || false;
+            const showMathPad = d.showMathPad != null ? d.showMathPad : false;
+            const focusedInput = d.focusedInput || 0;
             const tableX = d.tableX != null ? d.tableX : -5;
             const tableStep = d.tableStep || 1;
+
+            // Math Pad symbols gated by tier
+            const MATH_SYMBOLS = [
+              // Explorer tier (always visible)
+              { label: 'x', insert: 'x', tier: 'explorer' },
+              { label: '^', insert: '^', tier: 'explorer' },
+              { label: '( )', insert: '()', tier: 'explorer' },
+              { label: '\u03C0', insert: 'pi', tier: 'explorer' },
+              { label: '\u221A', insert: 'sqrt(', tier: 'explorer' },
+              { label: '|x|', insert: 'abs(', tier: 'explorer' },
+              // Analyst tier
+              { label: 'x\u00B2', insert: '^2', tier: 'analyst' },
+              { label: 'x\u00B3', insert: '^3', tier: 'analyst' },
+              { label: '\u00B1', insert: '-', tier: 'analyst' },
+              { label: '1/x', insert: '1/', tier: 'analyst' },
+              // Engineer tier
+              { label: 'sin', insert: 'sin(', tier: 'engineer' },
+              { label: 'cos', insert: 'cos(', tier: 'engineer' },
+              { label: 'tan', insert: 'tan(', tier: 'engineer' },
+              { label: 'log', insert: 'log(', tier: 'engineer' },
+              { label: 'ln', insert: 'ln(', tier: 'engineer' },
+              { label: 'e', insert: 'e', tier: 'engineer' },
+            ];
+            const visibleSymbols = MATH_SYMBOLS.filter(function (s) {
+              if (tier === 'researcher') return true;
+              if (tier === 'engineer') return s.tier !== 'researcher';
+              if (tier === 'analyst') return s.tier === 'explorer' || s.tier === 'analyst';
+              return s.tier === 'explorer';
+            });
+            var insertSymbol = function (text) {
+              var nf = funcs.slice();
+              var idx = focusedInput;
+              nf[idx] = Object.assign({}, nf[idx], { expr: (nf[idx].expr || '') + text });
+              upd('funcs', nf);
+            };
 
             // NOTE: useEffect hooks for math.js loading and canvas rendering
             // have been moved to the component body level (above) to satisfy
@@ -17993,10 +18030,32 @@
                       React.createElement('input', {
                         type: 'text', value: fn.expr || '', placeholder: i === 0 ? '2x + 3' : i === 1 ? 'x^2 - 4' : 'sin(x)',
                         onChange: e => { const nf = [...funcs]; nf[i] = { ...nf[i], expr: e.target.value }; upd('funcs', nf); },
+                        onFocus: function () { upd('focusedInput', i); },
                         style: { width: '100%', padding: '6px 8px', borderRadius: '8px', border: '1px solid ' + fn.color + '44', background: fn.color + '11', color: '#e2e8f0', fontFamily: 'monospace', fontSize: '12px', outline: 'none' },
                         'aria-label': 'Function y' + (i + 1) + ' expression'
                       })
                     ))
+                  ),
+
+                  // ── Math Pad (collapsible symbol buttons) ──
+                  React.createElement('div', { style: { padding: '4px 12px', borderTop: '1px solid rgba(99,102,241,0.1)' } },
+                    React.createElement('button', {
+                      onClick: function () { upd('showMathPad', !showMathPad); },
+                      style: { width: '100%', padding: '4px', borderRadius: '6px', background: showMathPad ? '#818cf833' : 'rgba(255,255,255,0.05)', color: showMathPad ? '#a5b4fc' : '#64748b', border: showMathPad ? '1px solid #818cf844' : '1px solid transparent', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer', marginBottom: showMathPad ? '6px' : '0' }
+                    }, '\u2328 Math Pad ' + (showMathPad ? '\u25B2' : '\u25BC')),
+                    showMathPad && React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '3px', paddingBottom: '4px' } },
+                      visibleSymbols.map(function (sym) {
+                        return React.createElement('button', {
+                          key: sym.label,
+                          onClick: function () { insertSymbol(sym.insert); },
+                          style: { padding: '3px 7px', borderRadius: '5px', background: 'rgba(99,102,241,0.12)', color: '#c7d2fe', border: '1px solid rgba(99,102,241,0.2)', fontSize: '11px', fontFamily: 'monospace', fontWeight: 'bold', cursor: 'pointer', lineHeight: '1.2', transition: 'background 0.15s' },
+                          onMouseEnter: function (e) { e.currentTarget.style.background = 'rgba(99,102,241,0.3)'; },
+                          onMouseLeave: function (e) { e.currentTarget.style.background = 'rgba(99,102,241,0.12)'; },
+                          title: 'Insert ' + sym.insert,
+                          'aria-label': 'Insert ' + sym.label
+                        }, sym.label);
+                      })
+                    )
                   ),
 
                   React.createElement('div', { style: { padding: '8px 12px', borderTop: '1px solid rgba(99,102,241,0.1)', display: 'flex', flexWrap: 'wrap', gap: '4px' } },
