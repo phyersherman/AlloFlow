@@ -16001,11 +16001,12 @@
           // ═══════════════════════════════════════════════════════
           stemLabTab === 'explore' && stemLabTool === 'companionPlanting' && (() => {
             var d = (labToolData.companionPlanting) || {};
-            var upd = function (key, val) { setLabToolData(function (prev) { return Object.assign({}, prev, { companionPlanting: Object.assign({}, prev.companionPlanting || {}, (_k = {}, _k[key] = val, _k)) }); var _k; }); };
+            var upd = function (key, val) { var _k = {}; _k[key] = val; setLabToolData(function (prev) { return Object.assign({}, prev, { companionPlanting: Object.assign({}, prev.companionPlanting || {}, _k) }); }); };
 
             // ── State defaults ──
             var phase = d.phase || 'plant';  // 'plant' | 'grow' | 'harvest'
             var growthTime = d.growthTime || 0;   // 0-100
+            var growSpeed = d.growSpeed || 1;  // 1, 2, or 5
             var cornPlanted = d.cornPlanted || false;
             var beansPlanted = d.beansPlanted || false;
             var squashPlanted = d.squashPlanted || false;
@@ -16276,6 +16277,33 @@
                   }
                 }
 
+                // ── Earthworms in soil ──
+                if (gt > 0.15) {
+                  for (var wi = 0; wi < 3; wi++) {
+                    var wormX = cx + (wi - 1) * w * 0.35;
+                    var wormY = cy + h * (0.25 + wi * 0.15);
+                    var wormPhase = tick * 0.03 + wi * 2;
+                    var wormAlpha = 0.3 + gt * 0.3;
+                    ctx.strokeStyle = 'rgba(205,133,110,' + wormAlpha + ')';
+                    ctx.lineWidth = 2;
+                    ctx.lineCap = 'round';
+                    ctx.beginPath();
+                    ctx.moveTo(wormX, wormY);
+                    for (var ws = 1; ws <= 6; ws++) {
+                      ctx.lineTo(
+                        wormX + ws * 4 + Math.sin(wormPhase + ws * 0.8) * 3,
+                        wormY + Math.cos(wormPhase + ws * 0.6) * 2
+                      );
+                    }
+                    ctx.stroke();
+                    // Worm head
+                    ctx.fillStyle = 'rgba(180,110,90,' + wormAlpha + ')';
+                    ctx.beginPath();
+                    ctx.arc(wormX + 24 + Math.sin(wormPhase + 4.8) * 3, wormY + Math.cos(wormPhase + 3.6) * 2, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                  }
+                }
+
                 // Mound label
                 if (label) {
                   ctx.fillStyle = 'rgba(255,255,255,0.85)';
@@ -16402,6 +16430,30 @@
                   }
                 });
 
+                // ── Rain effect (moisture indicator when squash is planted) ──
+                if (_squash && _gt > 10) {
+                  var rainIntensity = Math.min(1, _gt / 60);
+                  var rainCount = Math.floor(12 * rainIntensity);
+                  ctx.strokeStyle = 'rgba(100,180,255,' + (0.15 + rainIntensity * 0.2) + ')';
+                  ctx.lineWidth = 1;
+                  for (var ri = 0; ri < rainCount; ri++) {
+                    var rx = ((tick * 2 + ri * 73) % cW);
+                    var ryStart = ((tick * 3 + ri * 137) % (cH * 0.4));
+                    var ryLen = 6 + rainIntensity * 8;
+                    ctx.beginPath();
+                    ctx.moveTo(rx / dpr, ryStart / dpr);
+                    ctx.lineTo((rx - 1) / dpr, (ryStart + ryLen) / dpr);
+                    ctx.stroke();
+                    // Splash at ground level
+                    if (ryStart + ryLen > cH * 0.38) {
+                      ctx.fillStyle = 'rgba(100,180,255,' + (0.1 + rainIntensity * 0.15) + ')';
+                      ctx.beginPath();
+                      ctx.arc(rx / dpr, cH * 0.4 / dpr, 2, 0, Math.PI * 2);
+                      ctx.fill();
+                    }
+                  }
+                }
+
                 // ── Seed placement hints (before planting) ──
                 if (!_corn && !_beans && !_squash) {
                   ctx.fillStyle = 'rgba(255,255,255,0.6)';
@@ -16429,33 +16481,41 @@
               }
             }, [growthTime, cornPlanted, beansPlanted, squashPlanted, compareMode]);
 
-            // ── Growth timer ──
+            // ── Growth timer (with speed multiplier) ──
             React.useEffect(function () {
               if (phase !== 'grow' || !allPlanted) return;
               if (growthTime >= 100) return;
+              var _speed = growSpeed || 1;
               var timer = setInterval(function () {
                 setLabToolData(function (prev) {
                   var cp = Object.assign({}, prev.companionPlanting || {});
-                  var newGT = Math.min(100, (cp.growthTime || 0) + 0.5);
+                  var newGT = Math.min(100, (cp.growthTime || 0) + 0.5 * _speed);
                   cp.growthTime = newGT;
                   if (newGT >= 100) { cp.phase = 'harvest'; }
                   return Object.assign({}, prev, { companionPlanting: cp });
                 });
               }, 80);
               return function () { clearInterval(timer); };
-            }, [phase, allPlanted, growthTime >= 100]);
+            }, [phase, allPlanted, growthTime >= 100, growSpeed]);
 
-            // ── Gauge helper ──
+            // ── Gauge helper (inline colors to avoid Tailwind JIT purge) ──
+            var _gaugeColors = {
+              emerald: { light: '#34d399', dark: '#059669', text: '#047857' },
+              blue: { light: '#60a5fa', dark: '#2563eb', text: '#1d4ed8' },
+              orange: { light: '#fb923c', dark: '#ea580c', text: '#c2410c' },
+              red: { light: '#f87171', dark: '#dc2626', text: '#b91c1c' }
+            };
             function gauge(label, value, color, icon, unit) {
+              var c = _gaugeColors[color] || _gaugeColors.emerald;
               return React.createElement("div", { className: "flex items-center gap-2" },
                 React.createElement("span", { className: "text-sm w-5 text-center" }, icon),
                 React.createElement("div", { className: "flex-1" },
                   React.createElement("div", { className: "flex justify-between mb-0.5" },
                     React.createElement("span", { className: "text-[10px] font-bold text-slate-600" }, label),
-                    React.createElement("span", { className: "text-[10px] font-bold text-" + color + "-700" }, Math.round(value) + (unit || '%'))
+                    React.createElement("span", { className: "text-[10px] font-bold", style: { color: c.text } }, Math.round(value) + (unit || '%'))
                   ),
                   React.createElement("div", { className: "w-full h-2 bg-slate-200 rounded-full overflow-hidden" },
-                    React.createElement("div", { className: "h-full rounded-full bg-gradient-to-r from-" + color + "-400 to-" + color + "-600 transition-all duration-500", style: { width: Math.round(value) + '%' } })
+                    React.createElement("div", { className: "h-full rounded-full transition-all duration-500", style: { width: Math.round(value) + '%', background: 'linear-gradient(to right, ' + c.light + ', ' + c.dark + ')' } })
                   )
                 )
               );
@@ -16580,17 +16640,35 @@
                 React.createElement("div", { className: "flex items-center gap-2 bg-white rounded-xl border border-slate-200 p-2" },
                   React.createElement("span", { className: "text-[10px] font-bold text-slate-400 uppercase px-1" }, "Plant:"),
                   React.createElement("button", {
-                    onClick: function () { upd('cornPlanted', !cornPlanted); if (!cornPlanted) awardStemXP('companion_planting_corn', 10, 'Planted corn'); },
+                    onClick: function () {
+                      upd('cornPlanted', !cornPlanted);
+                      if (!cornPlanted) {
+                        awardStemXP('companion_planting_corn', 10, 'Planted corn');
+                        if (addToast) addToast('🌽 Corn planted! Tall stalks provide a natural trellis for beans to climb.', 'success');
+                      }
+                    },
                     disabled: phase === 'grow',
                     className: "px-3 py-1.5 rounded-lg text-xs font-bold transition-all " + (cornPlanted ? 'bg-yellow-100 text-yellow-800 border border-yellow-300' : 'bg-slate-50 text-slate-600 hover:bg-yellow-50 border border-slate-200')
                   }, "🌽 Corn" + (cornPlanted ? ' ✓' : '')),
                   React.createElement("button", {
-                    onClick: function () { upd('beansPlanted', !beansPlanted); if (!beansPlanted) awardStemXP('companion_planting_beans', 10, 'Planted beans'); },
+                    onClick: function () {
+                      upd('beansPlanted', !beansPlanted);
+                      if (!beansPlanted) {
+                        awardStemXP('companion_planting_beans', 10, 'Planted beans');
+                        if (addToast) addToast('🫘 Beans planted! Rhizobium bacteria in the roots will fix nitrogen into the soil.', 'success');
+                      }
+                    },
                     disabled: phase === 'grow',
                     className: "px-3 py-1.5 rounded-lg text-xs font-bold transition-all " + (beansPlanted ? 'bg-green-100 text-green-800 border border-green-300' : 'bg-slate-50 text-slate-600 hover:bg-green-50 border border-slate-200')
                   }, "🫘 Beans" + (beansPlanted ? ' ✓' : '')),
                   React.createElement("button", {
-                    onClick: function () { upd('squashPlanted', !squashPlanted); if (!squashPlanted) awardStemXP('companion_planting_squash', 10, 'Planted squash'); },
+                    onClick: function () {
+                      upd('squashPlanted', !squashPlanted);
+                      if (!squashPlanted) {
+                        awardStemXP('companion_planting_squash', 10, 'Planted squash');
+                        if (addToast) addToast('🎃 Squash planted! Large leaves act as living mulch — shading soil and trapping moisture.', 'success');
+                      }
+                    },
                     disabled: phase === 'grow',
                     className: "px-3 py-1.5 rounded-lg text-xs font-bold transition-all " + (squashPlanted ? 'bg-orange-100 text-orange-800 border border-orange-300' : 'bg-slate-50 text-slate-600 hover:bg-orange-50 border border-slate-200')
                   }, "🎃 Squash" + (squashPlanted ? ' ✓' : ''))
@@ -16603,9 +16681,19 @@
                     className: "px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg shadow-emerald-200 hover:from-emerald-600 hover:to-green-700 transition-all flex items-center gap-1.5"
                   }, "▶ Grow!"),
                   phase === 'grow' && React.createElement("div", { className: "flex items-center gap-2" },
-                    React.createElement("span", { className: "text-[10px] font-bold text-emerald-600" }, "Growing: " + Math.round(growthTime) + "%"),
-                    React.createElement("div", { className: "w-32 h-2 bg-emerald-100 rounded-full overflow-hidden" },
-                      React.createElement("div", { className: "h-full bg-gradient-to-r from-emerald-400 to-green-600 rounded-full transition-all", style: { width: growthTime + '%' } })
+                    React.createElement("span", { className: "text-[10px] font-bold", style: { color: '#047857' } }, "Growing: " + Math.round(growthTime) + "%" + (growSpeed > 1 ? ' (' + growSpeed + '×)' : '')),
+                    React.createElement("div", { className: "w-32 h-2 rounded-full overflow-hidden", style: { background: '#d1fae5' } },
+                      React.createElement("div", { className: "h-full rounded-full transition-all", style: { width: growthTime + '%', background: 'linear-gradient(to right, #34d399, #059669)' } })
+                    ),
+                    // Speed controls
+                    React.createElement("div", { className: "flex items-center gap-0.5 ml-1" },
+                      [1, 2, 5].map(function (s) {
+                        return React.createElement("button", {
+                          key: s,
+                          onClick: function () { upd('growSpeed', s); },
+                          className: "px-1.5 py-0.5 rounded text-[10px] font-bold transition-all " + (growSpeed === s ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-emerald-50')
+                        }, s + '×');
+                      })
                     )
                   ),
                   phase === 'harvest' && React.createElement("div", { className: "flex items-center gap-2" },
