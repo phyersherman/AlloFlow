@@ -401,14 +401,17 @@
         : isContrast ? { bg: '#000000', bgAlt: '#1a1a1a', text: '#ffffff', textMuted: '#e2e8f0', border: '#fbbf24', card: '#000000', accent: '#fbbf24' }
           : { bg: '#ffffff', bgAlt: '#f8fafc', text: '#1e293b', textMuted: '#64748b', border: '#e2e8f0', card: '#ffffff', accent: '#3b82f6' };
 
-      // ── localStorage persistence ──
-      if (!labToolData._persisted) {
+      // ── localStorage persistence (wrapped in useEffect to avoid setState-during-render) ──
+      React.useEffect(function () {
+        if (labToolData._persisted) return;
         try {
           var _saved = localStorage.getItem('alloflow_stemlab_v2');
           if (_saved) {
             var _parsed = JSON.parse(_saved);
             if (_parsed && typeof _parsed === 'object') {
               setLabToolData(function (prev) { return Object.assign({}, prev, _parsed, { _persisted: true }); });
+            } else {
+              setLabToolData(function (prev) { return Object.assign({}, prev, { _persisted: true }); });
             }
           } else {
             setLabToolData(function (prev) { return Object.assign({}, prev, { _persisted: true }); });
@@ -416,9 +419,10 @@
         } catch (e) {
           setLabToolData(function (prev) { return Object.assign({}, prev, { _persisted: true }); });
         }
-      }
-      // Save to localStorage on meaningful changes (debounced via flag)
-      if (labToolData._persisted && !labToolData._saving) {
+      }, [labToolData._persisted]);
+      // Save to localStorage on meaningful changes
+      React.useEffect(function () {
+        if (!labToolData._persisted) return;
         try {
           var _toSave = {};
           ['calculus', 'wave', 'physics', 'punnett', 'chemBalance', 'galaxy', 'rockCycle', 'waterCycle', '_tutorialSeen'].forEach(function (k) {
@@ -426,7 +430,7 @@
           });
           localStorage.setItem('alloflow_stemlab_v2', JSON.stringify(_toSave));
         } catch (e) { }
-      }
+      }, [labToolData]);
 
       // ── Tutorial Overlay Helper ──
       var _tutorialSeen = labToolData._tutorialSeen || {};
@@ -1120,7 +1124,7 @@
             }, tool.label))
             : /*#__PURE__*/React.createElement("button", {
               key: tool.id,
-              onClick: () => setStemLabTool(tool.id),
+              onClick: () => { if (tool.ready === false) { if (addToast) addToast(tool.label + ' is coming soon!', 'info'); return; } setStemLabTool(tool.id); },
               className: `p-5 rounded-2xl border-2 text-left transition-all hover:scale-[1.02] hover:shadow-xl bg-${tool.color}-50 border-${tool.color}-200 hover:border-${tool.color}-400`
             }, /*#__PURE__*/React.createElement("div", {
               className: "text-3xl mb-2"
