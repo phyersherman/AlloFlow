@@ -486,9 +486,9 @@
         ctx.fillText('x', W - 14, (_win.ymin <= 0 && _win.ymax >= 0 ? toScreenY(0) : H / 2) - 6);
         ctx.fillText('y', (_win.xmin <= 0 && _win.xmax >= 0 ? toScreenX(0) : W / 2) + 6, 14);
       }, [stemLabTab, stemLabTool, labToolData]);
-      // ── Geometry Sandbox: Load Three.js on demand (MUST be at top level) ──
+      // ── 3D Tools: Load Three.js on demand (Geometry Sandbox + Architecture Studio) ──
       React.useEffect(function () {
-        if (stemLabTab !== 'explore' || stemLabTool !== 'geoSandbox') return;
+        if (stemLabTab !== 'explore' || (stemLabTool !== 'geoSandbox' && stemLabTool !== 'archStudio')) return;
         if (window.THREE) { setLabToolData(function (p) { return Object.assign({}, p, { _threeLoaded: true }); }); return; }
         var s = document.createElement('script');
         s.src = 'https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.min.js';
@@ -623,6 +623,282 @@
             if (window._geoScene.renderer) window._geoScene.renderer.dispose();
             if (window._geoScene.controls) window._geoScene.controls.dispose();
             window._geoScene = null;
+          }
+        };
+      }, [stemLabTool]);
+      // ── Architecture Studio: Scene init, render loop, block placement (MUST be at top level) ──
+      React.useEffect(function () {
+        if (stemLabTab !== 'explore' || stemLabTool !== 'archStudio') return;
+        if (!window.THREE) return;
+        var cnv = document.getElementById('arch-studio-canvas');
+        if (!cnv) return;
+        var gd = (labToolData && labToolData.archStudio) || {};
+        var blocks = gd.blocks || [];
+        var THREE = window.THREE;
+
+        // ── Init scene if not already ──
+        if (!window._archScene) {
+          var scene = new THREE.Scene();
+          scene.background = new THREE.Color('#131a2b');
+          scene.fog = new THREE.Fog('#131a2b', 30, 60);
+          var camera = new THREE.PerspectiveCamera(50, cnv.clientWidth / cnv.clientHeight, 0.1, 1000);
+          camera.position.set(14, 12, 18);
+          camera.lookAt(10, 0, 10);
+          var renderer = new THREE.WebGLRenderer({ canvas: cnv, antialias: true });
+          renderer.setSize(cnv.clientWidth, cnv.clientHeight);
+          renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+          renderer.shadowMap.enabled = true;
+          renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+          // Lights
+          var ambient = new THREE.AmbientLight(0xffffff, 0.45);
+          scene.add(ambient);
+          var sun = new THREE.DirectionalLight(0xfff4e0, 0.9);
+          sun.position.set(15, 20, 10);
+          sun.castShadow = true;
+          sun.shadow.mapSize.width = 1024;
+          sun.shadow.mapSize.height = 1024;
+          sun.shadow.camera.near = 0.5;
+          sun.shadow.camera.far = 50;
+          sun.shadow.camera.left = -25;
+          sun.shadow.camera.right = 25;
+          sun.shadow.camera.top = 25;
+          sun.shadow.camera.bottom = -25;
+          scene.add(sun);
+          var fill = new THREE.DirectionalLight(0xc7d2fe, 0.25);
+          fill.position.set(-10, 8, -5);
+          scene.add(fill);
+          // Ground plane
+          var groundGeo = new THREE.PlaneGeometry(20, 20);
+          var groundMat = new THREE.MeshPhongMaterial({ color: 0x1e293b, side: THREE.DoubleSide });
+          var ground = new THREE.Mesh(groundGeo, groundMat);
+          ground.rotation.x = -Math.PI / 2;
+          ground.position.set(10, 0, 10);
+          ground.receiveShadow = true;
+          ground.name = 'ground';
+          scene.add(ground);
+          // Grid overlay
+          var gridHelper = new THREE.GridHelper(20, 20, 0x475569, 0x334155);
+          gridHelper.position.set(10, 0.01, 10);
+          scene.add(gridHelper);
+          // Orbit controls
+          var controls;
+          if (THREE.OrbitControls) {
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.08;
+            controls.minDistance = 3;
+            controls.maxDistance = 40;
+            controls.target.set(10, 2, 10);
+          }
+          // Raycaster + mouse
+          var raycaster = new THREE.Raycaster();
+          var mouse = new THREE.Vector2();
+          // Ghost preview mesh
+          var ghostMat = new THREE.MeshPhongMaterial({ color: 0x60a5fa, transparent: true, opacity: 0.35, depthWrite: false });
+          var ghostMesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), ghostMat);
+          ghostMesh.visible = false;
+          ghostMesh.name = '_ghost';
+          scene.add(ghostMesh);
+          // Animation loop
+          var animId;
+          var animate = function () {
+            animId = requestAnimationFrame(animate);
+            if (controls) controls.update();
+            renderer.render(scene, camera);
+          };
+          animate();
+          // ── Pointer events for placement ──
+          var _getGridPos = function (evt) {
+            var rect = cnv.getBoundingClientRect();
+            mouse.x = ((evt.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((evt.clientY - rect.top) / rect.height) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            // Collect all clickable objects (ground + placed block meshes)
+            var targets = [];
+            scene.traverse(function (obj) {
+              if (obj.isMesh && obj.name !== '_ghost') targets.push(obj);
+            });
+            var hits = raycaster.intersectObjects(targets, false);
+            if (hits.length === 0) return null;
+            var hit = hits[0];
+            var n = hit.face.normal.clone();
+            // If we hit ground, place at that grid cell at y=0
+            if (hit.object.name === 'ground') {
+              var gx = Math.floor(hit.point.x);
+              var gz = Math.floor(hit.point.z);
+              if (gx < 0 || gx >= 20 || gz < 0 || gz >= 20) return null;
+              return { x: gx, y: 0, z: gz };
+            }
+            // If we hit a block, place adjacent to it along the face normal
+            var center = new THREE.Vector3();
+            hit.object.getWorldPosition(center);
+            var nx = Math.round(center.x + n.x);
+            var ny = Math.round(center.y + n.y);
+            var nz = Math.round(center.z + n.z);
+            if (nx < 0 || nx >= 20 || ny < 0 || ny >= 10 || nz < 0 || nz >= 20) return null;
+            return { x: nx, y: ny, z: nz };
+          };
+          var _getClickedBlock = function (evt) {
+            var rect = cnv.getBoundingClientRect();
+            mouse.x = ((evt.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((evt.clientY - rect.top) / rect.height) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            var targets = [];
+            scene.traverse(function (obj) {
+              if (obj.isMesh && obj.name !== '_ghost' && obj.name !== 'ground') targets.push(obj);
+            });
+            var hits = raycaster.intersectObjects(targets, false);
+            if (hits.length === 0) return null;
+            var obj = hits[0].object;
+            // obj.userData holds { bx, by, bz }
+            return obj.userData;
+          };
+          // Mouse move → update ghost position
+          cnv.addEventListener('mousemove', function (evt) {
+            var pos = _getGridPos(evt);
+            if (!pos) { ghostMesh.visible = false; return; }
+            ghostMesh.visible = true;
+            ghostMesh.position.set(pos.x + 0.5, pos.y + 0.5, pos.z + 0.5);
+          });
+          // Click → place/erase/paint
+          cnv.addEventListener('click', function (evt) {
+            var gd2 = (labToolData && labToolData.archStudio) || {};
+            var mode = gd2.mode || 'place';
+            if (mode === 'place') {
+              var pos = _getGridPos(evt);
+              if (!pos) return;
+              // Check no block already there
+              var curBlocks = (gd2.blocks || []);
+              var exists = curBlocks.some(function (b) { return b.x === pos.x && b.y === pos.y && b.z === pos.z; });
+              if (exists) return;
+              var newBlock = { x: pos.x, y: pos.y, z: pos.z, shape: gd2.activeShape || 'block', material: gd2.activeMaterial || 'stone', color: gd2.activeColor || '#94a3b8' };
+              setLabToolData(function (p) {
+                var a = Object.assign({}, p.archStudio || {});
+                var nb = (a.blocks || []).concat([newBlock]);
+                return Object.assign({}, p, { archStudio: Object.assign({}, a, { blocks: nb }) });
+              });
+            } else if (mode === 'erase') {
+              var bd = _getClickedBlock(evt);
+              if (!bd) return;
+              setLabToolData(function (p) {
+                var a = Object.assign({}, p.archStudio || {});
+                var nb = (a.blocks || []).filter(function (b) { return !(b.x === bd.bx && b.y === bd.by && b.z === bd.bz); });
+                return Object.assign({}, p, { archStudio: Object.assign({}, a, { blocks: nb }) });
+              });
+            } else if (mode === 'paint') {
+              var bd2 = _getClickedBlock(evt);
+              if (!bd2) return;
+              setLabToolData(function (p) {
+                var a = Object.assign({}, p.archStudio || {});
+                var nb = (a.blocks || []).map(function (b) {
+                  if (b.x === bd2.bx && b.y === bd2.by && b.z === bd2.bz) {
+                    return Object.assign({}, b, { material: (a.activeMaterial || 'stone'), color: (a.activeColor || '#94a3b8') });
+                  }
+                  return b;
+                });
+                return Object.assign({}, p, { archStudio: Object.assign({}, a, { blocks: nb }) });
+              });
+            }
+          });
+          window._archScene = { scene: scene, camera: camera, renderer: renderer, controls: controls, animId: animId, ghostMesh: ghostMesh, blockMeshes: [] };
+        }
+
+        // ── Rebuild all block meshes ──
+        var as = window._archScene;
+        // Remove old block meshes
+        as.blockMeshes.forEach(function (m) { as.scene.remove(m); m.geometry.dispose(); if (m.material) m.material.dispose(); });
+        as.blockMeshes = [];
+        // Material colors
+        var matColors = { stone: '#94a3b8', brick: '#b45309', wood: '#92400e', glass: '#38bdf8', marble: '#f1f5f9', metal: '#cbd5e1' };
+        // Shape geometry factory
+        var mkGeo = function (shape) {
+          switch (shape) {
+            case 'slab': return new THREE.BoxGeometry(1, 0.5, 1);
+            case 'ramp': {
+              var rampShape = new THREE.Shape();
+              rampShape.moveTo(-0.5, -0.5);
+              rampShape.lineTo(0.5, -0.5);
+              rampShape.lineTo(0.5, 0.5);
+              rampShape.closePath();
+              var geo = new THREE.ExtrudeGeometry(rampShape, { depth: 1, bevelEnabled: false });
+              geo.center();
+              return geo;
+            }
+            case 'column': return new THREE.CylinderGeometry(0.35, 0.35, 1, 16);
+            case 'arch': {
+              var archGeo = new THREE.TorusGeometry(0.45, 0.12, 8, 16, Math.PI);
+              archGeo.rotateX(Math.PI / 2);
+              return archGeo;
+            }
+            case 'roof': {
+              var roofShape = new THREE.Shape();
+              roofShape.moveTo(-0.5, -0.35);
+              roofShape.lineTo(0.5, -0.35);
+              roofShape.lineTo(0, 0.35);
+              roofShape.closePath();
+              var roofGeo = new THREE.ExtrudeGeometry(roofShape, { depth: 1, bevelEnabled: false });
+              roofGeo.center();
+              return roofGeo;
+            }
+            case 'pyramid': return new THREE.ConeGeometry(0.5, 1, 4);
+            case 'dome': {
+              var domeGeo = new THREE.SphereGeometry(0.5, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+              return domeGeo;
+            }
+            default: return new THREE.BoxGeometry(1, 1, 1);
+          }
+        };
+        // Create mesh for each placed block
+        blocks.forEach(function (b) {
+          var geo = mkGeo(b.shape || 'block');
+          var col = b.color || matColors[b.material] || '#94a3b8';
+          var isGlass = (b.material === 'glass');
+          var mat = new THREE.MeshPhongMaterial({
+            color: new THREE.Color(col),
+            transparent: isGlass,
+            opacity: isGlass ? 0.4 : 1,
+            shininess: (b.material === 'metal') ? 100 : (b.material === 'marble' ? 80 : 40),
+            flatShading: (b.material === 'stone' || b.material === 'brick')
+          });
+          var mesh = new THREE.Mesh(geo, mat);
+          mesh.position.set(b.x + 0.5, (b.shape === 'slab' ? 0.25 : (b.shape === 'dome' ? 0 : 0.5)) + b.y, b.z + 0.5);
+          mesh.castShadow = true;
+          mesh.receiveShadow = true;
+          mesh.userData = { bx: b.x, by: b.y, bz: b.z };
+          as.scene.add(mesh);
+          as.blockMeshes.push(mesh);
+        });
+        // Update ghost color
+        var gd3 = gd;
+        if (as.ghostMesh) {
+          as.ghostMesh.material.color.set(gd3.activeColor || matColors[gd3.activeMaterial] || '#60a5fa');
+          // Update ghost geometry for selected shape
+          var ghostGeo = mkGeo(gd3.activeShape || 'block');
+          as.ghostMesh.geometry.dispose();
+          as.ghostMesh.geometry = ghostGeo;
+          // Hide ghost in erase/paint mode
+          if ((gd3.mode || 'place') !== 'place') as.ghostMesh.visible = false;
+        }
+
+        // Resize handler
+        var handleResize = function () {
+          if (!cnv || !as.renderer) return;
+          as.renderer.setSize(cnv.clientWidth, cnv.clientHeight);
+          as.camera.aspect = cnv.clientWidth / cnv.clientHeight;
+          as.camera.updateProjectionMatrix();
+        };
+        window.addEventListener('resize', handleResize);
+        return function () { window.removeEventListener('resize', handleResize); };
+      }, [stemLabTab, stemLabTool, labToolData]);
+      // ── Architecture Studio cleanup on exit ──
+      React.useEffect(function () {
+        return function () {
+          if (window._archScene) {
+            cancelAnimationFrame(window._archScene.animId);
+            if (window._archScene.renderer) window._archScene.renderer.dispose();
+            if (window._archScene.controls) window._archScene.controls.dispose();
+            window._archScene.blockMeshes.forEach(function (m) { m.geometry.dispose(); if (m.material) m.material.dispose(); });
+            window._archScene = null;
           }
         };
       }, [stemLabTool]);
@@ -1423,6 +1699,11 @@
               id: 'geoSandbox', icon: '\uD83D\uDD37', label: 'Geometry Sandbox',
               desc: 'Build 3D shapes, measure properties, and export STL files for 3D printing.',
               color: 'sky', ready: true
+            },
+            {
+              id: 'archStudio', icon: '\uD83C\uDFD7\uFE0F', label: 'Architecture Studio',
+              desc: 'Minecraft-style 3D building with blocks, columns, arches, and ramps. Snap to grid, measure, and export STL.',
+              color: 'amber', ready: true
             },
             {
               id: 'multtable',
@@ -18357,6 +18638,275 @@
               // STL note
               React.createElement('div', { className: 'text-[10px] text-slate-500 text-center' },
                 '\uD83D\uDCA1 STL files are unit-less. Most 3D printer slicers (Cura, PrusaSlicer) default to millimeters. A shape with width=5 will print as 5mm wide.'
+              )
+            );
+          })(),
+
+          // --- ARCHITECTURE STUDIO ---
+          stemLabTab === 'explore' && stemLabTool === 'archStudio' && (function () {
+            var d = (labToolData && labToolData.archStudio) || {};
+            var upd = function (key, val) { setLabToolData(function (prev) { return Object.assign({}, prev, { archStudio: Object.assign({}, prev.archStudio || {}, (typeof key === 'object' ? key : (function () { var o = {}; o[key] = val; return o; })())) }); }); };
+            var blocks = d.blocks || [];
+            var activeShape = d.activeShape || 'block';
+            var activeMaterial = d.activeMaterial || 'stone';
+            var activeColor = d.activeColor || '#94a3b8';
+            var mode = d.mode || 'place';
+            var threeReady = labToolData._threeLoaded;
+
+            // Shape definitions
+            var shapes = [
+              { id: 'block', icon: '\uD83D\uDFE6', label: 'Block', vol: 1 },
+              { id: 'slab', icon: '\uD83D\uDCCF', label: 'Slab', vol: 0.5 },
+              { id: 'ramp', icon: '\uD83C\uDFD4\uFE0F', label: 'Ramp', vol: 0.5 },
+              { id: 'column', icon: '\uD83C\uDFDB\uFE0F', label: 'Column', vol: 0.385 },
+              { id: 'arch', icon: '\uD83C\uDF09', label: 'Arch', vol: 0.24 },
+              { id: 'roof', icon: '\uD83D\uDCD0', label: 'Roof', vol: 0.35 },
+              { id: 'pyramid', icon: '\uD83D\uDD3A', label: 'Pyramid', vol: 0.26 },
+              { id: 'dome', icon: '\uD83D\uDD35', label: 'Dome', vol: 0.26 }
+            ];
+            // Material definitions
+            var materials = [
+              { id: 'stone', label: 'Stone', color: '#94a3b8', icon: '\uD83E\uDEA8' },
+              { id: 'brick', label: 'Brick', color: '#b45309', icon: '\uD83E\uDDF1' },
+              { id: 'wood', label: 'Wood', color: '#92400e', icon: '\uD83E\uDEB5' },
+              { id: 'glass', label: 'Glass', color: '#38bdf8', icon: '\uD83E\uDE9F' },
+              { id: 'marble', label: 'Marble', color: '#f1f5f9', icon: '\u26AA' },
+              { id: 'metal', label: 'Metal', color: '#cbd5e1', icon: '\u2699\uFE0F' }
+            ];
+            // Tool modes
+            var modes = [
+              { id: 'place', label: 'Place', icon: '\u2795' },
+              { id: 'erase', label: 'Erase', icon: '\u274C' },
+              { id: 'paint', label: 'Paint', icon: '\uD83C\uDFA8' }
+            ];
+            // Volume lookup
+            var volLookup = {};
+            shapes.forEach(function (s) { volLookup[s.id] = s.vol; });
+            // Stats
+            var totalBlocks = blocks.length;
+            var totalVolume = blocks.reduce(function (sum, b) { return sum + (volLookup[b.shape || 'block'] || 1); }, 0).toFixed(2);
+            // Footprint = unique (x,z) cells
+            var footprintSet = {};
+            blocks.forEach(function (b) { footprintSet[b.x + ',' + b.z] = true; });
+            var footprint = Object.keys(footprintSet).length;
+            // Surface area (rough estimate: 6 faces per block - 2 per shared face)
+            var blockMap = {};
+            blocks.forEach(function (b) { blockMap[b.x + ',' + b.y + ',' + b.z] = true; });
+            var surfaceArea = 0;
+            blocks.forEach(function (b) {
+              var neighbors = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+              neighbors.forEach(function (n) {
+                if (!blockMap[(b.x + n[0]) + ',' + (b.y + n[1]) + ',' + (b.z + n[2])]) surfaceArea += 1;
+              });
+            });
+
+            // STL export function
+            var exportSTL = function () {
+              if (!window.THREE || !window._archScene || blocks.length === 0) return;
+              var THREE = window.THREE;
+              var combined = new THREE.BufferGeometry();
+              var geos = [];
+              window._archScene.blockMeshes.forEach(function (m) {
+                var g = m.geometry.clone();
+                g.applyMatrix4(m.matrixWorld);
+                geos.push(g);
+              });
+              if (geos.length === 0) return;
+              // Merge all geometries
+              var positions = [];
+              var normals = [];
+              geos.forEach(function (g) {
+                var idx = g.index;
+                var pos = g.getAttribute('position');
+                var nrm = g.getAttribute('normal');
+                if (idx) {
+                  for (var i = 0; i < idx.count; i++) {
+                    var vi = idx.getX(i);
+                    positions.push(pos.getX(vi), pos.getY(vi), pos.getZ(vi));
+                    if (nrm) normals.push(nrm.getX(vi), nrm.getY(vi), nrm.getZ(vi));
+                    else normals.push(0, 1, 0);
+                  }
+                } else {
+                  for (var j = 0; j < pos.count; j++) {
+                    positions.push(pos.getX(j), pos.getY(j), pos.getZ(j));
+                    if (nrm) normals.push(nrm.getX(j), nrm.getY(j), nrm.getZ(j));
+                    else normals.push(0, 1, 0);
+                  }
+                }
+              });
+              var triCount = positions.length / 9;
+              var bufLen = 84 + triCount * 50;
+              var buf = new ArrayBuffer(bufLen);
+              var dv = new DataView(buf);
+              for (var h = 0; h < 80; h++) dv.setUint8(h, 0);
+              dv.setUint32(80, triCount, true);
+              var offset = 84;
+              for (var t = 0; t < triCount; t++) {
+                var ni = t * 9;
+                dv.setFloat32(offset, normals[ni], true);
+                dv.setFloat32(offset + 4, normals[ni + 1], true);
+                dv.setFloat32(offset + 8, normals[ni + 2], true);
+                offset += 12;
+                for (var v = 0; v < 3; v++) {
+                  var pi = t * 9 + v * 3;
+                  dv.setFloat32(offset, positions[pi], true);
+                  dv.setFloat32(offset + 4, positions[pi + 1], true);
+                  dv.setFloat32(offset + 8, positions[pi + 2], true);
+                  offset += 12;
+                }
+                dv.setUint16(offset, 0, true);
+                offset += 2;
+              }
+              var blob = new Blob([buf], { type: 'application/octet-stream' });
+              var url = URL.createObjectURL(blob);
+              var a = document.createElement('a');
+              a.href = url;
+              a.download = 'architecture_studio_' + Date.now() + '.stl';
+              a.click();
+              URL.revokeObjectURL(url);
+              if (typeof addToast === 'function') addToast('\uD83C\uDFD7\uFE0F Building exported as STL!', 'success');
+            };
+
+            // Undo
+            var undoBlock = function () {
+              setLabToolData(function (p) {
+                var a = Object.assign({}, p.archStudio || {});
+                var nb = (a.blocks || []).slice(0, -1);
+                return Object.assign({}, p, { archStudio: Object.assign({}, a, { blocks: nb }) });
+              });
+            };
+            // Clear all
+            var clearAll = function () {
+              setLabToolData(function (p) {
+                var a = Object.assign({}, p.archStudio || {});
+                return Object.assign({}, p, { archStudio: Object.assign({}, a, { blocks: [] }) });
+              });
+            };
+
+            // Coach tips based on block count
+            var coachTip = totalBlocks === 0 ? '\uD83C\uDFD7\uFE0F Click on the grid to place your first block! Use different shapes and materials to build amazing structures.'
+              : totalBlocks < 5 ? '\uD83D\uDCA1 Tip: Click on the side of an existing block to stack blocks upward. Try building a simple wall!'
+                : totalBlocks < 15 ? '\uD83C\uDFDB\uFE0F Try adding columns and arches to give your structure a classical look. Ancient Greeks used columns to support roofs.'
+                  : totalBlocks < 30 ? '\uD83C\uDFE0 Great progress! Mix materials for visual contrast \u2014 try a stone foundation with wooden walls and a brick chimney.'
+                    : totalBlocks < 50 ? '\uD83C\uDF09 Fun fact: The Roman Colosseum used 80 arched entrances. Try adding arches to your design!'
+                      : '\uD83C\uDFF0 You\'re an architect! The Great Wall of China used over 3.8 billion bricks. How big can you build?';
+
+            return React.createElement('div', { key: 'archStudio', style: { display: 'flex', flexDirection: 'column', height: '100%', background: '#0f172a', borderRadius: 16, overflow: 'hidden' } },
+              // Header bar
+              React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', background: 'linear-gradient(90deg,#1e293b,#0f172a)', borderBottom: '1px solid #334155' } },
+                React.createElement('button', { onClick: function () { setStemLabTool(''); }, style: { background: 'rgba(71,85,105,.5)', border: 'none', color: '#e2e8f0', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 600 } }, '\u2190 Back'),
+                React.createElement('span', { style: { fontSize: 20 } }, '\uD83C\uDFD7\uFE0F'),
+                React.createElement('span', { style: { fontWeight: 700, fontSize: 17, color: '#f8fafc', letterSpacing: 0.5 } }, 'Architecture Studio'),
+                React.createElement('span', { style: { fontSize: 11, color: '#64748b', marginLeft: 4 } }, blocks.length + ' blocks'),
+                React.createElement('div', { style: { flex: 1 } }),
+                React.createElement('button', { onClick: undoBlock, disabled: blocks.length === 0, style: { background: 'rgba(71,85,105,.5)', border: 'none', color: blocks.length ? '#e2e8f0' : '#475569', borderRadius: 8, padding: '6px 12px', cursor: blocks.length ? 'pointer' : 'default', fontSize: 12, fontWeight: 600 } }, '\u21A9 Undo'),
+                React.createElement('button', { onClick: clearAll, disabled: blocks.length === 0, style: { background: blocks.length ? 'rgba(239,68,68,.3)' : 'rgba(71,85,105,.3)', border: blocks.length ? '1px solid rgba(239,68,68,.4)' : '1px solid transparent', color: blocks.length ? '#fca5a5' : '#475569', borderRadius: 8, padding: '6px 12px', cursor: blocks.length ? 'pointer' : 'default', fontSize: 12, fontWeight: 600 } }, '\uD83D\uDDD1\uFE0F Clear'),
+                React.createElement('button', { onClick: exportSTL, disabled: blocks.length === 0, style: { background: blocks.length ? 'linear-gradient(135deg,#f59e0b,#d97706)' : 'rgba(71,85,105,.3)', border: 'none', color: blocks.length ? '#fff' : '#475569', borderRadius: 8, padding: '6px 14px', cursor: blocks.length ? 'pointer' : 'default', fontSize: 12, fontWeight: 700 } }, '\uD83D\uDCE5 Export STL')
+              ),
+              // Main content: sidebar + viewport
+              React.createElement('div', { style: { display: 'flex', flex: 1, overflow: 'hidden' } },
+                // Left sidebar
+                React.createElement('div', { style: { width: 180, background: '#1e293b', padding: '12px 10px', overflowY: 'auto', borderRight: '1px solid #334155', display: 'flex', flexDirection: 'column', gap: 14 } },
+                  // Tool mode selector
+                  React.createElement('div', null,
+                    React.createElement('div', { style: { fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 6 } }, 'Mode'),
+                    React.createElement('div', { style: { display: 'flex', gap: 4 } },
+                      modes.map(function (m) {
+                        return React.createElement('button', {
+                          key: m.id,
+                          onClick: function () { upd('mode', m.id); },
+                          style: {
+                            flex: 1, padding: '6px 4px', fontSize: 11, fontWeight: 600, border: mode === m.id ? '2px solid #f59e0b' : '1px solid #475569',
+                            borderRadius: 8, background: mode === m.id ? 'rgba(245,158,11,.15)' : 'rgba(30,41,59,.8)', color: mode === m.id ? '#fbbf24' : '#94a3b8',
+                            cursor: 'pointer', textAlign: 'center'
+                          }
+                        }, m.icon + ' ' + m.label);
+                      })
+                    )
+                  ),
+                  // Shape palette
+                  React.createElement('div', null,
+                    React.createElement('div', { style: { fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 6 } }, 'Shapes'),
+                    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 } },
+                      shapes.map(function (s) {
+                        return React.createElement('button', {
+                          key: s.id,
+                          onClick: function () { upd('activeShape', s.id); },
+                          style: {
+                            padding: '8px 4px', fontSize: 11, fontWeight: 600, border: activeShape === s.id ? '2px solid #60a5fa' : '1px solid #334155',
+                            borderRadius: 8, background: activeShape === s.id ? 'rgba(96,165,250,.12)' : 'transparent', color: activeShape === s.id ? '#93c5fd' : '#94a3b8',
+                            cursor: 'pointer', textAlign: 'center', lineHeight: 1.2
+                          }
+                        }, React.createElement('div', { style: { fontSize: 18 } }, s.icon), s.label);
+                      })
+                    )
+                  ),
+                  // Material palette
+                  React.createElement('div', null,
+                    React.createElement('div', { style: { fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 6 } }, 'Materials'),
+                    React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 3 } },
+                      materials.map(function (m) {
+                        return React.createElement('button', {
+                          key: m.id,
+                          onClick: function () { upd({ activeMaterial: m.id, activeColor: m.color }); },
+                          style: {
+                            display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', fontSize: 11, fontWeight: 600,
+                            border: activeMaterial === m.id ? '2px solid ' + m.color : '1px solid #334155',
+                            borderRadius: 8, background: activeMaterial === m.id ? 'rgba(255,255,255,.06)' : 'transparent',
+                            color: activeMaterial === m.id ? '#f8fafc' : '#94a3b8', cursor: 'pointer', textAlign: 'left'
+                          }
+                        },
+                          React.createElement('span', { style: { width: 18, height: 18, borderRadius: 4, background: m.color, display: 'inline-block', flexShrink: 0, border: '1px solid rgba(255,255,255,.15)' } }),
+                          m.icon + ' ' + m.label
+                        );
+                      })
+                    )
+                  )
+                ),
+                // Main viewport area
+                React.createElement('div', { style: { flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' } },
+                  // Three.js canvas
+                  !threeReady
+                    ? React.createElement('div', { style: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontSize: 14 } },
+                      React.createElement('div', { style: { textAlign: 'center' } },
+                        React.createElement('div', { style: { fontSize: 32, marginBottom: 8, animation: 'spin 2s linear infinite' } }, '\u2699\uFE0F'),
+                        'Loading 3D engine...'
+                      )
+                    )
+                    : React.createElement('canvas', {
+                      id: 'arch-studio-canvas',
+                      style: { flex: 1, width: '100%', display: 'block', cursor: mode === 'place' ? 'crosshair' : mode === 'erase' ? 'not-allowed' : 'pointer' }
+                    }),
+                  // Controls overlay
+                  React.createElement('div', { style: { position: 'absolute', top: 10, right: 10, background: 'rgba(15,23,42,.85)', borderRadius: 10, padding: '8px 12px', fontSize: 10, color: '#64748b', lineHeight: 1.5, backdropFilter: 'blur(8px)', border: '1px solid #1e293b' } },
+                    React.createElement('div', null, '\uD83D\uDD04 Drag \u2014 Orbit'),
+                    React.createElement('div', null, '\uD83D\uDD0D Scroll \u2014 Zoom'),
+                    React.createElement('div', null, '\u2747\uFE0F Right-drag \u2014 Pan'),
+                    React.createElement('div', null, '\uD83D\uDC49 Click \u2014 ' + (mode === 'place' ? 'Place block' : mode === 'erase' ? 'Remove block' : 'Paint block'))
+                  ),
+                  // Mode indicator overlay
+                  React.createElement('div', { style: { position: 'absolute', top: 10, left: 10, background: mode === 'place' ? 'rgba(34,197,94,.2)' : mode === 'erase' ? 'rgba(239,68,68,.2)' : 'rgba(168,85,247,.2)', border: '1px solid ' + (mode === 'place' ? '#22c55e' : mode === 'erase' ? '#ef4444' : '#a855f7'), borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 700, color: mode === 'place' ? '#4ade80' : mode === 'erase' ? '#f87171' : '#c084fc' } },
+                    (mode === 'place' ? '\u2795 Place' : mode === 'erase' ? '\u274C Erase' : '\uD83C\uDFA8 Paint') + ' Mode'
+                  ),
+                  // Bottom stats bar
+                  React.createElement('div', { style: { display: 'flex', gap: 16, justifyContent: 'center', padding: '8px 16px', background: 'linear-gradient(0deg,#1e293b,#0f172a)', borderTop: '1px solid #334155', flexWrap: 'wrap' } },
+                    [
+                      { label: 'Blocks', value: totalBlocks, icon: '\uD83E\uDDF1' },
+                      { label: 'Volume', value: totalVolume + ' u\u00B3', icon: '\uD83D\uDCE6' },
+                      { label: 'Footprint', value: footprint + ' u\u00B2', icon: '\uD83D\uDDFA\uFE0F' },
+                      { label: 'Surface', value: surfaceArea + ' u\u00B2', icon: '\uD83D\uDCC0' }
+                    ].map(function (stat) {
+                      return React.createElement('div', { key: stat.label, style: { textAlign: 'center' } },
+                        React.createElement('div', { style: { fontSize: 11, color: '#64748b', fontWeight: 600 } }, stat.icon + ' ' + stat.label),
+                        React.createElement('div', { style: { fontSize: 16, fontWeight: 700, color: '#f8fafc' } }, stat.value)
+                      );
+                    })
+                  )
+                )
+              ),
+              // Coach panel
+              React.createElement('div', { style: { padding: '10px 16px', background: '#1e293b', borderTop: '1px solid #334155', fontSize: 12, color: '#94a3b8', lineHeight: 1.5 } },
+                coachTip
               )
             );
           })(),

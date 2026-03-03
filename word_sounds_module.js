@@ -4561,6 +4561,34 @@
                       ),
                     );
                   }
+                  // Pre-fetch Word Families rime members + distractors
+                  const _tw = (targetWord || "").toLowerCase();
+                  let _rimeMembers = [];
+                  const _aiRime = wordEntry.rimeFamilyMembers || (phonemeData && phonemeData.rimeFamilyMembers);
+                  if (_aiRime && _aiRime.words && _aiRime.words.length >= 3) {
+                    _rimeMembers = _aiRime.words.filter((w) => w.toLowerCase() !== _tw);
+                  }
+                  if (_rimeMembers.length < 2 && typeof RIME_FAMILIES !== "undefined") {
+                    for (const [rime, members] of Object.entries(RIME_FAMILIES)) {
+                      if (_tw.endsWith(rime) && _tw.length > rime.length) {
+                        _rimeMembers = members.filter((w) => w !== _tw);
+                        const _rk = Object.keys(RIME_FAMILIES);
+                        const _ri = _rk.indexOf(rime);
+                        const _adj = _rk.filter((r) => r !== rime && (r[0] === rime[0] || Math.abs(_rk.indexOf(r) - _ri) <= 3));
+                        for (const ar of _adj.slice(0, 4)) {
+                          _rimeMembers.push(...(RIME_FAMILIES[ar] || []).slice(0, 3));
+                        }
+                        break;
+                      }
+                    }
+                  }
+                  if (_rimeMembers.length > 0) {
+                    const _uniqueRime = [...new Set(_rimeMembers)].slice(0, 12);
+                    await Promise.all(
+                      _uniqueRime.map((w) => handleAudio(w, false).catch(() => { })),
+                    );
+                    debugLog("🏠 [Prefetch] Pre-fetched", _uniqueRime.length, "word family audio for:", _tw);
+                  }
                   const keys = [
                     wordEntry.firstSound,
                     wordEntry.lastSound,
@@ -4785,6 +4813,25 @@ EXAMPLES:
                   await Promise.all(
                     uniqueKeysToFetch.map((k) => handleAudio(k, false).catch(() => { })),
                   );
+                  // Pre-fetch Word Families options from AI rime data + RIME_FAMILIES
+                  const _tw2 = (targetWord || "").toLowerCase();
+                  let _rimeWords2 = [];
+                  if (phonemeData?.rimeFamilyMembers?.words?.length >= 3) {
+                    _rimeWords2 = phonemeData.rimeFamilyMembers.words.filter((w) => w.toLowerCase() !== _tw2);
+                  }
+                  if (_rimeWords2.length < 2 && typeof RIME_FAMILIES !== "undefined") {
+                    for (const [rime, members] of Object.entries(RIME_FAMILIES)) {
+                      if (_tw2.endsWith(rime) && _tw2.length > rime.length) {
+                        _rimeWords2 = members.filter((w) => w !== _tw2);
+                        break;
+                      }
+                    }
+                  }
+                  if (_rimeWords2.length > 0) {
+                    await Promise.all(
+                      [...new Set(_rimeWords2)].slice(0, 8).map((w) => handleAudio(w, false).catch(() => { })),
+                    );
+                  }
                 } catch (e) {
                   warnLog("Caught error:", e?.message || e);
                 }
@@ -6579,7 +6626,13 @@ Use digraphs (sh,ch,th) as single sounds. Use ā,ē,ī,ō,ū for long vowels.`;
                 );
                 if (cancelled) return;
                 await new Promise((r) => setTimeout(r, 200));
+                const letterNameKey = "letter_" + lowLet;
                 if (
+                  typeof window.__ALLO_INSTRUCTION_AUDIO !== "undefined" &&
+                  window.__ALLO_INSTRUCTION_AUDIO[letterNameKey]
+                ) {
+                  await handleAudio(window.__ALLO_INSTRUCTION_AUDIO[letterNameKey]);
+                } else if (
                   typeof LETTER_NAME_AUDIO !== "undefined" &&
                   LETTER_NAME_AUDIO[lowLet]
                 ) {
@@ -6594,6 +6647,11 @@ Use digraphs (sh,ch,th) as single sounds. Use ā,ē,ī,ō,ū for long vowels.`;
                   await new Promise((r) => setTimeout(r, 200));
                 }
                 await handleAudio(currentWordSoundsWord);
+              } else if (
+                typeof window.__ALLO_INSTRUCTION_AUDIO !== "undefined" &&
+                window.__ALLO_INSTRUCTION_AUDIO["letter_" + lowLet]
+              ) {
+                instructionAudioSrc = window.__ALLO_INSTRUCTION_AUDIO["letter_" + lowLet];
               } else if (
                 typeof LETTER_NAME_AUDIO !== "undefined" &&
                 LETTER_NAME_AUDIO[lowLet]

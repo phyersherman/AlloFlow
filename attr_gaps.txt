@@ -1,0 +1,26 @@
+3205 [placeholder=]: e.g. Space, Ocean...
+3926 [title=]: Re-check phonemes with Gemini
+3936 [title=]: Re-check phonemes with Gemini
+4211 [placeholder=]: e.g., make it cuter, add a banana
+6408 [placeholder=]: Start
+6422 [title=]: Clear dates
+7501 [title=]: Download a growth-focused report suitable for sharing with t
+7709 [placeholder=]: e.g. 72
+7827 [placeholder=]: e.g. Wilson Reading
+18510 [title=]: Randomize
+21367 [title=]: Export Research Report (APA-formatted)
+23294 [title=]: Remove character
+23307 [title=]: Click to edit name
+23312 [title=]: Click to edit role
+23317 [title=]: Click to edit appearance
+23321 [title=]: Regenerate using current description
+23326 [placeholder=]: e.g. Add green glasses
+23332 [title=]: Edit portrait with NanoBanana
+23362 [placeholder=]: Character name
+23363 [placeholder=]: Role (e.g. Wise Mentor)
+23364 [placeholder=]: Appearance (e.g. tall, silver hair, blue robe)
+50732 [title=]: Assessment Center
+54174 [placeholder=]: Enter volume...
+63675 [placeholder=]: e.g. Make these easier, add 2 more division problems, change
+
+Total: 24

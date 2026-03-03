@@ -1,0 +1,20 @@
+=== Assessment Center component locations ===
+  L50474: title={t('common.assessment_center') || 'Assessment Center'}
+  L50477: <ClipboardList size={14} /> <span className="hidden lg:inline">{t('common.assessment_center') || 'Assessment Center'}</s
+
+=== Lines with 'activeView.*assessment' or 'assessment.*tab' ===
+  L4265: const [assessmentCenterTab, setAssessmentCenterTab] = React.useState("assessments");
+  L6218: <button key={tab.id} onClick={() => { setAssessmentCenterTab(tab.id); if (tab.id === 'research' && researchFirstVisit) {
+  L6219: className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 transition-all ${assessmentCenterTab === ta
+  L6221: <span className={`text-[10px] font-normal ${assessmentCenterTab === tab.id ? 'text-indigo-400' : 'text-slate-400'}`}>{ta
+  L6226: <div className="flex-1 overflow-y-auto p-4" style={{ display: (!isIndependentMode && assessmentCenterTab === 'research')
+  L8427: {!isIndependentMode && assessmentCenterTab === 'research' && (
+  L8470: <button onClick={() => setAssessmentCenterTab('assessments')}
+  L67561: return React.createElement(StemLabComponent, {ArrowLeft, Calculator, GripVertical, Sparkles, X, addToast, angleChallenge
+
+=== Potential nesting: div/span with onClick containing <button within 10 lines ===
+  L6512: <div className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-sm flex items-center justify-center 
+    -> L6519 has <button: <button onClick={() => setShowRTISettings(false)} className="p-2 rounded-full hover:bg-slate-100 tex
+
+  L6513: <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-lg border-2 border-indigo-100 trans
+    -> L6519 has <button: <button onClick={() => setShowRTISettings(false)} className="p-2 rounded-full hover:bg-slate-100 tex

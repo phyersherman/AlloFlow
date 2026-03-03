@@ -1,0 +1,20 @@
+Tool IDs in sidebar render order:
+   1. source-input
+   2. analysis
+   3. glossary
+   4. simplified
+   5. ui-tool-wordsounds
+   6. outline
+   7. image
+   8. faq
+   9. sentence-frames
+  10. brainstorm
+  11. persona
+  12. timeline
+  13. concept-sort
+  14. math
+  15. adventure
+  16. quiz
+  17. lesson-plan
+
+Total: 17

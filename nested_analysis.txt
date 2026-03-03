@@ -1,0 +1,28 @@
+Total button tags: 306
+  Opens: 153, Closes: 153, Self-closing: 0
+
+Nested buttons found: 0
+No nested buttons found!
+
+
+=== DIV balance check around Literacy Fluency section (lines 6730-6845) ===
+  L6733: depth_change=-1, running_depth=-1 | </div>
+  L6734: depth_change=-1, running_depth=-2 | </div>
+  L6735: depth_change=+1, running_depth=-1 | <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl p-4 mb-4 border bo
+  L6736: depth_change=+1, running_depth=0 | <div className="flex items-center gap-2 mb-3">
+  L6740: depth_change=-1, running_depth=-1 | </div>
+  L6742: depth_change=+1, running_depth=0 | <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+  L6771: depth_change=+1, running_depth=1 | <div className="text-left">
+  L6774: depth_change=-1, running_depth=0 | </div>
+  L6803: depth_change=+1, running_depth=1 | <div className="text-left">
+  L6806: depth_change=-1, running_depth=0 | </div>
+  L6835: depth_change=+1, running_depth=1 | <div className="text-left">
+  L6838: depth_change=-1, running_depth=0 | </div>
+  L6840: depth_change=-1, running_depth=-1 | </div>
+  L6841: depth_change=-1, running_depth=-2 | </div>
+  L6843: depth_change=+1, running_depth=-1 | <div className="mt-4 bg-white rounded-xl border-2 border-emerald-300 p-6 shadow-lg animate
+  L6844: depth_change=+1, running_depth=0 | <div className="flex items-center justify-between mb-4">
+  L6845: depth_change=+1, running_depth=1 | <div className="flex items-center gap-3">
+
+  Final div depth delta for this section: 1
+  (Positive = unclosed divs, Negative = extra closes)

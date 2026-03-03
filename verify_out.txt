@@ -1,0 +1,22 @@
+=== Monolith Verification ===
+  class_analytics.rti_classification: raw=0, t()=1 -> PASS
+  class_analytics.no_student_data: raw=0, t()=1 -> PASS
+  probes.benchmark_battery: raw=0, t()=1 -> PASS
+  learner.total_xp: raw=0, t()=1 -> PASS
+  research.perceived_usefulness: raw=0, t()=1 -> PASS
+  adventure.focus_reader: raw=0, t()=1 -> PASS
+  learner.daily_streak: raw=0, t()=1 -> PASS
+  probes.nwf: raw=0, t()=1 -> PASS
+  class_analytics.live_sync: raw=0, t()=0 -> FAIL
+
+=== ui_strings.js Sections ===
+  class_analytics: FOUND
+  rti: FOUND
+  probes: FOUND
+  learner: FOUND
+  research: FOUND
+  adventure: FOUND
+  stem: FOUND
+  glossary_health: FOUND
+
+Overall: SOME FAILURES

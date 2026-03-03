@@ -1,0 +1,14 @@
+adventure
+analysis
+brainstorm
+dashboard
+faq
+glossary
+image
+input
+math
+outline
+persona
+quiz
+simplified
+timeline

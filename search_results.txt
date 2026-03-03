@@ -1,0 +1,76 @@
+
+=== AlloFlowANTI.txt ===
+Lines: 67604
+  'assessment': 104 matches
+    L1436: const analysisPrompt = `You are an educational assessment evaluator reviewing a student diagram labe
+    L4265: const [assessmentCenterTab, setAssessmentCenterTab] = React.useState("assessments");
+    L4587: if (data.fluencyAssessments && data.fluencyAssessments.length > 0) {
+    ...+101 more
+  'probe': 694 matches
+    L2542: const WordSoundsGenerator = React.memo(({ glossaryTerms, onStartGame, onClose, callGemini, callImage
+    L2546: if (isProbeMode) setImageVisibilityMode('off');
+    L2547: }, [isProbeMode]);
+    ...+691 more
+  'Benchmark': 41 matches
+    L4203: window.BENCHMARK_PROBE_BANKS = null;
+    L4213: if (window.BENCHMARK_PROBE_BANKS && window.ORF_SCREENING_PASSAGES) return;
+    L4218: if (probeData.BENCHMARK_PROBE_BANKS) window.BENCHMARK_PROBE_BANKS = probeData.BENCHMARK_PROBE_BANKS;
+    ...+38 more
+  'ORF': 85 matches
+    L4204: window.ORF_SCREENING_PASSAGES = null;
+    L4213: if (window.BENCHMARK_PROBE_BANKS && window.ORF_SCREENING_PASSAGES) return;
+    L4219: if (probeData.ORF_SCREENING_PASSAGES) window.ORF_SCREENING_PASSAGES = probeData.ORF_SCREENING_PASSAG
+    ...+82 more
+  'NWF': 65 matches
+    L4208: window.NWF_PROBE_BANKS = null;
+    L4238: if (!window.NWF_PROBE_BANKS) {
+    L4243: if (litData.NWF_PROBE_BANKS) window.NWF_PROBE_BANKS = litData.NWF_PROBE_BANKS;
+    ...+62 more
+  'LNF': 61 matches
+    L4209: window.LNF_PROBE_BANKS = null;
+    L4244: if (litData.LNF_PROBE_BANKS) window.LNF_PROBE_BANKS = litData.LNF_PROBE_BANKS;
+    L4351: const [lnfProbeActive, setLnfProbeActive] = React.useState(false);
+    ...+58 more
+  'fluency': 423 matches
+    L4260: const StudentAnalyticsPanel = React.memo(({ isOpen, onClose, t, rosterKey, setRosterKey, latestProbe
+    L4423: return { quizTier3: 50, quizTier2: 80, wsTier3: 50, wsTier2: 75, engagementMin: 2, fluencyMin: 60, l
+    L4520: fluencyWCPM: student.stats.fluencyWCPM || 0,
+    ...+420 more
+
+=== App.jsx ===
+Lines: 67559
+  'assessment': 104 matches
+    L1436: const analysisPrompt = `You are an educational assessment evaluator reviewing a student diagram labe
+    L4265: const [assessmentCenterTab, setAssessmentCenterTab] = React.useState("assessments");
+    L4587: if (data.fluencyAssessments && data.fluencyAssessments.length > 0) {
+    ...+101 more
+  'probe': 694 matches
+    L2542: const WordSoundsGenerator = React.memo(({ glossaryTerms, onStartGame, onClose, callGemini, callImage
+    L2546: if (isProbeMode) setImageVisibilityMode('off');
+    L2547: }, [isProbeMode]);
+    ...+691 more
+  'Benchmark': 41 matches
+    L4203: window.BENCHMARK_PROBE_BANKS = null;
+    L4213: if (window.BENCHMARK_PROBE_BANKS && window.ORF_SCREENING_PASSAGES) return;
+    L4218: if (probeData.BENCHMARK_PROBE_BANKS) window.BENCHMARK_PROBE_BANKS = probeData.BENCHMARK_PROBE_BANKS;
+    ...+38 more
+  'ORF': 85 matches
+    L4204: window.ORF_SCREENING_PASSAGES = null;
+    L4213: if (window.BENCHMARK_PROBE_BANKS && window.ORF_SCREENING_PASSAGES) return;
+    L4219: if (probeData.ORF_SCREENING_PASSAGES) window.ORF_SCREENING_PASSAGES = probeData.ORF_SCREENING_PASSAG
+    ...+82 more
+  'NWF': 65 matches
+    L4208: window.NWF_PROBE_BANKS = null;
+    L4238: if (!window.NWF_PROBE_BANKS) {
+    L4243: if (litData.NWF_PROBE_BANKS) window.NWF_PROBE_BANKS = litData.NWF_PROBE_BANKS;
+    ...+62 more
+  'LNF': 61 matches
+    L4209: window.LNF_PROBE_BANKS = null;
+    L4244: if (litData.LNF_PROBE_BANKS) window.LNF_PROBE_BANKS = litData.LNF_PROBE_BANKS;
+    L4351: const [lnfProbeActive, setLnfProbeActive] = React.useState(false);
+    ...+58 more
+  'fluency': 423 matches
+    L4260: const StudentAnalyticsPanel = React.memo(({ isOpen, onClose, t, rosterKey, setRosterKey, latestProbe
+    L4423: return { quizTier3: 50, quizTier2: 80, wsTier3: 50, wsTier2: 75, engagementMin: 2, fluencyMin: 60, l
+    L4520: fluencyWCPM: student.stats.fluencyWCPM || 0,
+    ...+420 more
