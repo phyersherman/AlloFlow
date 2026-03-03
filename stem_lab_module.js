@@ -4426,7 +4426,9 @@
 
               var animId = null;
               var speedMultiplier = 1;
+              canvasEl._cellSimAlive = true;
               function loop() {
+                if (!canvasEl._cellSimAlive) return; // stop loop if killed
                 if (canvasEl._cellSimPaused) { animId = requestAnimationFrame(loop); return; }
                 for (var si = 0; si < speedMultiplier; si++) {
                   world.tick++;
@@ -4442,6 +4444,13 @@
                 animId = requestAnimationFrame(loop);
               }
               animId = requestAnimationFrame(loop);
+              // Restart method — revives a dead loop
+              canvasEl._cellSimRestart = function () {
+                canvasEl._cellSimAlive = true;
+                canvasEl._cellSimPaused = false;
+                if (animId) cancelAnimationFrame(animId);
+                animId = requestAnimationFrame(loop);
+              };
 
               // Mouse/touch events
               canvasEl.addEventListener('mousedown', function (e) {
@@ -4500,6 +4509,7 @@
 
               // Cleanup
               canvasEl._cellSimCleanup = function () {
+                canvasEl._cellSimAlive = false;
                 if (animId) cancelAnimationFrame(animId);
                 window.removeEventListener('keydown', onKey);
                 window.removeEventListener('keyup', onKey);
@@ -4515,11 +4525,11 @@
             };
 
             // ── Cleanup on unmount ──
+            // Only run cleanup when truly leaving the cell tool, not on re-renders
             var cleanupRef = function (el) {
-              if (!el) {
-                // Unmount
+              if (!el && stemLabTool !== 'cell') {
                 var old = document.querySelector('[data-cell-sim-canvas]');
-                if (old && old._cellSimCleanup) { old._cellSimCleanup(); if (old._cellSimRO) old._cellSimRO.disconnect(); }
+                if (old && old._cellSimCleanup) { old._cellSimCleanup(); if (old._cellSimRO) old._cellSimRO.disconnect(); old._cellSimInit = false; }
               }
             };
 
@@ -4568,7 +4578,7 @@
                     className: "w-16 accent-green-600"
                   }),
                   (d.simSpeed || 1) + "x",
-                  React.createElement("button", { onClick: function () { var p = !d.paused; upd("paused", p); var cv = document.querySelector('[data-cell-sim-canvas]'); if (cv && cv._cellSimSetPaused) cv._cellSimSetPaused(p); }, className: "text-xs font-bold px-2 py-0.5 rounded " + (d.paused ? "bg-green-600 text-white" : "bg-slate-200 text-slate-600") }, d.paused ? "\u25B6" : "\u23F8")
+                  React.createElement("button", { onClick: function () { var p = !d.paused; upd("paused", p); var cv = document.querySelector('[data-cell-sim-canvas]'); if (cv) { if (!p && cv._cellSimRestart && !cv._cellSimAlive) { cv._cellSimRestart(); } else if (cv._cellSimSetPaused) { cv._cellSimSetPaused(p); } } }, className: "text-xs font-bold px-2 py-0.5 rounded " + (d.paused ? "bg-green-600 text-white" : "bg-slate-200 text-slate-600") }, d.paused ? "\u25B6" : "\u23F8")
                 )
               ),
 
@@ -5755,7 +5765,7 @@
                     React.createElement("label", { className: 'text-sm font-bold text-' + color + '-700 mb-2 block' }, label),
                     React.createElement("div", { className: "flex gap-2 items-center justify-center" },
                       Array.from({ length: selectorCount }).map(function (_, i) {
-                        return React.createElement("select", { key: i, value: d[key][i], onChange: function (e) { var na = d[key].slice(); na[i] = e.target.value; upd(key, na); }, className: 'px-3 py-2 border-2 border-' + color + '-200 rounded-lg font-bold text-lg text-center', 'aria-label': label + ' allele ' + (i + 1) },
+                        return React.createElement("select", { key: i, value: (d[key] && d[key][i]) || 'A', onChange: function (e) { var na = (d[key] || ['A', 'a']).slice(); na[i] = e.target.value; upd(key, na); }, className: 'px-3 py-2 border-2 border-' + color + '-200 rounded-lg font-bold text-lg text-center', 'aria-label': label + ' allele ' + (i + 1) },
                           ['A', 'a', 'B', 'b', 'C', 'c', 'R', 'r', 'T', 't', 'H', 'h', 'i'].map(function (a) { return React.createElement("option", { key: a, value: a }, a); })
                         );
                       }),
