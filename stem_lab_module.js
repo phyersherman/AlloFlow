@@ -509,6 +509,86 @@
       }, [stemLabTab, stemLabTool, labToolData]);
       // ── Coding Playground: Canvas ref (MUST be at top level) ──
       var _codingCanvasRef = React.useRef(null);
+      // ── Slide Rule: Canvas ref (MUST be at top level) ──
+      var _slideRuleCanvasRef = React.useRef(null);
+      // ── Slide Rule: Canvas rendering ──
+      React.useEffect(function () {
+        var _manipMode = (labToolData && labToolData._mathManipMode) || 'blocks';
+        if (stemLabTab !== 'explore' || stemLabTool !== 'base10' || _manipMode !== 'slideRule') return;
+        var _srd = (labToolData && labToolData._slideRule) || { cOffset: 0, cursorPos: 0.301 };
+        var cvs = _slideRuleCanvasRef.current;
+        if (!cvs) return;
+        var ctx = cvs.getContext('2d');
+        var W = 600, H = 180;
+        cvs.width = W; cvs.height = H;
+        var PAD = 40, RULER_W = W - PAD * 2, RULER_H = 36;
+        var cOff = _srd.cOffset || 0;
+        var cursorX = _srd.cursorPos || 0.301;
+        // Background
+        ctx.fillStyle = '#fefce8'; ctx.fillRect(0, 0, W, H);
+        ctx.strokeStyle = '#d4a574'; ctx.lineWidth = 2; ctx.strokeRect(1, 1, W - 2, H - 2);
+        // Helper: log position
+        function logX(val) { return PAD + (Math.log10(val)) * RULER_W; }
+        // Draw scale function
+        function drawScale(yTop, offset, label, bgColor, textColor) {
+          ctx.fillStyle = bgColor;
+          ctx.fillRect(PAD, yTop, RULER_W, RULER_H);
+          ctx.strokeStyle = '#92400e'; ctx.lineWidth = 0.5;
+          ctx.strokeRect(PAD, yTop, RULER_W, RULER_H);
+          // Tick marks
+          for (var n = 1; n <= 10; n++) {
+            var x = PAD + (Math.log10(n) + offset) * RULER_W;
+            if (x < PAD - 1 || x > PAD + RULER_W + 1) continue;
+            // Major tick
+            ctx.strokeStyle = '#451a03'; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.moveTo(x, yTop); ctx.lineTo(x, yTop + RULER_H); ctx.stroke();
+            // Label
+            ctx.fillStyle = textColor; ctx.font = 'bold 11px monospace'; ctx.textAlign = 'center';
+            ctx.fillText(String(n), x, yTop + RULER_H - 4);
+            // Minor ticks
+            if (n < 10) {
+              var minorCount = n === 1 ? 10 : 5;
+              for (var m = 1; m < minorCount; m++) {
+                var minorVal = n + m * (n === 1 ? 0.1 : 0.2);
+                var mx = PAD + (Math.log10(minorVal) + offset) * RULER_W;
+                if (mx < PAD || mx > PAD + RULER_W) continue;
+                ctx.strokeStyle = '#78350f'; ctx.lineWidth = 0.5;
+                var tickH = m % (n === 1 ? 5 : 1) === 0 ? RULER_H * 0.5 : RULER_H * 0.3;
+                ctx.beginPath(); ctx.moveTo(mx, yTop); ctx.lineTo(mx, yTop + tickH); ctx.stroke();
+              }
+            }
+          }
+          // Scale label
+          ctx.fillStyle = textColor; ctx.font = 'bold 14px serif'; ctx.textAlign = 'right';
+          ctx.fillText(label, PAD - 6, yTop + RULER_H / 2 + 5);
+        }
+        // D scale (fixed)
+        drawScale(H - 50, 0, 'D', '#fef3c7', '#92400e');
+        // C scale (movable)
+        ctx.save();
+        ctx.beginPath(); ctx.rect(PAD, 0, RULER_W, H); ctx.clip();
+        drawScale(H - 50 - RULER_H - 2, cOff, 'C', '#ecfccb', '#365314');
+        ctx.restore();
+        // Cursor hairline
+        var cx = PAD + cursorX * RULER_W;
+        ctx.strokeStyle = 'rgba(220,38,38,0.8)'; ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 3]);
+        ctx.beginPath(); ctx.moveTo(cx, 8); ctx.lineTo(cx, H - 8); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(220,38,38,0.9)'; ctx.beginPath();
+        ctx.moveTo(cx - 5, 8); ctx.lineTo(cx + 5, 8); ctx.lineTo(cx, 14); ctx.closePath(); ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(cx - 5, H - 8); ctx.lineTo(cx + 5, H - 8); ctx.lineTo(cx, H - 14); ctx.closePath(); ctx.fill();
+        // Readout
+        var dVal = Math.pow(10, cursorX);
+        var cVal = Math.pow(10, cursorX - cOff);
+        var product = dVal * Math.pow(10, cOff);
+        ctx.fillStyle = '#451a03'; ctx.font = 'bold 13px monospace'; ctx.textAlign = 'center';
+        ctx.fillText('D: ' + dVal.toFixed(2) + '  ×  C: ' + cVal.toFixed(2) + '  =  ' + product.toFixed(2), W / 2, 30);
+        // Title
+        ctx.fillStyle = '#78350f'; ctx.font = '11px sans-serif'; ctx.textAlign = 'left';
+        ctx.fillText('Drag below to slide C-scale • Click to set cursor', PAD, H - 2);
+      }, [stemLabTab, stemLabTool, labToolData]);
       // ── Coding Playground: Canvas rendering (MUST be at top level) ──
       React.useEffect(function () {
         if (stemLabTab !== 'explore' || stemLabTool !== 'codingPlayground') return;
@@ -533,18 +613,44 @@
           ctx.beginPath(); ctx.moveTo(ln.x1, ln.y1); ctx.lineTo(ln.x2, ln.y2); ctx.stroke();
         });
         var tx = _turtleState.x, ty = _turtleState.y, ta = _turtleState.angle * Math.PI / 180;
+        // Glow under turtle
+        ctx.save(); ctx.translate(tx, ty);
+        var _glowGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, 28);
+        _glowGrad.addColorStop(0, 'rgba(74,222,128,0.35)'); _glowGrad.addColorStop(1, 'rgba(74,222,128,0)');
+        ctx.fillStyle = _glowGrad; ctx.beginPath(); ctx.arc(0, 0, 28, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
         ctx.save(); ctx.translate(tx, ty); ctx.rotate(ta + Math.PI / 2);
-        ctx.fillStyle = '#22c55e';
-        ctx.beginPath(); ctx.moveTo(0, -12); ctx.lineTo(-8, 8); ctx.lineTo(8, 8); ctx.closePath(); ctx.fill();
-        ctx.strokeStyle = '#86efac'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(0, -12); ctx.lineTo(0, -18); ctx.stroke();
-        ctx.fillStyle = '#fff';
-        ctx.beginPath(); ctx.arc(-3, -2, 2, 0, Math.PI * 2); ctx.arc(3, -2, 2, 0, Math.PI * 2); ctx.fill();
+        var _ts = 1.5; ctx.scale(_ts, _ts);
+        // Legs (four stubby green legs)
+        ctx.fillStyle = '#4ade80';
+        [[-8, -4], [8, -4], [-8, 6], [8, 6]].forEach(function (p) { ctx.beginPath(); ctx.ellipse(p[0], p[1], 3.5, 5.5, 0, 0, Math.PI * 2); ctx.fill(); });
+        // Shell (oval body with pattern)
+        ctx.fillStyle = '#15803d'; ctx.beginPath(); ctx.ellipse(0, 1, 11, 13, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#22c55e'; ctx.beginPath(); ctx.ellipse(0, 1, 9, 11, 0, 0, Math.PI * 2); ctx.fill();
+        // Shell hexagonal pattern
+        ctx.strokeStyle = '#15803d'; ctx.lineWidth = 0.8;
+        ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(0, 12); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-9, 1); ctx.lineTo(9, 1); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-7, -5); ctx.lineTo(7, 7); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(7, -5); ctx.lineTo(-7, 7); ctx.stroke();
+        // Shell highlight
+        ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.beginPath(); ctx.ellipse(-2, -3, 4, 5, -0.3, 0, Math.PI * 2); ctx.fill();
+        // Head
+        ctx.fillStyle = '#4ade80'; ctx.beginPath(); ctx.ellipse(0, -15, 6, 6, 0, 0, Math.PI * 2); ctx.fill();
+        // Eyes (bigger, friendlier)
+        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(-3, -16, 2.5, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(3, -16, 2.5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#0f172a'; ctx.beginPath(); ctx.arc(-3, -16.5, 1.2, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(3, -16.5, 1.2, 0, Math.PI * 2); ctx.fill();
+        // Smile
+        ctx.strokeStyle = '#15803d'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.arc(0, -13.5, 3, 0.2, Math.PI - 0.2); ctx.stroke();
+        // Tail
+        ctx.strokeStyle = '#4ade80'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 13); ctx.quadraticCurveTo(4, 19, 1, 22); ctx.stroke();
         ctx.restore();
         if (_turtleState.penDown) { ctx.fillStyle = _turtleState.color; ctx.beginPath(); ctx.arc(tx, ty, 3, 0, Math.PI * 2); ctx.fill(); }
-        ctx.fillStyle = '#94a3b8'; ctx.font = '11px monospace';
-        ctx.fillText('(' + Math.round(_turtleState.x) + ', ' + Math.round(_turtleState.y) + ') ' + Math.round((_turtleState.angle + 90 + 360) % 360) + '°', 8, H - 8);
-        ctx.fillText(_drawnLines.length + ' segments', W - 90, H - 8);
+        // Coordinates badge
+        ctx.fillStyle = 'rgba(15,23,42,0.7)'; ctx.fillRect(4, H - 24, 180, 20); ctx.fillStyle = '#e2e8f0'; ctx.font = 'bold 12px monospace';
+        ctx.fillText('📍 (' + Math.round(_turtleState.x) + ', ' + Math.round(_turtleState.y) + ') ' + Math.round((_turtleState.angle + 90 + 360) % 360) + '°', 10, H - 9);
+        ctx.fillStyle = 'rgba(15,23,42,0.7)'; ctx.fillRect(W - 120, H - 24, 116, 20); ctx.fillStyle = '#e2e8f0'; ctx.font = 'bold 12px monospace';
+        ctx.fillText(_drawnLines.length + ' segments', W - 114, H - 9);
       }, [stemLabTab, stemLabTool, labToolData]);
       function renderTutorial(toolId, steps) {
         if (_tutorialSeen[toolId]) return null;
@@ -1066,8 +1172,8 @@
             {
               id: 'base10',
               icon: '🧮',
-              label: t('stem.tools_menu.base10_blocks'),
-              desc: 'Place value with ones, tens, hundreds. Regroup and decompose numbers.',
+              label: 'Math Manipulatives',
+              desc: 'Base-10 blocks, abacus & slide rule. Explore place value, counting, and multiplication with hands-on tools.',
               color: 'orange',
               ready: true
             },
@@ -1110,6 +1216,11 @@
               id: 'calculus', icon: '∫', label: t('stem.tools_menu.calculus_visualizer'),
               desc: 'Riemann sums, area under curves, and derivative tangent lines.',
               color: 'red', ready: true
+            },
+            {
+              id: 'algebraCAS', icon: '🧮', label: 'Algebra Solver',
+              desc: 'Step-by-step equation solving, factoring, simplification — powered by AI. See every algebraic rule applied.',
+              color: 'amber', ready: true
             },
             {
               id: 'probability', icon: '\uD83C\uDFB2', label: t('stem.tools_menu.probability'),
@@ -1213,6 +1324,11 @@
               id: 'dataPlot', icon: '📊', label: t('stem.tools_menu.data_plotter'),
               desc: t('stem.tools_menu.plot_data_points_fit_trend'),
               color: 'teal', ready: true
+            },
+            {
+              id: 'dataStudio', icon: '📈', label: 'Data Studio',
+              desc: 'Bar charts, pie charts, line graphs & histograms. Import CSV data or enter your own. Statistical analysis included.',
+              color: 'cyan', ready: true
             },
 
             { id: '_cat_ComputerScience', icon: '', label: 'Computer Science', desc: '', color: 'slate', category: true },
@@ -2074,232 +2190,385 @@
                 className: "text-sm font-bold mt-2 " + (cubeBuilderFeedback.correct ? "text-green-600" : "text-red-600")
               }, cubeBuilderFeedback.msg)));
             })(), stemLabTab === 'explore' && stemLabTool === 'base10' && (() => {
-              const totalValue = base10Value.ones + base10Value.tens * 10 + base10Value.hundreds * 100 + base10Value.thousands * 1000;
-              const checkBase10 = () => {
-                if (!base10Challenge) return;
-                const ok = totalValue === base10Challenge.target;
-                announceToSR(ok ? 'Correct!' : 'Incorrect, try again');
-                setBase10Feedback(ok ? {
-                  correct: true,
-                  msg: '✅ Correct! ' + base10Challenge.target + ' = ' + (base10Value.thousands > 0 ? base10Value.thousands + ' thousands + ' : '') + (base10Value.hundreds > 0 ? base10Value.hundreds + ' hundreds + ' : '') + base10Value.tens + ' tens + ' + base10Value.ones + ' ones'
-                } : {
-                  correct: false,
-                  msg: '❌ Your blocks show ' + totalValue + ', target is ' + base10Challenge.target, _wrongAnswer: String(totalValue), _correctAnswer: String(base10Challenge.target), _question: 'Represent ' + base10Challenge.target + ' using base-10 blocks'
-                });
-                setExploreScore(prev => ({
-                  correct: prev.correct + (ok ? 1 : 0),
-                  total: prev.total + 1
-                }));
-              };
-              const renderBlock = (color, w, h, count) => Array.from({
-                length: count
-              }).map((_, i) => /*#__PURE__*/React.createElement("div", {
-                key: i,
-                style: {
-                  width: w + 'px',
-                  height: h + 'px',
-                  background: color,
-                  border: '1px solid rgba(0,0,0,0.15)',
-                  borderRadius: '2px',
-                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3)'
-                }
-              }));
-              return /*#__PURE__*/React.createElement("div", {
-                className: "space-y-4 max-w-3xl mx-auto animate-in fade-in duration-200"
+              // ── Math Manipulatives Hub ──
+              const _manipMode = (labToolData && labToolData._mathManipMode) || 'blocks';
+              const setManipMode = (mode) => setLabToolData(prev => Object.assign({}, prev, { _mathManipMode: mode }));
+
+              // ── Shared header with mode tabs ──
+              const headerEl = /*#__PURE__*/React.createElement("div", {
+                className: "space-y-3 mb-4"
               }, /*#__PURE__*/React.createElement("div", {
-                className: "flex items-center gap-3 mb-2"
+                className: "flex items-center gap-3"
               }, /*#__PURE__*/React.createElement("button", {
                 onClick: () => setStemLabTool(null),
                 className: "p-1.5 hover:bg-slate-100 rounded-lg transition-colors"
-              }, /*#__PURE__*/React.createElement(ArrowLeft, {
-                size: 18,
-                className: "text-slate-500"
-              })), /*#__PURE__*/React.createElement("h3", {
+              }, /*#__PURE__*/React.createElement(ArrowLeft, { size: 18, className: "text-slate-500" })),
+              /*#__PURE__*/React.createElement("h3", {
                 className: "text-lg font-bold text-orange-800"
-              }, "\uD83E\uDDEE Base-10 Blocks"), /*#__PURE__*/React.createElement("div", {
-                className: "flex items-center gap-2 ml-2"
+              }, "\uD83E\uDDEE Math Manipulatives"),
+              /*#__PURE__*/React.createElement("div", {
+                className: "flex items-center gap-2 ml-auto"
               }, /*#__PURE__*/React.createElement("div", {
                 className: "text-xs font-bold text-emerald-600"
-              }, exploreScore.correct, "/", exploreScore.total), exploreScore.total > 0 && /*#__PURE__*/React.createElement("button", {
-                onClick: submitExploreScore,
-                className: "text-[10px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-full hover:bg-emerald-700"
-              }, "\uD83D\uDCBE Save"), /*#__PURE__*/React.createElement("button", {
-                onClick: () => {
-                  const snap = {
-                    id: 'snap-' + Date.now(),
-                    tool: 'base10',
-                    label: t('stem.place_value.base10') + (base10Value.ones + base10Value.tens * 10 + base10Value.hundreds * 100 + base10Value.thousands * 1000),
-                    data: {
-                      ...base10Value
-                    },
-                    timestamp: Date.now()
-                  };
-                  setToolSnapshots(prev => [...prev, snap]);
-                  addToast(t('stem.place_value.u0001f4f8_snapshot_saved'), 'success');
-                },
-                className: "text-[10px] font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-full px-2 py-0.5 transition-all"
-              }, "\uD83D\uDCF8 Snapshot"))), /*#__PURE__*/React.createElement("div", {
-                className: "bg-gradient-to-b from-orange-50 to-amber-50 rounded-xl border-2 border-orange-200 p-6"
-              }, /*#__PURE__*/React.createElement("div", {
-                className: "text-center mb-4"
-              }, /*#__PURE__*/React.createElement("span", {
-                className: "text-4xl font-bold text-orange-800 font-mono"
-              }, totalValue.toLocaleString()), /*#__PURE__*/React.createElement("span", {
-                className: "text-2xl text-slate-400 mx-3"
-              }, "="), /*#__PURE__*/React.createElement("div", {
-                className: "flex items-end gap-1 flex-wrap"
-              }, renderBlock('#a855f7', 28, 28, base10Value.thousands), base10Value.thousands > 0 && base10Value.hundreds > 0 && /*#__PURE__*/React.createElement("span", {
-                className: "w-px h-6 bg-slate-200 mx-0.5"
-              }), renderBlock('#3b82f6', 24, 24, base10Value.hundreds), (base10Value.thousands > 0 || base10Value.hundreds > 0) && base10Value.tens > 0 && /*#__PURE__*/React.createElement("span", {
-                className: "w-px h-6 bg-slate-200 mx-0.5"
-              }), renderBlock('#22c55e', 8, 36, base10Value.tens), (base10Value.thousands > 0 || base10Value.hundreds > 0 || base10Value.tens > 0) && base10Value.ones > 0 && /*#__PURE__*/React.createElement("span", {
-                className: "w-px h-6 bg-slate-200 mx-0.5"
-              }), renderBlock('#f59e0b', 10, 10, base10Value.ones), totalValue === 0 && /*#__PURE__*/React.createElement("span", {
-                className: "text-sm text-slate-300 italic"
-              }, "no blocks"))), /*#__PURE__*/React.createElement("div", {
-                className: "grid grid-cols-4 gap-3"
-              }, /*#__PURE__*/React.createElement("div", {
-                className: "bg-white rounded-xl p-3 border-2 border-purple-200 text-center"
-              }, /*#__PURE__*/React.createElement("div", {
-                className: "text-xs font-bold text-purple-700 uppercase mb-2"
-              }, "Thousands"), /*#__PURE__*/React.createElement("div", {
-                className: "flex justify-center gap-1 mb-2 min-h-[48px] flex-wrap"
-              }, renderBlock('#a855f7', 28, 28, base10Value.thousands)), /*#__PURE__*/React.createElement("div", {
-                className: "flex items-center justify-center gap-2"
-              }, /*#__PURE__*/React.createElement("button", {
-                onClick: () => setBase10Value(prev => ({
-                  ...prev,
-                  thousands: Math.max(0, prev.thousands - 1)
-                })),
-                className: "w-8 h-8 rounded-full bg-purple-100 text-purple-700 font-bold text-lg hover:bg-purple-200 transition-all flex items-center justify-center"
-              }, "\u2212"), /*#__PURE__*/React.createElement("span", {
-                className: "text-2xl font-bold text-purple-800 w-8 text-center"
-              }, base10Value.thousands), /*#__PURE__*/React.createElement("button", {
-                onClick: () => setBase10Value(prev => ({
-                  ...prev,
-                  thousands: Math.min(9, prev.thousands + 1)
-                })),
-                className: "w-8 h-8 rounded-full bg-purple-100 text-purple-700 font-bold text-lg hover:bg-purple-200 transition-all flex items-center justify-center"
-              }, "+")), /*#__PURE__*/React.createElement("div", {
-                className: "text-xs text-purple-500 mt-1"
-              }, "\xD71000 = ", base10Value.thousands * 1000)), /*#__PURE__*/React.createElement("div", {
-                className: "bg-white rounded-xl p-3 border-2 border-blue-200 text-center"
-              }, /*#__PURE__*/React.createElement("div", {
-                className: "text-xs font-bold text-blue-700 uppercase mb-2"
-              }, "Hundreds"), /*#__PURE__*/React.createElement("div", {
-                className: "flex justify-center gap-1 mb-2 min-h-[48px] flex-wrap"
-              }, renderBlock('#3b82f6', 24, 24, base10Value.hundreds)), /*#__PURE__*/React.createElement("div", {
-                className: "flex items-center justify-center gap-2"
-              }, /*#__PURE__*/React.createElement("button", {
-                onClick: () => setBase10Value(prev => ({
-                  ...prev,
-                  hundreds: Math.max(0, prev.hundreds - 1)
-                })),
-                className: "w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold text-lg hover:bg-blue-200 transition-all flex items-center justify-center"
-              }, "\u2212"), /*#__PURE__*/React.createElement("span", {
-                className: "text-2xl font-bold text-blue-800 w-8 text-center"
-              }, base10Value.hundreds), /*#__PURE__*/React.createElement("button", {
-                onClick: () => setBase10Value(prev => ({
-                  ...prev,
-                  hundreds: Math.min(9, prev.hundreds + 1)
-                })),
-                className: "w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold text-lg hover:bg-blue-200 transition-all flex items-center justify-center"
-              }, "+")), /*#__PURE__*/React.createElement("div", {
-                className: "text-xs text-blue-500 mt-1"
-              }, "\xD7100 = ", base10Value.hundreds * 100)), /*#__PURE__*/React.createElement("div", {
-                className: "bg-white rounded-xl p-3 border-2 border-green-200 text-center"
-              }, /*#__PURE__*/React.createElement("div", {
-                className: "text-xs font-bold text-green-700 uppercase mb-2"
-              }, "Tens"), /*#__PURE__*/React.createElement("div", {
-                className: "flex justify-center gap-1 mb-2 min-h-[48px] flex-wrap"
-              }, renderBlock('#22c55e', 8, 36, base10Value.tens)), /*#__PURE__*/React.createElement("div", {
-                className: "flex items-center justify-center gap-2"
-              }, /*#__PURE__*/React.createElement("button", {
-                onClick: () => setBase10Value(prev => ({
-                  ...prev,
-                  tens: Math.max(0, prev.tens - 1)
-                })),
-                className: "w-8 h-8 rounded-full bg-green-100 text-green-700 font-bold text-lg hover:bg-green-200 transition-all flex items-center justify-center"
-              }, "\u2212"), /*#__PURE__*/React.createElement("span", {
-                className: "text-2xl font-bold text-green-800 w-8 text-center"
-              }, base10Value.tens), /*#__PURE__*/React.createElement("button", {
-                onClick: () => setBase10Value(prev => ({
-                  ...prev,
-                  tens: Math.min(9, prev.tens + 1)
-                })),
-                className: "w-8 h-8 rounded-full bg-green-100 text-green-700 font-bold text-lg hover:bg-green-200 transition-all flex items-center justify-center"
-              }, "+")), /*#__PURE__*/React.createElement("div", {
-                className: "text-xs text-green-500 mt-1"
-              }, "\xD710 = ", base10Value.tens * 10)), /*#__PURE__*/React.createElement("div", {
-                className: "bg-white rounded-xl p-3 border-2 border-amber-200 text-center"
-              }, /*#__PURE__*/React.createElement("div", {
-                className: "text-xs font-bold text-amber-700 uppercase mb-2"
-              }, "Ones"), /*#__PURE__*/React.createElement("div", {
-                className: "flex justify-center gap-1 mb-2 min-h-[48px] flex-wrap"
-              }, renderBlock('#f59e0b', 10, 10, base10Value.ones)), /*#__PURE__*/React.createElement("div", {
-                className: "flex items-center justify-center gap-2"
-              }, /*#__PURE__*/React.createElement("button", {
-                onClick: () => setBase10Value(prev => ({
-                  ...prev,
-                  ones: Math.max(0, prev.ones - 1)
-                })),
-                className: "w-8 h-8 rounded-full bg-amber-100 text-amber-700 font-bold text-lg hover:bg-amber-200 transition-all flex items-center justify-center"
-              }, "\u2212"), /*#__PURE__*/React.createElement("span", {
-                className: "text-2xl font-bold text-amber-800 w-8 text-center"
-              }, base10Value.ones), /*#__PURE__*/React.createElement("button", {
-                onClick: () => setBase10Value(prev => ({
-                  ...prev,
-                  ones: Math.min(9, prev.ones + 1)
-                })),
-                className: "w-8 h-8 rounded-full bg-amber-100 text-amber-700 font-bold text-lg hover:bg-amber-200 transition-all flex items-center justify-center"
-              }, "+")), /*#__PURE__*/React.createElement("div", {
-                className: "text-xs text-amber-500 mt-1"
-              }, "\xD71 = ", base10Value.ones)))), /*#__PURE__*/React.createElement("div", {
-                className: "flex gap-2 flex-wrap"
-              }, /*#__PURE__*/React.createElement("button", {
-                onClick: () => {
-                  const t = 10 + Math.floor(Math.random() * 9990);
-                  setBase10Challenge({
-                    target: t,
-                    type: 'build'
+              }, exploreScore.correct, "/", exploreScore.total),
+                exploreScore.total > 0 && /*#__PURE__*/React.createElement("button", {
+                  onClick: submitExploreScore,
+                  className: "text-[10px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-full hover:bg-emerald-700"
+                }, "\uD83D\uDCBE Save"))),
+              // Mode tabs
+              /*#__PURE__*/React.createElement("div", {
+                  className: "flex gap-1 bg-slate-100 rounded-xl p-1"
+                }, [
+                  { id: 'blocks', icon: '\uD83E\uDDF1', label: 'Base-10 Blocks' },
+                  { id: 'abacus', icon: '\uD83E\uDDEE', label: 'Abacus' },
+                  { id: 'slideRule', icon: '\uD83D\uDCCF', label: 'Slide Rule' }
+                ].map(m => /*#__PURE__*/React.createElement("button", {
+                  key: m.id,
+                  onClick: () => setManipMode(m.id),
+                  className: "flex-1 py-2 px-3 rounded-lg text-sm font-bold transition-all " + (_manipMode === m.id
+                    ? "bg-white text-orange-800 shadow-sm"
+                    : "text-slate-500 hover:text-slate-700 hover:bg-slate-50")
+                }, m.icon, " ", m.label))));
+
+              // ═══════════════ BASE-10 BLOCKS MODE ═══════════════
+              if (_manipMode === 'blocks') {
+                const totalValue = base10Value.ones + base10Value.tens * 10 + base10Value.hundreds * 100 + base10Value.thousands * 1000;
+                const checkBase10 = () => {
+                  if (!base10Challenge) return;
+                  const ok = totalValue === base10Challenge.target;
+                  announceToSR(ok ? 'Correct!' : 'Incorrect, try again');
+                  setBase10Feedback(ok ? {
+                    correct: true,
+                    msg: '\u2705 Correct! ' + base10Challenge.target + ' = ' + (base10Value.thousands > 0 ? base10Value.thousands + ' thousands + ' : '') + (base10Value.hundreds > 0 ? base10Value.hundreds + ' hundreds + ' : '') + base10Value.tens + ' tens + ' + base10Value.ones + ' ones'
+                  } : {
+                    correct: false,
+                    msg: '\u274C Your blocks show ' + totalValue + ', target is ' + base10Challenge.target,
+                    _wrongAnswer: String(totalValue), _correctAnswer: String(base10Challenge.target),
+                    _question: 'Represent ' + base10Challenge.target + ' using base-10 blocks'
                   });
-                  setBase10Value({
-                    ones: 0,
-                    tens: 0,
-                    hundreds: 0,
-                    thousands: 0
-                  });
-                  setBase10Feedback(null);
+                  setExploreScore(prev => ({ correct: prev.correct + (ok ? 1 : 0), total: prev.total + 1 }));
+                };
+                // 3D-styled block renderer
+                const renderBlock3D = (color, lightColor, w, h, count, gridCols, gridRows) => Array.from({ length: count }).map((_, i) => /*#__PURE__*/React.createElement("div", {
+                  key: i,
+                  style: {
+                    width: w + 'px', height: h + 'px',
+                    background: 'linear-gradient(135deg, ' + lightColor + ' 0%, ' + color + ' 60%, ' + color + ' 100%)',
+                    border: '1px solid rgba(0,0,0,0.2)',
+                    borderRadius: '3px',
+                    boxShadow: '1px 2px 4px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.4)',
+                    backgroundImage: gridCols > 1 ? 'repeating-linear-gradient(90deg, transparent, transparent ' + (100 / gridCols) + '%, rgba(0,0,0,0.08) ' + (100 / gridCols) + '%, rgba(0,0,0,0.08) calc(' + (100 / gridCols) + '% + 1px)), repeating-linear-gradient(0deg, transparent, transparent ' + (100 / gridRows) + '%, rgba(0,0,0,0.08) ' + (100 / gridRows) + '%, rgba(0,0,0,0.08) calc(' + (100 / gridRows) + '% + 1px))' : 'none',
+                    transition: 'transform 0.15s ease',
+                    cursor: 'default'
+                  }
+                }));
+                return /*#__PURE__*/React.createElement("div", {
+                  className: "space-y-4 max-w-3xl mx-auto animate-in fade-in duration-200"
+                }, headerEl,
+                /*#__PURE__*/React.createElement("div", {
+                  className: "bg-gradient-to-b from-orange-50 to-amber-50 rounded-xl border-2 border-orange-200 p-6"
                 },
-                className: "flex-1 py-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold rounded-lg text-sm hover:from-orange-600 hover:to-amber-600 transition-all shadow-md"
-              }, "\uD83C\uDFB2 Random Number"), /*#__PURE__*/React.createElement("button", {
-                onClick: () => {
-                  setBase10Value({
-                    ones: 0,
-                    tens: 0,
-                    hundreds: 0,
-                    thousands: 0
-                  });
-                  setBase10Challenge(null);
-                  setBase10Feedback(null);
+                // Total display
+                /*#__PURE__*/React.createElement("div", { className: "text-center mb-4" },
+                  /*#__PURE__*/React.createElement("span", { className: "text-4xl font-bold text-orange-800 font-mono" }, totalValue.toLocaleString()),
+                  /*#__PURE__*/React.createElement("span", { className: "text-2xl text-slate-400 mx-3" }, "="),
+                  /*#__PURE__*/React.createElement("div", { className: "flex items-end gap-1 flex-wrap justify-center" },
+                  renderBlock3D('#a855f7', '#c084fc', 30, 30, base10Value.thousands, 10, 10),
+                  base10Value.thousands > 0 && base10Value.hundreds > 0 && /*#__PURE__*/React.createElement("span", { className: "w-px h-6 bg-slate-200 mx-0.5" }),
+                  renderBlock3D('#3b82f6', '#60a5fa', 26, 26, base10Value.hundreds, 10, 10),
+                  (base10Value.thousands > 0 || base10Value.hundreds > 0) && base10Value.tens > 0 && /*#__PURE__*/React.createElement("span", { className: "w-px h-6 bg-slate-200 mx-0.5" }),
+                  renderBlock3D('#22c55e', '#4ade80', 10, 38, base10Value.tens, 1, 10),
+                  (base10Value.thousands > 0 || base10Value.hundreds > 0 || base10Value.tens > 0) && base10Value.ones > 0 && /*#__PURE__*/React.createElement("span", { className: "w-px h-6 bg-slate-200 mx-0.5" }),
+                  renderBlock3D('#f59e0b', '#fbbf24', 12, 12, base10Value.ones, 1, 1),
+                  totalValue === 0 && /*#__PURE__*/React.createElement("span", { className: "text-sm text-slate-300 italic" }, "no blocks")
+                )
+                ),
+                // Place value columns
+                /*#__PURE__*/React.createElement("div", { className: "grid grid-cols-4 gap-3" },
+                  // Thousands
+                  /*#__PURE__*/React.createElement("div", { className: "bg-white rounded-xl p-3 border-2 border-purple-200 text-center shadow-sm" },
+                    /*#__PURE__*/React.createElement("div", { className: "text-xs font-bold text-purple-700 uppercase mb-2" }, "Thousands"),
+                    /*#__PURE__*/React.createElement("div", { className: "flex justify-center gap-1 mb-2 min-h-[48px] flex-wrap" }, renderBlock3D('#a855f7', '#c084fc', 30, 30, base10Value.thousands, 10, 10)),
+                    /*#__PURE__*/React.createElement("div", { className: "flex items-center justify-center gap-2" },
+                      /*#__PURE__*/React.createElement("button", { onClick: () => setBase10Value(prev => ({ ...prev, thousands: Math.max(0, prev.thousands - 1) })), className: "w-8 h-8 rounded-full bg-purple-100 text-purple-700 font-bold text-lg hover:bg-purple-200 transition-all flex items-center justify-center" }, "\u2212"),
+                      /*#__PURE__*/React.createElement("span", { className: "text-2xl font-bold text-purple-800 w-8 text-center" }, base10Value.thousands),
+                      /*#__PURE__*/React.createElement("button", { onClick: () => setBase10Value(prev => ({ ...prev, thousands: Math.min(9, prev.thousands + 1) })), className: "w-8 h-8 rounded-full bg-purple-100 text-purple-700 font-bold text-lg hover:bg-purple-200 transition-all flex items-center justify-center" }, "+")
+                ),
+                    /*#__PURE__*/React.createElement("div", { className: "text-xs text-purple-500 mt-1" }, "\u00D71000 = ", base10Value.thousands * 1000)
+                ),
+                  // Hundreds
+                  /*#__PURE__*/React.createElement("div", { className: "bg-white rounded-xl p-3 border-2 border-blue-200 text-center shadow-sm" },
+                    /*#__PURE__*/React.createElement("div", { className: "text-xs font-bold text-blue-700 uppercase mb-2" }, "Hundreds"),
+                    /*#__PURE__*/React.createElement("div", { className: "flex justify-center gap-1 mb-2 min-h-[48px] flex-wrap" }, renderBlock3D('#3b82f6', '#60a5fa', 26, 26, base10Value.hundreds, 10, 10)),
+                    /*#__PURE__*/React.createElement("div", { className: "flex items-center justify-center gap-2" },
+                      /*#__PURE__*/React.createElement("button", { onClick: () => setBase10Value(prev => ({ ...prev, hundreds: Math.max(0, prev.hundreds - 1) })), className: "w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold text-lg hover:bg-blue-200 transition-all flex items-center justify-center" }, "\u2212"),
+                      /*#__PURE__*/React.createElement("span", { className: "text-2xl font-bold text-blue-800 w-8 text-center" }, base10Value.hundreds),
+                      /*#__PURE__*/React.createElement("button", { onClick: () => setBase10Value(prev => ({ ...prev, hundreds: Math.min(9, prev.hundreds + 1) })), className: "w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold text-lg hover:bg-blue-200 transition-all flex items-center justify-center" }, "+")
+                ),
+                    /*#__PURE__*/React.createElement("div", { className: "text-xs text-blue-500 mt-1" }, "\u00D7100 = ", base10Value.hundreds * 100)
+                ),
+                  // Tens
+                  /*#__PURE__*/React.createElement("div", { className: "bg-white rounded-xl p-3 border-2 border-green-200 text-center shadow-sm" },
+                    /*#__PURE__*/React.createElement("div", { className: "text-xs font-bold text-green-700 uppercase mb-2" }, "Tens"),
+                    /*#__PURE__*/React.createElement("div", { className: "flex justify-center gap-1 mb-2 min-h-[48px] flex-wrap" }, renderBlock3D('#22c55e', '#4ade80', 10, 38, base10Value.tens, 1, 10)),
+                    /*#__PURE__*/React.createElement("div", { className: "flex items-center justify-center gap-2" },
+                      /*#__PURE__*/React.createElement("button", { onClick: () => setBase10Value(prev => ({ ...prev, tens: Math.max(0, prev.tens - 1) })), className: "w-8 h-8 rounded-full bg-green-100 text-green-700 font-bold text-lg hover:bg-green-200 transition-all flex items-center justify-center" }, "\u2212"),
+                      /*#__PURE__*/React.createElement("span", { className: "text-2xl font-bold text-green-800 w-8 text-center" }, base10Value.tens),
+                      /*#__PURE__*/React.createElement("button", { onClick: () => setBase10Value(prev => ({ ...prev, tens: Math.min(9, prev.tens + 1) })), className: "w-8 h-8 rounded-full bg-green-100 text-green-700 font-bold text-lg hover:bg-green-200 transition-all flex items-center justify-center" }, "+")
+                ),
+                    /*#__PURE__*/React.createElement("div", { className: "text-xs text-green-500 mt-1" }, "\u00D710 = ", base10Value.tens * 10)
+                ),
+                  // Ones
+                  /*#__PURE__*/React.createElement("div", { className: "bg-white rounded-xl p-3 border-2 border-amber-200 text-center shadow-sm" },
+                    /*#__PURE__*/React.createElement("div", { className: "text-xs font-bold text-amber-700 uppercase mb-2" }, "Ones"),
+                    /*#__PURE__*/React.createElement("div", { className: "flex justify-center gap-1 mb-2 min-h-[48px] flex-wrap" }, renderBlock3D('#f59e0b', '#fbbf24', 12, 12, base10Value.ones, 1, 1)),
+                    /*#__PURE__*/React.createElement("div", { className: "flex items-center justify-center gap-2" },
+                      /*#__PURE__*/React.createElement("button", { onClick: () => setBase10Value(prev => ({ ...prev, ones: Math.max(0, prev.ones - 1) })), className: "w-8 h-8 rounded-full bg-amber-100 text-amber-700 font-bold text-lg hover:bg-amber-200 transition-all flex items-center justify-center" }, "\u2212"),
+                      /*#__PURE__*/React.createElement("span", { className: "text-2xl font-bold text-amber-800 w-8 text-center" }, base10Value.ones),
+                      /*#__PURE__*/React.createElement("button", { onClick: () => setBase10Value(prev => ({ ...prev, ones: Math.min(9, prev.ones + 1) })), className: "w-8 h-8 rounded-full bg-amber-100 text-amber-700 font-bold text-lg hover:bg-amber-200 transition-all flex items-center justify-center" }, "+")
+                ),
+                    /*#__PURE__*/React.createElement("div", { className: "text-xs text-amber-500 mt-1" }, "\u00D71 = ", base10Value.ones)
+                )
+                )),
+                // Buttons row
+                /*#__PURE__*/React.createElement("div", { className: "flex gap-2 flex-wrap" },
+                  /*#__PURE__*/React.createElement("button", {
+                  onClick: () => {
+                    const t = 10 + Math.floor(Math.random() * 9990);
+                    setBase10Challenge({ target: t, type: 'build' });
+                    setBase10Value({ ones: 0, tens: 0, hundreds: 0, thousands: 0 });
+                    setBase10Feedback(null);
+                  },
+                  className: "flex-1 py-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold rounded-lg text-sm hover:from-orange-600 hover:to-amber-600 transition-all shadow-md"
+                }, "\uD83C\uDFB2 Random Number"),
+                  /*#__PURE__*/React.createElement("button", {
+                  onClick: () => { setBase10Value({ ones: 0, tens: 0, hundreds: 0, thousands: 0 }); setBase10Challenge(null); setBase10Feedback(null); },
+                  className: "px-4 py-2 bg-slate-200 text-slate-700 font-bold rounded-lg text-sm hover:bg-slate-300 transition-all"
+                }, "\u21BA Reset")
+                ),
+                  // Challenge area
+                  base10Challenge && /*#__PURE__*/React.createElement("div", { className: "bg-orange-50 rounded-lg p-3 border border-orange-200" },
+                  /*#__PURE__*/React.createElement("p", { className: "text-sm font-bold text-orange-800 mb-2" }, "\uD83C\uDFAF Show ", base10Challenge.target.toLocaleString(), " using base-10 blocks"),
+                  /*#__PURE__*/React.createElement("div", { className: "flex gap-2 items-center" },
+                    /*#__PURE__*/React.createElement("span", { className: "text-xs text-orange-600" }, "Your value: ", /*#__PURE__*/React.createElement("span", { className: "font-bold text-orange-900" }, totalValue.toLocaleString())),
+                    /*#__PURE__*/React.createElement("button", { onClick: checkBase10, className: "ml-auto px-4 py-1.5 bg-orange-500 text-white font-bold rounded-lg text-sm hover:bg-orange-600 transition-all" }, "\u2714 Check")
+                  ),
+                    base10Feedback && /*#__PURE__*/React.createElement("p", { className: 'text-sm font-bold mt-2 ' + (base10Feedback.correct ? 'text-green-600' : 'text-red-600') }, base10Feedback.msg)
+                  ));
+              }
+
+              // ═══════════════ ABACUS MODE ═══════════════
+              if (_manipMode === 'abacus') {
+                const abacusState = (labToolData && labToolData._abacus) || { rods: [0, 0, 0, 0, 0] };
+                const rods = abacusState.rods || [0, 0, 0, 0, 0];
+                const placeNames = ['Ones', 'Tens', 'Hundreds', 'Thousands', 'Ten-Thousands'];
+                const placeMultipliers = [1, 10, 100, 1000, 10000];
+                const abacusTotal = rods.reduce((sum, v, i) => sum + v * placeMultipliers[i], 0);
+                const setRod = (idx, val) => {
+                  const nr = [...rods];
+                  nr[idx] = Math.max(0, Math.min(9, val));
+                  setLabToolData(prev => Object.assign({}, prev, { _abacus: { rods: nr } }));
+                };
+                const ROD_COLORS = ['#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#ec4899'];
+                const BEAD_SIZE = 28;
+
+                // Abacus challenge
+                const abacusChallenge = labToolData && labToolData._abacusChallenge;
+                const abacusFeedback = labToolData && labToolData._abacusFeedback;
+                const checkAbacus = () => {
+                  if (!abacusChallenge) return;
+                  const ok = abacusTotal === abacusChallenge.target;
+                  const fb = ok ? { correct: true, msg: '\u2705 Correct! ' + abacusChallenge.target.toLocaleString() } : { correct: false, msg: '\u274C Shows ' + abacusTotal.toLocaleString() + ', target is ' + abacusChallenge.target.toLocaleString() };
+                  setLabToolData(prev => Object.assign({}, prev, { _abacusFeedback: fb }));
+                  setExploreScore(prev => ({ correct: prev.correct + (ok ? 1 : 0), total: prev.total + 1 }));
+                };
+
+                return /*#__PURE__*/React.createElement("div", {
+                  className: "space-y-4 max-w-3xl mx-auto animate-in fade-in duration-200"
+                }, headerEl,
+                // Total display
+                /*#__PURE__*/React.createElement("div", { className: "text-center" },
+                  /*#__PURE__*/React.createElement("span", { className: "text-4xl font-bold font-mono text-amber-800" }, abacusTotal.toLocaleString())
+                ),
+                // Abacus frame
+                /*#__PURE__*/React.createElement("div", {
+                  className: "bg-gradient-to-b from-amber-50 to-orange-50 rounded-xl border-2 border-amber-300 p-4 shadow-inner relative overflow-hidden",
+                  style: { background: 'linear-gradient(180deg, #fef3c7 0%, #fde68a 30%, #fef3c7 100%)' }
                 },
-                className: "px-4 py-2 bg-slate-200 text-slate-700 font-bold rounded-lg text-sm hover:bg-slate-300 transition-all"
-              }, "\u21BA Reset")), base10Challenge && /*#__PURE__*/React.createElement("div", {
-                className: "bg-orange-50 rounded-lg p-3 border border-orange-200"
-              }, /*#__PURE__*/React.createElement("p", {
-                className: "text-sm font-bold text-orange-800 mb-2"
-              }, "\uD83C\uDFAF Show ", base10Challenge.target.toLocaleString(), " using base-10 blocks"), /*#__PURE__*/React.createElement("div", {
-                className: "flex gap-2 items-center"
-              }, /*#__PURE__*/React.createElement("span", {
-                className: "text-xs text-orange-600"
-              }, "Your value: ", /*#__PURE__*/React.createElement("span", {
-                className: "font-bold text-orange-900"
-              }, totalValue.toLocaleString())), /*#__PURE__*/React.createElement("button", {
-                onClick: checkBase10,
-                className: "ml-auto px-4 py-1.5 bg-orange-500 text-white font-bold rounded-lg text-sm hover:bg-orange-600 transition-all"
-              }, "\u2714 Check")), base10Feedback && /*#__PURE__*/React.createElement("p", {
-                className: 'text-sm font-bold mt-2 ' + (base10Feedback.correct ? 'text-green-600' : 'text-red-600')
-              }, base10Feedback.msg)));
+                // Crossbar
+                /*#__PURE__*/React.createElement("div", { style: { position: 'absolute', left: 0, right: 0, top: '36%', height: '4px', background: 'linear-gradient(90deg, #92400e, #b45309, #92400e)', zIndex: 5, boxShadow: '0 1px 3px rgba(0,0,0,0.3)' } }),
+                // Rods
+                /*#__PURE__*/React.createElement("div", { className: "flex justify-center gap-6" },
+                  [...rods].reverse().map((val, ri) => {
+                    const rodIdx = rods.length - 1 - ri;
+                    const heavenlyVal = Math.floor(val / 5); // 0 or 1
+                    const earthlyVal = val % 5; // 0-4
+                    const rodColor = ROD_COLORS[rodIdx];
+                    return /*#__PURE__*/React.createElement("div", { key: rodIdx, className: "flex flex-col items-center", style: { width: '48px' } },
+                      // Heaven section (1 bead worth 5)
+                      /*#__PURE__*/React.createElement("div", { className: "flex flex-col items-center gap-1 mb-1", style: { minHeight: '60px', justifyContent: 'flex-end' } },
+                        // Rod line
+                        /*#__PURE__*/React.createElement("div", { style: { position: 'absolute', width: '3px', height: '100%', background: 'linear-gradient(180deg, #92400e 0%, #b45309 100%)', borderRadius: '2px', zIndex: 0 } }),
+                        // Heaven bead
+                        /*#__PURE__*/React.createElement("button", {
+                      onClick: () => setRod(rodIdx, heavenlyVal ? val - 5 : val + 5),
+                      className: "relative z-10 transition-all duration-200",
+                      style: {
+                        width: BEAD_SIZE + 8 + 'px', height: BEAD_SIZE - 4 + 'px',
+                        borderRadius: '50%',
+                        background: heavenlyVal ? 'linear-gradient(135deg, ' + rodColor + ' 0%, ' + rodColor + 'cc 100%)' : 'linear-gradient(135deg, #d1d5db 0%, #9ca3af 100%)',
+                        border: '2px solid ' + (heavenlyVal ? rodColor : '#9ca3af'),
+                        boxShadow: heavenlyVal ? '0 3px 8px rgba(0,0,0,0.3), inset 0 1px 2px rgba(255,255,255,0.5)' : '0 2px 4px rgba(0,0,0,0.15)',
+                        transform: heavenlyVal ? 'translateY(12px)' : 'translateY(-2px)',
+                        cursor: 'pointer'
+                      }
+                    })
+                    ),
+                      // Earth section (5 beads worth 1 each)
+                      /*#__PURE__*/React.createElement("div", { className: "flex flex-col items-center gap-0.5 mt-2", style: { minHeight: '130px' } },
+                      Array.from({ length: 5 }).map((_, bi) => {
+                        const isActive = bi < earthlyVal;
+                        return /*#__PURE__*/React.createElement("button", {
+                          key: bi,
+                          onClick: () => {
+                            const newEarthly = isActive && bi === earthlyVal - 1 ? earthlyVal - 1 : !isActive && bi === earthlyVal ? earthlyVal + 1 : bi < earthlyVal ? bi : bi + 1;
+                            setRod(rodIdx, heavenlyVal * 5 + Math.max(0, Math.min(5, newEarthly)));
+                          },
+                          className: "relative z-10 transition-all duration-200",
+                          style: {
+                            width: BEAD_SIZE + 8 + 'px', height: BEAD_SIZE - 6 + 'px',
+                            borderRadius: '50%',
+                            background: isActive ? 'linear-gradient(135deg, ' + rodColor + ' 0%, ' + rodColor + 'cc 100%)' : 'linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%)',
+                            border: '2px solid ' + (isActive ? rodColor : '#d1d5db'),
+                            boxShadow: isActive ? '0 2px 6px rgba(0,0,0,0.25), inset 0 1px 2px rgba(255,255,255,0.4)' : '0 1px 3px rgba(0,0,0,0.1)',
+                            transform: isActive ? 'translateY(-' + (5 - earthlyVal) * 2 + 'px)' : 'translateY(' + (bi - earthlyVal) * 2 + 'px)',
+                            cursor: 'pointer'
+                          }
+                        });
+                      })
+                    ),
+                      // Place value label
+                      /*#__PURE__*/React.createElement("div", { className: "text-[10px] font-bold mt-1", style: { color: rodColor } }, placeNames[rodIdx]),
+                      /*#__PURE__*/React.createElement("div", { className: "text-xs font-mono font-bold text-amber-900" }, val)
+                    );
+                  })
+                )),
+                // Abacus controls
+                /*#__PURE__*/React.createElement("div", { className: "flex gap-2 flex-wrap" },
+                  /*#__PURE__*/React.createElement("button", {
+                  onClick: () => {
+                    const target = 1 + Math.floor(Math.random() * 99999);
+                    setLabToolData(prev => Object.assign({}, prev, {
+                      _abacusChallenge: { target },
+                      _abacusFeedback: null,
+                      _abacus: { rods: [0, 0, 0, 0, 0] }
+                    }));
+                  },
+                  className: "flex-1 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold rounded-lg text-sm hover:from-amber-600 hover:to-orange-600 transition-all shadow-md"
+                }, "\uD83C\uDFB2 Random Challenge"),
+                  /*#__PURE__*/React.createElement("button", {
+                  onClick: () => setLabToolData(prev => Object.assign({}, prev, {
+                    _abacus: { rods: [0, 0, 0, 0, 0] },
+                    _abacusChallenge: null, _abacusFeedback: null
+                  })),
+                  className: "px-4 py-2 bg-slate-200 text-slate-700 font-bold rounded-lg text-sm hover:bg-slate-300 transition-all"
+                }, "\u21BA Reset")
+                ),
+                  // Challenge area
+                  abacusChallenge && /*#__PURE__*/React.createElement("div", { className: "bg-amber-50 rounded-lg p-3 border border-amber-200" },
+                  /*#__PURE__*/React.createElement("p", { className: "text-sm font-bold text-amber-800 mb-2" }, "\uD83C\uDFAF Show ", abacusChallenge.target.toLocaleString(), " on the abacus"),
+                  /*#__PURE__*/React.createElement("div", { className: "flex gap-2 items-center" },
+                    /*#__PURE__*/React.createElement("span", { className: "text-xs text-amber-600" }, "Your value: ", /*#__PURE__*/React.createElement("span", { className: "font-bold text-amber-900" }, abacusTotal.toLocaleString())),
+                    /*#__PURE__*/React.createElement("button", { onClick: checkAbacus, className: "ml-auto px-4 py-1.5 bg-amber-500 text-white font-bold rounded-lg text-sm hover:bg-amber-600 transition-all" }, "\u2714 Check")
+                  ),
+                    abacusFeedback && /*#__PURE__*/React.createElement("p", { className: 'text-sm font-bold mt-2 ' + (abacusFeedback.correct ? 'text-green-600' : 'text-red-600') }, abacusFeedback.msg)
+                  ),
+                // Educational callout
+                /*#__PURE__*/React.createElement("div", { className: "bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-700" },
+                  /*#__PURE__*/React.createElement("strong", null, "\uD83C\uDF0F Fun Fact: "), "The abacus has been used for over 4,000 years across China (suanpan), Japan (soroban), and Russia (schoty). Top beads are worth 5, bottom beads are worth 1. Each rod represents a place value!"
+                  ));
+              }
+
+              // ═══════════════ SLIDE RULE MODE ═══════════════
+              if (_manipMode === 'slideRule') {
+                const _srd = (labToolData && labToolData._slideRule) || { cOffset: 0, cursorPos: 0.301 };
+                const dVal = Math.pow(10, _srd.cursorPos || 0.301);
+                const cVal = Math.pow(10, (_srd.cursorPos || 0.301) - (_srd.cOffset || 0));
+                const product = dVal * Math.pow(10, _srd.cOffset || 0);
+
+                return /*#__PURE__*/React.createElement("div", {
+                  className: "space-y-4 max-w-3xl mx-auto animate-in fade-in duration-200"
+                }, headerEl,
+                // Slide rule canvas
+                /*#__PURE__*/React.createElement("div", { className: "relative" },
+                  /*#__PURE__*/React.createElement("canvas", {
+                  ref: _slideRuleCanvasRef,
+                  width: 600, height: 180,
+                  className: "w-full rounded-xl border-2 border-amber-300 cursor-crosshair shadow-md",
+                  style: { maxWidth: '600px', imageRendering: 'auto' },
+                  onMouseDown: (e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const scaleX = 600 / rect.width;
+                    const rawX = (e.clientX - rect.left) * scaleX;
+                    const PAD = 40, RULER_W = 520;
+                    const normX = (rawX - PAD) / RULER_W;
+                    if (normX < 0 || normX > 1) return;
+                    const y = (e.clientY - rect.top) * (180 / rect.height);
+                    // If clicking on C-scale area (upper part), start drag
+                    if (y < 110) {
+                      const startOffset = _srd.cOffset || 0;
+                      const startMouseX = e.clientX;
+                      const handleMove = (me) => {
+                        const dx = (me.clientX - startMouseX) * scaleX / RULER_W;
+                        setLabToolData(prev => Object.assign({}, prev, { _slideRule: Object.assign({}, prev._slideRule || {}, { cOffset: Math.max(-0.5, Math.min(0.5, startOffset + dx)) }) }));
+                      };
+                      const handleUp = () => { window.removeEventListener('mousemove', handleMove); window.removeEventListener('mouseup', handleUp); };
+                      window.addEventListener('mousemove', handleMove);
+                      window.addEventListener('mouseup', handleUp);
+                    } else {
+                      // Click on D-scale area: set cursor
+                      setLabToolData(prev => Object.assign({}, prev, { _slideRule: Object.assign({}, prev._slideRule || {}, { cursorPos: Math.max(0, Math.min(1, normX)) }) }));
+                    }
+                  }
+                })
+                ),
+                // Readout panel
+                /*#__PURE__*/React.createElement("div", { className: "bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl border border-amber-200 p-4" },
+                  /*#__PURE__*/React.createElement("div", { className: "grid grid-cols-3 gap-4 text-center" },
+                    /*#__PURE__*/React.createElement("div", null,
+                      /*#__PURE__*/React.createElement("div", { className: "text-xs font-bold text-green-700 uppercase mb-1" }, "C Scale"),
+                      /*#__PURE__*/React.createElement("div", { className: "text-2xl font-bold font-mono text-green-800" }, cVal.toFixed(2))
+                ),
+                    /*#__PURE__*/React.createElement("div", null,
+                      /*#__PURE__*/React.createElement("div", { className: "text-xs font-bold text-slate-500 uppercase mb-1" }, "\u00D7"),
+                      /*#__PURE__*/React.createElement("div", { className: "text-2xl font-bold text-slate-400" }, "\u00D7")
+                ),
+                    /*#__PURE__*/React.createElement("div", null,
+                      /*#__PURE__*/React.createElement("div", { className: "text-xs font-bold text-amber-700 uppercase mb-1" }, "D Scale"),
+                      /*#__PURE__*/React.createElement("div", { className: "text-2xl font-bold font-mono text-amber-800" }, dVal.toFixed(2))
+                )
+                ),
+                  /*#__PURE__*/React.createElement("div", { className: "text-center mt-3 pt-3 border-t border-amber-200" },
+                    /*#__PURE__*/React.createElement("div", { className: "text-xs font-bold text-slate-500 uppercase mb-1" }, "Result"),
+                    /*#__PURE__*/React.createElement("div", { className: "text-3xl font-bold font-mono text-orange-800" }, "\u2248 ", product.toFixed(2))
+                )
+                ),
+                // Controls
+                /*#__PURE__*/React.createElement("div", { className: "flex gap-2" },
+                  /*#__PURE__*/React.createElement("button", {
+                  onClick: () => setLabToolData(prev => Object.assign({}, prev, { _slideRule: { cOffset: 0, cursorPos: 0.301 } })),
+                  className: "px-4 py-2 bg-slate-200 text-slate-700 font-bold rounded-lg text-sm hover:bg-slate-300 transition-all"
+                }, "\u21BA Reset")
+                ),
+                // Educational callout
+                /*#__PURE__*/React.createElement("div", { className: "bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs text-yellow-800" },
+                  /*#__PURE__*/React.createElement("strong", null, "\uD83D\uDE80 Did you know? "), "Slide rules were used by NASA engineers to calculate trajectories for the Apollo moon missions! The trick: logarithmic scales turn multiplication into addition. Slide the C-scale to line up numbers, and read the product on the D-scale. Try multiplying 2 \u00D7 3: set the C-scale's 1 over D's 2, then read D under C's 3."
+                ));
+              }
+
+              return /*#__PURE__*/React.createElement("div", {
+                className: "space-y-4 max-w-3xl mx-auto animate-in fade-in duration-200"
+              }, headerEl, /*#__PURE__*/React.createElement("p", { className: "text-sm text-slate-400 text-center" }, "Select a tool above to get started."));
             })(), stemLabTab === 'explore' && stemLabTool === 'coordinate' && (() => {
               const gridW = 400,
                 gridH = 400;
@@ -17199,6 +17468,704 @@
           })(),
 
           // ═══════════════════════════════════════════════════════════════
+          // ██  DATA STUDIO — Bar / Pie / Line / Histogram Charts        ██
+          // ═══════════════════════════════════════════════════════════════
+          stemLabTab === 'explore' && stemLabTool === 'dataStudio' && (() => {
+            var d = (labToolData && labToolData._dataStudio) || {};
+            var updDS = function (key, val) {
+              setLabToolData(function (prev) {
+                var ds = Object.assign({}, (prev && prev._dataStudio) || {});
+                ds[key] = val;
+                return Object.assign({}, prev, { _dataStudio: ds });
+              });
+            };
+            var chartType = d.chartType || 'bar';
+            var dataRows = d.dataRows || [
+              { label: 'Apples', value: 45 },
+              { label: 'Bananas', value: 30 },
+              { label: 'Oranges', value: 55 },
+              { label: 'Grapes', value: 25 },
+              { label: 'Cherries', value: 40 }
+            ];
+            var chartTitle = d.chartTitle || 'My Data';
+            var editRow = d.editRow || { label: '', value: '' };
+            var showStats = d.showStats !== undefined ? d.showStats : true;
+
+            var CHART_TYPES = [
+              { id: 'bar', icon: '📊', label: 'Bar Chart' },
+              { id: 'pie', icon: '🥧', label: 'Pie Chart' },
+              { id: 'line', icon: '📈', label: 'Line Graph' },
+              { id: 'histogram', icon: '📉', label: 'Histogram' }
+            ];
+
+            var PRESETS = [
+              { label: '🍎 Fruit Sales', data: [{ label: 'Apples', value: 45 }, { label: 'Bananas', value: 30 }, { label: 'Oranges', value: 55 }, { label: 'Grapes', value: 25 }, { label: 'Cherries', value: 40 }], title: 'Fruit Sales' },
+              { label: '🌡️ Monthly Temps (°F)', data: [{ label: 'Jan', value: 32 }, { label: 'Feb', value: 35 }, { label: 'Mar', value: 45 }, { label: 'Apr', value: 55 }, { label: 'May', value: 65 }, { label: 'Jun', value: 75 }, { label: 'Jul', value: 82 }, { label: 'Aug', value: 80 }, { label: 'Sep', value: 70 }, { label: 'Oct', value: 58 }, { label: 'Nov', value: 45 }, { label: 'Dec', value: 35 }], title: 'Monthly Temperature' },
+              { label: '📚 Class Grades', data: [{ label: 'A', value: 8 }, { label: 'B', value: 15 }, { label: 'C', value: 12 }, { label: 'D', value: 5 }, { label: 'F', value: 2 }], title: 'Grade Distribution' },
+              { label: '🏀 Sports Points', data: [{ label: 'Game 1', value: 22 }, { label: 'Game 2', value: 18 }, { label: 'Game 3', value: 31 }, { label: 'Game 4', value: 27 }, { label: 'Game 5', value: 35 }, { label: 'Game 6', value: 29 }], title: 'Points Per Game' },
+              { label: '🎲 Dice Rolls (50)', data: (function () { var c = [0, 0, 0, 0, 0, 0]; for (var i = 0; i < 50; i++) c[Math.floor(Math.random() * 6)]++; return c.map(function (v, j) { return { label: '' + (j + 1), value: v }; }); })(), title: 'Dice Roll Distribution' }
+            ];
+
+            // CSV import handler
+            var handleCSVImport = function (text) {
+              try {
+                var lines = text.trim().split('\n');
+                var rows = [];
+                lines.forEach(function (line, idx) {
+                  var parts = line.split(',').map(function (s) { return s.trim().replace(/^"|"$/g, ''); });
+                  if (parts.length >= 2) {
+                    var val = parseFloat(parts[1]);
+                    if (!isNaN(val)) rows.push({ label: parts[0] || ('Row ' + (idx + 1)), value: val });
+                  }
+                });
+                if (rows.length > 0) {
+                  updDS('dataRows', rows);
+                  if (addToast) addToast('Imported ' + rows.length + ' data points!', 'success');
+                }
+              } catch (e) {
+                if (addToast) addToast('CSV import failed. Use format: Label, Value', 'warning');
+              }
+            };
+
+            // Statistics
+            var values = dataRows.map(function (r) { return r.value; });
+            var total = values.reduce(function (s, v) { return s + v; }, 0);
+            var mean = values.length > 0 ? total / values.length : 0;
+            var sorted = values.slice().sort(function (a, b) { return a - b; });
+            var median = sorted.length > 0 ? (sorted.length % 2 ? sorted[Math.floor(sorted.length / 2)] : (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2) : 0;
+            var maxVal = Math.max.apply(null, values.concat([1]));
+            var minVal = Math.min.apply(null, values.concat([0]));
+            var stdDev = values.length > 0 ? Math.sqrt(values.reduce(function (s, v) { return s + Math.pow(v - mean, 2); }, 0) / values.length) : 0;
+
+            // Color palette
+            var COLORS = ['#6366f1', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316', '#14b8a6', '#a855f7', '#eab308', '#3b82f6'];
+
+            // Dark theme
+            var _bg = isDark || isContrast ? '#0f172a' : '#f0fdfa';
+            var _text = isDark || isContrast ? '#e0e7ff' : '#1e293b';
+            var _card = isDark || isContrast ? 'rgba(6,182,212,0.08)' : 'rgba(6,182,212,0.06)';
+            var _border = isDark || isContrast ? 'rgba(6,182,212,0.2)' : 'rgba(6,182,212,0.15)';
+            var _accent = isDark || isContrast ? '#22d3ee' : '#0891b2';
+            var _muted = isDark || isContrast ? '#94a3b8' : '#64748b';
+            var _btnBg = isDark || isContrast ? '#0891b2' : '#06b6d4';
+            var _svgBg = isDark || isContrast ? '#1e293b' : '#ffffff';
+
+            // SVG dimensions
+            var W = 440, H = 280, pad = 45;
+
+            return React.createElement("div", { className: "p-4 space-y-4", style: { color: _text } },
+              // Header
+              React.createElement("div", { className: "flex items-center justify-between mb-2" },
+                React.createElement("div", null,
+                  React.createElement("h3", { className: "text-lg font-bold flex items-center gap-2" }, "📈 Data Studio"),
+                  React.createElement("p", { className: "text-xs", style: { color: _muted } }, "Create charts, import data & explore statistics")
+                ),
+                React.createElement("div", { className: "flex gap-2" },
+                  React.createElement("button", {
+                    onClick: function () { updDS('showStats', !showStats); },
+                    className: "px-3 py-1.5 rounded-lg text-xs font-bold",
+                    style: { background: showStats ? _btnBg : _card, color: showStats ? '#fff' : _text, border: '1px solid ' + _border }
+                  }, showStats ? '📊 Stats On' : '📊 Stats'),
+                  React.createElement("button", {
+                    onClick: function () { setStemLabTool(null); },
+                    className: "px-3 py-1.5 rounded-lg text-xs font-bold",
+                    style: { background: _card, border: '1px solid ' + _border, color: _text }
+                  }, "← Back")
+                )
+              ),
+
+              // Chart type selector
+              React.createElement("div", { className: "flex gap-2" },
+                CHART_TYPES.map(function (ct) {
+                  return React.createElement("button", {
+                    key: ct.id,
+                    onClick: function () { updDS('chartType', ct.id); },
+                    className: "flex-1 p-2 rounded-xl text-center transition-all",
+                    style: { background: chartType === ct.id ? _btnBg : _card, color: chartType === ct.id ? '#fff' : _text, border: '1px solid ' + (chartType === ct.id ? _accent : _border) }
+                  },
+                    React.createElement("div", { className: "text-lg" }, ct.icon),
+                    React.createElement("div", { className: "text-[10px] font-bold" }, ct.label)
+                  );
+                })
+              ),
+
+              // Chart title
+              React.createElement("input", {
+                type: "text", value: chartTitle,
+                onChange: function (e) { updDS('chartTitle', e.target.value); },
+                placeholder: "Chart title...",
+                className: "w-full px-3 py-2 rounded-xl text-sm font-bold text-center",
+                style: { background: _card, border: '1px solid ' + _border, color: _text, outline: 'none' }
+              }),
+
+              // ── SVG Chart Rendering ──
+              React.createElement("div", { className: "rounded-2xl overflow-hidden", style: { border: '1px solid ' + _border } },
+                React.createElement("svg", { viewBox: '0 0 ' + W + ' ' + H, className: "w-full", style: { background: _svgBg, maxHeight: '340px' } },
+                  // Title
+                  React.createElement("text", { x: W / 2, y: 18, textAnchor: "middle", style: { fontSize: '13px', fontWeight: 'bold', fill: _text } }, chartTitle),
+
+                  // ── Bar Chart ──
+                  chartType === 'bar' && dataRows.length > 0 && (() => {
+                    var barW = Math.min(40, (W - 2 * pad) / dataRows.length - 4);
+                    var gap = (W - 2 * pad) / dataRows.length;
+                    return React.createElement("g", null,
+                      // Y axis
+                      React.createElement("line", { x1: pad, y1: 25, x2: pad, y2: H - pad, stroke: _muted, strokeWidth: 0.5 }),
+                      // X axis
+                      React.createElement("line", { x1: pad, y1: H - pad, x2: W - 10, y2: H - pad, stroke: _muted, strokeWidth: 0.5 }),
+                      // Y labels
+                      [0, 0.25, 0.5, 0.75, 1].map(function (frac, i) {
+                        var yVal = Math.round(maxVal * frac);
+                        var yPos = (H - pad) - frac * (H - pad - 28);
+                        return React.createElement("g", { key: 'yl' + i },
+                          React.createElement("text", { x: pad - 5, y: yPos + 3, textAnchor: "end", style: { fontSize: '9px', fill: _muted } }, yVal),
+                          React.createElement("line", { x1: pad, y1: yPos, x2: W - 10, y2: yPos, stroke: _muted, strokeWidth: 0.2, strokeDasharray: "3 3" })
+                        );
+                      }),
+                      // Bars
+                      dataRows.map(function (row, i) {
+                        var barH = maxVal > 0 ? (row.value / maxVal) * (H - pad - 28) : 0;
+                        var x = pad + i * gap + (gap - barW) / 2;
+                        var y = (H - pad) - barH;
+                        return React.createElement("g", { key: 'bar' + i },
+                          React.createElement("rect", { x: x, y: y, width: barW, height: barH, rx: 3, fill: COLORS[i % COLORS.length], opacity: 0.85 }),
+                          React.createElement("text", { x: x + barW / 2, y: y - 4, textAnchor: "middle", style: { fontSize: '9px', fontWeight: 'bold', fill: _text } }, row.value),
+                          React.createElement("text", { x: x + barW / 2, y: H - pad + 12, textAnchor: "middle", style: { fontSize: '8px', fill: _muted } }, row.label.length > 6 ? row.label.substring(0, 5) + '..' : row.label)
+                        );
+                      })
+                    );
+                  })(),
+
+                  // ── Pie Chart ──
+                  chartType === 'pie' && dataRows.length > 0 && (() => {
+                    var cx = W / 2, cy = (H + 10) / 2, r = Math.min(W, H) / 2.8;
+                    var cumAngle = -Math.PI / 2;
+                    return React.createElement("g", null,
+                      dataRows.map(function (row, i) {
+                        var angle = total > 0 ? (row.value / total) * 2 * Math.PI : 0;
+                        var startAngle = cumAngle;
+                        cumAngle += angle;
+                        var endAngle = cumAngle;
+                        var largeArc = angle > Math.PI ? 1 : 0;
+                        var x1 = cx + r * Math.cos(startAngle);
+                        var y1 = cy + r * Math.sin(startAngle);
+                        var x2 = cx + r * Math.cos(endAngle);
+                        var y2 = cy + r * Math.sin(endAngle);
+                        var midAngle = startAngle + angle / 2;
+                        var lx = cx + (r + 16) * Math.cos(midAngle);
+                        var ly = cy + (r + 16) * Math.sin(midAngle);
+                        var pct = total > 0 ? Math.round(row.value / total * 100) : 0;
+                        if (dataRows.length === 1) {
+                          return React.createElement("g", { key: 'pie' + i },
+                            React.createElement("circle", { cx: cx, cy: cy, r: r, fill: COLORS[0], opacity: 0.85 }),
+                            React.createElement("text", { x: cx, y: cy + 4, textAnchor: "middle", style: { fontSize: '11px', fontWeight: 'bold', fill: '#fff' } }, '100%')
+                          );
+                        }
+                        return React.createElement("g", { key: 'pie' + i },
+                          React.createElement("path", {
+                            d: 'M ' + cx + ' ' + cy + ' L ' + x1 + ' ' + y1 + ' A ' + r + ' ' + r + ' 0 ' + largeArc + ' 1 ' + x2 + ' ' + y2 + ' Z',
+                            fill: COLORS[i % COLORS.length], opacity: 0.85, stroke: _svgBg, strokeWidth: 1.5
+                          }),
+                          pct >= 5 && React.createElement("text", { x: lx, y: ly + 3, textAnchor: "middle", style: { fontSize: '8px', fontWeight: 'bold', fill: _text } }, row.label.substring(0, 5) + ' ' + pct + '%')
+                        );
+                      })
+                    );
+                  })(),
+
+                  // ── Line Graph ──
+                  chartType === 'line' && dataRows.length > 0 && (() => {
+                    var rangeY = maxVal - minVal || 1;
+                    var gap = dataRows.length > 1 ? (W - 2 * pad) / (dataRows.length - 1) : 0;
+                    var pts = dataRows.map(function (row, i) {
+                      var x = dataRows.length === 1 ? W / 2 : pad + i * gap;
+                      var y = (H - pad) - ((row.value - minVal) / rangeY) * (H - pad - 28);
+                      return { x: x, y: y, label: row.label, value: row.value };
+                    });
+                    var pathD = pts.map(function (p, i) { return (i === 0 ? 'M' : 'L') + ' ' + p.x + ' ' + p.y; }).join(' ');
+                    // Area fill
+                    var areaD = pathD + ' L ' + pts[pts.length - 1].x + ' ' + (H - pad) + ' L ' + pts[0].x + ' ' + (H - pad) + ' Z';
+                    return React.createElement("g", null,
+                      React.createElement("line", { x1: pad, y1: 25, x2: pad, y2: H - pad, stroke: _muted, strokeWidth: 0.5 }),
+                      React.createElement("line", { x1: pad, y1: H - pad, x2: W - 10, y2: H - pad, stroke: _muted, strokeWidth: 0.5 }),
+                      [0, 0.25, 0.5, 0.75, 1].map(function (frac, i) {
+                        var yVal = (minVal + rangeY * frac).toFixed(0);
+                        var yPos = (H - pad) - frac * (H - pad - 28);
+                        return React.createElement("text", { key: 'lyl' + i, x: pad - 5, y: yPos + 3, textAnchor: "end", style: { fontSize: '9px', fill: _muted } }, yVal);
+                      }),
+                      React.createElement("path", { d: areaD, fill: _accent, opacity: 0.08 }),
+                      React.createElement("path", { d: pathD, fill: "none", stroke: _accent, strokeWidth: 2.5, strokeLinecap: "round", strokeLinejoin: "round" }),
+                      pts.map(function (p, i) {
+                        return React.createElement("g", { key: 'lp' + i },
+                          React.createElement("circle", { cx: p.x, cy: p.y, r: 4, fill: _accent, stroke: _svgBg, strokeWidth: 2 }),
+                          React.createElement("text", { x: p.x, y: p.y - 8, textAnchor: "middle", style: { fontSize: '8px', fontWeight: 'bold', fill: _text } }, p.value),
+                          React.createElement("text", { x: p.x, y: H - pad + 12, textAnchor: "middle", style: { fontSize: '7px', fill: _muted } }, p.label.length > 5 ? p.label.substring(0, 4) + '..' : p.label)
+                        );
+                      })
+                    );
+                  })(),
+
+                  // ── Histogram ──
+                  chartType === 'histogram' && dataRows.length > 0 && (() => {
+                    // For histogram, bin the values
+                    var numBins = Math.min(8, Math.max(3, Math.ceil(Math.sqrt(values.length))));
+                    var range = maxVal - minVal || 1;
+                    var binW = range / numBins;
+                    var bins = [];
+                    for (var b = 0; b < numBins; b++) bins.push({ lo: minVal + b * binW, hi: minVal + (b + 1) * binW, count: 0 });
+                    values.forEach(function (v) {
+                      var bi = Math.min(numBins - 1, Math.floor((v - minVal) / binW));
+                      bins[bi].count++;
+                    });
+                    var maxCount = Math.max.apply(null, bins.map(function (b) { return b.count; }).concat([1]));
+                    var bw = (W - 2 * pad) / numBins - 2;
+                    return React.createElement("g", null,
+                      React.createElement("line", { x1: pad, y1: 25, x2: pad, y2: H - pad, stroke: _muted, strokeWidth: 0.5 }),
+                      React.createElement("line", { x1: pad, y1: H - pad, x2: W - 10, y2: H - pad, stroke: _muted, strokeWidth: 0.5 }),
+                      bins.map(function (bin, i) {
+                        var bh = maxCount > 0 ? (bin.count / maxCount) * (H - pad - 28) : 0;
+                        var x = pad + i * ((W - 2 * pad) / numBins) + 1;
+                        var y = (H - pad) - bh;
+                        return React.createElement("g", { key: 'hb' + i },
+                          React.createElement("rect", { x: x, y: y, width: bw, height: bh, fill: COLORS[i % COLORS.length], opacity: 0.85, rx: 2 }),
+                          bin.count > 0 && React.createElement("text", { x: x + bw / 2, y: y - 3, textAnchor: "middle", style: { fontSize: '9px', fontWeight: 'bold', fill: _text } }, bin.count),
+                          React.createElement("text", { x: x + bw / 2, y: H - pad + 11, textAnchor: "middle", style: { fontSize: '7px', fill: _muted } }, bin.lo.toFixed(0) + '-' + bin.hi.toFixed(0))
+                        );
+                      })
+                    );
+                  })()
+                )
+              ),
+
+              // ── Preset Datasets ──
+              React.createElement("div", { className: "flex gap-2 flex-wrap" },
+                React.createElement("span", { className: "text-[10px] font-bold self-center", style: { color: _muted } }, "PRESETS:"),
+                PRESETS.map(function (p, i) {
+                  return React.createElement("button", {
+                    key: i,
+                    onClick: function () { updDS('dataRows', p.data); updDS('chartTitle', p.title); },
+                    className: "px-2 py-1 rounded-lg text-[10px] font-bold transition-all hover:scale-105",
+                    style: { background: _card, border: '1px solid ' + _border, color: _accent }
+                  }, p.label);
+                })
+              ),
+
+              // ── CSV Import ──
+              React.createElement("div", { className: "flex gap-2" },
+                React.createElement("button", {
+                  onClick: function () {
+                    var el = document.createElement('input');
+                    el.type = 'file';
+                    el.accept = '.csv,.txt';
+                    el.onchange = function (e) {
+                      var file = e.target.files[0];
+                      if (file) {
+                        var reader = new FileReader();
+                        reader.onload = function (ev) { handleCSVImport(ev.target.result); };
+                        reader.readAsText(file);
+                      }
+                    };
+                    el.click();
+                  },
+                  className: "px-3 py-2 rounded-xl text-xs font-bold transition-all",
+                  style: { background: _card, border: '1px solid ' + _border, color: _accent }
+                }, "📂 Import CSV"),
+                React.createElement("button", {
+                  onClick: function () {
+                    var csv = 'Label,Value\n' + dataRows.map(function (r) { return r.label + ',' + r.value; }).join('\n');
+                    var blob = new Blob([csv], { type: 'text/csv' });
+                    var url = URL.createObjectURL(blob);
+                    var a = document.createElement('a');
+                    a.href = url; a.download = (chartTitle || 'data') + '.csv';
+                    a.click(); URL.revokeObjectURL(url);
+                  },
+                  className: "px-3 py-2 rounded-xl text-xs font-bold transition-all",
+                  style: { background: _card, border: '1px solid ' + _border, color: _accent }
+                }, "💾 Export CSV")
+              ),
+
+              // ── Data Editor ──
+              React.createElement("div", { className: "rounded-2xl p-3", style: { background: _card, border: '1px solid ' + _border } },
+                React.createElement("div", { className: "text-xs font-bold mb-2", style: { color: _accent } }, "📝 Data (" + dataRows.length + " items)"),
+                // Add row
+                React.createElement("div", { className: "flex gap-2 mb-2" },
+                  React.createElement("input", {
+                    type: "text", placeholder: "Label",
+                    value: editRow.label,
+                    onChange: function (e) { updDS('editRow', { label: e.target.value, value: editRow.value }); },
+                    className: "flex-1 px-2 py-1.5 rounded-lg text-xs",
+                    style: { background: _svgBg, border: '1px solid ' + _border, color: _text, outline: 'none' }
+                  }),
+                  React.createElement("input", {
+                    type: "number", placeholder: "Value",
+                    value: editRow.value,
+                    onChange: function (e) { updDS('editRow', { label: editRow.label, value: e.target.value }); },
+                    onKeyDown: function (e) {
+                      if (e.key === 'Enter' && editRow.label && editRow.value !== '') {
+                        updDS('dataRows', dataRows.concat([{ label: editRow.label, value: parseFloat(editRow.value) || 0 }]));
+                        updDS('editRow', { label: '', value: '' });
+                      }
+                    },
+                    className: "w-20 px-2 py-1.5 rounded-lg text-xs font-mono",
+                    style: { background: _svgBg, border: '1px solid ' + _border, color: _text, outline: 'none' }
+                  }),
+                  React.createElement("button", {
+                    onClick: function () {
+                      if (editRow.label && editRow.value !== '') {
+                        updDS('dataRows', dataRows.concat([{ label: editRow.label, value: parseFloat(editRow.value) || 0 }]));
+                        updDS('editRow', { label: '', value: '' });
+                      }
+                    },
+                    className: "px-3 py-1.5 rounded-lg text-xs font-bold",
+                    style: { background: _btnBg, color: '#fff' }
+                  }, "+ Add")
+                ),
+                // Data rows
+                React.createElement("div", { className: "max-h-28 overflow-y-auto space-y-1" },
+                  dataRows.map(function (row, i) {
+                    return React.createElement("div", { key: i, className: "flex items-center gap-2 py-1 px-2 rounded-lg text-xs", style: { background: _svgBg } },
+                      React.createElement("div", { className: "w-3 h-3 rounded-full", style: { background: COLORS[i % COLORS.length] } }),
+                      React.createElement("span", { className: "flex-1 font-bold" }, row.label),
+                      React.createElement("span", { className: "font-mono", style: { color: _muted } }, row.value),
+                      React.createElement("button", {
+                        onClick: function () { updDS('dataRows', dataRows.filter(function (_, j) { return j !== i; })); },
+                        className: "text-red-400 hover:text-red-600 font-bold text-xs"
+                      }, "✕")
+                    );
+                  })
+                ),
+                // Clear
+                dataRows.length > 0 && React.createElement("button", {
+                  onClick: function () { updDS('dataRows', []); },
+                  className: "mt-2 px-3 py-1 rounded-lg text-[10px] font-bold",
+                  style: { background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }
+                }, "🗑 Clear All")
+              ),
+
+              // ── Statistics Panel ──
+              showStats && dataRows.length > 0 && React.createElement("div", { className: "grid grid-cols-4 gap-2" },
+                [
+                  { label: 'Sum', val: total.toFixed(1) },
+                  { label: 'Mean', val: mean.toFixed(1) },
+                  { label: 'Median', val: median.toFixed(1) },
+                  { label: 'Std Dev', val: stdDev.toFixed(1) }
+                ].map(function (stat, i) {
+                  return React.createElement("div", { key: i, className: "p-2 rounded-xl text-center", style: { background: _card, border: '1px solid ' + _border } },
+                    React.createElement("div", { className: "text-[9px] font-bold uppercase", style: { color: _muted } }, stat.label),
+                    React.createElement("div", { className: "text-sm font-bold font-mono", style: { color: _accent } }, stat.val)
+                  );
+                })
+              )
+            );
+          })(),
+
+          // ═══════════════════════════════════════════════════════════════
+          // ██  ALGEBRA SOLVER (CAS) — AI-Powered Step-by-Step Math      ██
+          // ═══════════════════════════════════════════════════════════════
+          stemLabTab === 'explore' && stemLabTool === 'algebraCAS' && (() => {
+            var d = (labToolData && labToolData._algebraCAS) || {};
+            var updCAS = function (key, val) {
+              setLabToolData(function (prev) {
+                var cas = Object.assign({}, (prev && prev._algebraCAS) || {});
+                cas[key] = val;
+                return Object.assign({}, prev, { _algebraCAS: cas });
+              });
+            };
+            var expression = d.expression || '';
+            var mode = d.mode || 'solve';
+            var result = d.result || null;
+            var isLoading = d.isLoading || false;
+            var history = d.history || [];
+            var difficulty = d.difficulty || 'elementary';
+            var practiceMode = d.practiceMode || false;
+            var practiceQ = d.practiceQ || null;
+            var practiceAnswer = d.practiceAnswer || '';
+            var practiceFeedback = d.practiceFeedback || null;
+
+            var MODES = [
+              { id: 'solve', label: '🔍 Solve', desc: 'Find the value of a variable' },
+              { id: 'factor', label: '🧩 Factor', desc: 'Factor an expression' },
+              { id: 'simplify', label: '✨ Simplify', desc: 'Simplify an expression' },
+              { id: 'expand', label: '📐 Expand', desc: 'Expand & distribute' }
+            ];
+
+            var DIFFICULTIES = [
+              { id: 'elementary', label: 'Elementary', desc: 'Single variable, basic operations' },
+              { id: 'middle', label: 'Middle School', desc: 'Quadratics, systems, fractions' },
+              { id: 'advanced', label: 'Advanced', desc: 'Rational, radical, polynomial' }
+            ];
+
+            var EXAMPLES = {
+              solve: ['2x + 5 = 13', 'x² - 4x + 3 = 0', '3(x - 2) = 15'],
+              factor: ['x² - 9', 'x² + 5x + 6', '2x² - 8'],
+              simplify: ['(3x² + 6x) / 3x', '2(x + 3) - (x - 1)', '√(50)'],
+              expand: ['(x + 3)(x - 2)', '(2x + 1)²', '3(x² - 4x + 1)']
+            };
+
+            var handleSolve = function () {
+              if (!expression.trim() || !callGemini || isLoading) return;
+              updCAS('isLoading', true);
+              updCAS('result', null);
+              var modeLabel = mode.charAt(0).toUpperCase() + mode.slice(1);
+              var prompt = 'You are a math CAS (Computer Algebra System) tutor for a ' + _stemGrade + ' student.\n\n' +
+                'MODE: ' + modeLabel + '\n' +
+                'EXPRESSION: ' + expression.trim() + '\n\n' +
+                'Instructions:\n' +
+                '1. ' + modeLabel + ' this expression step by step.\n' +
+                '2. For EACH step, show the work AND label the algebraic rule used in [brackets].\n' +
+                '   Rules include: [Distributive Property], [Combining Like Terms], [Addition Property of Equality],\n' +
+                '   [Division Property of Equality], [Zero Product Property], [Quadratic Formula], [Factoring],\n' +
+                '   [Difference of Squares], [Perfect Square Trinomial], [GCF Factoring], [Simplification], etc.\n' +
+                '3. Format your response as:\n' +
+                '   STEP 1: (show work) [Rule Name]\n' +
+                '   STEP 2: (show work) [Rule Name]\n' +
+                '   ...\n' +
+                '   ANSWER: (final result)\n\n' +
+                'Be mathematically rigorous. Show every step clearly. Keep explanations concise but educational.';
+
+              callGemini(prompt).then(function (res) {
+                updCAS('isLoading', false);
+                if (res) {
+                  updCAS('result', res);
+                  var newH = (history || []).slice(-9);
+                  newH.push({ expr: expression, mode: mode, result: res, ts: Date.now() });
+                  updCAS('history', newH);
+                  awardStemXP('algebraCAS', 5, 'Solved: ' + expression.trim().substring(0, 30));
+                }
+              }).catch(function (e) {
+                updCAS('isLoading', false);
+                updCAS('result', 'Error: ' + (e.message || 'Failed to process'));
+              });
+            };
+
+            var handlePracticeGenerate = function () {
+              if (!callGemini || isLoading) return;
+              updCAS('isLoading', true);
+              updCAS('practiceFeedback', null);
+              updCAS('practiceAnswer', '');
+              var diffDesc = difficulty === 'elementary' ? 'single-variable linear equation (e.g. 3x + 7 = 22)' :
+                difficulty === 'middle' ? 'quadratic or two-step equation (e.g. x² + 3x - 10 = 0)' :
+                  'rational, radical, or multi-step polynomial equation';
+              var prompt = 'Generate ONE algebra practice problem at the ' + difficulty + ' level.\n' +
+                'Type: ' + diffDesc + '\n' +
+                'Format your response as EXACTLY:\n' +
+                'PROBLEM: (the equation)\n' +
+                'ANSWER: (the correct answer, simplified)\n' +
+                'HINT: (a one-sentence hint without giving away the answer)\n\n' +
+                'Do not include any other text.';
+
+              callGemini(prompt).then(function (res) {
+                updCAS('isLoading', false);
+                if (res) {
+                  var pMatch = res.match(/PROBLEM:\s*(.+)/i);
+                  var aMatch = res.match(/ANSWER:\s*(.+)/i);
+                  var hMatch = res.match(/HINT:\s*(.+)/i);
+                  updCAS('practiceQ', {
+                    problem: pMatch ? pMatch[1].trim() : res,
+                    answer: aMatch ? aMatch[1].trim() : '',
+                    hint: hMatch ? hMatch[1].trim() : 'Think step by step!'
+                  });
+                }
+              }).catch(function () { updCAS('isLoading', false); });
+            };
+
+            var handlePracticeCheck = function () {
+              if (!practiceQ || !practiceAnswer.trim()) return;
+              updCAS('isLoading', true);
+              var prompt = 'A student is solving this algebra problem:\n' +
+                'PROBLEM: ' + practiceQ.problem + '\n' +
+                'CORRECT ANSWER: ' + practiceQ.answer + '\n' +
+                'STUDENT ANSWER: ' + practiceAnswer.trim() + '\n\n' +
+                'Respond in this format:\n' +
+                'CORRECT: yes/no\n' +
+                'FEEDBACK: (1-2 sentences explaining if they are right or what they did wrong, be encouraging)\n' +
+                'If wrong, show the correct step-by-step solution briefly.';
+
+              callGemini(prompt).then(function (res) {
+                updCAS('isLoading', false);
+                if (res) {
+                  var isCorrect = /CORRECT:\s*yes/i.test(res);
+                  updCAS('practiceFeedback', { correct: isCorrect, text: res });
+                  if (isCorrect) awardStemXP('algebraCAS', 10, 'Practice problem correct');
+                }
+              }).catch(function () { updCAS('isLoading', false); });
+            };
+
+            // ── Dark theme styles ──
+            var _bg = isDark || isContrast ? '#1e1b4b' : '#fffbeb';
+            var _text = isDark || isContrast ? '#e0e7ff' : '#1e293b';
+            var _card = isDark || isContrast ? 'rgba(99,102,241,0.08)' : 'rgba(245,158,11,0.06)';
+            var _border = isDark || isContrast ? 'rgba(99,102,241,0.2)' : 'rgba(245,158,11,0.2)';
+            var _accent = isDark || isContrast ? '#a5b4fc' : '#d97706';
+            var _muted = isDark || isContrast ? '#94a3b8' : '#64748b';
+            var _btnBg = isDark || isContrast ? '#6366f1' : '#f59e0b';
+            var _btnText = isDark || isContrast ? '#fff' : '#fff';
+
+            return React.createElement("div", { className: "p-4 space-y-4", style: { color: _text } },
+              // ── Header ──
+              React.createElement("div", { className: "flex items-center justify-between mb-2" },
+                React.createElement("div", null,
+                  React.createElement("h3", { className: "text-lg font-bold flex items-center gap-2" }, "🧮 Algebra Solver"),
+                  React.createElement("p", { className: "text-xs", style: { color: _muted } }, "Step-by-step symbolic math powered by AI")
+                ),
+                React.createElement("div", { className: "flex gap-2" },
+                  React.createElement("button", {
+                    onClick: function () { updCAS('practiceMode', !practiceMode); updCAS('result', null); updCAS('practiceFeedback', null); },
+                    className: "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                    style: { background: practiceMode ? _btnBg : _card, color: practiceMode ? _btnText : _text, border: '1px solid ' + _border }
+                  }, practiceMode ? '📝 Practice Mode' : '🎯 Practice Mode'),
+                  React.createElement("button", {
+                    onClick: function () { setStemLabTool(null); },
+                    className: "px-3 py-1.5 rounded-lg text-xs font-bold",
+                    style: { background: _card, border: '1px solid ' + _border, color: _text }
+                  }, "← Back")
+                )
+              ),
+
+              // ── Practice Mode ──
+              practiceMode ? React.createElement("div", { className: "space-y-4" },
+                // Difficulty Selector
+                React.createElement("div", { className: "flex gap-2 flex-wrap" },
+                  DIFFICULTIES.map(function (df) {
+                    return React.createElement("button", {
+                      key: df.id,
+                      onClick: function () { updCAS('difficulty', df.id); updCAS('practiceQ', null); updCAS('practiceFeedback', null); },
+                      className: "px-3 py-2 rounded-xl text-xs font-bold transition-all",
+                      style: { background: difficulty === df.id ? _btnBg : _card, color: difficulty === df.id ? _btnText : _text, border: '1px solid ' + _border }
+                    }, df.label);
+                  })
+                ),
+                // Generate / Current Problem
+                !practiceQ ? React.createElement("div", { className: "text-center py-8 rounded-2xl", style: { background: _card, border: '1px solid ' + _border } },
+                  React.createElement("p", { className: "text-sm mb-4", style: { color: _muted } }, "Generate a practice problem at the " + difficulty + " level"),
+                  React.createElement("button", {
+                    onClick: handlePracticeGenerate,
+                    disabled: isLoading,
+                    className: "px-6 py-3 rounded-xl text-sm font-bold transition-all",
+                    style: { background: _btnBg, color: _btnText, opacity: isLoading ? 0.5 : 1 }
+                  }, isLoading ? '⏳ Generating...' : '🎲 Generate Problem')
+                ) : React.createElement("div", { className: "space-y-3" },
+                  // Problem display
+                  React.createElement("div", { className: "p-4 rounded-2xl", style: { background: _card, border: '2px solid ' + _accent } },
+                    React.createElement("div", { className: "text-xs font-bold mb-2", style: { color: _accent } }, "📋 PROBLEM"),
+                    React.createElement("div", { className: "text-xl font-mono font-bold text-center py-3" }, practiceQ.problem),
+                    React.createElement("p", { className: "text-xs text-center mt-2", style: { color: _muted } }, "💡 Hint: " + practiceQ.hint)
+                  ),
+                  // Answer input
+                  React.createElement("div", { className: "flex gap-2" },
+                    React.createElement("input", {
+                      type: "text",
+                      value: practiceAnswer,
+                      onChange: function (e) { updCAS('practiceAnswer', e.target.value); },
+                      onKeyDown: function (e) { if (e.key === 'Enter') handlePracticeCheck(); },
+                      placeholder: "Type your answer...",
+                      className: "flex-1 px-4 py-3 rounded-xl text-sm font-mono",
+                      style: { background: _card, border: '1px solid ' + _border, color: _text, outline: 'none' }
+                    }),
+                    React.createElement("button", {
+                      onClick: handlePracticeCheck,
+                      disabled: isLoading || !practiceAnswer.trim(),
+                      className: "px-5 py-3 rounded-xl text-sm font-bold transition-all",
+                      style: { background: _btnBg, color: _btnText, opacity: (isLoading || !practiceAnswer.trim()) ? 0.5 : 1 }
+                    }, isLoading ? '⏳' : '✅ Check')
+                  ),
+                  // Feedback
+                  practiceFeedback && React.createElement("div", {
+                    className: "p-4 rounded-2xl",
+                    style: { background: practiceFeedback.correct ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)', border: '1px solid ' + (practiceFeedback.correct ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)') }
+                  },
+                    React.createElement("div", { className: "text-sm font-bold mb-2" }, practiceFeedback.correct ? '🎉 Correct!' : '❌ Not quite...'),
+                    React.createElement("div", { className: "text-xs whitespace-pre-wrap leading-relaxed" }, practiceFeedback.text.replace(/^CORRECT:.*\n?/im, '').replace(/^FEEDBACK:\s*/im, '').trim())
+                  ),
+                  // Next problem button
+                  React.createElement("button", {
+                    onClick: function () { updCAS('practiceQ', null); updCAS('practiceFeedback', null); updCAS('practiceAnswer', ''); handlePracticeGenerate(); },
+                    className: "w-full py-2 rounded-xl text-xs font-bold transition-all",
+                    style: { background: _card, border: '1px solid ' + _border, color: _text }
+                  }, "🔄 New Problem")
+                )
+              ) :
+                // ── Solver Mode ──
+                React.createElement("div", { className: "space-y-4" },
+                  // Mode selector
+                  React.createElement("div", { className: "grid grid-cols-4 gap-2" },
+                    MODES.map(function (m) {
+                      return React.createElement("button", {
+                        key: m.id,
+                        onClick: function () { updCAS('mode', m.id); updCAS('result', null); },
+                        className: "p-2 rounded-xl text-center transition-all",
+                        style: { background: mode === m.id ? _btnBg : _card, color: mode === m.id ? _btnText : _text, border: '1px solid ' + (mode === m.id ? _accent : _border) }
+                      },
+                        React.createElement("div", { className: "text-lg" }, m.label.split(' ')[0]),
+                        React.createElement("div", { className: "text-[10px] font-bold mt-0.5" }, m.label.split(' ').slice(1).join(' '))
+                      );
+                    })
+                  ),
+                  // Input
+                  React.createElement("div", { className: "flex gap-2" },
+                    React.createElement("input", {
+                      type: "text",
+                      value: expression,
+                      onChange: function (e) { updCAS('expression', e.target.value); },
+                      onKeyDown: function (e) { if (e.key === 'Enter') handleSolve(); },
+                      placeholder: 'Enter expression, e.g. ' + (EXAMPLES[mode] || ['2x + 5 = 13'])[0],
+                      className: "flex-1 px-4 py-3 rounded-xl text-sm font-mono",
+                      style: { background: _card, border: '1px solid ' + _border, color: _text, outline: 'none' }
+                    }),
+                    React.createElement("button", {
+                      onClick: handleSolve,
+                      disabled: isLoading || !expression.trim(),
+                      className: "px-5 py-3 rounded-xl text-sm font-bold transition-all",
+                      style: { background: _btnBg, color: _btnText, opacity: (isLoading || !expression.trim()) ? 0.5 : 1 }
+                    }, isLoading ? '⏳ Computing...' : '▶ ' + (mode.charAt(0).toUpperCase() + mode.slice(1)))
+                  ),
+                  // Quick examples
+                  React.createElement("div", { className: "flex gap-2 flex-wrap" },
+                    React.createElement("span", { className: "text-[10px] font-bold", style: { color: _muted } }, "TRY:"),
+                    (EXAMPLES[mode] || []).map(function (ex, i) {
+                      return React.createElement("button", {
+                        key: i,
+                        onClick: function () { updCAS('expression', ex); },
+                        className: "px-2 py-1 rounded-lg text-[10px] font-mono transition-all hover:scale-105",
+                        style: { background: _card, border: '1px solid ' + _border, color: _accent }
+                      }, ex);
+                    })
+                  ),
+                  // Result
+                  result && React.createElement("div", { className: "p-4 rounded-2xl", style: { background: _card, border: '1px solid ' + _accent } },
+                    React.createElement("div", { className: "text-xs font-bold mb-3 flex items-center gap-2", style: { color: _accent } }, "📋 Step-by-Step Solution"),
+                    React.createElement("div", { className: "text-sm whitespace-pre-wrap leading-relaxed font-mono" },
+                      result.split('\n').map(function (line, i) {
+                        var isStep = /^STEP\s+\d+/i.test(line.trim());
+                        var isAnswer = /^ANSWER:/i.test(line.trim());
+                        var ruleMatch = line.match(/\[([^\]]+)\]/);
+                        if (isAnswer) return React.createElement("div", { key: i, className: "mt-3 p-3 rounded-xl text-base font-bold", style: { background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)' } }, "✅ " + line.trim());
+                        if (isStep) return React.createElement("div", { key: i, className: "py-1.5 flex items-start gap-2" },
+                          React.createElement("span", { className: "flex-1" }, ruleMatch ? line.replace(ruleMatch[0], '').trim() : line.trim()),
+                          ruleMatch && React.createElement("span", { className: "px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap", style: { background: 'rgba(99,102,241,0.15)', color: isDark || isContrast ? '#a5b4fc' : '#6366f1', border: '1px solid rgba(99,102,241,0.2)' } }, ruleMatch[1])
+                        );
+                        return line.trim() ? React.createElement("div", { key: i, className: "py-0.5" }, line) : null;
+                      })
+                    )
+                  ),
+                  // History
+                  history.length > 0 && React.createElement("div", null,
+                    React.createElement("div", { className: "text-xs font-bold mb-2", style: { color: _muted } }, "📜 Recent (last " + history.length + ")"),
+                    React.createElement("div", { className: "flex gap-2 flex-wrap" },
+                      history.slice().reverse().slice(0, 5).map(function (h, i) {
+                        return React.createElement("button", {
+                          key: i,
+                          onClick: function () { updCAS('expression', h.expr); updCAS('mode', h.mode); updCAS('result', h.result); },
+                          className: "px-2 py-1 rounded-lg text-[10px] font-mono transition-all hover:scale-105",
+                          style: { background: _card, border: '1px solid ' + _border, color: _text }
+                        }, h.mode + ': ' + h.expr.substring(0, 20) + (h.expr.length > 20 ? '...' : ''));
+                      })
+                    )
+                  )
+                )
+            );
+          })(),
+
+          // ═══════════════════════════════════════════════════════════════
           // ██  CODING PLAYGROUND — Visual Block / Text Turtle Graphics  ██
           // ═══════════════════════════════════════════════════════════════
           stemLabTab === 'explore' && stemLabTool === 'codingPlayground' && (() => {
@@ -17252,7 +18219,9 @@
               { id: 'rainbow', title: '5. Rainbow Line', desc: 'Draw 3+ lines, each a different color.', concept: 'Variables', hint: 'Use Set Color blocks between your Move Forward blocks.', check: function (lines) { var colors = {}; lines.forEach(function (l) { colors[l.color] = true; }); return Object.keys(colors).length >= 3; } },
               { id: 'star', title: '6. Star Power', desc: 'Draw a 5-pointed star.', concept: 'Math + Patterns', hint: 'Repeat 5×: Move Forward 100, Turn Right 144°', check: function (lines) { return lines.length >= 5; } },
               { id: 'spiral', title: '7. Spiral', desc: 'Create a spiral that grows outward.', concept: 'Variables in Loops', hint: 'This is tricky! Try increasing the distance each time.', check: function (lines) { return lines.length >= 10; } },
-              { id: 'freestyle', title: '8. Freestyle!', desc: 'Create any drawing with 20+ line segments.', concept: 'Creativity', hint: 'Combine everything you\'ve learned!', check: function (lines) { return lines.length >= 20; } }
+              { id: 'hexagon', title: '8. Hexagon Hero', desc: 'Draw a perfect regular hexagon.', concept: 'Math + Patterns', hint: 'Repeat 6×: Move Forward 60, Turn Right 60°', check: function (lines) { var ex = getEndpoints(lines); return ex.closed && ex.segments >= 6 && Math.abs(ex.turns - 360) < 15; } },
+              { id: 'freestyle', title: '9. Freestyle!', desc: 'Create any drawing with 20+ line segments.', concept: 'Creativity', hint: 'Combine everything you\'ve learned!', check: function (lines) { return lines.length >= 20; } },
+              { id: 'house', title: '10. Build a House', desc: 'Draw a house: a square base with a triangle roof on top.', concept: 'Decomposition', hint: 'Draw a square, then use Pen Up to move, then draw a triangle for the roof. Think about angles: square = 90°, triangle = 120°.', check: function (lines) { return lines.length >= 7 && getEndpoints(lines.slice(0, 4)).segments >= 4; } }
             ];
 
             // ── Helper: analyze drawn lines for challenge checking ──
@@ -17539,7 +18508,7 @@
               React.createElement("div", { className: "flex flex-col gap-3 max-h-[600px] overflow-y-auto" },
                 // Toolbox
                 React.createElement("div", { className: "bg-slate-800 rounded-xl p-3 border border-slate-700" },
-                  React.createElement("h3", { className: "text-xs font-bold text-slate-400 uppercase tracking-wider mb-2" }, "🧰 Toolbox"),
+                  React.createElement("h3", { className: "text-xs font-bold text-indigo-300 uppercase tracking-wider mb-2" }, "🧰 Toolbox"),
                   React.createElement("div", { className: "flex flex-col gap-1" },
                     BLOCK_TYPES.map(function (bt) {
                       return React.createElement("button", {
@@ -17555,10 +18524,10 @@
 
                 // Program (blocks mode)
                 codeMode === 'blocks' && React.createElement("div", { className: "bg-slate-800 rounded-xl p-3 border border-slate-700 flex-1" },
-                  React.createElement("h3", { className: "text-xs font-bold text-slate-400 uppercase tracking-wider mb-2" },
+                  React.createElement("h3", { className: "text-xs font-bold text-indigo-300 uppercase tracking-wider mb-2" },
                     "📋 Program (" + blocks.length + " blocks)"
                   ),
-                  blocks.length === 0 && React.createElement("p", { className: "text-slate-500 text-xs italic text-center py-4" },
+                  blocks.length === 0 && React.createElement("p", { className: "text-slate-400 text-xs italic text-center py-4" },
                     'Click blocks above to add them to your program'
                   ),
                   React.createElement("div", { className: "flex flex-col gap-1" },
@@ -17673,7 +18642,7 @@
 
                 // ── Challenges panel ──
                 React.createElement("div", { className: "bg-slate-800 rounded-xl p-3 border border-slate-700" },
-                  React.createElement("h3", { className: "text-xs font-bold text-slate-400 uppercase tracking-wider mb-2" },
+                  React.createElement("h3", { className: "text-xs font-bold text-amber-300 uppercase tracking-wider mb-2" },
                     "🏆 Challenges (" + completed.length + "/" + CHALLENGES.length + ")"
                   ),
                   React.createElement("div", { className: "flex flex-col gap-1" },
