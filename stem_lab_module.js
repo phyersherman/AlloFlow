@@ -391,6 +391,161 @@
         window.addEventListener('keyup', onKeyUp);
         return function () { window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp); };
       }, [stemLabTab, stemLabTool, labToolData]);
+      // ── Companion Planting: Canvas data-attribute sync (MUST be at top level) ──
+      React.useEffect(function () {
+        if (stemLabTab !== 'explore' || stemLabTool !== 'companionPlanting') return;
+        var _cpd = (labToolData && labToolData.companionPlanting) || {};
+        var cv = document.querySelector('[data-companion-canvas]');
+        if (cv) {
+          cv.setAttribute('data-growth', _cpd.growthTime || 0);
+          cv.setAttribute('data-corn', _cpd.cornPlanted ? '1' : '0');
+          cv.setAttribute('data-beans', _cpd.beansPlanted ? '1' : '0');
+          cv.setAttribute('data-squash', _cpd.squashPlanted ? '1' : '0');
+          cv.setAttribute('data-compare', _cpd.compareMode ? '1' : '0');
+          cv.setAttribute('data-season', String(Math.floor(((_cpd.day || 0) % 120) / 30)));
+          cv.setAttribute('data-day', String(_cpd.day || 0));
+          cv.setAttribute('data-moisture', String(Math.round(typeof _cpd.moisture === 'number' ? _cpd.moisture : 60)));
+          cv.setAttribute('data-pest', String(Math.round(typeof _cpd.pestPressure === 'number' ? _cpd.pestPressure : 10)));
+          cv.setAttribute('data-weed', String(Math.round(typeof _cpd.weedCover === 'number' ? _cpd.weedCover : 15)));
+          cv.setAttribute('data-health', String(Math.round(typeof _cpd.plantHealth === 'number' ? _cpd.plantHealth : 100)));
+        }
+      }, [stemLabTab, stemLabTool, labToolData]);
+      // ── Companion Planting: Day ticker loop (MUST be at top level) ──
+      React.useEffect(function () {
+        if (stemLabTab !== 'explore' || stemLabTool !== 'companionPlanting') return;
+        var _cpd = (labToolData && labToolData.companionPlanting) || {};
+        var phase = _cpd.phase || 'plant';
+        var allPlanted = _cpd.cornPlanted && _cpd.beansPlanted && _cpd.squashPlanted;
+        if (phase !== 'grow' || !allPlanted) return;
+        var _speed = _cpd.growSpeed || 1;
+        var timer = setInterval(function () {
+          setLabToolData(function (prev) {
+            var cp = Object.assign({}, prev.companionPlanting || {});
+            var _day = (cp.day || 0) + 1;
+            var _si = Math.floor((_day % 120) / 30);
+            var _sf = [
+              { growth: 1.0, pestRate: 0.6, moistureDecay: 1.5, ambientTemp: 18 },
+              { growth: 1.4, pestRate: 1.3, moistureDecay: 2.5, ambientTemp: 30 },
+              { growth: 0.6, pestRate: 0.4, moistureDecay: 1.0, ambientTemp: 15 },
+              { growth: 0.0, pestRate: 0.1, moistureDecay: 0.5, ambientTemp: 4 }
+            ][_si];
+            var _moist = Math.max(0, (typeof cp.moisture === 'number' ? cp.moisture : 60) - _sf.moistureDecay * 0.4);
+            var _nitro = typeof cp.nitrogenLevel === 'number' ? cp.nitrogenLevel : 35;
+            var beansNFix = cp.beansPlanted ? 0.3 : 0;
+            _nitro = Math.max(0, _nitro - 0.5 + beansNFix);
+            var _pest = typeof cp.pestPressure === 'number' ? cp.pestPressure : 10;
+            _pest = Math.min(100, Math.max(0, _pest + _sf.pestRate * 0.5));
+            if (cp.squashPlanted) _pest = Math.max(0, _pest - 0.3);
+            var _weed = typeof cp.weedCover === 'number' ? cp.weedCover : 15;
+            _weed = Math.min(100, Math.max(0, _weed + 0.8));
+            if (cp.squashPlanted) _weed = Math.max(0, _weed - 0.5);
+            var _temp = typeof cp.soilTemp === 'number' ? cp.soilTemp : 20;
+            _temp = _temp + (_sf.ambientTemp - _temp) * 0.05;
+            if (cp.squashPlanted) _temp = _temp + (22 - _temp) * 0.02;
+            var _hp = typeof cp.plantHealth === 'number' ? cp.plantHealth : 100;
+            if (_moist < 15) _hp = Math.max(0, _hp - 1.5);
+            else if (_moist > 30) _hp = Math.min(100, _hp + 0.1);
+            if (_pest > 60) _hp = Math.max(0, _hp - 0.8);
+            if (_weed > 60) _hp = Math.max(0, _hp - 0.5);
+            if (_nitro < 10) _hp = Math.max(0, _hp - 0.5);
+            if (_temp < 5 || _temp > 38) _hp = Math.max(0, _hp - 1.0);
+            var healthFactor = _hp / 100;
+            var _syn = 1 + ((cp.synCornBeans || 0) / 500) + ((cp.synBeansSoil || 0) / 500) + ((cp.synSquashAll || 0) / 500);
+            var growIncrement = 0.3 * _sf.growth * healthFactor * _syn * _speed;
+            var newGT = Math.min(100, (cp.growthTime || 0) + growIncrement);
+            var _scb = Math.min(100, (cp.synCornBeans || 0) + (cp.cornPlanted && cp.beansPlanted ? 0.4 * healthFactor : 0));
+            var _sbs = Math.min(100, (cp.synBeansSoil || 0) + (cp.beansPlanted ? 0.3 * healthFactor : 0));
+            var _ssa = Math.min(100, (cp.synSquashAll || 0) + (cp.squashPlanted ? 0.35 * healthFactor : 0));
+            var _lastEv = cp.lastEventDay || 0;
+            var _popup = cp.eventPopup || null;
+            var _evLog = cp.eventLog || [];
+            if (_day - _lastEv >= 15 && _sf.growth > 0) {
+              var evts = [
+                { id: 'rain', emoji: '🌧️', title: 'Heavy Rain', effects: { moisture: 40, nitrogenLevel: -5 }, lesson: 'Nutrient leaching: Heavy rain washes soluble nitrogen deeper into soil.' },
+                { id: 'aphids', emoji: '🐛', title: 'Aphid Outbreak', effects: { pestPressure: 30 }, lesson: 'Biological pest control: Ladybugs and lacewings are natural aphid predators.' },
+                { id: 'pollinators', emoji: '🐝', title: 'Pollinator Visit', effects: { plantHealth: 15 }, lesson: 'Pollination biology: Companion planting attracts diverse pollinators.' },
+                { id: 'wind', emoji: '🌪️', title: 'Wind Storm', effects: { plantHealth: -10, moisture: -10 }, lesson: 'Windbreak design: Dense planting creates natural windbreaks.' },
+                { id: 'ladybugs', emoji: '🐞', title: 'Ladybug Arrival', effects: { pestPressure: -25 }, lesson: 'Beneficial insects: One ladybug eats ~5,000 aphids in its lifetime.' },
+                { id: 'heatwave', emoji: '☀️', title: 'Heat Wave', effects: { moisture: -20, soilTemp: 5 }, lesson: 'Microclimate management: Squash leaves shade soil, cutting evaporation by 50%.' },
+                { id: 'mycorrhiza', emoji: '🍄', title: 'Mycorrhizal Bloom', effects: { nitrogenLevel: 15, plantHealth: 10 }, lesson: 'Fungal symbiosis: Mycorrhizal fungi extend root systems 100-1000×.' }
+              ];
+              var ev = evts[Math.floor(Math.random() * evts.length)];
+              Object.keys(ev.effects).forEach(function (ek) {
+                if (ek === 'moisture') _moist = Math.max(0, Math.min(100, _moist + ev.effects[ek]));
+                else if (ek === 'nitrogenLevel') _nitro = Math.max(0, Math.min(100, _nitro + ev.effects[ek]));
+                else if (ek === 'pestPressure') _pest = Math.max(0, Math.min(100, _pest + ev.effects[ek]));
+                else if (ek === 'plantHealth') _hp = Math.max(0, Math.min(100, _hp + ev.effects[ek]));
+                else if (ek === 'soilTemp') _temp = Math.max(0, Math.min(50, _temp + ev.effects[ek]));
+              });
+              _popup = { emoji: ev.emoji, title: ev.title, lesson: ev.lesson };
+              _evLog = _evLog.concat([{ id: ev.id, day: _day, title: ev.title }]).slice(-10);
+              _lastEv = _day;
+            }
+            var _meterAvg = Math.round(
+              (_moist * 0.2 + _nitro * 0.2 + (100 - _pest) * 0.2 + (100 - _weed) * 0.15 + _hp * 0.25)
+            );
+            var _sScore = Math.max(0, (cp.seasonScore || 0) + Math.round((_meterAvg - 50) * 0.1));
+            var newPhase = cp.phase;
+            if (newGT >= 100 && _si !== 3) { newPhase = 'harvest'; }
+            if (_hp <= 0) {
+              newPhase = 'plant';
+              newGT = 0;
+              _hp = 100;
+              _popup = { emoji: '💀', title: 'Plants Died!', lesson: 'Your plants couldn\'t survive. Watch the meters — keep moisture, nitrogen, and health above critical levels!' };
+            }
+            cp.day = _day; cp.moisture = _moist; cp.nitrogenLevel = _nitro;
+            cp.pestPressure = _pest; cp.weedCover = _weed; cp.soilTemp = _temp;
+            cp.plantHealth = _hp; cp.growthTime = newGT;
+            cp.synCornBeans = _scb; cp.synBeansSoil = _sbs; cp.synSquashAll = _ssa;
+            cp.seasonScore = _sScore; cp.lastEventDay = _lastEv;
+            cp.eventPopup = _popup; cp.eventLog = _evLog; cp.phase = newPhase;
+            if (newPhase === 'plant' && _hp <= 0) {
+              cp.cornPlanted = false; cp.beansPlanted = false; cp.squashPlanted = false;
+            }
+            return Object.assign({}, prev, { companionPlanting: cp });
+          });
+        }, 100);
+        return function () { clearInterval(timer); };
+      }, [stemLabTab, stemLabTool, labToolData]);
+      // ── Coding Playground: Canvas ref (MUST be at top level) ──
+      var _codingCanvasRef = React.useRef(null);
+      // ── Coding Playground: Canvas rendering (MUST be at top level) ──
+      React.useEffect(function () {
+        if (stemLabTab !== 'explore' || stemLabTool !== 'codingPlayground') return;
+        var _cpgd = (labToolData && labToolData._codingPlayground) || {};
+        var _turtleState = _cpgd.turtle || { x: 250, y: 250, angle: -90, penDown: true, color: '#6366f1', width: 2 };
+        var _drawnLines = _cpgd.lines || [];
+        var cvs = _codingCanvasRef.current;
+        if (!cvs) return;
+        var ctx = cvs.getContext('2d');
+        var W = 500, H = 500;
+        cvs.width = W; cvs.height = H;
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(0, 0, W, H);
+        ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 0.5;
+        for (var gx = 0; gx <= W; gx += 25) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke(); }
+        for (var gy = 0; gy <= H; gy += 25) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke(); }
+        ctx.strokeStyle = '#334155'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(W / 2, 0); ctx.lineTo(W / 2, H); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, H / 2); ctx.lineTo(W, H / 2); ctx.stroke();
+        _drawnLines.forEach(function (ln) {
+          ctx.strokeStyle = ln.color || '#6366f1'; ctx.lineWidth = ln.width || 2; ctx.lineCap = 'round';
+          ctx.beginPath(); ctx.moveTo(ln.x1, ln.y1); ctx.lineTo(ln.x2, ln.y2); ctx.stroke();
+        });
+        var tx = _turtleState.x, ty = _turtleState.y, ta = _turtleState.angle * Math.PI / 180;
+        ctx.save(); ctx.translate(tx, ty); ctx.rotate(ta + Math.PI / 2);
+        ctx.fillStyle = '#22c55e';
+        ctx.beginPath(); ctx.moveTo(0, -12); ctx.lineTo(-8, 8); ctx.lineTo(8, 8); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = '#86efac'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(0, -12); ctx.lineTo(0, -18); ctx.stroke();
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(-3, -2, 2, 0, Math.PI * 2); ctx.arc(3, -2, 2, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+        if (_turtleState.penDown) { ctx.fillStyle = _turtleState.color; ctx.beginPath(); ctx.arc(tx, ty, 3, 0, Math.PI * 2); ctx.fill(); }
+        ctx.fillStyle = '#94a3b8'; ctx.font = '11px monospace';
+        ctx.fillText('(' + Math.round(_turtleState.x) + ', ' + Math.round(_turtleState.y) + ') ' + Math.round((_turtleState.angle + 90 + 360) % 360) + '°', 8, H - 8);
+        ctx.fillText(_drawnLines.length + ' segments', W - 90, H - 8);
+      }, [stemLabTab, stemLabTool, labToolData]);
       function renderTutorial(toolId, steps) {
         if (_tutorialSeen[toolId]) return null;
         var step = labToolData._tutorialStep || 0;
@@ -16641,144 +16796,9 @@
               canvasEl._gardenAnim = requestAnimationFrame(draw);
             };
 
-            // Update canvas data attributes when state changes
-            React.useEffect(function () {
-              var cv = document.querySelector('[data-companion-canvas]');
-              if (cv) {
-                cv.setAttribute('data-growth', growthTime);
-                cv.setAttribute('data-corn', cornPlanted ? '1' : '0');
-                cv.setAttribute('data-beans', beansPlanted ? '1' : '0');
-                cv.setAttribute('data-squash', squashPlanted ? '1' : '0');
-                cv.setAttribute('data-compare', compareMode ? '1' : '0');
-                cv.setAttribute('data-season', String(seasonIndex));
-                cv.setAttribute('data-day', String(day));
-                cv.setAttribute('data-moisture', String(Math.round(moisture)));
-                cv.setAttribute('data-pest', String(Math.round(pestPressure)));
-                cv.setAttribute('data-weed', String(Math.round(weedCover)));
-                cv.setAttribute('data-health', String(Math.round(plantHealth)));
-              }
-            }, [growthTime, cornPlanted, beansPlanted, squashPlanted, compareMode, seasonIndex, day, moisture, pestPressure, weedCover, plantHealth]);
-
-            // ── Day Ticker — the core Sims-style gameplay loop ──
-            React.useEffect(function () {
-              if (phase !== 'grow' || !allPlanted) return;
-              var _speed = growSpeed || 1;
-              var timer = setInterval(function () {
-                setLabToolData(function (prev) {
-                  var cp = Object.assign({}, prev.companionPlanting || {});
-                  var _day = (cp.day || 0) + 1;
-                  var _si = Math.floor((_day % 120) / 30);
-                  var _sf = [
-                    { growth: 1.0, pestRate: 0.6, moistureDecay: 1.5, ambientTemp: 18 },
-                    { growth: 1.4, pestRate: 1.3, moistureDecay: 2.5, ambientTemp: 30 },
-                    { growth: 0.6, pestRate: 0.4, moistureDecay: 1.0, ambientTemp: 15 },
-                    { growth: 0.0, pestRate: 0.1, moistureDecay: 0.5, ambientTemp: 4 }
-                  ][_si];
-
-                  // ── Meter decay ──
-                  var _moist = Math.max(0, (typeof cp.moisture === 'number' ? cp.moisture : 60) - _sf.moistureDecay * 0.4);
-                  var _nitro = typeof cp.nitrogenLevel === 'number' ? cp.nitrogenLevel : 35;
-                  var beansNFix = cp.beansPlanted ? 0.3 : 0;
-                  _nitro = Math.max(0, _nitro - 0.5 + beansNFix);
-                  var _pest = typeof cp.pestPressure === 'number' ? cp.pestPressure : 10;
-                  _pest = Math.min(100, Math.max(0, _pest + _sf.pestRate * 0.5));
-                  if (cp.squashPlanted) _pest = Math.max(0, _pest - 0.3);  // squash deters pests
-                  var _weed = typeof cp.weedCover === 'number' ? cp.weedCover : 15;
-                  _weed = Math.min(100, Math.max(0, _weed + 0.8));
-                  if (cp.squashPlanted) _weed = Math.max(0, _weed - 0.5);  // squash suppresses weeds
-                  var _temp = typeof cp.soilTemp === 'number' ? cp.soilTemp : 20;
-                  _temp = _temp + (_sf.ambientTemp - _temp) * 0.05;
-                  if (cp.squashPlanted) _temp = _temp + (22 - _temp) * 0.02; // squash regulates temp
-
-                  // ── Plant health from meters ──
-                  var _hp = typeof cp.plantHealth === 'number' ? cp.plantHealth : 100;
-                  if (_moist < 15) _hp = Math.max(0, _hp - 1.5);
-                  else if (_moist > 30) _hp = Math.min(100, _hp + 0.1);
-                  if (_pest > 60) _hp = Math.max(0, _hp - 0.8);
-                  if (_weed > 60) _hp = Math.max(0, _hp - 0.5);
-                  if (_nitro < 10) _hp = Math.max(0, _hp - 0.5);
-                  if (_temp < 5 || _temp > 38) _hp = Math.max(0, _hp - 1.0);
-
-                  // ── Growth from meters × season ──
-                  var healthFactor = _hp / 100;
-                  var _syn = 1 + ((cp.synCornBeans || 0) / 500) + ((cp.synBeansSoil || 0) / 500) + ((cp.synSquashAll || 0) / 500);
-                  var growIncrement = 0.3 * _sf.growth * healthFactor * _syn * _speed;
-                  var newGT = Math.min(100, (cp.growthTime || 0) + growIncrement);
-
-                  // ── Synergy growth ──
-                  var _scb = Math.min(100, (cp.synCornBeans || 0) + (cp.cornPlanted && cp.beansPlanted ? 0.4 * healthFactor : 0));
-                  var _sbs = Math.min(100, (cp.synBeansSoil || 0) + (cp.beansPlanted ? 0.3 * healthFactor : 0));
-                  var _ssa = Math.min(100, (cp.synSquashAll || 0) + (cp.squashPlanted ? 0.35 * healthFactor : 0));
-
-                  // ── Random events ──
-                  var _lastEv = cp.lastEventDay || 0;
-                  var _popup = cp.eventPopup || null;
-                  var _evLog = cp.eventLog || [];
-                  if (_day - _lastEv >= 15 && _sf.growth > 0) {
-                    var evts = [
-                      { id: 'rain', emoji: '🌧️', title: 'Heavy Rain', effects: { moisture: 40, nitrogenLevel: -5 }, lesson: 'Nutrient leaching: Heavy rain washes soluble nitrogen deeper into soil.' },
-                      { id: 'aphids', emoji: '🐛', title: 'Aphid Outbreak', effects: { pestPressure: 30 }, lesson: 'Biological pest control: Ladybugs and lacewings are natural aphid predators.' },
-                      { id: 'pollinators', emoji: '🐝', title: 'Pollinator Visit', effects: { plantHealth: 15 }, lesson: 'Pollination biology: Companion planting attracts diverse pollinators.' },
-                      { id: 'wind', emoji: '🌪️', title: 'Wind Storm', effects: { plantHealth: -10, moisture: -10 }, lesson: 'Windbreak design: Dense planting creates natural windbreaks.' },
-                      { id: 'ladybugs', emoji: '🐞', title: 'Ladybug Arrival', effects: { pestPressure: -25 }, lesson: 'Beneficial insects: One ladybug eats ~5,000 aphids in its lifetime.' },
-                      { id: 'heatwave', emoji: '☀️', title: 'Heat Wave', effects: { moisture: -20, soilTemp: 5 }, lesson: 'Microclimate management: Squash leaves shade soil, cutting evaporation by 50%.' },
-                      { id: 'mycorrhiza', emoji: '🍄', title: 'Mycorrhizal Bloom', effects: { nitrogenLevel: 15, plantHealth: 10 }, lesson: 'Fungal symbiosis: Mycorrhizal fungi extend root systems 100-1000×.' }
-                    ];
-                    var ev = evts[Math.floor(Math.random() * evts.length)];
-                    // Apply event effects
-                    Object.keys(ev.effects).forEach(function (ek) {
-                      if (ek === 'moisture') _moist = Math.max(0, Math.min(100, _moist + ev.effects[ek]));
-                      else if (ek === 'nitrogenLevel') _nitro = Math.max(0, Math.min(100, _nitro + ev.effects[ek]));
-                      else if (ek === 'pestPressure') _pest = Math.max(0, Math.min(100, _pest + ev.effects[ek]));
-                      else if (ek === 'plantHealth') _hp = Math.max(0, Math.min(100, _hp + ev.effects[ek]));
-                      else if (ek === 'soilTemp') _temp = Math.max(0, Math.min(50, _temp + ev.effects[ek]));
-                    });
-                    _popup = { emoji: ev.emoji, title: ev.title, lesson: ev.lesson };
-                    _evLog = _evLog.concat([{ id: ev.id, day: _day, title: ev.title }]).slice(-10);
-                    _lastEv = _day;
-                  }
-
-                  // ── Season score (running average of meter quality) ──
-                  var _meterAvg = Math.round(
-                    (_moist * 0.2 + _nitro * 0.2 + (100 - _pest) * 0.2 + (100 - _weed) * 0.15 + _hp * 0.25)
-                  );
-                  var _sScore = Math.max(0, (cp.seasonScore || 0) + Math.round((_meterAvg - 50) * 0.1));
-
-                  // ── Check harvest condition ──
-                  var newPhase = cp.phase;
-                  if (newGT >= 100 && _si !== 3) { newPhase = 'harvest'; }
-                  // Plant death
-                  if (_hp <= 0) {
-                    newPhase = 'plant';
-                    newGT = 0;
-                    _hp = 100;
-                    _popup = { emoji: '💀', title: 'Plants Died!', lesson: 'Your plants couldn\'t survive. Watch the meters — keep moisture, nitrogen, and health above critical levels!' };
-                  }
-
-                  cp.day = _day;
-                  cp.moisture = _moist;
-                  cp.nitrogenLevel = _nitro;
-                  cp.pestPressure = _pest;
-                  cp.weedCover = _weed;
-                  cp.soilTemp = _temp;
-                  cp.plantHealth = _hp;
-                  cp.growthTime = newGT;
-                  cp.synCornBeans = _scb;
-                  cp.synBeansSoil = _sbs;
-                  cp.synSquashAll = _ssa;
-                  cp.seasonScore = _sScore;
-                  cp.lastEventDay = _lastEv;
-                  cp.eventPopup = _popup;
-                  cp.eventLog = _evLog;
-                  cp.phase = newPhase;
-                  if (newPhase === 'plant' && _hp <= 0) {
-                    cp.cornPlanted = false; cp.beansPlanted = false; cp.squashPlanted = false;
-                  }
-                  return Object.assign({}, prev, { companionPlanting: cp });
-                });
-              }, 100);
-              return function () { clearInterval(timer); };
-            }, [phase, allPlanted, growSpeed]);
+            // NOTE: Companion Planting hooks (canvas sync + day ticker) have been hoisted
+            // to top level of StemLabModal to satisfy React Rules of Hooks.
+            // See the top-level hooks near the Synth Keyboard Hook.
 
             // ── Gauge helper (inline colors to avoid Tailwind JIT purge) ──
             var _gaugeColors = {
@@ -17178,565 +17198,530 @@
             );
           })(),
 
-// ═══════════════════════════════════════════════════════════════
-// ██  CODING PLAYGROUND — Visual Block / Text Turtle Graphics  ██
-// ═══════════════════════════════════════════════════════════════
-stemLabTab === 'explore' && stemLabTool === 'codingPlayground' && (() => {
-    // ── State from labToolData ──
-    var d = (labToolData && labToolData._codingPlayground) || {};
-    var upd = function (key, val) {
-        setLabToolData(function (prev) {
-            var cp = Object.assign({}, (prev && prev._codingPlayground) || {});
-            cp[key] = val;
-            return Object.assign({}, prev, { _codingPlayground: cp });
-        });
-    };
-    var updMulti = function (obj) {
-        setLabToolData(function (prev) {
-            var cp = Object.assign({}, (prev && prev._codingPlayground) || {});
-            Object.keys(obj).forEach(function (k) { cp[k] = obj[k]; });
-            return Object.assign({}, prev, { _codingPlayground: cp });
-        });
-    };
+          // ═══════════════════════════════════════════════════════════════
+          // ██  CODING PLAYGROUND — Visual Block / Text Turtle Graphics  ██
+          // ═══════════════════════════════════════════════════════════════
+          stemLabTab === 'explore' && stemLabTool === 'codingPlayground' && (() => {
+            // ── State from labToolData ──
+            var d = (labToolData && labToolData._codingPlayground) || {};
+            var upd = function (key, val) {
+              setLabToolData(function (prev) {
+                var cp = Object.assign({}, (prev && prev._codingPlayground) || {});
+                cp[key] = val;
+                return Object.assign({}, prev, { _codingPlayground: cp });
+              });
+            };
+            var updMulti = function (obj) {
+              setLabToolData(function (prev) {
+                var cp = Object.assign({}, (prev && prev._codingPlayground) || {});
+                Object.keys(obj).forEach(function (k) { cp[k] = obj[k]; });
+                return Object.assign({}, prev, { _codingPlayground: cp });
+              });
+            };
 
-    // ── Defaults ──
-    var blocks = d.blocks || [];
-    var turtleState = d.turtle || { x: 250, y: 250, angle: -90, penDown: true, color: '#6366f1', width: 2 };
-    var drawnLines = d.lines || [];
-    var running = d.running || false;
-    var stepIdx = d.stepIdx != null ? d.stepIdx : -1;
-    var codeMode = d.codeMode || 'blocks';
-    var textCode = d.textCode || '';
-    var challengeIdx = d.challengeIdx != null ? d.challengeIdx : -1;
-    var completed = d.completed || [];
-    var speed = d.speed || 200;
+            // ── Defaults ──
+            var blocks = d.blocks || [];
+            var turtleState = d.turtle || { x: 250, y: 250, angle: -90, penDown: true, color: '#6366f1', width: 2 };
+            var drawnLines = d.lines || [];
+            var running = d.running || false;
+            var stepIdx = d.stepIdx != null ? d.stepIdx : -1;
+            var codeMode = d.codeMode || 'blocks';
+            var textCode = d.textCode || '';
+            var challengeIdx = d.challengeIdx != null ? d.challengeIdx : -1;
+            var completed = d.completed || [];
+            var speed = d.speed || 200;
 
-    // ── Block definitions ──
-    var BLOCK_TYPES = [
-        { type: 'forward', label: '🐢 Move Forward', param: 'distance', defaultVal: 50, unit: 'px', color: '#6366f1' },
-        { type: 'right', label: '↩️ Turn Right', param: 'degrees', defaultVal: 90, unit: '°', color: '#f59e0b' },
-        { type: 'left', label: '↪️ Turn Left', param: 'degrees', defaultVal: 90, unit: '°', color: '#f59e0b' },
-        { type: 'penup', label: '✏️ Pen Up', param: null, defaultVal: null, unit: null, color: '#94a3b8' },
-        { type: 'pendown', label: '✏️ Pen Down', param: null, defaultVal: null, unit: null, color: '#22c55e' },
-        { type: 'color', label: '🎨 Set Color', param: 'color', defaultVal: '#6366f1', unit: null, color: '#ec4899' },
-        { type: 'width', label: '📏 Set Width', param: 'width', defaultVal: 2, unit: 'px', color: '#14b8a6' },
-        { type: 'repeat', label: '🔄 Repeat', param: 'times', defaultVal: 4, unit: '×', color: '#8b5cf6' }
-    ];
+            // ── Block definitions ──
+            var BLOCK_TYPES = [
+              { type: 'forward', label: '🐢 Move Forward', param: 'distance', defaultVal: 50, unit: 'px', color: '#6366f1' },
+              { type: 'right', label: '↩️ Turn Right', param: 'degrees', defaultVal: 90, unit: '°', color: '#f59e0b' },
+              { type: 'left', label: '↪️ Turn Left', param: 'degrees', defaultVal: 90, unit: '°', color: '#f59e0b' },
+              { type: 'penup', label: '✏️ Pen Up', param: null, defaultVal: null, unit: null, color: '#94a3b8' },
+              { type: 'pendown', label: '✏️ Pen Down', param: null, defaultVal: null, unit: null, color: '#22c55e' },
+              { type: 'color', label: '🎨 Set Color', param: 'color', defaultVal: '#6366f1', unit: null, color: '#ec4899' },
+              { type: 'width', label: '📏 Set Width', param: 'width', defaultVal: 2, unit: 'px', color: '#14b8a6' },
+              { type: 'repeat', label: '🔄 Repeat', param: 'times', defaultVal: 4, unit: '×', color: '#8b5cf6' }
+            ];
 
-    // ── Challenges ──
-    var CHALLENGES = [
-        { id: 'hello', title: '1. Hello, Turtle!', desc: 'Add a "Move Forward" block and run it.', concept: 'Sequencing', hint: 'Drag a Move Forward block to your program and click Run!', check: function (lines) { return lines.length >= 1; } },
-        { id: 'square', title: '2. Draw a Square', desc: 'Draw a square using Move and Turn blocks.', concept: 'Sequencing', hint: 'You need 4× Move Forward + 4× Turn Right 90°', check: function (lines) { var ex = getEndpoints(lines); return ex.closed && Math.abs(ex.turns - 360) < 10 && ex.segments >= 4; } },
-        { id: 'loop_square', title: '3. Loop It!', desc: 'Draw the same square using a Repeat block.', concept: 'Loops', hint: 'Use Repeat 4× with Move Forward and Turn Right 90° inside.', check: function (lines, blks) { return blks.some(function (b) { return b.type === 'repeat'; }) && lines.length >= 4; } },
-        { id: 'triangle', title: '4. Triangle Time', desc: 'Draw an equilateral triangle.', concept: 'Loops + Angles', hint: 'Repeat 3×: Move Forward, Turn Right 120°', check: function (lines) { var ex = getEndpoints(lines); return ex.closed && ex.segments >= 3 && Math.abs(ex.turns - 360) < 15; } },
-        { id: 'rainbow', title: '5. Rainbow Line', desc: 'Draw 3+ lines, each a different color.', concept: 'Variables', hint: 'Use Set Color blocks between your Move Forward blocks.', check: function (lines) { var colors = {}; lines.forEach(function (l) { colors[l.color] = true; }); return Object.keys(colors).length >= 3; } },
-        { id: 'star', title: '6. Star Power', desc: 'Draw a 5-pointed star.', concept: 'Math + Patterns', hint: 'Repeat 5×: Move Forward 100, Turn Right 144°', check: function (lines) { return lines.length >= 5; } },
-        { id: 'spiral', title: '7. Spiral', desc: 'Create a spiral that grows outward.', concept: 'Variables in Loops', hint: 'This is tricky! Try increasing the distance each time.', check: function (lines) { return lines.length >= 10; } },
-        { id: 'freestyle', title: '8. Freestyle!', desc: 'Create any drawing with 20+ line segments.', concept: 'Creativity', hint: 'Combine everything you\'ve learned!', check: function (lines) { return lines.length >= 20; } }
-    ];
+            // ── Challenges ──
+            var CHALLENGES = [
+              { id: 'hello', title: '1. Hello, Turtle!', desc: 'Add a "Move Forward" block and run it.', concept: 'Sequencing', hint: 'Drag a Move Forward block to your program and click Run!', check: function (lines) { return lines.length >= 1; } },
+              { id: 'square', title: '2. Draw a Square', desc: 'Draw a square using Move and Turn blocks.', concept: 'Sequencing', hint: 'You need 4× Move Forward + 4× Turn Right 90°', check: function (lines) { var ex = getEndpoints(lines); return ex.closed && Math.abs(ex.turns - 360) < 10 && ex.segments >= 4; } },
+              { id: 'loop_square', title: '3. Loop It!', desc: 'Draw the same square using a Repeat block.', concept: 'Loops', hint: 'Use Repeat 4× with Move Forward and Turn Right 90° inside.', check: function (lines, blks) { return blks.some(function (b) { return b.type === 'repeat'; }) && lines.length >= 4; } },
+              { id: 'triangle', title: '4. Triangle Time', desc: 'Draw an equilateral triangle.', concept: 'Loops + Angles', hint: 'Repeat 3×: Move Forward, Turn Right 120°', check: function (lines) { var ex = getEndpoints(lines); return ex.closed && ex.segments >= 3 && Math.abs(ex.turns - 360) < 15; } },
+              { id: 'rainbow', title: '5. Rainbow Line', desc: 'Draw 3+ lines, each a different color.', concept: 'Variables', hint: 'Use Set Color blocks between your Move Forward blocks.', check: function (lines) { var colors = {}; lines.forEach(function (l) { colors[l.color] = true; }); return Object.keys(colors).length >= 3; } },
+              { id: 'star', title: '6. Star Power', desc: 'Draw a 5-pointed star.', concept: 'Math + Patterns', hint: 'Repeat 5×: Move Forward 100, Turn Right 144°', check: function (lines) { return lines.length >= 5; } },
+              { id: 'spiral', title: '7. Spiral', desc: 'Create a spiral that grows outward.', concept: 'Variables in Loops', hint: 'This is tricky! Try increasing the distance each time.', check: function (lines) { return lines.length >= 10; } },
+              { id: 'freestyle', title: '8. Freestyle!', desc: 'Create any drawing with 20+ line segments.', concept: 'Creativity', hint: 'Combine everything you\'ve learned!', check: function (lines) { return lines.length >= 20; } }
+            ];
 
-    // ── Helper: analyze drawn lines for challenge checking ──
-    function getEndpoints(lines) {
-        if (lines.length === 0) return { closed: false, turns: 0, segments: 0 };
-        var first = lines[0];
-        var last = lines[lines.length - 1];
-        var dist = Math.sqrt(Math.pow(last.x2 - first.x1, 2) + Math.pow(last.y2 - first.y1, 2));
-        var totalAngle = 0;
-        for (var i = 1; i < lines.length; i++) {
-            var a1 = Math.atan2(lines[i - 1].y2 - lines[i - 1].y1, lines[i - 1].x2 - lines[i - 1].x1);
-            var a2 = Math.atan2(lines[i].y2 - lines[i].y1, lines[i].x2 - lines[i].x1);
-            var diff = (a2 - a1) * 180 / Math.PI;
-            while (diff > 180) diff -= 360;
-            while (diff < -180) diff += 360;
-            totalAngle += Math.abs(diff);
-        }
-        return { closed: dist < 15, turns: totalAngle, segments: lines.length };
-    }
-
-    // ── Generate text code from blocks ──
-    function blocksToText(blks, indent) {
-        indent = indent || '';
-        var lines = [];
-        for (var i = 0; i < blks.length; i++) {
-            var b = blks[i];
-            if (b.type === 'forward') lines.push(indent + 'forward(' + (b.distance || 50) + ')');
-            else if (b.type === 'right') lines.push(indent + 'right(' + (b.degrees || 90) + ')');
-            else if (b.type === 'left') lines.push(indent + 'left(' + (b.degrees || 90) + ')');
-            else if (b.type === 'penup') lines.push(indent + 'penUp()');
-            else if (b.type === 'pendown') lines.push(indent + 'penDown()');
-            else if (b.type === 'color') lines.push(indent + 'setColor("' + (b.color || '#6366f1') + '")');
-            else if (b.type === 'width') lines.push(indent + 'setWidth(' + (b.width || 2) + ')');
-            else if (b.type === 'repeat') {
-                lines.push(indent + 'repeat(' + (b.times || 4) + ', function() {');
-                if (b.children && b.children.length > 0) {
-                    lines.push(blocksToText(b.children, indent + '  '));
-                }
-                lines.push(indent + '})');
+            // ── Helper: analyze drawn lines for challenge checking ──
+            function getEndpoints(lines) {
+              if (lines.length === 0) return { closed: false, turns: 0, segments: 0 };
+              var first = lines[0];
+              var last = lines[lines.length - 1];
+              var dist = Math.sqrt(Math.pow(last.x2 - first.x1, 2) + Math.pow(last.y2 - first.y1, 2));
+              var totalAngle = 0;
+              for (var i = 1; i < lines.length; i++) {
+                var a1 = Math.atan2(lines[i - 1].y2 - lines[i - 1].y1, lines[i - 1].x2 - lines[i - 1].x1);
+                var a2 = Math.atan2(lines[i].y2 - lines[i].y1, lines[i].x2 - lines[i].x1);
+                var diff = (a2 - a1) * 180 / Math.PI;
+                while (diff > 180) diff -= 360;
+                while (diff < -180) diff += 360;
+                totalAngle += Math.abs(diff);
+              }
+              return { closed: dist < 15, turns: totalAngle, segments: lines.length };
             }
-        }
-        return lines.join('\n');
-    }
 
-    // ── Parse text code to blocks ──
-    function textToBlocks(code) {
-        var result = [];
-        var lineArr = code.split('\n').map(function (l) { return l.trim(); }).filter(function (l) { return l.length > 0; });
-        var i = 0;
-        function parse() {
-            var blks = [];
-            while (i < lineArr.length) {
-                var line = lineArr[i];
-                if (line.match(/^}\)?;?$/)) { i++; return blks; }
-                var m;
-                if ((m = line.match(/^forward\((\d+)\)/))) { blks.push({ type: 'forward', distance: parseInt(m[1]) }); }
-                else if ((m = line.match(/^right\((\d+)\)/))) { blks.push({ type: 'right', degrees: parseInt(m[1]) }); }
-                else if ((m = line.match(/^left\((\d+)\)/))) { blks.push({ type: 'left', degrees: parseInt(m[1]) }); }
-                else if (line.match(/^penUp\(\)/)) { blks.push({ type: 'penup' }); }
-                else if (line.match(/^penDown\(\)/)) { blks.push({ type: 'pendown' }); }
-                else if ((m = line.match(/^setColor\("([^"]+)"\)/))) { blks.push({ type: 'color', color: m[1] }); }
-                else if ((m = line.match(/^setWidth\((\d+)\)/))) { blks.push({ type: 'width', width: parseInt(m[1]) }); }
-                else if ((m = line.match(/^repeat\((\d+)/))) {
+            // ── Generate text code from blocks ──
+            function blocksToText(blks, indent) {
+              indent = indent || '';
+              var lines = [];
+              for (var i = 0; i < blks.length; i++) {
+                var b = blks[i];
+                if (b.type === 'forward') lines.push(indent + 'forward(' + (b.distance || 50) + ')');
+                else if (b.type === 'right') lines.push(indent + 'right(' + (b.degrees || 90) + ')');
+                else if (b.type === 'left') lines.push(indent + 'left(' + (b.degrees || 90) + ')');
+                else if (b.type === 'penup') lines.push(indent + 'penUp()');
+                else if (b.type === 'pendown') lines.push(indent + 'penDown()');
+                else if (b.type === 'color') lines.push(indent + 'setColor("' + (b.color || '#6366f1') + '")');
+                else if (b.type === 'width') lines.push(indent + 'setWidth(' + (b.width || 2) + ')');
+                else if (b.type === 'repeat') {
+                  lines.push(indent + 'repeat(' + (b.times || 4) + ', function() {');
+                  if (b.children && b.children.length > 0) {
+                    lines.push(blocksToText(b.children, indent + '  '));
+                  }
+                  lines.push(indent + '})');
+                }
+              }
+              return lines.join('\n');
+            }
+
+            // ── Parse text code to blocks ──
+            function textToBlocks(code) {
+              var result = [];
+              var lineArr = code.split('\n').map(function (l) { return l.trim(); }).filter(function (l) { return l.length > 0; });
+              var i = 0;
+              function parse() {
+                var blks = [];
+                while (i < lineArr.length) {
+                  var line = lineArr[i];
+                  if (line.match(/^}\)?;?$/)) { i++; return blks; }
+                  var m;
+                  if ((m = line.match(/^forward\((\d+)\)/))) { blks.push({ type: 'forward', distance: parseInt(m[1]) }); }
+                  else if ((m = line.match(/^right\((\d+)\)/))) { blks.push({ type: 'right', degrees: parseInt(m[1]) }); }
+                  else if ((m = line.match(/^left\((\d+)\)/))) { blks.push({ type: 'left', degrees: parseInt(m[1]) }); }
+                  else if (line.match(/^penUp\(\)/)) { blks.push({ type: 'penup' }); }
+                  else if (line.match(/^penDown\(\)/)) { blks.push({ type: 'pendown' }); }
+                  else if ((m = line.match(/^setColor\("([^"]+)"\)/))) { blks.push({ type: 'color', color: m[1] }); }
+                  else if ((m = line.match(/^setWidth\((\d+)\)/))) { blks.push({ type: 'width', width: parseInt(m[1]) }); }
+                  else if ((m = line.match(/^repeat\((\d+)/))) {
                     i++;
                     var children = parse();
                     blks.push({ type: 'repeat', times: parseInt(m[1]), children: children });
                     continue;
+                  }
+                  i++;
                 }
-                i++;
+                return blks;
+              }
+              return parse();
             }
-            return blks;
-        }
-        return parse();
-    }
 
-    // ── Execute blocks (async with animation) ──
-    function executeBlocks(blks, turtle, lines, cb, spd, stepCb) {
-        var t = Object.assign({}, turtle);
-        var allLines = lines.slice();
-        function flattenBlocks(bArr) {
-            var flat = [];
-            for (var j = 0; j < bArr.length; j++) {
-                if (bArr[j].type === 'repeat') {
+            // ── Execute blocks (async with animation) ──
+            function executeBlocks(blks, turtle, lines, cb, spd, stepCb) {
+              var t = Object.assign({}, turtle);
+              var allLines = lines.slice();
+              function flattenBlocks(bArr) {
+                var flat = [];
+                for (var j = 0; j < bArr.length; j++) {
+                  if (bArr[j].type === 'repeat') {
                     var times = bArr[j].times || 4;
                     for (var r = 0; r < times; r++) {
-                        flat = flat.concat(flattenBlocks(bArr[j].children || []));
+                      flat = flat.concat(flattenBlocks(bArr[j].children || []));
                     }
-                } else {
+                  } else {
                     flat.push(bArr[j]);
+                  }
                 }
-            }
-            return flat;
-        }
-        var flat = flattenBlocks(blks);
-        var idx = 0;
+                return flat;
+              }
+              var flat = flattenBlocks(blks);
+              var idx = 0;
 
-        function step() {
-            if (idx >= flat.length) {
-                if (cb) cb(t, allLines);
-                return;
-            }
-            var b = flat[idx];
-            if (stepCb) stepCb(idx);
-            if (b.type === 'forward') {
-                var dist = b.distance || 50;
-                var rad = t.angle * Math.PI / 180;
-                var nx = t.x + Math.cos(rad) * dist;
-                var ny = t.y + Math.sin(rad) * dist;
-                if (t.penDown) {
+              function step() {
+                if (idx >= flat.length) {
+                  if (cb) cb(t, allLines);
+                  return;
+                }
+                var b = flat[idx];
+                if (stepCb) stepCb(idx);
+                if (b.type === 'forward') {
+                  var dist = b.distance || 50;
+                  var rad = t.angle * Math.PI / 180;
+                  var nx = t.x + Math.cos(rad) * dist;
+                  var ny = t.y + Math.sin(rad) * dist;
+                  if (t.penDown) {
                     allLines.push({ x1: t.x, y1: t.y, x2: nx, y2: ny, color: t.color, width: t.width });
+                  }
+                  t.x = nx; t.y = ny;
+                } else if (b.type === 'right') {
+                  t.angle = (t.angle + (b.degrees || 90)) % 360;
+                } else if (b.type === 'left') {
+                  t.angle = (t.angle - (b.degrees || 90) + 360) % 360;
+                } else if (b.type === 'penup') {
+                  t.penDown = false;
+                } else if (b.type === 'pendown') {
+                  t.penDown = true;
+                } else if (b.type === 'color') {
+                  t.color = b.color || '#6366f1';
+                } else if (b.type === 'width') {
+                  t.width = b.width || 2;
                 }
-                t.x = nx; t.y = ny;
-            } else if (b.type === 'right') {
-                t.angle = (t.angle + (b.degrees || 90)) % 360;
-            } else if (b.type === 'left') {
-                t.angle = (t.angle - (b.degrees || 90) + 360) % 360;
-            } else if (b.type === 'penup') {
-                t.penDown = false;
-            } else if (b.type === 'pendown') {
-                t.penDown = true;
-            } else if (b.type === 'color') {
-                t.color = b.color || '#6366f1';
-            } else if (b.type === 'width') {
-                t.width = b.width || 2;
+                updMulti({ turtle: Object.assign({}, t), lines: allLines.slice(), stepIdx: idx, running: true });
+                idx++;
+                setTimeout(step, spd || 200);
+              }
+              step();
             }
-            updMulti({ turtle: Object.assign({}, t), lines: allLines.slice(), stepIdx: idx, running: true });
-            idx++;
-            setTimeout(step, spd || 200);
-        }
-        step();
-    }
 
-    // ── Run handler ──
-    function handleRun() {
-        var startTurtle = { x: 250, y: 250, angle: -90, penDown: true, color: '#6366f1', width: 2 };
-        updMulti({ turtle: startTurtle, lines: [], running: true, stepIdx: 0 });
-        var blks = codeMode === 'text' ? textToBlocks(textCode) : blocks;
-        setTimeout(function () {
-            executeBlocks(blks, startTurtle, [], function (finalTurtle, finalLines) {
-                updMulti({ turtle: finalTurtle, lines: finalLines, running: false, stepIdx: -1 });
-                if (challengeIdx >= 0 && challengeIdx < CHALLENGES.length) {
+            // ── Run handler ──
+            function handleRun() {
+              var startTurtle = { x: 250, y: 250, angle: -90, penDown: true, color: '#6366f1', width: 2 };
+              updMulti({ turtle: startTurtle, lines: [], running: true, stepIdx: 0 });
+              var blks = codeMode === 'text' ? textToBlocks(textCode) : blocks;
+              setTimeout(function () {
+                executeBlocks(blks, startTurtle, [], function (finalTurtle, finalLines) {
+                  updMulti({ turtle: finalTurtle, lines: finalLines, running: false, stepIdx: -1 });
+                  if (challengeIdx >= 0 && challengeIdx < CHALLENGES.length) {
                     var ch = CHALLENGES[challengeIdx];
                     if (ch.check(finalLines, blks)) {
-                        if (completed.indexOf(ch.id) < 0) {
-                            var newCompleted = completed.concat([ch.id]);
-                            upd('completed', newCompleted);
-                            awardStemXP('codingPlayground', 15, 'Completed: ' + ch.title);
-                            if (addToast) addToast('🎉 Challenge "' + ch.title + '" complete!', 'success');
-                        }
+                      if (completed.indexOf(ch.id) < 0) {
+                        var newCompleted = completed.concat([ch.id]);
+                        upd('completed', newCompleted);
+                        awardStemXP('codingPlayground', 15, 'Completed: ' + ch.title);
+                        if (addToast) addToast('🎉 Challenge "' + ch.title + '" complete!', 'success');
+                      }
                     }
+                  }
+                }, speed, function (si) {
+                  upd('stepIdx', si);
+                });
+              }, 50);
+            }
+
+            function handleClear() {
+              updMulti({ turtle: { x: 250, y: 250, angle: -90, penDown: true, color: '#6366f1', width: 2 }, lines: [], running: false, stepIdx: -1 });
+            }
+
+            function handleReset() {
+              updMulti({ blocks: [], turtle: { x: 250, y: 250, angle: -90, penDown: true, color: '#6366f1', width: 2 }, lines: [], running: false, stepIdx: -1, textCode: '', challengeIdx: -1 });
+            }
+
+            function addBlock(type) {
+              var def = BLOCK_TYPES.find(function (bt) { return bt.type === type; });
+              var newBlock = { type: type };
+              if (def && def.param) newBlock[def.param] = def.defaultVal;
+              if (type === 'repeat') newBlock.children = [];
+              var updated = blocks.concat([newBlock]);
+              upd('blocks', updated);
+              if (codeMode === 'text') upd('textCode', blocksToText(updated));
+            }
+
+            function removeBlock(idx) {
+              var updated = blocks.filter(function (_, i) { return i !== idx; });
+              upd('blocks', updated);
+              if (codeMode === 'text') upd('textCode', blocksToText(updated));
+            }
+
+            function updateBlockParam(idx, param, val) {
+              var updated = blocks.map(function (b, i) {
+                if (i === idx) { var nb = Object.assign({}, b); nb[param] = val; return nb; }
+                return b;
+              });
+              upd('blocks', updated);
+              if (codeMode === 'text') upd('textCode', blocksToText(updated));
+            }
+
+            function addChildBlock(repeatIdx, type) {
+              var def = BLOCK_TYPES.find(function (bt) { return bt.type === type; });
+              var newBlock = { type: type };
+              if (def && def.param) newBlock[def.param] = def.defaultVal;
+              var updated = blocks.map(function (b, i) {
+                if (i === repeatIdx && b.type === 'repeat') {
+                  var nb = Object.assign({}, b);
+                  nb.children = (nb.children || []).concat([newBlock]);
+                  return nb;
                 }
-            }, speed, function (si) {
-                upd('stepIdx', si);
-            });
-        }, 50);
-    }
-
-    function handleClear() {
-        updMulti({ turtle: { x: 250, y: 250, angle: -90, penDown: true, color: '#6366f1', width: 2 }, lines: [], running: false, stepIdx: -1 });
-    }
-
-    function handleReset() {
-        updMulti({ blocks: [], turtle: { x: 250, y: 250, angle: -90, penDown: true, color: '#6366f1', width: 2 }, lines: [], running: false, stepIdx: -1, textCode: '', challengeIdx: -1 });
-    }
-
-    function addBlock(type) {
-        var def = BLOCK_TYPES.find(function (bt) { return bt.type === type; });
-        var newBlock = { type: type };
-        if (def && def.param) newBlock[def.param] = def.defaultVal;
-        if (type === 'repeat') newBlock.children = [];
-        var updated = blocks.concat([newBlock]);
-        upd('blocks', updated);
-        if (codeMode === 'text') upd('textCode', blocksToText(updated));
-    }
-
-    function removeBlock(idx) {
-        var updated = blocks.filter(function (_, i) { return i !== idx; });
-        upd('blocks', updated);
-        if (codeMode === 'text') upd('textCode', blocksToText(updated));
-    }
-
-    function updateBlockParam(idx, param, val) {
-        var updated = blocks.map(function (b, i) {
-            if (i === idx) { var nb = Object.assign({}, b); nb[param] = val; return nb; }
-            return b;
-        });
-        upd('blocks', updated);
-        if (codeMode === 'text') upd('textCode', blocksToText(updated));
-    }
-
-    function addChildBlock(repeatIdx, type) {
-        var def = BLOCK_TYPES.find(function (bt) { return bt.type === type; });
-        var newBlock = { type: type };
-        if (def && def.param) newBlock[def.param] = def.defaultVal;
-        var updated = blocks.map(function (b, i) {
-            if (i === repeatIdx && b.type === 'repeat') {
-                var nb = Object.assign({}, b);
-                nb.children = (nb.children || []).concat([newBlock]);
-                return nb;
+                return b;
+              });
+              upd('blocks', updated);
+              if (codeMode === 'text') upd('textCode', blocksToText(updated));
             }
-            return b;
-        });
-        upd('blocks', updated);
-        if (codeMode === 'text') upd('textCode', blocksToText(updated));
-    }
 
-    function removeChildBlock(repeatIdx, childIdx) {
-        var updated = blocks.map(function (b, i) {
-            if (i === repeatIdx && b.type === 'repeat') {
-                var nb = Object.assign({}, b);
-                nb.children = (nb.children || []).filter(function (_, ci) { return ci !== childIdx; });
-                return nb;
+            function removeChildBlock(repeatIdx, childIdx) {
+              var updated = blocks.map(function (b, i) {
+                if (i === repeatIdx && b.type === 'repeat') {
+                  var nb = Object.assign({}, b);
+                  nb.children = (nb.children || []).filter(function (_, ci) { return ci !== childIdx; });
+                  return nb;
+                }
+                return b;
+              });
+              upd('blocks', updated);
+              if (codeMode === 'text') upd('textCode', blocksToText(updated));
             }
-            return b;
-        });
-        upd('blocks', updated);
-        if (codeMode === 'text') upd('textCode', blocksToText(updated));
-    }
 
-    function toggleMode() {
-        if (codeMode === 'blocks') {
-            upd('textCode', blocksToText(blocks));
-            upd('codeMode', 'text');
-        } else {
-            upd('blocks', textToBlocks(textCode));
-            upd('codeMode', 'blocks');
-        }
-    }
+            function toggleMode() {
+              if (codeMode === 'blocks') {
+                upd('textCode', blocksToText(blocks));
+                upd('codeMode', 'text');
+              } else {
+                upd('blocks', textToBlocks(textCode));
+                upd('codeMode', 'blocks');
+              }
+            }
 
-    function moveBlock(idx, dir) {
-        var newIdx = idx + dir;
-        if (newIdx < 0 || newIdx >= blocks.length) return;
-        var updated = blocks.slice();
-        var tmp = updated[idx];
-        updated[idx] = updated[newIdx];
-        updated[newIdx] = tmp;
-        upd('blocks', updated);
-    }
+            function moveBlock(idx, dir) {
+              var newIdx = idx + dir;
+              if (newIdx < 0 || newIdx >= blocks.length) return;
+              var updated = blocks.slice();
+              var tmp = updated[idx];
+              updated[idx] = updated[newIdx];
+              updated[newIdx] = tmp;
+              upd('blocks', updated);
+            }
 
-    // ── Canvas rendering via useEffect ──
-    var canvasRef = React.useRef(null);
-    React.useEffect(function () {
-        var cvs = canvasRef.current;
-        if (!cvs) return;
-        var ctx = cvs.getContext('2d');
-        var W = 500, H = 500;
-        cvs.width = W; cvs.height = H;
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(0, 0, W, H);
-        // Grid
-        ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 0.5;
-        for (var gx = 0; gx <= W; gx += 25) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke(); }
-        for (var gy = 0; gy <= H; gy += 25) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke(); }
-        // Center cross
-        ctx.strokeStyle = '#334155'; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(W / 2, 0); ctx.lineTo(W / 2, H); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(0, H / 2); ctx.lineTo(W, H / 2); ctx.stroke();
-        // Lines
-        drawnLines.forEach(function (ln) {
-            ctx.strokeStyle = ln.color || '#6366f1'; ctx.lineWidth = ln.width || 2; ctx.lineCap = 'round';
-            ctx.beginPath(); ctx.moveTo(ln.x1, ln.y1); ctx.lineTo(ln.x2, ln.y2); ctx.stroke();
-        });
-        // Turtle sprite
-        var tx = turtleState.x, ty = turtleState.y, ta = turtleState.angle * Math.PI / 180;
-        ctx.save(); ctx.translate(tx, ty); ctx.rotate(ta + Math.PI / 2);
-        ctx.fillStyle = '#22c55e';
-        ctx.beginPath(); ctx.moveTo(0, -12); ctx.lineTo(-8, 8); ctx.lineTo(8, 8); ctx.closePath(); ctx.fill();
-        ctx.strokeStyle = '#86efac'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(0, -12); ctx.lineTo(0, -18); ctx.stroke();
-        ctx.fillStyle = '#fff';
-        ctx.beginPath(); ctx.arc(-3, -2, 2, 0, Math.PI * 2); ctx.arc(3, -2, 2, 0, Math.PI * 2); ctx.fill();
-        ctx.restore();
-        if (turtleState.penDown) { ctx.fillStyle = turtleState.color; ctx.beginPath(); ctx.arc(tx, ty, 3, 0, Math.PI * 2); ctx.fill(); }
-        // HUD
-        ctx.fillStyle = '#94a3b8'; ctx.font = '11px monospace';
-        ctx.fillText('(' + Math.round(turtleState.x) + ', ' + Math.round(turtleState.y) + ') ' + Math.round((turtleState.angle + 90 + 360) % 360) + '°', 8, H - 8);
-        ctx.fillText(drawnLines.length + ' segments', W - 90, H - 8);
-    }, [turtleState, drawnLines]);
+            // NOTE: Coding Playground canvas hooks (useRef + useEffect) have been hoisted
+            // to top level of StemLabModal to satisfy React Rules of Hooks.
+            // The ref is available as _codingCanvasRef.
+            var canvasRef = _codingCanvasRef;
 
-    // ── Render ──
-    return React.createElement("div", {
-        className: "grid gap-4",
-        style: { gridTemplateColumns: '220px 1fr', gridTemplateRows: 'auto auto' }
-    },
-        // ── Header bar ──
-        React.createElement("div", {
-            className: "col-span-2 flex items-center gap-3 p-3 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl shadow-lg"
-        },
-            React.createElement("span", { className: "text-2xl" }, "🖥️"),
-            React.createElement("div", { className: "flex-1" },
-                React.createElement("h2", { className: "text-white font-bold text-lg" }, "Coding Playground"),
-                React.createElement("p", { className: "text-indigo-200 text-xs" },
+            // ── Render ──
+            return React.createElement("div", {
+              className: "grid gap-4",
+              style: { gridTemplateColumns: '220px 1fr', gridTemplateRows: 'auto auto' }
+            },
+              // ── Header bar ──
+              React.createElement("div", {
+                className: "col-span-2 flex items-center gap-3 p-3 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl shadow-lg"
+              },
+                React.createElement("span", { className: "text-2xl" }, "🖥️"),
+                React.createElement("div", { className: "flex-1" },
+                  React.createElement("h2", { className: "text-white font-bold text-lg" }, "Coding Playground"),
+                  React.createElement("p", { className: "text-indigo-200 text-xs" },
                     challengeIdx >= 0 ? '🎯 ' + CHALLENGES[challengeIdx].title + ' — ' + CHALLENGES[challengeIdx].desc :
-                        'Build programs with blocks or code. The turtle draws your creation!'
-                )
-            ),
-            // Mode toggle — Minecraft Education style
-            React.createElement("button", {
-                onClick: toggleMode,
-                className: "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all " +
+                      'Build programs with blocks or code. The turtle draws your creation!'
+                  )
+                ),
+                // Mode toggle — Minecraft Education style
+                React.createElement("button", {
+                  onClick: toggleMode,
+                  className: "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all " +
                     (codeMode === 'blocks' ? 'bg-indigo-900/50 text-indigo-200 hover:bg-indigo-900/70' : 'bg-amber-500/90 text-white hover:bg-amber-500')
-            },
-                React.createElement("span", null, codeMode === 'blocks' ? '🧩' : '📝'),
-                codeMode === 'blocks' ? 'Switch to Code' : 'Switch to Blocks'
-            ),
-            // Speed
-            React.createElement("select", {
-                value: speed,
-                onChange: function (e) { upd('speed', parseInt(e.target.value)); },
-                className: "px-2 py-1 rounded-lg bg-indigo-900/50 text-indigo-200 text-xs border border-indigo-400/30"
-            },
-                React.createElement("option", { value: 50 }, "⚡ Fast"),
-                React.createElement("option", { value: 200 }, "🐢 Normal"),
-                React.createElement("option", { value: 500 }, "🐌 Slow")
-            )
-        ),
+                },
+                  React.createElement("span", null, codeMode === 'blocks' ? '🧩' : '📝'),
+                  codeMode === 'blocks' ? 'Switch to Code' : 'Switch to Blocks'
+                ),
+                // Speed
+                React.createElement("select", {
+                  value: speed,
+                  onChange: function (e) { upd('speed', parseInt(e.target.value)); },
+                  className: "px-2 py-1 rounded-lg bg-indigo-900/50 text-indigo-200 text-xs border border-indigo-400/30"
+                },
+                  React.createElement("option", { value: 50 }, "⚡ Fast"),
+                  React.createElement("option", { value: 200 }, "🐢 Normal"),
+                  React.createElement("option", { value: 500 }, "🐌 Slow")
+                )
+              ),
 
-        // ── Left panel: Toolbox + Program ──
-        React.createElement("div", { className: "flex flex-col gap-3 max-h-[600px] overflow-y-auto" },
-            // Toolbox
-            React.createElement("div", { className: "bg-slate-800 rounded-xl p-3 border border-slate-700" },
-                React.createElement("h3", { className: "text-xs font-bold text-slate-400 uppercase tracking-wider mb-2" }, "🧰 Toolbox"),
-                React.createElement("div", { className: "flex flex-col gap-1" },
+              // ── Left panel: Toolbox + Program ──
+              React.createElement("div", { className: "flex flex-col gap-3 max-h-[600px] overflow-y-auto" },
+                // Toolbox
+                React.createElement("div", { className: "bg-slate-800 rounded-xl p-3 border border-slate-700" },
+                  React.createElement("h3", { className: "text-xs font-bold text-slate-400 uppercase tracking-wider mb-2" }, "🧰 Toolbox"),
+                  React.createElement("div", { className: "flex flex-col gap-1" },
                     BLOCK_TYPES.map(function (bt) {
-                        return React.createElement("button", {
-                            key: bt.type,
-                            onClick: function () { addBlock(bt.type); },
-                            disabled: running,
-                            className: "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-white transition-all hover:scale-[1.02] hover:brightness-110 disabled:opacity-40",
-                            style: { backgroundColor: bt.color }
-                        }, bt.label);
+                      return React.createElement("button", {
+                        key: bt.type,
+                        onClick: function () { addBlock(bt.type); },
+                        disabled: running,
+                        className: "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-white transition-all hover:scale-[1.02] hover:brightness-110 disabled:opacity-40",
+                        style: { backgroundColor: bt.color }
+                      }, bt.label);
                     })
-                )
-            ),
+                  )
+                ),
 
-            // Program (blocks mode)
-            codeMode === 'blocks' && React.createElement("div", { className: "bg-slate-800 rounded-xl p-3 border border-slate-700 flex-1" },
-                React.createElement("h3", { className: "text-xs font-bold text-slate-400 uppercase tracking-wider mb-2" },
+                // Program (blocks mode)
+                codeMode === 'blocks' && React.createElement("div", { className: "bg-slate-800 rounded-xl p-3 border border-slate-700 flex-1" },
+                  React.createElement("h3", { className: "text-xs font-bold text-slate-400 uppercase tracking-wider mb-2" },
                     "📋 Program (" + blocks.length + " blocks)"
-                ),
-                blocks.length === 0 && React.createElement("p", { className: "text-slate-500 text-xs italic text-center py-4" },
+                  ),
+                  blocks.length === 0 && React.createElement("p", { className: "text-slate-500 text-xs italic text-center py-4" },
                     'Click blocks above to add them to your program'
-                ),
-                React.createElement("div", { className: "flex flex-col gap-1" },
+                  ),
+                  React.createElement("div", { className: "flex flex-col gap-1" },
                     blocks.map(function (b, idx) {
-                        var def = BLOCK_TYPES.find(function (bt) { return bt.type === b.type; });
-                        var isActive = running && stepIdx === idx;
-                        return React.createElement("div", { key: idx },
-                            React.createElement("div", {
-                                className: "flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold text-white transition-all " +
-                                    (isActive ? 'ring-2 ring-yellow-400 scale-105' : ''),
-                                style: { backgroundColor: def ? def.color : '#64748b' }
+                      var def = BLOCK_TYPES.find(function (bt) { return bt.type === b.type; });
+                      var isActive = running && stepIdx === idx;
+                      return React.createElement("div", { key: idx },
+                        React.createElement("div", {
+                          className: "flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold text-white transition-all " +
+                            (isActive ? 'ring-2 ring-yellow-400 scale-105' : ''),
+                          style: { backgroundColor: def ? def.color : '#64748b' }
+                        },
+                          React.createElement("span", { className: "flex-1 truncate" },
+                            def ? def.label : b.type,
+                            def && def.param && b.type !== 'repeat' && b.type !== 'color' ? ' ' + (b[def.param] || def.defaultVal) + (def.unit || '') : '',
+                            b.type === 'repeat' ? ' ' + (b.times || 4) + '×' : ''
+                          ),
+                          // Param editor
+                          def && def.param && b.type !== 'color' && React.createElement("input", {
+                            type: "number", value: b[def.param] || def.defaultVal,
+                            onChange: function (e) { updateBlockParam(idx, def.param, parseInt(e.target.value) || def.defaultVal); },
+                            className: "w-12 px-1 py-0.5 rounded text-xs bg-white/20 text-white text-center",
+                            style: { appearance: 'textfield' }
+                          }),
+                          b.type === 'color' && React.createElement("input", {
+                            type: "color", value: b.color || '#6366f1',
+                            onChange: function (e) { updateBlockParam(idx, 'color', e.target.value); },
+                            className: "w-6 h-6 rounded cursor-pointer border-0 bg-transparent"
+                          }),
+                          React.createElement("button", { onClick: function () { moveBlock(idx, -1); }, className: "text-white/60 hover:text-white text-[10px]", disabled: idx === 0 }, "▲"),
+                          React.createElement("button", { onClick: function () { moveBlock(idx, 1); }, className: "text-white/60 hover:text-white text-[10px]", disabled: idx === blocks.length - 1 }, "▼"),
+                          React.createElement("button", { onClick: function () { removeBlock(idx); }, className: "text-white/60 hover:text-red-300 text-sm ml-1" }, "×")
+                        ),
+                        // Repeat children
+                        b.type === 'repeat' && React.createElement("div", { className: "ml-4 mt-1 pl-2 border-l-2 border-purple-400/50 flex flex-col gap-1" },
+                          (b.children || []).map(function (child, ci) {
+                            var cdef = BLOCK_TYPES.find(function (bt) { return bt.type === child.type; });
+                            return React.createElement("div", {
+                              key: ci,
+                              className: "flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium text-white",
+                              style: { backgroundColor: cdef ? cdef.color : '#64748b', opacity: 0.85 }
                             },
-                                React.createElement("span", { className: "flex-1 truncate" },
-                                    def ? def.label : b.type,
-                                    def && def.param && b.type !== 'repeat' && b.type !== 'color' ? ' ' + (b[def.param] || def.defaultVal) + (def.unit || '') : '',
-                                    b.type === 'repeat' ? ' ' + (b.times || 4) + '×' : ''
-                                ),
-                                // Param editor
-                                def && def.param && b.type !== 'color' && React.createElement("input", {
-                                    type: "number", value: b[def.param] || def.defaultVal,
-                                    onChange: function (e) { updateBlockParam(idx, def.param, parseInt(e.target.value) || def.defaultVal); },
-                                    className: "w-12 px-1 py-0.5 rounded text-xs bg-white/20 text-white text-center",
-                                    style: { appearance: 'textfield' }
-                                }),
-                                b.type === 'color' && React.createElement("input", {
-                                    type: "color", value: b.color || '#6366f1',
-                                    onChange: function (e) { updateBlockParam(idx, 'color', e.target.value); },
-                                    className: "w-6 h-6 rounded cursor-pointer border-0 bg-transparent"
-                                }),
-                                React.createElement("button", { onClick: function () { moveBlock(idx, -1); }, className: "text-white/60 hover:text-white text-[10px]", disabled: idx === 0 }, "▲"),
-                                React.createElement("button", { onClick: function () { moveBlock(idx, 1); }, className: "text-white/60 hover:text-white text-[10px]", disabled: idx === blocks.length - 1 }, "▼"),
-                                React.createElement("button", { onClick: function () { removeBlock(idx); }, className: "text-white/60 hover:text-red-300 text-sm ml-1" }, "×")
-                            ),
-                            // Repeat children
-                            b.type === 'repeat' && React.createElement("div", { className: "ml-4 mt-1 pl-2 border-l-2 border-purple-400/50 flex flex-col gap-1" },
-                                (b.children || []).map(function (child, ci) {
-                                    var cdef = BLOCK_TYPES.find(function (bt) { return bt.type === child.type; });
-                                    return React.createElement("div", {
-                                        key: ci,
-                                        className: "flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium text-white",
-                                        style: { backgroundColor: cdef ? cdef.color : '#64748b', opacity: 0.85 }
-                                    },
-                                        React.createElement("span", { className: "flex-1 truncate" },
-                                            cdef ? cdef.label : child.type,
-                                            cdef && cdef.param && child.type !== 'color' ? ' ' + (child[cdef.param] || cdef.defaultVal) + (cdef.unit || '') : ''
-                                        ),
-                                        React.createElement("button", { onClick: function () { removeChildBlock(idx, ci); }, className: "text-white/50 hover:text-red-300 text-xs" }, "×")
-                                    );
-                                }),
-                                // Quick-add buttons for repeat children
-                                React.createElement("div", { className: "flex gap-1 mt-1" },
-                                    ['forward', 'right', 'left', 'color'].map(function (ct) {
-                                        return React.createElement("button", {
-                                            key: ct, onClick: function () { addChildBlock(idx, ct); },
-                                            className: "px-2 py-0.5 rounded text-[10px] bg-slate-600 text-slate-300 hover:bg-slate-500 transition-colors"
-                                        }, ct === 'forward' ? '+🐢' : ct === 'right' ? '+↩️' : ct === 'left' ? '+↪️' : '+🎨');
-                                    })
-                                )
-                            )
-                        );
+                              React.createElement("span", { className: "flex-1 truncate" },
+                                cdef ? cdef.label : child.type,
+                                cdef && cdef.param && child.type !== 'color' ? ' ' + (child[cdef.param] || cdef.defaultVal) + (cdef.unit || '') : ''
+                              ),
+                              React.createElement("button", { onClick: function () { removeChildBlock(idx, ci); }, className: "text-white/50 hover:text-red-300 text-xs" }, "×")
+                            );
+                          }),
+                          // Quick-add buttons for repeat children
+                          React.createElement("div", { className: "flex gap-1 mt-1" },
+                            ['forward', 'right', 'left', 'color'].map(function (ct) {
+                              return React.createElement("button", {
+                                key: ct, onClick: function () { addChildBlock(idx, ct); },
+                                className: "px-2 py-0.5 rounded text-[10px] bg-slate-600 text-slate-300 hover:bg-slate-500 transition-colors"
+                              }, ct === 'forward' ? '+🐢' : ct === 'right' ? '+↩️' : ct === 'left' ? '+↪️' : '+🎨');
+                            })
+                          )
+                        )
+                      );
                     })
-                )
-            ),
+                  )
+                ),
 
-            // Code editor (text mode)
-            codeMode === 'text' && React.createElement("div", { className: "bg-slate-800 rounded-xl p-3 border border-slate-700 flex-1" },
-                React.createElement("h3", { className: "text-xs font-bold text-amber-400 uppercase tracking-wider mb-2" }, "📝 Code Editor"),
-                React.createElement("textarea", {
+                // Code editor (text mode)
+                codeMode === 'text' && React.createElement("div", { className: "bg-slate-800 rounded-xl p-3 border border-slate-700 flex-1" },
+                  React.createElement("h3", { className: "text-xs font-bold text-amber-400 uppercase tracking-wider mb-2" }, "📝 Code Editor"),
+                  React.createElement("textarea", {
                     value: textCode,
                     onChange: function (e) { upd('textCode', e.target.value); },
                     placeholder: "forward(50)\nright(90)\nforward(50)\n\n// Use repeat:\nrepeat(4, function() {\n  forward(100)\n  right(90)\n})",
                     className: "w-full h-60 p-3 rounded-lg bg-slate-900 text-green-400 text-xs font-mono border border-slate-600 focus:border-amber-400 focus:ring-1 focus:ring-amber-400 resize-none",
                     spellCheck: false
-                }),
-                React.createElement("p", { className: "text-slate-500 text-[10px] mt-1" },
+                  }),
+                  React.createElement("p", { className: "text-slate-500 text-[10px] mt-1" },
                     "Commands: forward(px), right(deg), left(deg), penUp(), penDown(), setColor(\"#hex\"), setWidth(px), repeat(n, function() { ... })"
+                  )
                 )
-            )
-        ),
+              ),
 
-        // ── Right panel: Canvas + Controls ──
-        React.createElement("div", { className: "flex flex-col gap-3" },
-            // Canvas
-            React.createElement("div", { className: "bg-slate-900 rounded-xl p-2 border border-slate-700 shadow-inner" },
-                React.createElement("canvas", {
+              // ── Right panel: Canvas + Controls ──
+              React.createElement("div", { className: "flex flex-col gap-3" },
+                // Canvas
+                React.createElement("div", { className: "bg-slate-900 rounded-xl p-2 border border-slate-700 shadow-inner" },
+                  React.createElement("canvas", {
                     ref: canvasRef, width: 500, height: 500,
                     className: "w-full rounded-lg",
                     style: { maxWidth: '500px', aspectRatio: '1/1', imageRendering: 'auto' }
-                })
-            ),
+                  })
+                ),
 
-            // Controls
-            React.createElement("div", { className: "flex items-center gap-2 flex-wrap" },
-                React.createElement("button", {
+                // Controls
+                React.createElement("div", { className: "flex items-center gap-2 flex-wrap" },
+                  React.createElement("button", {
                     onClick: handleRun,
                     disabled: running || (codeMode === 'blocks' ? blocks.length === 0 : !textCode.trim()),
                     className: "flex items-center gap-1 px-5 py-2 rounded-xl text-sm font-bold text-white transition-all " +
-                        (running ? 'bg-gray-500 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600 shadow-lg hover:shadow-green-500/30')
-                }, "▶ Run"),
-                React.createElement("button", {
+                      (running ? 'bg-gray-500 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600 shadow-lg hover:shadow-green-500/30')
+                  }, "▶ Run"),
+                  React.createElement("button", {
                     onClick: handleClear,
                     className: "flex items-center gap-1 px-4 py-2 rounded-xl text-sm font-semibold bg-slate-700 text-slate-200 hover:bg-slate-600 transition-all"
-                }, "🗑️ Clear Canvas"),
-                React.createElement("button", {
+                  }, "🗑️ Clear Canvas"),
+                  React.createElement("button", {
                     onClick: handleReset,
                     className: "flex items-center gap-1 px-4 py-2 rounded-xl text-sm font-semibold bg-red-600/80 text-white hover:bg-red-600 transition-all"
-                }, "⏪ Reset All"),
-                running && React.createElement("span", { className: "text-xs text-yellow-400 animate-pulse font-medium" },
+                  }, "⏪ Reset All"),
+                  running && React.createElement("span", { className: "text-xs text-yellow-400 animate-pulse font-medium" },
                     "🔄 Running... step " + (stepIdx + 1)
-                )
-            ),
-
-            // ── Challenges panel ──
-            React.createElement("div", { className: "bg-slate-800 rounded-xl p-3 border border-slate-700" },
-                React.createElement("h3", { className: "text-xs font-bold text-slate-400 uppercase tracking-wider mb-2" },
-                    "🏆 Challenges (" + completed.length + "/" + CHALLENGES.length + ")"
+                  )
                 ),
-                React.createElement("div", { className: "flex flex-col gap-1" },
+
+                // ── Challenges panel ──
+                React.createElement("div", { className: "bg-slate-800 rounded-xl p-3 border border-slate-700" },
+                  React.createElement("h3", { className: "text-xs font-bold text-slate-400 uppercase tracking-wider mb-2" },
+                    "🏆 Challenges (" + completed.length + "/" + CHALLENGES.length + ")"
+                  ),
+                  React.createElement("div", { className: "flex flex-col gap-1" },
                     CHALLENGES.map(function (ch, ci) {
-                        var done = completed.indexOf(ch.id) >= 0;
-                        var active = challengeIdx === ci;
-                        return React.createElement("button", {
-                            key: ch.id,
-                            onClick: function () { upd('challengeIdx', active ? -1 : ci); },
-                            className: "flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-left transition-all " +
-                                (done ? 'bg-green-900/40 text-green-300 border border-green-700/50' :
-                                    active ? 'bg-indigo-900/60 text-indigo-200 border border-indigo-500/50 ring-1 ring-indigo-400' :
-                                        'bg-slate-700/50 text-slate-300 hover:bg-slate-700 border border-transparent')
-                        },
-                            React.createElement("span", { className: "text-sm" }, done ? '✅' : active ? '🎯' : '⬜'),
-                            React.createElement("div", { className: "flex-1" },
-                                React.createElement("span", { className: "font-semibold" }, ch.title),
-                                active && React.createElement("p", { className: "text-[10px] text-indigo-300/70 mt-0.5" }, '💡 ' + ch.hint)
-                            ),
-                            React.createElement("span", {
-                                className: "text-[10px] px-1.5 py-0.5 rounded-full " +
-                                    (done ? 'bg-green-500/20 text-green-400' : 'bg-slate-600 text-slate-400')
-                            }, ch.concept)
-                        );
+                      var done = completed.indexOf(ch.id) >= 0;
+                      var active = challengeIdx === ci;
+                      return React.createElement("button", {
+                        key: ch.id,
+                        onClick: function () { upd('challengeIdx', active ? -1 : ci); },
+                        className: "flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-left transition-all " +
+                          (done ? 'bg-green-900/40 text-green-300 border border-green-700/50' :
+                            active ? 'bg-indigo-900/60 text-indigo-200 border border-indigo-500/50 ring-1 ring-indigo-400' :
+                              'bg-slate-700/50 text-slate-300 hover:bg-slate-700 border border-transparent')
+                      },
+                        React.createElement("span", { className: "text-sm" }, done ? '✅' : active ? '🎯' : '⬜'),
+                        React.createElement("div", { className: "flex-1" },
+                          React.createElement("span", { className: "font-semibold" }, ch.title),
+                          active && React.createElement("p", { className: "text-[10px] text-indigo-300/70 mt-0.5" }, '💡 ' + ch.hint)
+                        ),
+                        React.createElement("span", {
+                          className: "text-[10px] px-1.5 py-0.5 rounded-full " +
+                            (done ? 'bg-green-500/20 text-green-400' : 'bg-slate-600 text-slate-400')
+                        }, ch.concept)
+                      );
                     })
-                )
-            ),
+                  )
+                ),
 
-            // CS concepts panel
-            React.createElement("div", { className: "bg-gradient-to-br from-indigo-900/40 to-purple-900/40 rounded-xl p-3 border border-indigo-700/30" },
-                React.createElement("h4", { className: "text-xs font-bold text-indigo-300 mb-1" }, "🔬 CS Concepts"),
-                React.createElement("p", { className: "text-[11px] text-indigo-200/70 leading-relaxed" },
+                // CS concepts panel
+                React.createElement("div", { className: "bg-gradient-to-br from-indigo-900/40 to-purple-900/40 rounded-xl p-3 border border-indigo-700/30" },
+                  React.createElement("h4", { className: "text-xs font-bold text-indigo-300 mb-1" }, "🔬 CS Concepts"),
+                  React.createElement("p", { className: "text-[11px] text-indigo-200/70 leading-relaxed" },
                     challengeIdx >= 0 ? '📖 This challenge teaches: ' + CHALLENGES[challengeIdx].concept + '. ' + CHALLENGES[challengeIdx].desc :
-                        'Computational thinking is the foundation of all computer science. Sequencing puts steps in order. Loops repeat steps efficiently. Together they let you create anything!'
-                )
-            ),
+                      'Computational thinking is the foundation of all computer science. Sequencing puts steps in order. Loops repeat steps efficiently. Together they let you create anything!'
+                  )
+                ),
 
-            // Snapshot button
-            React.createElement("button", {
-                onClick: function () {
+                // Snapshot button
+                React.createElement("button", {
+                  onClick: function () {
                     setToolSnapshots(function (prev) { return prev.concat([{ id: 'code-' + Date.now(), tool: 'codingPlayground', label: 'Coding Playground', data: Object.assign({}, d), timestamp: Date.now() }]); });
                     if (addToast) addToast('📸 Code snapshot saved!', 'success');
-                },
-                className: "ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full hover:from-indigo-600 hover:to-purple-700 shadow-md hover:shadow-lg transition-all"
-            }, "📸 Snapshot")
-        )
-    );
-})(),
+                  },
+                  className: "ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full hover:from-indigo-600 hover:to-purple-700 shadow-md hover:shadow-lg transition-all"
+                }, "📸 Snapshot")
+              )
+            );
+          })(),
 
 
 
