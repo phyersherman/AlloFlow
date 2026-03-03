@@ -202,81 +202,11 @@
         }).catch(function () { _aiPending[tool + '_hint'] = false; });
       }
 
-      function stemExplain(tool, concept, context, callback) {
-        if (!callGemini) { if (addToast) addToast(t('stem.ai.unavailable') || 'AI not available', 'error'); return; }
-        if (_aiPending[tool + '_explain']) return;
-        _aiPending[tool + '_explain'] = true;
-        if (addToast) addToast(t('stem.ai.thinking') || '🤖 Thinking...', 'info');
-        var prompt = 'You are a STEM tutor for a ' + _stemGrade + ' student.\n' +
-          'Tool: ' + tool + '\n' +
-          'Concept: ' + concept + '\n' +
-          (context ? 'Context: ' + context + '\n' : '') +
-          'Explain this concept in 2-3 SHORT sentences using age-appropriate language.\n' +
-          'Be engaging and use analogies if helpful. Stay focused on this specific topic only.';
-        callGemini(prompt).then(function (explanation) {
-          _aiPending[tool + '_explain'] = false;
-          if (callback) callback(explanation);
-          else if (addToast) addToast('🤖 ' + explanation, 'info');
-        }).catch(function () { _aiPending[tool + '_explain'] = false; if (addToast) addToast(t('stem.ai.error') || 'AI error', 'error'); });
-      }
 
-      function stemReadAloud(text) {
-        if (!callTTS) { if (addToast) addToast(t('stem.ai.tts_unavailable') || 'Voice not available', 'error'); return; }
-        callTTS(text);
-      }
 
       var [stemAIResponse, setStemAIResponse] = React.useState(null);
       var [stemAILoading, setStemAILoading] = React.useState(false);
 
-      // ── Reusable AI Toolbar: Explain + Read Aloud ──
-      function StemAIBar(toolName, conceptName, conceptText, extraContext) {
-        return React.createElement("div", { className: "flex gap-1.5 mt-2 flex-wrap" },
-          callGemini && React.createElement("button", {
-            onClick: function () {
-              setStemAILoading(true);
-              stemExplain(toolName, conceptName, (conceptText || '') + (extraContext ? '. ' + extraContext : ''), function (result) {
-                setStemAILoading(false);
-                setStemAIResponse({ tool: toolName, concept: conceptName, text: result });
-              });
-            },
-            disabled: stemAILoading,
-            className: "flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded-full transition-all " +
-              (stemAILoading ? "bg-slate-100 text-slate-400 cursor-wait" : "bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-200 hover:shadow-sm")
-          }, stemAILoading ? "⏳" : "🤖", " ", t('stem.ai.explain') || "Explain This"),
-          callTTS && React.createElement("button", {
-            onClick: function () { stemReadAloud(conceptText || conceptName); },
-            className: "flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded-full bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 hover:shadow-sm transition-all"
-          }, "🔊 ", t('stem.ai.read_aloud') || "Read Aloud")
-        );
-      }
-
-      // ── AI Response Display Panel ──
-      function StemAIResponsePanel(toolName) {
-        if (!stemAIResponse || stemAIResponse.tool !== toolName) return null;
-        return React.createElement("div", {
-          className: "mt-2 p-3 rounded-xl border text-xs leading-relaxed animate-in fade-in duration-300 " +
-            (isDark ? "bg-indigo-900/30 border-indigo-700 text-indigo-200" : "bg-indigo-50 border-indigo-200 text-indigo-800")
-        },
-          React.createElement("div", { className: "flex items-start justify-between gap-2" },
-            React.createElement("div", { className: "flex-1" },
-              React.createElement("span", { className: "font-bold text-indigo-600" }, "🤖 "),
-              stemAIResponse.text
-            ),
-            React.createElement("div", { className: "flex gap-1 shrink-0" },
-              callTTS && React.createElement("button", {
-                onClick: function () { stemReadAloud(stemAIResponse.text); },
-                className: "p-1 rounded-full hover:bg-indigo-200/50 text-indigo-500 transition-all",
-                title: t('stem.ai.read_aloud') || "Read aloud"
-              }, "🔊"),
-              React.createElement("button", {
-                onClick: function () { setStemAIResponse(null); },
-                className: "p-1 rounded-full hover:bg-indigo-200/50 text-indigo-400 transition-all",
-                title: t('common.close') || "Close"
-              }, "✕")
-            )
-          )
-        );
-      }
 
       // ── AI Hint for Challenge Feedback ──
       function StemAIHintButton(toolName, question, wrongAnswer, correctAnswer) {
@@ -1945,7 +1875,7 @@
                 className: "px-4 py-2 bg-amber-500 text-white font-bold rounded-lg text-sm disabled:opacity-40"
               }, "Check")), cubeFeedback && /*#__PURE__*/React.createElement("p", {
                 className: "text-sm font-bold mt-2 " + (cubeFeedback.correct ? "text-green-600" : "text-red-600")
-              }, cubeFeedback.msg, !cubeFeedback.correct && StemAIHintButton('Volume Builder', cubeFeedback._question || 'Volume challenge', cubeFeedback._wrongAnswer || '', cubeFeedback._correctAnswer || ''), StemAIResponsePanel('Volume Builder'))), !isSlider && cubeBuilderChallenge && /*#__PURE__*/React.createElement("div", {
+              }, cubeFeedback.msg, !cubeFeedback.correct && StemAIHintButton('Volume Builder', cubeFeedback._question || 'Volume challenge', cubeFeedback._wrongAnswer || '', cubeFeedback._correctAnswer || ''))), !isSlider && cubeBuilderChallenge && /*#__PURE__*/React.createElement("div", {
                 className: "bg-indigo-50 rounded-lg p-3 border border-indigo-200"
               }, /*#__PURE__*/React.createElement("p", {
                 className: "text-sm font-bold text-indigo-800 mb-2"
@@ -4655,8 +4585,6 @@
                   React.createElement("div", null,
                     React.createElement("h4", { className: "font-bold text-sm mb-1", style: { color: selDef.color } }, selDef.icon + " " + selDef.label),
                     React.createElement("p", { className: "text-xs text-slate-600 leading-relaxed mb-2" }, selDef.desc),
-                    StemAIBar('Cell Lab', selDef.label, selDef.desc, 'Organism type: ' + selDef.id),
-                    StemAIResponsePanel('Cell Lab')
                   ),
                   d.mode === 'play' && React.createElement("button", {
                     onClick: function () {
@@ -6813,8 +6741,6 @@
                     React.createElement("p", { className: "text-lg font-black text-emerald-700" }, (d.craftResult.isNew ? '\uD83C\uDF89 NEW! ' : '\u2705 ') + d.craftResult.compound.name),
                     React.createElement("p", { className: "text-sm font-bold text-emerald-600" }, d.craftResult.compound.formula),
                     React.createElement("p", { className: "text-xs text-emerald-500 mt-1" }, d.craftResult.compound.desc),
-                    StemAIBar('Compound Creator', d.craftResult.compound.name, d.craftResult.compound.desc, 'Formula: ' + d.craftResult.compound.formula),
-                    StemAIResponsePanel('Compound Creator')
                   )
                   : React.createElement("div", { className: "bg-amber-50 border-2 border-amber-200 rounded-xl p-3 text-center" },
                     React.createElement("p", { className: "text-sm font-bold text-amber-700" }, "\uD83E\uDD14 No known compound matches this combination. Try different elements!"))
@@ -6843,8 +6769,6 @@
                         React.createElement("p", { className: "text-lg font-bold text-slate-800" }, d.selectedElement.name),
                         React.createElement("p", { className: "text-xs text-slate-500" }, "Atomic #" + d.selectedElement.n + " \u2022 " + (d.selectedElement.cat || 'element').replace(/^\w/, c => c.toUpperCase())),
                         detail && React.createElement("p", { className: "text-xs text-slate-600 mt-1 italic" }, detail.desc),
-                        StemAIBar('Periodic Table', d.selectedElement.name, (detail && detail.desc) || '', 'Element: ' + d.selectedElement.s + ', Atomic #' + d.selectedElement.n + ', Category: ' + (d.selectedElement.cat || 'element')),
-                        StemAIResponsePanel('Periodic Table')
                       ),
                       React.createElement("button", { onClick: () => upd('selectedElement', null), className: "p-1 text-slate-400 hover:text-slate-600 flex-shrink-0", "aria-label": "Close" }, "\u2715")
                     ),
@@ -7387,8 +7311,6 @@
                   sel.surfaceDesc && React.createElement("div", { className: "bg-gradient-to-r from-sky-50 to-blue-50 rounded-lg p-2 border border-sky-200 mb-2" },
                     React.createElement("p", { className: "text-[11px] font-bold text-sky-700 mb-0.5" }, "\uD83C\uDF0D Surface Description"),
                     React.createElement("p", { className: "text-[10px] text-sky-600 leading-relaxed" }, sel.surfaceDesc),
-                    StemAIBar('Solar System', sel.name, sel.fact + '. ' + (sel.surfaceDesc || ''), 'Diameter: ' + sel.diameter + ', ' + sel.atmosphere + ', Temp: ' + sel.temp),
-                    StemAIResponsePanel('Solar System')
                   ),
                   sel.notableFeatures && sel.notableFeatures.length > 0 && React.createElement("div", { className: "bg-gradient-to-r from-violet-50 to-purple-50 rounded-lg p-2 border border-violet-200 mb-2" },
                     React.createElement("p", { className: "text-[11px] font-bold text-violet-700 mb-1" }, "\uD83C\uDFAF Notable Features"),
@@ -8853,8 +8775,6 @@
                 React.createElement("span", { className: "font-bold text-indigo-700" }, gType.icon + " " + gType.label + ": "),
                 React.createElement("span", { className: "text-slate-600" }, gType.desc),
                 React.createElement("span", { className: "text-indigo-400 ml-1" }, "(e.g. " + gType.example + ")"),
-                StemAIBar('Galaxy Explorer', gType.label, gType.desc, 'Galaxy type example: ' + gType.example),
-                StemAIResponsePanel('Galaxy Explorer')
               ),
 
               // ── 3D Canvas ──
@@ -10132,8 +10052,6 @@
                       React.createElement("h4", { className: "font-bold text-base mb-1", style: { color: ROCK_TYPES[selRock.type].color } }, ROCK_TYPES[selRock.type].icon + " " + selRock.label),
                       React.createElement("span", { className: "inline-block px-2 py-0.5 rounded-full text-[10px] font-bold mb-2", style: { background: ROCK_TYPES[selRock.type].color + '20', color: ROCK_TYPES[selRock.type].color } }, ROCK_TYPES[selRock.type].label + " Rock"),
                       React.createElement("p", { className: "text-xs text-slate-600 leading-relaxed" }, selRock.desc),
-                      StemAIBar('Rock Explorer', selRock.label, selRock.desc, 'Type: ' + selRock.type + '. Hardness: ' + selRock.hardness + '. Uses: ' + selRock.uses),
-                      StemAIResponsePanel('Rock Explorer')
                     )
                   ),
                   // Properties
@@ -11847,8 +11765,6 @@
                       React.createElement("span", { className: "px-2 py-0.5 bg-white rounded-full text-sm font-mono font-bold text-slate-700 border border-slate-200 shadow-sm" }, sel.formula)
                     ),
                     React.createElement("p", { className: "text-xs text-slate-500 mt-1 leading-relaxed" }, sel.desc),
-                    StemAIBar('Molecule Viewer', sel.name, sel.desc, 'Formula: ' + sel.formula + ', Bond type: ' + sel.bondType + ', State: ' + sel.state),
-                    StemAIResponsePanel('Molecule Viewer'),
                     React.createElement("div", { className: "flex gap-3 mt-2 text-[10px] font-bold" },
                       React.createElement("span", { className: "text-cyan-600" }, "🔗 " + sel.bondType),
                       React.createElement("span", { className: "text-indigo-600" }, "📊 " + sel.state),
