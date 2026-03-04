@@ -12814,6 +12814,20 @@
               }
               // Catch particles on predation
               var catchParticles = [];
+              // Ambient creatures (butterflies + fireflies)
+              var ambientBugs = [];
+              for (var abi = 0; abi < 12; abi++) {
+                ambientBugs.push({
+                  x: Math.random() * cW / dpr,
+                  y: cH * 0.1 / dpr + Math.random() * cH * 0.5 / dpr,
+                  vx: (Math.random() - 0.5) * 0.6,
+                  vy: (Math.random() - 0.5) * 0.4,
+                  wing: Math.random() * Math.PI * 2,
+                  hue: Math.random() * 60 + 180, // blues/purples for butterflies
+                  size: 1.5 + Math.random() * 1.5,
+                  glow: Math.random() * Math.PI * 2 // for firefly pulse
+                });
+              }
 
               function draw() {
                 tick++;
@@ -12897,66 +12911,182 @@
                 }
                 ctx.lineTo(cW, cH); ctx.lineTo(0, cH); ctx.closePath(); ctx.fill();
 
-                // ── Vegetation ──
+                // ── Vegetation (enhanced with bark, multi-layer canopy, flowers, seeds) ──
                 var alivePreyCount = preyList.filter(function (p) { return p.alive; }).length;
                 for (var vvi = 0; vvi < vegetation.length; vvi++) {
                   var vg = vegetation[vvi];
                   vg.sway += 0.015;
-                  // Vegetation health based on prey (more prey = more eaten vegetation)
                   var vegHealth = Math.max(0.3, 1 - alivePreyCount / 80);
                   var swayAmt = Math.sin(vg.sway) * 2;
                   if (vg.type === 'tree') {
-                    // Trunk
-                    ctx.fillStyle = '#92400e';
-                    ctx.fillRect((vg.x - 2) * dpr, (vg.y - 12 * vg.size) * dpr, 4 * dpr, 14 * vg.size * dpr);
-                    // Canopy
+                    // Trunk with bark texture
+                    var trunkX = (vg.x - 2.5) * dpr;
+                    var trunkY = (vg.y - 12 * vg.size) * dpr;
+                    var trunkW = 5 * dpr;
+                    var trunkH = 14 * vg.size * dpr;
+                    var barkGrad = ctx.createLinearGradient(trunkX, trunkY, trunkX + trunkW, trunkY);
+                    barkGrad.addColorStop(0, '#6b3410');
+                    barkGrad.addColorStop(0.3, '#92400e');
+                    barkGrad.addColorStop(0.7, '#a0522d');
+                    barkGrad.addColorStop(1, '#7a3b12');
+                    ctx.fillStyle = barkGrad;
+                    ctx.fillRect(trunkX, trunkY, trunkW, trunkH);
+                    // Bark lines
+                    ctx.strokeStyle = 'rgba(59,28,6,0.25)';
+                    ctx.lineWidth = 0.5 * dpr;
+                    for (var bk = 0; bk < 4; bk++) {
+                      var bky = trunkY + bk * trunkH * 0.25 + 2 * dpr;
+                      ctx.beginPath(); ctx.moveTo(trunkX + 1 * dpr, bky);
+                      ctx.lineTo(trunkX + trunkW - 1 * dpr, bky + 1 * dpr); ctx.stroke();
+                    }
+                    // Multi-layer canopy (3 overlapping circles for depth)
+                    var canopyR = 10 * vg.size * vegHealth;
+                    var canopyCX = vg.x + swayAmt * 0.5;
+                    var canopyCY = vg.y - 16 * vg.size;
+                    // Back canopy (darker)
                     ctx.beginPath();
-                    ctx.arc((vg.x + swayAmt * 0.5) * dpr, (vg.y - 16 * vg.size) * dpr, (10 * vg.size * vegHealth) * dpr, 0, Math.PI * 2);
-                    ctx.fillStyle = isDay ? 'rgba(34,197,94,' + (0.5 + vegHealth * 0.4) + ')' : 'rgba(21,128,61,' + (0.4 + vegHealth * 0.3) + ')';
+                    ctx.arc((canopyCX - 3) * dpr, (canopyCY + 2) * dpr, (canopyR * 0.85) * dpr, 0, Math.PI * 2);
+                    ctx.fillStyle = isDay ? 'rgba(22,163,74,' + (0.6 + vegHealth * 0.3) + ')' : 'rgba(15,100,50,' + (0.5 + vegHealth * 0.2) + ')';
                     ctx.fill();
+                    // Main canopy
                     ctx.beginPath();
-                    ctx.arc((vg.x - 5 + swayAmt * 0.3) * dpr, (vg.y - 14 * vg.size) * dpr, (7 * vg.size * vegHealth) * dpr, 0, Math.PI * 2);
+                    ctx.arc(canopyCX * dpr, canopyCY * dpr, canopyR * dpr, 0, Math.PI * 2);
+                    ctx.fillStyle = isDay ? 'rgba(34,197,94,' + (0.55 + vegHealth * 0.4) + ')' : 'rgba(21,128,61,' + (0.45 + vegHealth * 0.3) + ')';
                     ctx.fill();
+                    // Front canopy highlight
+                    ctx.beginPath();
+                    ctx.arc((canopyCX + 3) * dpr, (canopyCY - 2) * dpr, (canopyR * 0.7) * dpr, 0, Math.PI * 2);
+                    ctx.fillStyle = isDay ? 'rgba(74,222,128,' + (0.35 + vegHealth * 0.25) + ')' : 'rgba(34,197,94,' + (0.25 + vegHealth * 0.2) + ')';
+                    ctx.fill();
+                    // Small fruit/flower dots in canopy
+                    if (vegHealth > 0.5 && isDay) {
+                      for (var fd = 0; fd < 3; fd++) {
+                        var fdAngle = vg.sway * 0.1 + fd * 2.1;
+                        var fdR = canopyR * 0.55;
+                        ctx.beginPath();
+                        ctx.arc((canopyCX + Math.cos(fdAngle) * fdR) * dpr, (canopyCY + Math.sin(fdAngle) * fdR) * dpr, 1.5 * dpr, 0, Math.PI * 2);
+                        ctx.fillStyle = fd % 2 === 0 ? 'rgba(251,191,36,0.7)' : 'rgba(244,114,182,0.6)';
+                        ctx.fill();
+                      }
+                    }
                   } else {
-                    // Grass blades
-                    for (var gb = 0; gb < 3; gb++) {
+                    // Grass blades with seed heads
+                    for (var gb = 0; gb < 4; gb++) {
+                      var bladeX = vg.x + gb * 2.5 - 3.5;
+                      var tipX = bladeX + swayAmt * (1 + gb * 0.2);
+                      var tipY = vg.y - (10 + gb * 1.5) * vg.size * vegHealth;
                       ctx.beginPath();
-                      ctx.moveTo((vg.x + gb * 3 - 3) * dpr, vg.y * dpr);
-                      ctx.quadraticCurveTo((vg.x + gb * 3 - 3 + swayAmt) * dpr, (vg.y - 8 * vg.size * vegHealth) * dpr, (vg.x + gb * 3 - 1 + swayAmt * 1.5) * dpr, (vg.y - 12 * vg.size * vegHealth) * dpr);
-                      ctx.strokeStyle = isDay ? 'rgba(74,222,128,' + (0.5 + vegHealth * 0.4) + ')' : 'rgba(34,197,94,' + (0.3 + vegHealth * 0.3) + ')';
-                      ctx.lineWidth = 2 * dpr;
+                      ctx.moveTo(bladeX * dpr, vg.y * dpr);
+                      ctx.quadraticCurveTo((bladeX + swayAmt * 0.5) * dpr, ((vg.y + tipY) / 2) * dpr, tipX * dpr, tipY * dpr);
+                      var bladeAlpha = 0.5 + vegHealth * 0.4 - gb * 0.05;
+                      ctx.strokeStyle = isDay ? 'rgba(74,222,128,' + bladeAlpha + ')' : 'rgba(34,197,94,' + (bladeAlpha * 0.65) + ')';
+                      ctx.lineWidth = (2.2 - gb * 0.2) * dpr;
                       ctx.stroke();
+                      // Seed head at tip
+                      if (vegHealth > 0.6 && gb < 2) {
+                        ctx.beginPath();
+                        ctx.arc(tipX * dpr, tipY * dpr, 1.2 * dpr, 0, Math.PI * 2);
+                        ctx.fillStyle = isDay ? 'rgba(217,180,120,0.7)' : 'rgba(160,130,80,0.5)';
+                        ctx.fill();
+                      }
                     }
                   }
                 }
 
-                // ── Prey (rabbits as emoji) ──
+                // ── Prey (rabbits — canvas-drawn) ──
                 var aliveCount = 0;
                 preyList.forEach(function (p) {
                   if (!p.alive) return;
                   aliveCount++;
                   p.hop += 0.08;
                   p.x += p.vx; p.y += p.vy;
-                  // Boundary check
                   if (p.x < 5 || p.x > cW / dpr - 5) p.vx *= -1;
                   if (p.y < cH * 0.4 / dpr || p.y > cH / dpr - 5) p.vy *= -1;
                   p.x = Math.max(5, Math.min(cW / dpr - 5, p.x));
                   p.y = Math.max(cH * 0.4 / dpr, Math.min(cH / dpr - 5, p.y));
-                  // Jitter
                   p.vx += (Math.random() - 0.5) * 0.12;
                   p.vy += (Math.random() - 0.5) * 0.12;
                   p.vx = Math.max(-1.8, Math.min(1.8, p.vx));
                   p.vy = Math.max(-1.8, Math.min(1.8, p.vy));
                   if (p.vx > 0) p.facing = 1; else if (p.vx < -0.2) p.facing = -1;
-                  // Hop animation offset
                   var hopY = Math.abs(Math.sin(p.hop)) * 3;
-                  // Draw rabbit emoji
+                  var squash = 1 + Math.abs(Math.sin(p.hop)) * 0.15; // squash-and-stretch
+                  var px = p.x * dpr;
+                  var py = (p.y - hopY) * dpr;
+                  var s = 4.5 * dpr; // base scale
                   ctx.save();
-                  ctx.translate(p.x * dpr, (p.y - hopY) * dpr);
-                  ctx.scale(p.facing * 0.9, 0.9);
-                  ctx.font = (9 * dpr) + 'px sans-serif';
-                  ctx.textAlign = 'center';
-                  ctx.fillText('\uD83D\uDC07', 0, 0);
+                  ctx.translate(px, py);
+                  ctx.scale(p.facing, 1);
+                  // Shadow
+                  ctx.beginPath();
+                  ctx.ellipse(0, hopY * dpr * 0.3 + s * 0.6, s * 0.55, s * 0.15, 0, 0, Math.PI * 2);
+                  ctx.fillStyle = 'rgba(0,0,0,0.12)';
+                  ctx.fill();
+                  // Body (oval with fur gradient)
+                  ctx.beginPath();
+                  ctx.ellipse(0, 0, s * 0.5 / squash, s * 0.4 * squash, 0, 0, Math.PI * 2);
+                  var furGrad = ctx.createRadialGradient(0, -s * 0.1, s * 0.05, 0, 0, s * 0.5);
+                  furGrad.addColorStop(0, '#e8d5b7');
+                  furGrad.addColorStop(0.6, '#c4a67a');
+                  furGrad.addColorStop(1, '#a6845a');
+                  ctx.fillStyle = furGrad;
+                  ctx.fill();
+                  // Belly highlight
+                  ctx.beginPath();
+                  ctx.ellipse(0, s * 0.08, s * 0.28, s * 0.2, 0, 0, Math.PI * 2);
+                  ctx.fillStyle = 'rgba(245,235,220,0.5)';
+                  ctx.fill();
+                  // Head
+                  ctx.beginPath();
+                  ctx.arc(s * 0.35, -s * 0.2, s * 0.25, 0, Math.PI * 2);
+                  ctx.fillStyle = '#d4b890';
+                  ctx.fill();
+                  // Ears (two upright ovals)
+                  // Left ear
+                  ctx.beginPath();
+                  ctx.ellipse(s * 0.25, -s * 0.58, s * 0.07, s * 0.2, -0.15, 0, Math.PI * 2);
+                  ctx.fillStyle = '#c4a67a';
+                  ctx.fill();
+                  ctx.beginPath();
+                  ctx.ellipse(s * 0.25, -s * 0.56, s * 0.04, s * 0.14, -0.15, 0, Math.PI * 2);
+                  ctx.fillStyle = 'rgba(244,163,166,0.6)';
+                  ctx.fill();
+                  // Right ear
+                  ctx.beginPath();
+                  ctx.ellipse(s * 0.42, -s * 0.55, s * 0.07, s * 0.2, 0.2, 0, Math.PI * 2);
+                  ctx.fillStyle = '#c4a67a';
+                  ctx.fill();
+                  ctx.beginPath();
+                  ctx.ellipse(s * 0.42, -s * 0.53, s * 0.04, s * 0.14, 0.2, 0, Math.PI * 2);
+                  ctx.fillStyle = 'rgba(244,163,166,0.6)';
+                  ctx.fill();
+                  // Eye
+                  ctx.beginPath();
+                  ctx.arc(s * 0.42, -s * 0.24, s * 0.06, 0, Math.PI * 2);
+                  ctx.fillStyle = '#1a1a2e';
+                  ctx.fill();
+                  // Eye specular
+                  ctx.beginPath();
+                  ctx.arc(s * 0.44, -s * 0.27, s * 0.02, 0, Math.PI * 2);
+                  ctx.fillStyle = 'rgba(255,255,255,0.8)';
+                  ctx.fill();
+                  // Nose
+                  ctx.beginPath();
+                  ctx.arc(s * 0.55, -s * 0.18, s * 0.03, 0, Math.PI * 2);
+                  ctx.fillStyle = '#e8a0a0';
+                  ctx.fill();
+                  // Tail (white tuft)
+                  ctx.beginPath();
+                  ctx.arc(-s * 0.45, -s * 0.05, s * 0.12, 0, Math.PI * 2);
+                  ctx.fillStyle = '#f5f0e8';
+                  ctx.fill();
+                  // Front paws (when hopping)
+                  if (hopY > 1) {
+                    ctx.beginPath();
+                    ctx.ellipse(s * 0.2, s * 0.32, s * 0.06, s * 0.04, 0, 0, Math.PI * 2);
+                    ctx.fillStyle = '#c4a67a';
+                    ctx.fill();
+                  }
                   ctx.restore();
                 });
 
@@ -13000,20 +13130,130 @@
                   pr.y = Math.max(cH * 0.4 / dpr, Math.min(cH / dpr - 5, pr.y));
                   pr.vx *= 0.98; pr.vy *= 0.98;
                   if (pr.vx > 0.1) pr.facing = 1; else if (pr.vx < -0.1) pr.facing = -1;
-                  // Draw fox emoji
+                  // Draw fox (canvas-drawn)
+                  var fx = pr.x * dpr;
+                  var fy = pr.y * dpr;
+                  var fs = 5.5 * dpr; // base scale
                   ctx.save();
-                  ctx.translate(pr.x * dpr, pr.y * dpr);
+                  ctx.translate(fx, fy);
                   ctx.scale(pr.facing, 1);
-                  ctx.font = (10 * dpr) + 'px sans-serif';
-                  ctx.textAlign = 'center';
-                  ctx.fillText('\uD83E\uDD8A', 0, 0);
+                  // Shadow
+                  ctx.beginPath();
+                  ctx.ellipse(0, fs * 0.5, fs * 0.6, fs * 0.12, 0, 0, Math.PI * 2);
+                  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+                  ctx.fill();
+                  // Crouching if hunting
+                  var huntCrouch = pr.hunting ? 0.85 : 1;
+                  ctx.scale(1, huntCrouch);
+                  // Tail (behind body) — bushy with white tip
+                  ctx.beginPath();
+                  ctx.moveTo(-fs * 0.5, -fs * 0.05);
+                  ctx.quadraticCurveTo(-fs * 0.9, -fs * 0.45, -fs * 0.7, -fs * 0.6);
+                  ctx.quadraticCurveTo(-fs * 0.4, -fs * 0.55, -fs * 0.35, -fs * 0.15);
+                  ctx.closePath();
+                  ctx.fillStyle = '#d97706';
+                  ctx.fill();
+                  // White tail tip
+                  ctx.beginPath();
+                  ctx.arc(-fs * 0.7, -fs * 0.55, fs * 0.1, 0, Math.PI * 2);
+                  ctx.fillStyle = '#fef3c7';
+                  ctx.fill();
+                  // Body (elongated oval)
+                  ctx.beginPath();
+                  ctx.ellipse(0, 0, fs * 0.55, fs * 0.35, 0, 0, Math.PI * 2);
+                  var foxFur = ctx.createRadialGradient(fs * 0.1, -fs * 0.1, fs * 0.05, 0, 0, fs * 0.55);
+                  foxFur.addColorStop(0, '#f59e0b');
+                  foxFur.addColorStop(0.5, '#d97706');
+                  foxFur.addColorStop(1, '#b45309');
+                  ctx.fillStyle = foxFur;
+                  ctx.fill();
+                  // Belly
+                  ctx.beginPath();
+                  ctx.ellipse(fs * 0.05, fs * 0.1, fs * 0.3, fs * 0.18, 0, 0, Math.PI * 2);
+                  ctx.fillStyle = 'rgba(254,243,199,0.45)';
+                  ctx.fill();
+                  // Head
+                  ctx.beginPath();
+                  ctx.arc(fs * 0.45, -fs * 0.15, fs * 0.25, 0, Math.PI * 2);
+                  ctx.fillStyle = '#ea580c';
+                  ctx.fill();
+                  // Snout
+                  ctx.beginPath();
+                  ctx.ellipse(fs * 0.7, -fs * 0.08, fs * 0.14, fs * 0.1, 0, 0, Math.PI * 2);
+                  ctx.fillStyle = '#fef3c7';
+                  ctx.fill();
+                  // Nose
+                  ctx.beginPath();
+                  ctx.arc(fs * 0.78, -fs * 0.1, fs * 0.04, 0, Math.PI * 2);
+                  ctx.fillStyle = '#1a1a2e';
+                  ctx.fill();
+                  // Ears (triangular)
+                  // Left ear
+                  ctx.beginPath();
+                  ctx.moveTo(fs * 0.3, -fs * 0.35);
+                  ctx.lineTo(fs * 0.25, -fs * 0.62);
+                  ctx.lineTo(fs * 0.42, -fs * 0.38);
+                  ctx.closePath();
+                  ctx.fillStyle = '#ea580c';
+                  ctx.fill();
+                  // Dark ear tip
+                  ctx.beginPath();
+                  ctx.moveTo(fs * 0.275, -fs * 0.48);
+                  ctx.lineTo(fs * 0.25, -fs * 0.62);
+                  ctx.lineTo(fs * 0.37, -fs * 0.44);
+                  ctx.closePath();
+                  ctx.fillStyle = '#7c2d12';
+                  ctx.fill();
+                  // Right ear
+                  ctx.beginPath();
+                  ctx.moveTo(fs * 0.48, -fs * 0.33);
+                  ctx.lineTo(fs * 0.5, -fs * 0.6);
+                  ctx.lineTo(fs * 0.58, -fs * 0.35);
+                  ctx.closePath();
+                  ctx.fillStyle = '#ea580c';
+                  ctx.fill();
+                  ctx.beginPath();
+                  ctx.moveTo(fs * 0.49, -fs * 0.46);
+                  ctx.lineTo(fs * 0.5, -fs * 0.6);
+                  ctx.lineTo(fs * 0.555, -fs * 0.42);
+                  ctx.closePath();
+                  ctx.fillStyle = '#7c2d12';
+                  ctx.fill();
+                  // Eyes
+                  ctx.beginPath();
+                  ctx.arc(fs * 0.5, -fs * 0.2, fs * 0.055, 0, Math.PI * 2);
+                  ctx.fillStyle = pr.hunting ? '#dc2626' : '#fbbf24';
+                  ctx.fill();
+                  // Pupil
+                  ctx.beginPath();
+                  ctx.ellipse(fs * 0.51, -fs * 0.2, fs * 0.025, fs * 0.04, 0, 0, Math.PI * 2);
+                  ctx.fillStyle = '#1a1a2e';
+                  ctx.fill();
+                  // Eye glint
+                  ctx.beginPath();
+                  ctx.arc(fs * 0.52, -fs * 0.22, fs * 0.015, 0, Math.PI * 2);
+                  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+                  ctx.fill();
+                  // Front legs
+                  ctx.fillStyle = '#b45309';
+                  ctx.fillRect(fs * 0.15, fs * 0.2, fs * 0.08, fs * 0.25);
+                  ctx.fillRect(fs * 0.35, fs * 0.2, fs * 0.08, fs * 0.25);
+                  // Paws
+                  ctx.fillStyle = '#1a1a2e';
+                  ctx.beginPath(); ctx.arc(fs * 0.19, fs * 0.44, fs * 0.045, 0, Math.PI * 2); ctx.fill();
+                  ctx.beginPath(); ctx.arc(fs * 0.39, fs * 0.44, fs * 0.045, 0, Math.PI * 2); ctx.fill();
                   ctx.restore();
-                  // Hunting indicator
+                  // Hunting indicator (above fox)
                   if (pr.hunting) {
                     ctx.beginPath();
-                    ctx.arc(pr.x * dpr, (pr.y - 8) * dpr, 2 * dpr, 0, Math.PI * 2);
-                    ctx.fillStyle = 'rgba(239,68,68,0.6)';
+                    ctx.arc(pr.x * dpr, (pr.y - 12) * dpr, 2.5 * dpr, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(239,68,68,0.7)';
                     ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(pr.x * dpr, (pr.y - 12) * dpr, 4 * dpr, 0, Math.PI * 2);
+                    ctx.strokeStyle = 'rgba(239,68,68,' + (0.3 + 0.3 * Math.sin(tick * 0.1)) + ')';
+                    ctx.lineWidth = 1 * dpr;
+                    ctx.stroke();
                   }
                 });
 
@@ -13026,6 +13266,75 @@
                   ctx.arc(cp2.x * dpr, cp2.y * dpr, 2.5 * dpr, 0, Math.PI * 2);
                   ctx.fillStyle = cp2.color + cp2.life + ')';
                   ctx.fill();
+                }
+
+                // ── Ambient creatures (butterflies/fireflies) ──
+                for (var abi2 = 0; abi2 < ambientBugs.length; abi2++) {
+                  var ab = ambientBugs[abi2];
+                  ab.wing += 0.15;
+                  ab.glow += 0.04;
+                  ab.x += ab.vx + Math.sin(tick * 0.02 + abi2) * 0.15;
+                  ab.y += ab.vy + Math.cos(tick * 0.015 + abi2 * 0.7) * 0.12;
+                  // Boundary wrap
+                  if (ab.x < -5) ab.x = cW / dpr + 5;
+                  if (ab.x > cW / dpr + 5) ab.x = -5;
+                  if (ab.y < cH * 0.05 / dpr) ab.y = cH * 0.5 / dpr;
+                  if (ab.y > cH * 0.6 / dpr) ab.y = cH * 0.1 / dpr;
+                  // Random direction changes
+                  if (Math.random() < 0.01) { ab.vx = (Math.random() - 0.5) * 0.6; ab.vy = (Math.random() - 0.5) * 0.4; }
+                  var abx = ab.x * dpr;
+                  var aby = ab.y * dpr;
+                  if (isDay) {
+                    // Butterfly
+                    var wingFlap = Math.abs(Math.sin(ab.wing)) * 0.8 + 0.2;
+                    var ws = ab.size * dpr;
+                    // Wings (two pairs)
+                    ctx.save();
+                    ctx.translate(abx, aby);
+                    // Left wing
+                    ctx.beginPath();
+                    ctx.ellipse(-ws * 0.6, -ws * 0.1, ws * 0.7 * wingFlap, ws * 0.5, -0.3, 0, Math.PI * 2);
+                    ctx.fillStyle = 'hsla(' + ab.hue + ',70%,65%,0.6)';
+                    ctx.fill();
+                    // Right wing
+                    ctx.beginPath();
+                    ctx.ellipse(ws * 0.6, -ws * 0.1, ws * 0.7 * wingFlap, ws * 0.5, 0.3, 0, Math.PI * 2);
+                    ctx.fillStyle = 'hsla(' + ab.hue + ',70%,65%,0.6)';
+                    ctx.fill();
+                    // Wing pattern dots
+                    ctx.beginPath();
+                    ctx.arc(-ws * 0.5, -ws * 0.05, ws * 0.15, 0, Math.PI * 2);
+                    ctx.fillStyle = 'hsla(' + (ab.hue + 40) + ',60%,45%,0.5)';
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(ws * 0.5, -ws * 0.05, ws * 0.15, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Body
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, ws * 0.08, ws * 0.3, 0, 0, Math.PI * 2);
+                    ctx.fillStyle = '#1a1a2e';
+                    ctx.fill();
+                    ctx.restore();
+                  } else {
+                    // Firefly
+                    var glowIntensity = (Math.sin(ab.glow) + 1) / 2;
+                    if (glowIntensity > 0.3) {
+                      // Outer glow
+                      var ffGlow = ctx.createRadialGradient(abx, aby, 0, abx, aby, ab.size * 4 * dpr);
+                      ffGlow.addColorStop(0, 'rgba(200,255,100,' + (glowIntensity * 0.5) + ')');
+                      ffGlow.addColorStop(0.5, 'rgba(180,255,50,' + (glowIntensity * 0.2) + ')');
+                      ffGlow.addColorStop(1, 'rgba(150,255,0,0)');
+                      ctx.fillStyle = ffGlow;
+                      ctx.beginPath();
+                      ctx.arc(abx, aby, ab.size * 4 * dpr, 0, Math.PI * 2);
+                      ctx.fill();
+                    }
+                    // Firefly body
+                    ctx.beginPath();
+                    ctx.ellipse(abx, aby, 1.2 * dpr, 0.8 * dpr, 0, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(200,255,80,' + (0.6 + glowIntensity * 0.4) + ')';
+                    ctx.fill();
+                  }
                 }
 
                 // ── Population dynamics ──
@@ -18926,52 +19235,165 @@
                     }
                   }
                 }
+                // ── Mycorrhizal fungal network (connecting all root systems) ──
+                if ((_corn && _beans || _corn && _squash || _beans && _squash) && gt > 0.25) {
+                  var netAlpha = Math.min(0.5, (gt - 0.25) * 0.8) * (0.5 + 0.5 * Math.sin(tick * 0.015));
+                  ctx.strokeStyle = 'rgba(180,140,255,' + netAlpha + ')';
+                  ctx.lineWidth = 0.8;
+                  // Draw branching fungal threads across the underground zone
+                  var netY0 = cy + h * 0.3;
+                  var netY1 = cy + h * 0.7;
+                  var netSpanX = w * 0.9;
+                  for (var fi = 0; fi < 8; fi++) {
+                    var fx0 = cx - netSpanX * 0.5 + fi * netSpanX * 0.14;
+                    var fy0 = netY0 + (fi % 3) * (netY1 - netY0) * 0.3;
+                    var fx1 = fx0 + netSpanX * 0.18 + Math.sin(tick * 0.008 + fi) * 5;
+                    var fy1 = fy0 + (netY1 - netY0) * 0.2 + Math.cos(tick * 0.01 + fi * 2) * 4;
+                    ctx.beginPath();
+                    ctx.moveTo(fx0, fy0);
+                    ctx.bezierCurveTo(fx0 + 8, fy0 - 4, fx1 - 6, fy1 + 3, fx1, fy1);
+                    ctx.stroke();
+                    // Branch nodes (hyphal tips / arbuscules)
+                    if (fi % 2 === 0) {
+                      ctx.fillStyle = 'rgba(200,160,255,' + (netAlpha * 0.8) + ')';
+                      ctx.beginPath(); ctx.arc(fx1, fy1, 1.5 + gt, 0, Math.PI * 2); ctx.fill();
+                    }
+                  }
+                  // Nutrient transfer indicators (small dots flowing along threads)
+                  if (gt > 0.5) {
+                    for (var nd = 0; nd < 4; nd++) {
+                      var ndFrac = ((tick * 0.01 + nd * 0.25) % 1);
+                      var ndX = cx - netSpanX * 0.4 + ndFrac * netSpanX * 0.8;
+                      var ndY = netY0 + (netY1 - netY0) * 0.3 + Math.sin(ndFrac * Math.PI * 2 + nd) * 6;
+                      ctx.fillStyle = 'rgba(255,215,100,' + (0.3 + 0.4 * Math.sin(tick * 0.04 + nd)) + ')';
+                      ctx.beginPath(); ctx.arc(ndX, ndY, 1.8, 0, Math.PI * 2); ctx.fill();
+                    }
+                  }
+                }
 
-                // ── Corn stalks ──
+                // ── Corn stalks (enhanced with segments, leaf midribs, silk, husks) ──
                 if (_corn) {
                   var cornH = gt * h * 2.2;
                   var sway = Math.sin(tick * 0.015) * 3 * gt;
                   for (var ci = 0; ci < 3; ci++) {
                     var cornX = cx + (ci - 1) * w * 0.15;
-                    ctx.strokeStyle = '#2E7D32';
-                    ctx.lineWidth = 3 + gt * 3;
-                    ctx.beginPath();
-                    ctx.moveTo(cornX, cy - h * 0.2);
-                    ctx.quadraticCurveTo(cornX + sway, cy - h * 0.2 - cornH * 0.5, cornX + sway * 1.3, cy - h * 0.2 - cornH);
-                    ctx.stroke();
-                    // Corn leaves
-                    if (gt > 0.3) {
-                      for (var li = 0; li < 3; li++) {
-                        var ly = cy - h * 0.2 - cornH * (0.3 + li * 0.25);
-                        var leafSway = Math.sin(tick * 0.02 + li) * 5;
-                        ctx.strokeStyle = '#43A047';
-                        ctx.lineWidth = 2;
+                    // Stalk with segments
+                    var segCount = Math.floor(3 + gt * 5);
+                    for (var seg = 0; seg < segCount; seg++) {
+                      var segFrac0 = seg / segCount;
+                      var segFrac1 = (seg + 1) / segCount;
+                      var sx0 = cornX + sway * segFrac0;
+                      var sy0 = cy - h * 0.2 - cornH * segFrac0;
+                      var sx1 = cornX + sway * segFrac1;
+                      var sy1 = cy - h * 0.2 - cornH * segFrac1;
+                      var segWidth = 3 + gt * 3 - seg * 0.3;
+                      // Alternating segment shading for realism
+                      ctx.strokeStyle = seg % 2 === 0 ? '#2E7D32' : '#388E3C';
+                      ctx.lineWidth = Math.max(1.5, segWidth);
+                      ctx.beginPath(); ctx.moveTo(sx0, sy0); ctx.lineTo(sx1, sy1); ctx.stroke();
+                      // Node joint ring
+                      if (seg > 0 && seg < segCount - 1) {
                         ctx.beginPath();
-                        ctx.moveTo(cornX + sway * (0.3 + li * 0.25), ly);
-                        ctx.quadraticCurveTo(cornX + sway * (0.3 + li * 0.25) + (li % 2 === 0 ? 1 : -1) * 20 + leafSway, ly - 5, cornX + sway * (0.3 + li * 0.25) + (li % 2 === 0 ? 1 : -1) * 35 + leafSway, ly + 5);
-                        ctx.stroke();
-                      }
-                    }
-                    // Corn tassels
-                    if (gt > 0.7) {
-                      ctx.fillStyle = '#FDD835';
-                      for (var ti = 0; ti < 3; ti++) {
-                        ctx.beginPath();
-                        ctx.arc(cornX + sway * 1.3 + (ti - 1) * 4, cy - h * 0.2 - cornH - 3 + ti * 2, 2, 0, Math.PI * 2);
+                        ctx.arc(sx0, sy0, segWidth * 0.6, 0, Math.PI * 2);
+                        ctx.fillStyle = 'rgba(27,94,32,0.4)';
                         ctx.fill();
                       }
                     }
-                    // Corn ears
+                    // Corn leaves with midrib
+                    if (gt > 0.3) {
+                      for (var li = 0; li < 4; li++) {
+                        var ly = cy - h * 0.2 - cornH * (0.25 + li * 0.2);
+                        var leafSway = Math.sin(tick * 0.02 + li + ci) * 5;
+                        var leafDir = (li % 2 === 0 ? 1 : -1);
+                        var leafLen = 30 + gt * 10 - li * 3;
+                        var leafTipX = cornX + sway * (0.25 + li * 0.2) + leafDir * leafLen + leafSway;
+                        var leafTipY = ly + 8;
+                        // Leaf blade
+                        ctx.beginPath();
+                        ctx.moveTo(cornX + sway * (0.25 + li * 0.2), ly);
+                        ctx.quadraticCurveTo(
+                          cornX + sway * (0.25 + li * 0.2) + leafDir * leafLen * 0.6 + leafSway * 0.5, ly - 6,
+                          leafTipX, leafTipY
+                        );
+                        ctx.strokeStyle = '#43A047';
+                        ctx.lineWidth = 2.5;
+                        ctx.stroke();
+                        // Fill leaf shape
+                        ctx.beginPath();
+                        ctx.moveTo(cornX + sway * (0.25 + li * 0.2), ly);
+                        ctx.quadraticCurveTo(
+                          cornX + sway * (0.25 + li * 0.2) + leafDir * leafLen * 0.6 + leafSway * 0.5, ly - 8,
+                          leafTipX, leafTipY
+                        );
+                        ctx.quadraticCurveTo(
+                          cornX + sway * (0.25 + li * 0.2) + leafDir * leafLen * 0.5 + leafSway * 0.3, ly + 3,
+                          cornX + sway * (0.25 + li * 0.2), ly
+                        );
+                        ctx.fillStyle = 'rgba(76,175,80,' + (0.3 + gt * 0.2) + ')';
+                        ctx.fill();
+                        // Midrib line
+                        ctx.beginPath();
+                        ctx.moveTo(cornX + sway * (0.25 + li * 0.2), ly);
+                        ctx.lineTo(leafTipX, leafTipY);
+                        ctx.strokeStyle = 'rgba(27,94,32,0.4)';
+                        ctx.lineWidth = 0.8;
+                        ctx.stroke();
+                      }
+                    }
+                    // Corn tassels with silk threads
+                    if (gt > 0.7) {
+                      var tasselBase = cy - h * 0.2 - cornH;
+                      ctx.fillStyle = '#FDD835';
+                      for (var ti = 0; ti < 5; ti++) {
+                        var tAngle = (ti / 5) * Math.PI - Math.PI * 0.5;
+                        var tLen = 6 + gt * 4;
+                        ctx.beginPath();
+                        ctx.moveTo(cornX + sway * 1.3, tasselBase);
+                        ctx.lineTo(cornX + sway * 1.3 + Math.cos(tAngle) * tLen, tasselBase - Math.abs(Math.sin(tAngle)) * tLen * 0.8);
+                        ctx.strokeStyle = '#FDD835';
+                        ctx.lineWidth = 1.2;
+                        ctx.stroke();
+                        // Pollen dots at tips
+                        ctx.beginPath();
+                        ctx.arc(cornX + sway * 1.3 + Math.cos(tAngle) * tLen, tasselBase - Math.abs(Math.sin(tAngle)) * tLen * 0.8, 1.5, 0, Math.PI * 2);
+                        ctx.fill();
+                      }
+                    }
+                    // Corn ears with husk detail
                     if (gt > 0.6) {
-                      ctx.fillStyle = '#FFB300';
                       var earY = cy - h * 0.2 - cornH * 0.55;
+                      var earX = cornX + sway * 0.5 + 8;
+                      // Husk (outer layers)
                       ctx.beginPath();
-                      ctx.ellipse(cornX + sway * 0.5 + 8, earY, 4, 8 + gt * 4, 0.3, 0, Math.PI * 2);
+                      ctx.ellipse(earX - 1, earY, 6 + gt * 2, 10 + gt * 5, 0.3, 0, Math.PI * 2);
+                      ctx.fillStyle = '#8BC34A';
                       ctx.fill();
+                      // Ear (inner yellow)
+                      ctx.beginPath();
+                      ctx.ellipse(earX, earY, 4, 8 + gt * 4, 0.3, 0, Math.PI * 2);
+                      ctx.fillStyle = '#FFB300';
+                      ctx.fill();
+                      // Kernel rows
+                      ctx.beginPath();
+                      ctx.ellipse(earX, earY, 3, 6 + gt * 3, 0.3, 0, Math.PI * 2);
                       ctx.fillStyle = '#C8B900';
-                      ctx.beginPath();
-                      ctx.ellipse(cornX + sway * 0.5 + 8, earY, 3, 6 + gt * 3, 0.3, 0, Math.PI * 2);
                       ctx.fill();
+                      // Silk threads emerging from top of ear
+                      if (gt > 0.75) {
+                        for (var si2 = 0; si2 < 4; si2++) {
+                          ctx.beginPath();
+                          ctx.moveTo(earX, earY - 8 - gt * 4);
+                          ctx.quadraticCurveTo(
+                            earX + (si2 - 1.5) * 4 + Math.sin(tick * 0.03 + si2) * 2,
+                            earY - 12 - gt * 6,
+                            earX + (si2 - 1.5) * 6 + Math.sin(tick * 0.02 + si2) * 3,
+                            earY - 16 - gt * 5
+                          );
+                          ctx.strokeStyle = 'rgba(255,235,180,0.6)';
+                          ctx.lineWidth = 0.6;
+                          ctx.stroke();
+                        }
+                      }
                     }
                   }
                 }
@@ -19017,7 +19439,7 @@
                   }
                 }
 
-                // ── Squash vines & leaves ──
+                // ── Squash vines & leaves (enhanced with multi-lobed leaves, cross-veins, flowers, ribbed fruit) ──
                 if (_squash) {
                   var sqSpread = gt * w * 1.3;
                   for (var si = 0; si < 5; si++) {
@@ -19025,39 +19447,118 @@
                     var sqx = cx + Math.cos(angle) * sqSpread * (0.5 + si * 0.12);
                     var sqy = cy + Math.sin(angle) * h * 0.3 * gt + h * 0.1;
                     var vineSway = Math.sin(tick * 0.01 + si) * 3;
-                    // Vine
+                    // Vine with tapered width
                     ctx.strokeStyle = '#2E7D32';
                     ctx.lineWidth = 2 + gt * 2;
                     ctx.beginPath();
                     ctx.moveTo(cx, cy);
                     ctx.quadraticCurveTo(cx + (sqx - cx) * 0.5 + vineSway, sqy - 10, sqx, sqy);
                     ctx.stroke();
-                    // Large leaves (living mulch!)
+                    // Tendrils along vine
+                    if (gt > 0.3) {
+                      var midVX = cx + (sqx - cx) * 0.5 + vineSway;
+                      var midVY = sqy - 10;
+                      ctx.strokeStyle = 'rgba(46,125,50,0.5)';
+                      ctx.lineWidth = 0.8;
+                      for (var tn = 0; tn < 2; tn++) {
+                        var tnX = midVX + (tn === 0 ? -8 : 8);
+                        var tnY = midVY + tn * 5;
+                        ctx.beginPath(); ctx.moveTo(midVX + (sqx - cx) * 0.1 * tn, midVY + tn * 3);
+                        ctx.bezierCurveTo(tnX, tnY - 6, tnX + (tn === 0 ? -4 : 4), tnY - 8, tnX + (tn === 0 ? -2 : 2), tnY - 3);
+                        ctx.stroke();
+                      }
+                    }
+                    // Multi-lobed squash leaves
                     if (gt > 0.2) {
                       var leafSize = 8 + gt * 18;
                       var leafAlpha = 0.6 + gt * 0.3;
+                      // Draw 5-lobed leaf shape
+                      ctx.save();
+                      ctx.translate(sqx + vineSway, sqy);
+                      ctx.rotate(angle + Math.sin(tick * 0.01) * 0.1);
+                      // Main leaf body
+                      ctx.beginPath();
+                      for (var lobe = 0; lobe < 5; lobe++) {
+                        var lobeAngle = (lobe / 5) * Math.PI * 2 - Math.PI / 2;
+                        var lobeR = leafSize * (lobe % 2 === 0 ? 1 : 0.7);
+                        if (lobe === 0) {
+                          ctx.moveTo(Math.cos(lobeAngle) * lobeR, Math.sin(lobeAngle) * lobeR * 0.6);
+                        } else {
+                          ctx.quadraticCurveTo(
+                            Math.cos(lobeAngle - 0.3) * leafSize * 0.4,
+                            Math.sin(lobeAngle - 0.3) * leafSize * 0.35,
+                            Math.cos(lobeAngle) * lobeR,
+                            Math.sin(lobeAngle) * lobeR * 0.6
+                          );
+                        }
+                      }
+                      ctx.closePath();
                       ctx.fillStyle = 'rgba(76,175,80,' + leafAlpha + ')';
-                      ctx.beginPath();
-                      ctx.ellipse(sqx + vineSway, sqy, leafSize, leafSize * 0.6, angle + Math.sin(tick * 0.01) * 0.1, 0, Math.PI * 2);
                       ctx.fill();
-                      // Leaf veins
-                      ctx.strokeStyle = 'rgba(27,94,32,0.3)';
-                      ctx.lineWidth = 0.5;
-                      ctx.beginPath();
-                      ctx.moveTo(sqx + vineSway - leafSize * 0.8, sqy);
-                      ctx.lineTo(sqx + vineSway + leafSize * 0.8, sqy);
+                      ctx.strokeStyle = 'rgba(46,125,50,0.4)';
+                      ctx.lineWidth = 0.6;
                       ctx.stroke();
+                      // Central vein + cross veins
+                      ctx.strokeStyle = 'rgba(27,94,32,0.35)';
+                      ctx.lineWidth = 0.8;
+                      ctx.beginPath(); ctx.moveTo(-leafSize * 0.6, 0); ctx.lineTo(leafSize * 0.6, 0); ctx.stroke();
+                      ctx.beginPath(); ctx.moveTo(0, -leafSize * 0.4); ctx.lineTo(0, leafSize * 0.4); ctx.stroke();
+                      // Cross veins
+                      for (var cv = 0; cv < 3; cv++) {
+                        var cvX = (-0.4 + cv * 0.4) * leafSize;
+                        ctx.beginPath();
+                        ctx.moveTo(cvX, -leafSize * 0.25); ctx.lineTo(cvX + 2, leafSize * 0.25);
+                        ctx.strokeStyle = 'rgba(27,94,32,0.2)'; ctx.lineWidth = 0.5; ctx.stroke();
+                      }
+                      ctx.restore();
                     }
-                    // Squash fruits
+                    // Squash flower buds (before fruit)
+                    if (gt > 0.4 && gt < 0.7 && si < 3) {
+                      var flX = sqx + vineSway + 6;
+                      var flY = sqy - 3;
+                      ctx.beginPath();
+                      for (var petal = 0; petal < 5; petal++) {
+                        var petalAngle = (petal / 5) * Math.PI * 2;
+                        var petalR = 4 + gt * 3;
+                        ctx.ellipse(
+                          flX + Math.cos(petalAngle) * petalR * 0.5,
+                          flY + Math.sin(petalAngle) * petalR * 0.5,
+                          petalR * 0.4, petalR * 0.25, petalAngle, 0, Math.PI * 2
+                        );
+                      }
+                      ctx.fillStyle = 'rgba(255,193,7,0.7)';
+                      ctx.fill();
+                      // Flower center
+                      ctx.beginPath(); ctx.arc(flX, flY, 2, 0, Math.PI * 2);
+                      ctx.fillStyle = 'rgba(255,152,0,0.8)'; ctx.fill();
+                    }
+                    // Squash fruits with ribs
                     if (gt > 0.65 && si < 3) {
+                      var frX = sqx + 5;
+                      var frY = sqy + 3;
+                      var frW = 6 + gt * 5;
+                      var frH = 4 + gt * 3;
                       ctx.fillStyle = si === 0 ? '#FF8F00' : si === 1 ? '#F9A825' : '#FFB300';
                       ctx.beginPath();
-                      ctx.ellipse(sqx + 5, sqy + 3, 6 + gt * 5, 4 + gt * 3, 0.2, 0, Math.PI * 2);
+                      ctx.ellipse(frX, frY, frW, frH, 0.2, 0, Math.PI * 2);
                       ctx.fill();
+                      // Ribs
+                      ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+                      ctx.lineWidth = 0.6;
+                      for (var rib = 0; rib < 4; rib++) {
+                        ctx.beginPath();
+                        var ribAngle = (rib / 4) * Math.PI;
+                        ctx.ellipse(frX, frY, frW * 0.95, frH * 0.3, 0.2 + ribAngle * 0.15, 0, Math.PI * 2);
+                        ctx.stroke();
+                      }
+                      // Shadow
                       ctx.fillStyle = 'rgba(0,0,0,0.1)';
                       ctx.beginPath();
-                      ctx.ellipse(sqx + 7, sqy + 5, 4 + gt * 3, 2 + gt * 2, 0.2, 0, Math.PI * 2);
+                      ctx.ellipse(frX + 2, frY + frH * 0.7, frW * 0.8, frH * 0.3, 0.2, 0, Math.PI * 2);
                       ctx.fill();
+                      // Stem nub
+                      ctx.fillStyle = '#558B2F';
+                      ctx.beginPath(); ctx.arc(frX - frW + 2, frY - 1, 2, 0, Math.PI * 2); ctx.fill();
                     }
                   }
                   // Shade coverage indicator
@@ -19229,7 +19730,7 @@
                   drawMound(cW * 0.5 / dpr, cH * 0.58 / dpr, 100, 35, '', _corn, _beans, _squash, _gt, false);
                 }
 
-                // ── Floating particles (pollen, butterflies, N₂ symbols) ──
+                // ── Floating particles (pollen, pollinators, N₂ symbols) ──
                 particles.forEach(function (p) {
                   p.life++;
                   p.x += p.vx + Math.sin(tick * 0.01 + p.life * 0.1) * 0.2;
@@ -19237,17 +19738,58 @@
                   if (p.y < -10 || p.life > 250) { p.y = cH * 0.35 / dpr; p.x = Math.random() * cW / dpr; p.life = 0; }
                   var pAlpha = Math.min(1, p.life / 30) * (1 - Math.max(0, p.life - 200) / 50);
                   if (p.type === 'pollen' && _gt > 50) {
+                    // Pollen with glow
                     ctx.fillStyle = 'rgba(255,235,59,' + (pAlpha * 0.5) + ')';
                     ctx.beginPath(); ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2); ctx.fill();
+                    // Pollen glow halo
+                    ctx.fillStyle = 'rgba(255,235,59,' + (pAlpha * 0.15) + ')';
+                    ctx.beginPath(); ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2); ctx.fill();
                   } else if (p.type === 'butterfly' && _gt > 30) {
-                    var wingAngle = Math.sin(tick * 0.08 + p.life) * 0.4;
+                    // Enhanced butterfly with detailed wings
+                    var wingFlap = Math.sin(tick * 0.08 + p.life) * 0.5;
+                    var bfSize = 3.5;
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    // Left upper wing
+                    ctx.beginPath();
+                    ctx.ellipse(-bfSize * 0.7, -bfSize * 0.15, bfSize * 0.9 * (0.5 + wingFlap * 0.5), bfSize * 0.55, -0.2, 0, Math.PI * 2);
                     ctx.fillStyle = 'rgba(255,152,0,' + (pAlpha * 0.7) + ')';
-                    ctx.beginPath();
-                    ctx.ellipse(p.x - 3, p.y, 3, 1.5, wingAngle, 0, Math.PI * 2);
                     ctx.fill();
+                    // Right upper wing
                     ctx.beginPath();
-                    ctx.ellipse(p.x + 3, p.y, 3, 1.5, -wingAngle, 0, Math.PI * 2);
+                    ctx.ellipse(bfSize * 0.7, -bfSize * 0.15, bfSize * 0.9 * (0.5 + wingFlap * 0.5), bfSize * 0.55, 0.2, 0, Math.PI * 2);
                     ctx.fill();
+                    // Left lower wing (smaller)
+                    ctx.beginPath();
+                    ctx.ellipse(-bfSize * 0.5, bfSize * 0.25, bfSize * 0.55 * (0.5 + wingFlap * 0.5), bfSize * 0.35, -0.3, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(255,183,77,' + (pAlpha * 0.6) + ')';
+                    ctx.fill();
+                    // Right lower wing
+                    ctx.beginPath();
+                    ctx.ellipse(bfSize * 0.5, bfSize * 0.25, bfSize * 0.55 * (0.5 + wingFlap * 0.5), bfSize * 0.35, 0.3, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Wing pattern spots
+                    ctx.fillStyle = 'rgba(230,100,0,' + (pAlpha * 0.4) + ')';
+                    ctx.beginPath(); ctx.arc(-bfSize * 0.6, -bfSize * 0.1, bfSize * 0.2, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(bfSize * 0.6, -bfSize * 0.1, bfSize * 0.2, 0, Math.PI * 2); ctx.fill();
+                    // Body
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, bfSize * 0.08, bfSize * 0.45, 0, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(40,40,40,' + pAlpha + ')';
+                    ctx.fill();
+                    // Head
+                    ctx.beginPath(); ctx.arc(0, -bfSize * 0.42, bfSize * 0.1, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Antennae
+                    ctx.strokeStyle = 'rgba(40,40,40,' + (pAlpha * 0.6) + ')';
+                    ctx.lineWidth = 0.5;
+                    ctx.beginPath(); ctx.moveTo(0, -bfSize * 0.5); ctx.lineTo(-bfSize * 0.3, -bfSize * 0.75); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(0, -bfSize * 0.5); ctx.lineTo(bfSize * 0.3, -bfSize * 0.75); ctx.stroke();
+                    // Antenna bulbs
+                    ctx.fillStyle = 'rgba(40,40,40,' + (pAlpha * 0.5) + ')';
+                    ctx.beginPath(); ctx.arc(-bfSize * 0.3, -bfSize * 0.75, 0.6, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(bfSize * 0.3, -bfSize * 0.75, 0.6, 0, Math.PI * 2); ctx.fill();
+                    ctx.restore();
                   } else if (p.type === 'n2' && _beans && _gt > 20) {
                     ctx.fillStyle = 'rgba(130,230,170,' + (pAlpha * 0.4) + ')';
                     ctx.font = '8px monospace';
