@@ -753,29 +753,34 @@
             // obj.userData holds { bx, by, bz }
             return obj.userData;
           };
-          // Mouse move → update ghost position
+          // Mouse move → update ghost position (only in place mode)
           cnv.addEventListener('mousemove', function (evt) {
+            var _as = window._archScene;
+            var _act = (_as && _as._active) || {};
+            if ((_act.mode || 'place') !== 'place') { ghostMesh.visible = false; return; }
             var pos = _getGridPos(evt);
             if (!pos) { ghostMesh.visible = false; return; }
             ghostMesh.visible = true;
             ghostMesh.position.set(pos.x + 0.5, pos.y + 0.5, pos.z + 0.5);
           });
-          // Click → place/erase/paint
+          // Click → place/erase/paint  (reads from window._archScene._active to avoid stale closure)
           cnv.addEventListener('click', function (evt) {
-            var gd2 = (labToolData && labToolData.archStudio) || {};
-            var mode = gd2.mode || 'place';
+            var _as = window._archScene; if (!_as) return;
+            var _act = _as._active || {};
+            var mode = _act.mode || 'place';
             if (mode === 'place') {
               var pos = _getGridPos(evt);
               if (!pos) return;
-              // Check no block already there
-              var curBlocks = (gd2.blocks || []);
-              var exists = curBlocks.some(function (b) { return b.x === pos.x && b.y === pos.y && b.z === pos.z; });
-              if (exists) return;
-              var newBlock = { x: pos.x, y: pos.y, z: pos.z, shape: gd2.activeShape || 'block', material: gd2.activeMaterial || 'stone', color: gd2.activeColor || '#94a3b8' };
+              var _shape = _act.activeShape || 'block';
+              var _material = _act.activeMaterial || 'stone';
+              var _color = _act.activeColor || '#94a3b8';
               setLabToolData(function (p) {
                 var a = Object.assign({}, p.archStudio || {});
-                var nb = (a.blocks || []).concat([newBlock]);
-                return Object.assign({}, p, { archStudio: Object.assign({}, a, { blocks: nb }) });
+                var curBlocks = a.blocks || [];
+                var exists = curBlocks.some(function (b) { return b.x === pos.x && b.y === pos.y && b.z === pos.z; });
+                if (exists) return p;
+                var newBlock = { x: pos.x, y: pos.y, z: pos.z, shape: _shape, material: _material, color: _color };
+                return Object.assign({}, p, { archStudio: Object.assign({}, a, { blocks: curBlocks.concat([newBlock]) }) });
               });
             } else if (mode === 'erase') {
               var bd = _getClickedBlock(evt);
@@ -788,11 +793,13 @@
             } else if (mode === 'paint') {
               var bd2 = _getClickedBlock(evt);
               if (!bd2) return;
+              var _pMat = _act.activeMaterial || 'stone';
+              var _pCol = _act.activeColor || '#94a3b8';
               setLabToolData(function (p) {
                 var a = Object.assign({}, p.archStudio || {});
                 var nb = (a.blocks || []).map(function (b) {
                   if (b.x === bd2.bx && b.y === bd2.by && b.z === bd2.bz) {
-                    return Object.assign({}, b, { material: (a.activeMaterial || 'stone'), color: (a.activeColor || '#94a3b8') });
+                    return Object.assign({}, b, { material: _pMat, color: _pCol });
                   }
                   return b;
                 });
@@ -800,18 +807,35 @@
               });
             }
           });
-          window._archScene = { scene: scene, camera: camera, renderer: renderer, controls: controls, animId: animId, ghostMesh: ghostMesh, blockMeshes: [] };
+          window._archScene = { scene: scene, camera: camera, renderer: renderer, controls: controls, animId: animId, ghostMesh: ghostMesh, blockMeshes: [], _active: {} };
         }
+
+        // ── Update active state on every re-render (avoids stale closure in click handler) ──
+        window._archScene._active = { activeShape: gd.activeShape || 'block', activeMaterial: gd.activeMaterial || 'stone', activeColor: gd.activeColor || '#94a3b8', mode: gd.mode || 'place', styleMode: gd.styleMode || 'architect', blueprintView: gd.blueprintView || false };
 
         // ── Rebuild all block meshes ──
         var as = window._archScene;
-        // Remove old block meshes
-        as.blockMeshes.forEach(function (m) { as.scene.remove(m); m.geometry.dispose(); if (m.material) m.material.dispose(); });
+        var _styleMode = gd.styleMode || 'architect';
+        var _blueprintView = gd.blueprintView || false;
+        // Remove old block meshes (including stud children)
+        as.blockMeshes.forEach(function (m) {
+          while (m.children.length > 0) { var c = m.children[0]; m.remove(c); if (c.geometry) c.geometry.dispose(); if (c.material) c.material.dispose(); }
+          as.scene.remove(m); m.geometry.dispose(); if (m.material) m.material.dispose();
+        });
         as.blockMeshes = [];
-        // Material colors
-        var matColors = { stone: '#94a3b8', brick: '#b45309', wood: '#92400e', glass: '#38bdf8', marble: '#f1f5f9', metal: '#cbd5e1' };
+        // Material colors (architect vs brick mode)
+        var matColors = _styleMode === 'bricks'
+          ? { stone: '#ef4444', brick: '#f59e0b', wood: '#22c55e', glass: '#3b82f6', marble: '#f8fafc', metal: '#1e293b' }
+          : { stone: '#94a3b8', brick: '#b45309', wood: '#92400e', glass: '#38bdf8', marble: '#f1f5f9', metal: '#cbd5e1' };
         // Shape geometry factory
         var mkGeo = function (shape) {
+          if (_styleMode === 'bricks') {
+            // Brick mode: all shapes become rounded boxes (beveled)
+            switch (shape) {
+              case 'slab': return new THREE.BoxGeometry(0.95, 0.45, 0.95, 2, 1, 2);
+              default: return new THREE.BoxGeometry(0.95, 0.95, 0.95, 2, 2, 2);
+            }
+          }
           switch (shape) {
             case 'slab': return new THREE.BoxGeometry(1, 0.5, 1);
             case 'ramp': {
@@ -848,26 +872,53 @@
             default: return new THREE.BoxGeometry(1, 1, 1);
           }
         };
+        // Stud geometry (reusable, only created once in brick mode)
+        var studGeo = _styleMode === 'bricks' ? new THREE.CylinderGeometry(0.15, 0.15, 0.12, 12) : null;
         // Create mesh for each placed block
         blocks.forEach(function (b) {
           var geo = mkGeo(b.shape || 'block');
-          var col = b.color || matColors[b.material] || '#94a3b8';
-          var isGlass = (b.material === 'glass');
+          var col = _styleMode === 'bricks' ? (matColors[b.material] || b.color || '#ef4444') : (b.color || matColors[b.material] || '#94a3b8');
+          var isGlass = (b.material === 'glass') && _styleMode !== 'bricks';
           var mat = new THREE.MeshPhongMaterial({
             color: new THREE.Color(col),
             transparent: isGlass,
             opacity: isGlass ? 0.4 : 1,
-            shininess: (b.material === 'metal') ? 100 : (b.material === 'marble' ? 80 : 40),
-            flatShading: (b.material === 'stone' || b.material === 'brick')
+            shininess: _styleMode === 'bricks' ? 60 : ((b.material === 'metal') ? 100 : (b.material === 'marble' ? 80 : 40)),
+            flatShading: _styleMode === 'bricks' ? false : (b.material === 'stone' || b.material === 'brick')
           });
           var mesh = new THREE.Mesh(geo, mat);
           mesh.position.set(b.x + 0.5, (b.shape === 'slab' ? 0.25 : (b.shape === 'dome' ? 0 : 0.5)) + b.y, b.z + 0.5);
           mesh.castShadow = true;
           mesh.receiveShadow = true;
           mesh.userData = { bx: b.x, by: b.y, bz: b.z };
+          // In brick mode, add stud bumps on top
+          if (_styleMode === 'bricks' && studGeo && (b.shape || 'block') !== 'slab') {
+            var studMat = new THREE.MeshPhongMaterial({ color: new THREE.Color(col), shininess: 80 });
+            var offsets = [[-0.2, 0.2], [0.2, 0.2], [-0.2, -0.2], [0.2, -0.2]];
+            offsets.forEach(function (off) {
+              var stud = new THREE.Mesh(studGeo, studMat);
+              stud.position.set(off[0], 0.535, off[1]);
+              stud.castShadow = true;
+              mesh.add(stud);
+            });
+          }
           as.scene.add(mesh);
           as.blockMeshes.push(mesh);
         });
+        // ── Blueprint view: switch camera ──
+        if (_blueprintView) {
+          // Move camera to top-down orthographic-like position
+          as.camera.position.set(10, 25, 10);
+          as.camera.lookAt(10, 0, 10);
+          as.camera.fov = 30;
+          as.camera.updateProjectionMatrix();
+          if (as.controls) as.controls.target.set(10, 0, 10);
+          as.scene.background = new THREE.Color('#0c1524');
+        } else {
+          as.camera.fov = 50;
+          as.camera.updateProjectionMatrix();
+          as.scene.background = new THREE.Color('#131a2b');
+        }
         // Update ghost color
         var gd3 = gd;
         if (as.ghostMesh) {
@@ -1091,6 +1142,7 @@
         var _cpgd = (labToolData && labToolData._codingPlayground) || {};
         var _turtleState = _cpgd.turtle || { x: 250, y: 250, angle: -90, penDown: true, color: '#6366f1', width: 2 };
         var _drawnLines = _cpgd.lines || [];
+        var _showTurtle = _cpgd.showTurtle !== false;
         var cvs = _codingCanvasRef.current;
         if (!cvs) return;
         var ctx = cvs.getContext('2d');
@@ -1109,38 +1161,47 @@
           ctx.beginPath(); ctx.moveTo(ln.x1, ln.y1); ctx.lineTo(ln.x2, ln.y2); ctx.stroke();
         });
         var tx = _turtleState.x, ty = _turtleState.y, ta = _turtleState.angle * Math.PI / 180;
-        // Glow under turtle
-        ctx.save(); ctx.translate(tx, ty);
-        var _glowGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, 28);
-        _glowGrad.addColorStop(0, 'rgba(74,222,128,0.35)'); _glowGrad.addColorStop(1, 'rgba(74,222,128,0)');
-        ctx.fillStyle = _glowGrad; ctx.beginPath(); ctx.arc(0, 0, 28, 0, Math.PI * 2); ctx.fill();
-        ctx.restore();
-        ctx.save(); ctx.translate(tx, ty); ctx.rotate(ta + Math.PI / 2);
-        var _ts = 1.5; ctx.scale(_ts, _ts);
-        // Legs (four stubby green legs)
-        ctx.fillStyle = '#4ade80';
-        [[-8, -4], [8, -4], [-8, 6], [8, 6]].forEach(function (p) { ctx.beginPath(); ctx.ellipse(p[0], p[1], 3.5, 5.5, 0, 0, Math.PI * 2); ctx.fill(); });
-        // Shell (oval body with pattern)
-        ctx.fillStyle = '#15803d'; ctx.beginPath(); ctx.ellipse(0, 1, 11, 13, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#22c55e'; ctx.beginPath(); ctx.ellipse(0, 1, 9, 11, 0, 0, Math.PI * 2); ctx.fill();
-        // Shell hexagonal pattern
-        ctx.strokeStyle = '#15803d'; ctx.lineWidth = 0.8;
-        ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(0, 12); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(-9, 1); ctx.lineTo(9, 1); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(-7, -5); ctx.lineTo(7, 7); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(7, -5); ctx.lineTo(-7, 7); ctx.stroke();
-        // Shell highlight
-        ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.beginPath(); ctx.ellipse(-2, -3, 4, 5, -0.3, 0, Math.PI * 2); ctx.fill();
-        // Head
-        ctx.fillStyle = '#4ade80'; ctx.beginPath(); ctx.ellipse(0, -15, 6, 6, 0, 0, Math.PI * 2); ctx.fill();
-        // Eyes (bigger, friendlier)
-        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(-3, -16, 2.5, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(3, -16, 2.5, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#0f172a'; ctx.beginPath(); ctx.arc(-3, -16.5, 1.2, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(3, -16.5, 1.2, 0, Math.PI * 2); ctx.fill();
-        // Smile
-        ctx.strokeStyle = '#15803d'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.arc(0, -13.5, 3, 0.2, Math.PI - 0.2); ctx.stroke();
-        // Tail
-        ctx.strokeStyle = '#4ade80'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 13); ctx.quadraticCurveTo(4, 19, 1, 22); ctx.stroke();
-        ctx.restore();
+        if (_showTurtle) {
+          // Glow under turtle
+          ctx.save(); ctx.translate(tx, ty);
+          var _glowGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, 28);
+          _glowGrad.addColorStop(0, 'rgba(74,222,128,0.35)'); _glowGrad.addColorStop(1, 'rgba(74,222,128,0)');
+          ctx.fillStyle = _glowGrad; ctx.beginPath(); ctx.arc(0, 0, 28, 0, Math.PI * 2); ctx.fill();
+          ctx.restore();
+          ctx.save(); ctx.translate(tx, ty); ctx.rotate(ta + Math.PI / 2);
+          var _ts = 1.5; ctx.scale(_ts, _ts);
+          // Legs (four stubby green legs)
+          ctx.fillStyle = '#4ade80';
+          [[-8, -4], [8, -4], [-8, 6], [8, 6]].forEach(function (p) { ctx.beginPath(); ctx.ellipse(p[0], p[1], 3.5, 5.5, 0, 0, Math.PI * 2); ctx.fill(); });
+          // Shell (oval body with pattern)
+          ctx.fillStyle = '#15803d'; ctx.beginPath(); ctx.ellipse(0, 1, 11, 13, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#22c55e'; ctx.beginPath(); ctx.ellipse(0, 1, 9, 11, 0, 0, Math.PI * 2); ctx.fill();
+          // Shell hexagonal pattern
+          ctx.strokeStyle = '#15803d'; ctx.lineWidth = 0.8;
+          ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(0, 12); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(-9, 1); ctx.lineTo(9, 1); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(-7, -5); ctx.lineTo(7, 7); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(7, -5); ctx.lineTo(-7, 7); ctx.stroke();
+          // Shell highlight
+          ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.beginPath(); ctx.ellipse(-2, -3, 4, 5, -0.3, 0, Math.PI * 2); ctx.fill();
+          // Head
+          ctx.fillStyle = '#4ade80'; ctx.beginPath(); ctx.ellipse(0, -15, 6, 6, 0, 0, Math.PI * 2); ctx.fill();
+          // Eyes (bigger, friendlier)
+          ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(-3, -16, 2.5, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(3, -16, 2.5, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#0f172a'; ctx.beginPath(); ctx.arc(-3, -16.5, 1.2, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(3, -16.5, 1.2, 0, Math.PI * 2); ctx.fill();
+          // Smile
+          ctx.strokeStyle = '#15803d'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.arc(0, -13.5, 3, 0.2, Math.PI - 0.2); ctx.stroke();
+          // Tail
+          ctx.strokeStyle = '#4ade80'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 13); ctx.quadraticCurveTo(4, 19, 1, 22); ctx.stroke();
+          ctx.restore();
+        } else {
+          // Simple arrow cursor
+          ctx.save(); ctx.translate(tx, ty); ctx.rotate(ta + Math.PI / 2);
+          ctx.fillStyle = '#4ade80'; ctx.strokeStyle = '#15803d'; ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.moveTo(0, -14); ctx.lineTo(-8, 10); ctx.lineTo(0, 5); ctx.lineTo(8, 10); ctx.closePath();
+          ctx.fill(); ctx.stroke();
+          ctx.restore();
+        }
         if (_turtleState.penDown) { ctx.fillStyle = _turtleState.color; ctx.beginPath(); ctx.arc(tx, ty, 3, 0, Math.PI * 2); ctx.fill(); }
         // Coordinates badge
         ctx.fillStyle = 'rgba(15,23,42,0.7)'; ctx.fillRect(4, H - 24, 180, 20); ctx.fillStyle = '#e2e8f0'; ctx.font = 'bold 12px monospace';
@@ -1226,7 +1287,7 @@
           backdropFilter: 'blur(6px)'
         }
       }, /*#__PURE__*/React.createElement("div", {
-        className: "w-full max-w-5xl m-4 bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden" + (_reduceMotion ? "" : " animate-in zoom-in-95 duration-300")
+        className: "w-full max-w-[98vw] m-2 bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden" + (_reduceMotion ? "" : " animate-in zoom-in-95 duration-300")
       }, /*#__PURE__*/React.createElement("div", {
         className: "flex items-center justify-between px-6 py-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 text-white", role: "banner"
       }, /*#__PURE__*/React.createElement("div", {
@@ -21474,6 +21535,8 @@
             var activeMaterial = d.activeMaterial || 'stone';
             var activeColor = d.activeColor || '#94a3b8';
             var mode = d.mode || 'place';
+            var styleMode = d.styleMode || 'architect';
+            var blueprintView = d.blueprintView || false;
             var threeReady = labToolData._threeLoaded;
 
             // Shape definitions
@@ -21522,6 +21585,17 @@
                 if (!blockMap[(b.x + n[0]) + ',' + (b.y + n[1]) + ',' + (b.z + n[2])]) surfaceArea += 1;
               });
             });
+            // Bounding box dimensions
+            var buildW = 0, buildD = 0, buildH = 0;
+            if (blocks.length > 0) {
+              var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity;
+              blocks.forEach(function (b) {
+                if (b.x < minX) minX = b.x; if (b.x > maxX) maxX = b.x;
+                if (b.y < minY) minY = b.y; if (b.y > maxY) maxY = b.y;
+                if (b.z < minZ) minZ = b.z; if (b.z > maxZ) maxZ = b.z;
+              });
+              buildW = maxX - minX + 1; buildD = maxZ - minZ + 1; buildH = maxY - minY + 1;
+            }
 
             // STL export function
             var exportSTL = function () {
@@ -21616,11 +21690,15 @@
 
             return React.createElement('div', { key: 'archStudio', style: { display: 'flex', flexDirection: 'column', height: '100%', background: '#0f172a', borderRadius: 16, overflow: 'hidden' } },
               // Header bar
-              React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', background: 'linear-gradient(90deg,#1e293b,#0f172a)', borderBottom: '1px solid #334155' } },
+              React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', background: 'linear-gradient(90deg,#1e293b,#0f172a)', borderBottom: '1px solid #334155', flexWrap: 'wrap' } },
                 React.createElement('button', { onClick: function () { setStemLabTool(''); }, style: { background: 'rgba(71,85,105,.5)', border: 'none', color: '#e2e8f0', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 600 } }, '\u2190 Back'),
-                React.createElement('span', { style: { fontSize: 20 } }, '\uD83C\uDFD7\uFE0F'),
-                React.createElement('span', { style: { fontWeight: 700, fontSize: 17, color: '#f8fafc', letterSpacing: 0.5 } }, 'Architecture Studio'),
+                React.createElement('span', { style: { fontSize: 20 } }, styleMode === 'bricks' ? '\uD83E\uDDF1' : '\uD83C\uDFD7\uFE0F'),
+                React.createElement('span', { style: { fontWeight: 700, fontSize: 17, color: '#f8fafc', letterSpacing: 0.5 } }, styleMode === 'bricks' ? 'Brick Builder' : 'Architecture Studio'),
                 React.createElement('span', { style: { fontSize: 11, color: '#64748b', marginLeft: 4 } }, blocks.length + ' blocks'),
+                // Style mode toggle
+                React.createElement('button', { onClick: function () { upd('styleMode', styleMode === 'architect' ? 'bricks' : 'architect'); }, style: { background: styleMode === 'bricks' ? 'rgba(239,68,68,.2)' : 'rgba(99,102,241,.15)', border: '1px solid ' + (styleMode === 'bricks' ? '#f87171' : '#6366f1'), color: styleMode === 'bricks' ? '#fca5a5' : '#a5b4fc', borderRadius: 20, padding: '4px 12px', cursor: 'pointer', fontSize: 11, fontWeight: 700 } }, styleMode === 'bricks' ? '\uD83E\uDDF1 Brick Builder' : '\uD83C\uDFDB\uFE0F Architect'),
+                // Blueprint toggle
+                React.createElement('button', { onClick: function () { upd('blueprintView', !blueprintView); }, style: { background: blueprintView ? 'rgba(34,211,238,.2)' : 'rgba(71,85,105,.3)', border: '1px solid ' + (blueprintView ? '#22d3ee' : '#475569'), color: blueprintView ? '#67e8f9' : '#94a3b8', borderRadius: 20, padding: '4px 12px', cursor: 'pointer', fontSize: 11, fontWeight: 700 } }, blueprintView ? '\uD83D\uDCD0 Blueprint' : '\uD83C\uDFD7\uFE0F 3D View'),
                 React.createElement('div', { style: { flex: 1 } }),
                 React.createElement('button', { onClick: undoBlock, disabled: blocks.length === 0, style: { background: 'rgba(71,85,105,.5)', border: 'none', color: blocks.length ? '#e2e8f0' : '#475569', borderRadius: 8, padding: '6px 12px', cursor: blocks.length ? 'pointer' : 'default', fontSize: 12, fontWeight: 600 } }, '\u21A9 Undo'),
                 React.createElement('button', { onClick: clearAll, disabled: blocks.length === 0, style: { background: blocks.length ? 'rgba(239,68,68,.3)' : 'rgba(71,85,105,.3)', border: blocks.length ? '1px solid rgba(239,68,68,.4)' : '1px solid transparent', color: blocks.length ? '#fca5a5' : '#475569', borderRadius: 8, padding: '6px 12px', cursor: blocks.length ? 'pointer' : 'default', fontSize: 12, fontWeight: 600 } }, '\uD83D\uDDD1\uFE0F Clear'),
@@ -21715,6 +21793,7 @@
                   React.createElement('div', { style: { display: 'flex', gap: 16, justifyContent: 'center', padding: '8px 16px', background: 'linear-gradient(0deg,#1e293b,#0f172a)', borderTop: '1px solid #334155', flexWrap: 'wrap' } },
                     [
                       { label: 'Blocks', value: totalBlocks, icon: '\uD83E\uDDF1' },
+                      { label: 'Dimensions', value: blocks.length > 0 ? buildW + '\u00D7' + buildD + '\u00D7' + buildH : '\u2014', icon: '\uD83D\uDCCF' },
                       { label: 'Volume', value: totalVolume + ' u\u00B3', icon: '\uD83D\uDCE6' },
                       { label: 'Footprint', value: footprint + ' u\u00B2', icon: '\uD83D\uDDFA\uFE0F' },
                       { label: 'Surface', value: surfaceArea + ' u\u00B2', icon: '\uD83D\uDCC0' }
@@ -22733,16 +22812,23 @@
             var challengeIdx = d.challengeIdx != null ? d.challengeIdx : -1;
             var completed = d.completed || [];
             var speed = d.speed || 200;
+            var showTurtle = d.showTurtle !== false;
+            var cumulativeMode = d.cumulativeMode || false;
+            var runHistory = d.history || [];
 
             // ── Block definitions ──
             var BLOCK_TYPES = [
               { type: 'forward', label: '🐢 Move Forward', param: 'distance', defaultVal: 50, unit: 'px', color: '#6366f1' },
+              { type: 'backward', label: '🔙 Move Backward', param: 'distance', defaultVal: 50, unit: 'px', color: '#818cf8' },
               { type: 'right', label: '↩️ Turn Right', param: 'degrees', defaultVal: 90, unit: '°', color: '#f59e0b' },
               { type: 'left', label: '↪️ Turn Left', param: 'degrees', defaultVal: 90, unit: '°', color: '#f59e0b' },
               { type: 'penup', label: '✏️ Pen Up', param: null, defaultVal: null, unit: null, color: '#94a3b8' },
               { type: 'pendown', label: '✏️ Pen Down', param: null, defaultVal: null, unit: null, color: '#22c55e' },
               { type: 'color', label: '🎨 Set Color', param: 'color', defaultVal: '#6366f1', unit: null, color: '#ec4899' },
               { type: 'width', label: '📏 Set Width', param: 'width', defaultVal: 2, unit: 'px', color: '#14b8a6' },
+              { type: 'circle', label: '⭕ Draw Circle', param: 'radius', defaultVal: 30, unit: 'px', color: '#06b6d4' },
+              { type: 'goto', label: '📍 Go To', param: 'x', defaultVal: 250, unit: null, color: '#a855f7' },
+              { type: 'home', label: '🏠 Go Home', param: null, defaultVal: null, unit: null, color: '#78716c' },
               { type: 'repeat', label: '🔄 Repeat', param: 'times', defaultVal: 4, unit: '×', color: '#8b5cf6' }
             ];
 
@@ -22785,12 +22871,16 @@
               for (var i = 0; i < blks.length; i++) {
                 var b = blks[i];
                 if (b.type === 'forward') lines.push(indent + 'forward(' + (b.distance || 50) + ')');
+                else if (b.type === 'backward') lines.push(indent + 'backward(' + (b.distance || 50) + ')');
                 else if (b.type === 'right') lines.push(indent + 'right(' + (b.degrees || 90) + ')');
                 else if (b.type === 'left') lines.push(indent + 'left(' + (b.degrees || 90) + ')');
                 else if (b.type === 'penup') lines.push(indent + 'penUp()');
                 else if (b.type === 'pendown') lines.push(indent + 'penDown()');
                 else if (b.type === 'color') lines.push(indent + 'setColor("' + (b.color || '#6366f1') + '")');
                 else if (b.type === 'width') lines.push(indent + 'setWidth(' + (b.width || 2) + ')');
+                else if (b.type === 'circle') lines.push(indent + 'circle(' + (b.radius || 30) + ')');
+                else if (b.type === 'goto') lines.push(indent + 'goto(' + (b.x != null ? b.x : 250) + ', ' + (b.y != null ? b.y : 250) + ')');
+                else if (b.type === 'home') lines.push(indent + 'home()');
                 else if (b.type === 'repeat') {
                   lines.push(indent + 'repeat(' + (b.times || 4) + ', function() {');
                   if (b.children && b.children.length > 0) {
@@ -22814,12 +22904,16 @@
                   if (line.match(/^}\)?;?$/)) { i++; return blks; }
                   var m;
                   if ((m = line.match(/^forward\((\d+)\)/))) { blks.push({ type: 'forward', distance: parseInt(m[1]) }); }
+                  else if ((m = line.match(/^backward\((\d+)\)/))) { blks.push({ type: 'backward', distance: parseInt(m[1]) }); }
                   else if ((m = line.match(/^right\((\d+)\)/))) { blks.push({ type: 'right', degrees: parseInt(m[1]) }); }
                   else if ((m = line.match(/^left\((\d+)\)/))) { blks.push({ type: 'left', degrees: parseInt(m[1]) }); }
                   else if (line.match(/^penUp\(\)/)) { blks.push({ type: 'penup' }); }
                   else if (line.match(/^penDown\(\)/)) { blks.push({ type: 'pendown' }); }
                   else if ((m = line.match(/^setColor\("([^"]+)"\)/))) { blks.push({ type: 'color', color: m[1] }); }
                   else if ((m = line.match(/^setWidth\((\d+)\)/))) { blks.push({ type: 'width', width: parseInt(m[1]) }); }
+                  else if ((m = line.match(/^circle\((\d+)\)/))) { blks.push({ type: 'circle', radius: parseInt(m[1]) }); }
+                  else if ((m = line.match(/^goto\((\d+),\s*(\d+)\)/))) { blks.push({ type: 'goto', x: parseInt(m[1]), y: parseInt(m[2]) }); }
+                  else if (line.match(/^home\(\)/)) { blks.push({ type: 'home' }); }
                   else if ((m = line.match(/^repeat\((\d+)/))) {
                     i++;
                     var children = parse();
@@ -22870,6 +22964,15 @@
                     allLines.push({ x1: t.x, y1: t.y, x2: nx, y2: ny, color: t.color, width: t.width });
                   }
                   t.x = nx; t.y = ny;
+                } else if (b.type === 'backward') {
+                  var dist2 = b.distance || 50;
+                  var rad2 = t.angle * Math.PI / 180;
+                  var nx2 = t.x - Math.cos(rad2) * dist2;
+                  var ny2 = t.y - Math.sin(rad2) * dist2;
+                  if (t.penDown) {
+                    allLines.push({ x1: t.x, y1: t.y, x2: nx2, y2: ny2, color: t.color, width: t.width });
+                  }
+                  t.x = nx2; t.y = ny2;
                 } else if (b.type === 'right') {
                   t.angle = (t.angle + (b.degrees || 90)) % 360;
                 } else if (b.type === 'left') {
@@ -22882,6 +22985,34 @@
                   t.color = b.color || '#6366f1';
                 } else if (b.type === 'width') {
                   t.width = b.width || 2;
+                } else if (b.type === 'circle') {
+                  var cRadius = b.radius || 30;
+                  if (t.penDown) {
+                    var segs = 36;
+                    for (var si = 0; si < segs; si++) {
+                      var a1 = t.angle + (si / segs) * 360;
+                      var a2 = t.angle + ((si + 1) / segs) * 360;
+                      var r1 = a1 * Math.PI / 180;
+                      var r2 = a2 * Math.PI / 180;
+                      var cx1 = t.x + cRadius * (Math.cos(r1) - Math.cos(t.angle * Math.PI / 180));
+                      var cy1 = t.y + cRadius * (Math.sin(r1) - Math.sin(t.angle * Math.PI / 180));
+                      var cx2 = t.x + cRadius * (Math.cos(r2) - Math.cos(t.angle * Math.PI / 180));
+                      var cy2 = t.y + cRadius * (Math.sin(r2) - Math.sin(t.angle * Math.PI / 180));
+                      allLines.push({ x1: cx1, y1: cy1, x2: cx2, y2: cy2, color: t.color, width: t.width });
+                    }
+                  }
+                } else if (b.type === 'goto') {
+                  var gx = b.x != null ? b.x : 250;
+                  var gy = b.y != null ? b.y : 250;
+                  if (t.penDown) {
+                    allLines.push({ x1: t.x, y1: t.y, x2: gx, y2: gy, color: t.color, width: t.width });
+                  }
+                  t.x = gx; t.y = gy;
+                } else if (b.type === 'home') {
+                  if (t.penDown) {
+                    allLines.push({ x1: t.x, y1: t.y, x2: 250, y2: 250, color: t.color, width: t.width });
+                  }
+                  t.x = 250; t.y = 250; t.angle = -90;
                 }
                 updMulti({ turtle: Object.assign({}, t), lines: allLines.slice(), stepIdx: idx, running: true });
                 idx++;
@@ -22892,12 +23023,25 @@
 
             // ── Run handler ──
             function handleRun() {
-              var startTurtle = { x: 250, y: 250, angle: -90, penDown: true, color: '#6366f1', width: 2 };
-              updMulti({ turtle: startTurtle, lines: [], running: true, stepIdx: 0 });
               var blks = codeMode === 'text' ? textToBlocks(textCode) : blocks;
+              var startTurtle, startLines;
+              if (cumulativeMode) {
+                // In cumulative mode, start from current turtle state and keep existing lines
+                startTurtle = Object.assign({}, turtleState);
+                startLines = drawnLines.slice();
+              } else {
+                startTurtle = { x: 250, y: 250, angle: -90, penDown: true, color: '#6366f1', width: 2 };
+                startLines = [];
+              }
+              updMulti({ turtle: startTurtle, lines: startLines, running: true, stepIdx: 0 });
               setTimeout(function () {
-                executeBlocks(blks, startTurtle, [], function (finalTurtle, finalLines) {
-                  updMulti({ turtle: finalTurtle, lines: finalLines, running: false, stepIdx: -1 });
+                executeBlocks(blks, startTurtle, startLines, function (finalTurtle, finalLines) {
+                  var newHistory = runHistory.concat([{
+                    blocks: blks.slice(),
+                    linesCount: finalLines.length - startLines.length,
+                    timestamp: Date.now()
+                  }]);
+                  updMulti({ turtle: finalTurtle, lines: finalLines, running: false, stepIdx: -1, history: newHistory });
                   if (challengeIdx >= 0 && challengeIdx < CHALLENGES.length) {
                     var ch = CHALLENGES[challengeIdx];
                     if (ch.check(finalLines, blks)) {
@@ -22916,11 +23060,11 @@
             }
 
             function handleClear() {
-              updMulti({ turtle: { x: 250, y: 250, angle: -90, penDown: true, color: '#6366f1', width: 2 }, lines: [], running: false, stepIdx: -1 });
+              updMulti({ turtle: { x: 250, y: 250, angle: -90, penDown: true, color: '#6366f1', width: 2 }, lines: [], running: false, stepIdx: -1, history: [] });
             }
 
             function handleReset() {
-              updMulti({ blocks: [], turtle: { x: 250, y: 250, angle: -90, penDown: true, color: '#6366f1', width: 2 }, lines: [], running: false, stepIdx: -1, textCode: '', challengeIdx: -1 });
+              updMulti({ blocks: [], turtle: { x: 250, y: 250, angle: -90, penDown: true, color: '#6366f1', width: 2 }, lines: [], running: false, stepIdx: -1, textCode: '', challengeIdx: -1, history: [], cumulativeMode: false, showTurtle: true });
             }
 
             function addBlock(type) {
@@ -23078,16 +23222,34 @@
                         },
                           React.createElement("span", { className: "flex-1 truncate" },
                             def ? def.label : b.type,
-                            def && def.param && b.type !== 'repeat' && b.type !== 'color' ? ' ' + (b[def.param] || def.defaultVal) + (def.unit || '') : '',
+                            def && def.param && b.type !== 'repeat' && b.type !== 'color' && b.type !== 'goto' ? ' ' + (b[def.param] || def.defaultVal) + (def.unit || '') : '',
+                            b.type === 'goto' ? ' (' + (b.x != null ? b.x : 250) + ', ' + (b.y != null ? b.y : 250) + ')' : '',
                             b.type === 'repeat' ? ' ' + (b.times || 4) + '×' : ''
                           ),
-                          // Param editor
-                          def && def.param && b.type !== 'color' && React.createElement("input", {
+                          // Param editor (single param)
+                          def && def.param && b.type !== 'color' && b.type !== 'goto' && React.createElement("input", {
                             type: "number", value: b[def.param] || def.defaultVal,
                             onChange: function (e) { updateBlockParam(idx, def.param, parseInt(e.target.value) || def.defaultVal); },
                             className: "w-12 px-1 py-0.5 rounded text-xs bg-white/20 text-white text-center",
                             style: { appearance: 'textfield' }
                           }),
+                          // Goto dual param editor (x, y)
+                          b.type === 'goto' && React.createElement("span", { className: "flex items-center gap-0.5" },
+                            React.createElement("span", { className: "text-[10px] text-white/60" }, "x"),
+                            React.createElement("input", {
+                              type: "number", value: b.x != null ? b.x : 250,
+                              onChange: function (e) { updateBlockParam(idx, 'x', parseInt(e.target.value) || 0); },
+                              className: "w-10 px-1 py-0.5 rounded text-[10px] bg-white/20 text-white text-center",
+                              style: { appearance: 'textfield' }
+                            }),
+                            React.createElement("span", { className: "text-[10px] text-white/60" }, "y"),
+                            React.createElement("input", {
+                              type: "number", value: b.y != null ? b.y : 250,
+                              onChange: function (e) { updateBlockParam(idx, 'y', parseInt(e.target.value) || 0); },
+                              className: "w-10 px-1 py-0.5 rounded text-[10px] bg-white/20 text-white text-center",
+                              style: { appearance: 'textfield' }
+                            })
+                          ),
                           b.type === 'color' && React.createElement("input", {
                             type: "color", value: b.color || '#6366f1',
                             onChange: function (e) { updateBlockParam(idx, 'color', e.target.value); },
@@ -23114,12 +23276,12 @@
                             );
                           }),
                           // Quick-add buttons for repeat children
-                          React.createElement("div", { className: "flex gap-1 mt-1" },
-                            ['forward', 'right', 'left', 'color'].map(function (ct) {
+                          React.createElement("div", { className: "flex flex-wrap gap-1 mt-1" },
+                            ['forward', 'backward', 'right', 'left', 'circle', 'color'].map(function (ct) {
                               return React.createElement("button", {
                                 key: ct, onClick: function () { addChildBlock(idx, ct); },
                                 className: "px-2 py-0.5 rounded text-[10px] bg-slate-600 text-slate-300 hover:bg-slate-500 transition-colors"
-                              }, ct === 'forward' ? '+🐢' : ct === 'right' ? '+↩️' : ct === 'left' ? '+↪️' : '+🎨');
+                              }, ct === 'forward' ? '+🐢' : ct === 'backward' ? '+🔙' : ct === 'right' ? '+↩️' : ct === 'left' ? '+↪️' : ct === 'circle' ? '+⭕' : '+🎨');
                             })
                           )
                         )
@@ -23134,12 +23296,12 @@
                   React.createElement("textarea", {
                     value: textCode,
                     onChange: function (e) { upd('textCode', e.target.value); },
-                    placeholder: "forward(50)\nright(90)\nforward(50)\n\n// Use repeat:\nrepeat(4, function() {\n  forward(100)\n  right(90)\n})",
+                    placeholder: "forward(50)\nright(90)\nbackward(30)\n\ncircle(40)\ngoto(100, 200)\nhome()\n\nrepeat(4, function() {\n  forward(100)\n  right(90)\n})",
                     className: "w-full h-60 p-3 rounded-lg bg-slate-900 text-green-400 text-xs font-mono border border-slate-600 focus:border-amber-400 focus:ring-1 focus:ring-amber-400 resize-none",
                     spellCheck: false
                   }),
                   React.createElement("p", { className: "text-slate-500 text-[10px] mt-1" },
-                    "Commands: forward(px), right(deg), left(deg), penUp(), penDown(), setColor(\"#hex\"), setWidth(px), repeat(n, function() { ... })"
+                    "Commands: forward(px), backward(px), right(deg), left(deg), penUp(), penDown(), setColor(\"#hex\"), setWidth(px), circle(radius), goto(x, y), home(), repeat(n, function() { ... })"
                   )
                 )
               ),
@@ -23174,6 +23336,26 @@
                   running && React.createElement("span", { className: "text-xs text-yellow-400 animate-pulse font-medium" },
                     "🔄 Running... step " + (stepIdx + 1)
                   )
+                ),
+
+                // Options bar (turtle toggle + cumulative mode)
+                React.createElement("div", { className: "flex items-center gap-3 flex-wrap" },
+                  // Show/Hide turtle toggle
+                  React.createElement("button", {
+                    onClick: function () { upd('showTurtle', !showTurtle); },
+                    className: "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all " +
+                      (showTurtle ? 'bg-emerald-600/80 text-white hover:bg-emerald-600' : 'bg-slate-700 text-slate-300 hover:bg-slate-600')
+                  }, showTurtle ? '🐢 Turtle On' : '▸ Cursor Only'),
+                  // Cumulative mode toggle
+                  React.createElement("button", {
+                    onClick: function () { upd('cumulativeMode', !cumulativeMode); },
+                    className: "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all " +
+                      (cumulativeMode ? 'bg-amber-600/80 text-white hover:bg-amber-600 ring-1 ring-amber-400/50' : 'bg-slate-700 text-slate-300 hover:bg-slate-600')
+                  }, cumulativeMode ? '📚 Cumulative Mode' : '🔄 Fresh Start Mode'),
+                  // Run counter in cumulative mode
+                  cumulativeMode && runHistory.length > 0 && React.createElement("span", {
+                    className: "flex items-center gap-1 text-[11px] text-amber-300/80 font-medium bg-amber-900/30 px-2 py-1 rounded-full"
+                  }, '📊 ' + runHistory.length + ' run' + (runHistory.length !== 1 ? 's' : '') + ' • ' + drawnLines.length + ' lines drawn')
                 ),
 
                 // ── Challenges panel ──
