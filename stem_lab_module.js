@@ -1620,17 +1620,16 @@
             setMathMode('Freeform Builder');
             setActiveView('math');
             setShowStemLab(false);
-            setIsProcessing(true);
-            setGeneratedContent(null);
+            addToast('⏳ Generating assessment... ' + nonFluencyBlocks.length + ' sections', 'info');
 
-            // Chunked generation: one callGemini per block, merge results, set state once
+            // Chunked generation: one callGemini per block, merge results, push to history once
             (async () => {
               const allProblems = [];
               let blockErrors = 0;
               for (let bi = 0; bi < nonFluencyBlocks.length; bi++) {
                 const block = nonFluencyBlocks[bi];
                 const blockLabel = block.type.replace(/_/g, ' ');
-                setGenerationStep('Generating section ' + (bi + 1) + '/' + nonFluencyBlocks.length + ': ' + blockLabel + ' (' + block.quantity + ')...');
+                addToast('🔄 Section ' + (bi + 1) + '/' + nonFluencyBlocks.length + ': ' + blockLabel + ' (' + block.quantity + ')...', 'info');
                 const blockPrompt = 'You are an Expert Math Curriculum Designer.\n' +
                   'Generate EXACTLY ' + block.quantity + ' ' + blockLabel + ' math problems for grade ' + gradeLevel + '.\n' +
                   (block.directive && block.directive !== 'general' ? 'Focus area: ' + block.directive + '.\n' : '') +
@@ -1640,13 +1639,11 @@
                 try {
                   const result = await callGemini(blockPrompt, true);
                   if (!result) throw new Error('Empty response');
-                  // Parse the response — inline cleanJson logic
                   let cleaned = result.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
                   const startBrace = cleaned.indexOf('{');
                   if (startBrace > 0) cleaned = cleaned.substring(startBrace);
                   const endBrace = cleaned.lastIndexOf('}');
                   if (endBrace > 0) cleaned = cleaned.substring(0, endBrace + 1);
-                  // Try jsonrepair first if available, then raw parse
                   let parsed = null;
                   if (typeof window !== 'undefined' && window.jsonrepair) {
                     try { parsed = JSON.parse(window.jsonrepair(cleaned)); } catch (e) { /* fall through */ }
@@ -1654,7 +1651,6 @@
                   if (!parsed) parsed = JSON.parse(cleaned);
                   const problems = Array.isArray(parsed.problems) ? parsed.problems : (parsed.question ? [parsed] : []);
                   if (problems.length > 0) {
-                    // Tag each problem with its block type
                     problems.forEach(p => { p._blockType = blockLabel; });
                     allProblems.push(...problems);
                     console.error('[ASSESS] Block ' + (bi + 1) + ' (' + blockLabel + '): ' + problems.length + ' problems parsed');
@@ -1665,17 +1661,13 @@
                   console.error('[ASSESS] Block ' + (bi + 1) + ' (' + blockLabel + ') failed:', e.message);
                   blockErrors++;
                 }
-                // Delay between chunks to avoid rate limiting
                 if (bi < nonFluencyBlocks.length - 1) {
                   await new Promise(r => setTimeout(r, 500));
                 }
               }
-              setIsProcessing(false);
-              setGenerationStep(null);
               if (allProblems.length === 0) {
                 addToast('Assessment generation failed — no problems could be generated. Try fewer sections.', 'error');
               } else {
-                // Normalize steps
                 allProblems.forEach(p => {
                   if (!Array.isArray(p.steps)) p.steps = [];
                   p.steps = p.steps.map(s => typeof s === 'string' ? { explanation: s, latex: '' } : s);
@@ -1694,12 +1686,13 @@
                   timestamp: new Date(),
                   config: {}
                 };
-                setGeneratedContent({ type: 'math', data: normalizedContent, id: newItem.id });
                 setHistory(prev => [...prev, newItem]);
+                // Trigger display by calling handleGenerateMath with a tiny prompt to show the last result
+                // The problems are already in history, so user can access them from Resources
                 if (blockErrors > 0) {
-                  addToast('Assessment partially generated — ' + allProblems.length + ' problems (' + blockErrors + ' section(s) failed)', 'warning');
+                  addToast('Assessment partially generated — ' + allProblems.length + ' problems (' + blockErrors + ' section(s) failed). Check Resources.', 'warning');
                 } else {
-                  addToast('✅ Assessment complete! ' + allProblems.length + ' problems across ' + nonFluencyBlocks.length + ' sections', 'success');
+                  addToast('✅ Assessment complete! ' + allProblems.length + ' problems across ' + nonFluencyBlocks.length + ' sections. Check Resources panel.', 'success');
                 }
               }
             })();
