@@ -1967,6 +1967,11 @@
               color: 'emerald', ready: true
             },
             {
+              id: 'aquarium', icon: '🐠', label: 'Aquaculture & Ocean Lab',
+              desc: 'Manage aquarium tanks, simulate sustainable fishing, and explore marine ecosystems. Water chemistry, population dynamics and species studies.',
+              color: 'cyan', ready: true
+            },
+            {
               id: 'decomposer', icon: '⚗️', label: t('stem.tools_menu.decomposer'), desc: t('stem.tools_menu.break_materials_into_elements'),
               color: 'lime', ready: true
             },
@@ -23067,6 +23072,837 @@
                     )
                   )
                 )
+            );
+          })(),
+
+
+          // ═══════════════════════════════════════════════════════════════
+          // ██  AQUACULTURE & OCEAN ECOLOGY LAB                         ██
+          // ═══════════════════════════════════════════════════════════════
+          stemLabTab === 'explore' && stemLabTool === 'aquarium' && (() => {
+            var d = (labToolData && labToolData._aquarium) || {};
+            var upd = function (key, val) {
+              setLabToolData(function (prev) {
+                var aq = Object.assign({}, (prev && prev._aquarium) || {});
+                aq[key] = val;
+                return Object.assign({}, prev, { _aquarium: aq });
+              });
+            };
+            var updMulti = function (obj) {
+              setLabToolData(function (prev) {
+                var aq = Object.assign({}, (prev && prev._aquarium) || {});
+                Object.keys(obj).forEach(function (k) { aq[k] = obj[k]; });
+                return Object.assign({}, prev, { _aquarium: aq });
+              });
+            };
+
+            var mode = d.mode || 'tank';
+            var TANK_TYPES = [
+              { id: 'freshwater', name: '🐠 Freshwater Community', size: 20, temp: 76, salinity: 0, pH: 7.0, diff: 1, desc: 'Classic beginner setup with tetras, guppies, and corydoras.' },
+              { id: 'planted', name: '🌿 Planted Tropical', size: 40, temp: 78, salinity: 0, pH: 6.8, diff: 2, desc: 'Lush aquascape with live plants and small schooling fish.' },
+              { id: 'reef', name: '🐡 Saltwater Reef', size: 55, temp: 78, salinity: 35, pH: 8.2, diff: 3, desc: 'Vibrant coral reef with clownfish and anemones.' },
+              { id: 'predator', name: '🦈 Predator Tank', size: 75, temp: 76, salinity: 0, pH: 7.2, diff: 3, desc: 'Oscars, pike cichlids, and other large predatory fish.' },
+              { id: 'turtle', name: '🐢 Turtle & Reptile', size: 40, temp: 80, salinity: 0, pH: 7.5, diff: 2, desc: 'Basking dock, UVB lighting, and hardy companion fish.' },
+              { id: 'invert', name: '🦐 Invertebrate Reef', size: 30, temp: 77, salinity: 35, pH: 8.3, diff: 4, desc: 'Shrimp, crabs, urchins, and delicate corals.' },
+              { id: 'coldwater', name: '🐧 Cold Water Marine', size: 100, temp: 55, salinity: 34, pH: 8.1, diff: 4, desc: 'Kelp forest ecosystem with rockfish and sea stars.' },
+              { id: 'brackish', name: '🔬 Brackish Estuary', size: 30, temp: 75, salinity: 15, pH: 7.8, diff: 3, desc: 'Where river meets sea — archerfish, puffers, mudskippers.' }
+            ];
+
+            var SPECIES_BY_TANK = {
+              freshwater: [
+                { id: 'neon', name: 'Neon Tetra', icon: '🐟', load: 1, minTank: 10, tempRange: [72,80], pHRange: [6.0,7.5], compat: ['guppy','cory','platy'], fact: 'Their iridescent stripe is made of guanine crystals.' },
+                { id: 'guppy', name: 'Guppy', icon: '🐟', load: 1, minTank: 5, tempRange: [72,82], pHRange: [6.8,7.8], compat: ['neon','cory','platy','molly'], fact: 'Males display vibrant colors to attract females.' },
+                { id: 'cory', name: 'Corydoras', icon: '🐡', load: 2, minTank: 15, tempRange: [72,79], pHRange: [6.0,7.5], compat: ['neon','guppy','platy','angel'], fact: 'They breathe air by darting to the surface!' },
+                { id: 'angel', name: 'Angelfish', icon: '🐠', load: 4, minTank: 20, tempRange: [76,84], pHRange: [6.0,7.5], compat: ['cory'], fact: 'Angelfish are cichlids — they guard their eggs fiercely.' },
+                { id: 'platy', name: 'Platy', icon: '🐟', load: 1, minTank: 10, tempRange: [70,80], pHRange: [7.0,8.2], compat: ['neon','guppy','cory','molly'], fact: 'Platys are livebearers — they give birth to free-swimming fry.' },
+                { id: 'molly', name: 'Molly', icon: '🐟', load: 2, minTank: 15, tempRange: [72,82], pHRange: [7.0,8.5], compat: ['guppy','platy'], fact: 'Mollies can survive in both fresh and saltwater!' }
+              ],
+              planted: [
+                { id: 'cardinal', name: 'Cardinal Tetra', icon: '🐟', load: 1, minTank: 10, tempRange: [73,81], pHRange: [5.5,7.0], compat: ['rummy','oto','shrimp'], fact: 'Cardinals have a deeper red stripe than neons.' },
+                { id: 'rummy', name: 'Rummynose Tetra', icon: '🐟', load: 1, minTank: 15, tempRange: [75,82], pHRange: [5.5,7.0], compat: ['cardinal','oto','shrimp'], fact: 'Their red nose fades when stressed — a living water quality indicator!' },
+                { id: 'oto', name: 'Otocinclus', icon: '🐡', load: 1, minTank: 10, tempRange: [72,79], pHRange: [6.0,7.5], compat: ['cardinal','rummy','shrimp','betta'], fact: 'These tiny catfish are the best algae cleaners in the hobby.' },
+                { id: 'shrimp', name: 'Cherry Shrimp', icon: '🦐', load: 0.5, minTank: 5, tempRange: [68,78], pHRange: [6.5,8.0], compat: ['cardinal','rummy','oto'], fact: 'A colony can double in size every 2-3 months.' },
+                { id: 'betta', name: 'Betta', icon: '🐠', load: 2, minTank: 5, tempRange: [76,82], pHRange: [6.5,7.5], compat: ['oto'], fact: 'Bettas build bubble nests at the surface for their eggs.' }
+              ],
+              reef: [
+                { id: 'clown', name: 'Clownfish', icon: '🐠', load: 3, minTank: 20, tempRange: [75,82], pHRange: [8.0,8.4], compat: ['tang','goby','anemone'], fact: 'All clownfish are born male — the dominant one becomes female!' },
+                { id: 'tang', name: 'Blue Tang', icon: '🐟', load: 5, minTank: 55, tempRange: [75,82], pHRange: [8.0,8.4], compat: ['clown','goby'], fact: 'Blue tangs can "play dead" when stressed, lying on their side.' },
+                { id: 'goby', name: 'Watchman Goby', icon: '🐡', load: 2, minTank: 20, tempRange: [75,82], pHRange: [8.0,8.4], compat: ['clown','tang','anemone'], fact: 'Gobies form symbiotic partnerships with pistol shrimp.' },
+                { id: 'anemone', name: 'Sea Anemone', icon: '🪸', load: 3, minTank: 30, tempRange: [76,82], pHRange: [8.1,8.4], compat: ['clown','goby'], fact: 'Anemones can live over 100 years in the right conditions.' }
+              ],
+              predator: [
+                { id: 'oscar', name: 'Oscar', icon: '🐠', load: 10, minTank: 55, tempRange: [74,81], pHRange: [6.0,8.0], compat: ['pleco'], fact: 'Oscars recognize their owners and can learn tricks.' },
+                { id: 'pike', name: 'Pike Cichlid', icon: '🐟', load: 8, minTank: 55, tempRange: [75,82], pHRange: [6.0,7.5], compat: ['pleco'], fact: 'Pike cichlids are ambush predators that strike in milliseconds.' },
+                { id: 'pleco', name: 'Plecostomus', icon: '🐡', load: 6, minTank: 40, tempRange: [72,82], pHRange: [6.5,7.5], compat: ['oscar','pike'], fact: 'Some plecos can grow over 2 feet long!' }
+              ],
+              turtle: [
+                { id: 'slider', name: 'Red-Eared Slider', icon: '🐢', load: 15, minTank: 40, tempRange: [75,85], pHRange: [6.5,8.0], compat: ['goldfish'], fact: 'They can hold their breath for over 30 minutes!' },
+                { id: 'goldfish', name: 'Feeder Goldfish', icon: '🐟', load: 3, minTank: 20, tempRange: [65,75], pHRange: [7.0,8.4], compat: ['slider'], fact: 'Goldfish can live 20+ years with proper care.' }
+              ],
+              invert: [
+                { id: 'cleaner', name: 'Cleaner Shrimp', icon: '🦐', load: 1, minTank: 10, tempRange: [75,82], pHRange: [8.0,8.4], compat: ['urchin','crab','starfish'], fact: 'They set up cleaning stations where fish line up to be groomed!' },
+                { id: 'urchin', name: 'Sea Urchin', icon: '🦔', load: 2, minTank: 20, tempRange: [72,78], pHRange: [8.0,8.4], compat: ['cleaner','crab','starfish'], fact: 'Urchin spines are actually modified teeth.' },
+                { id: 'crab', name: 'Hermit Crab', icon: '🦀', load: 2, minTank: 10, tempRange: [72,80], pHRange: [8.0,8.4], compat: ['cleaner','urchin','starfish'], fact: 'Hermit crabs form "vacancy chains" — swapping shells in order of size!' },
+                { id: 'starfish', name: 'Sea Star', icon: '⭐', load: 3, minTank: 20, tempRange: [72,78], pHRange: [8.0,8.4], compat: ['cleaner','urchin','crab'], fact: 'Sea stars can regenerate lost arms — and sometimes an entire body from one arm.' }
+              ],
+              coldwater: [
+                { id: 'rockfish', name: 'Rockfish', icon: '🐟', load: 5, minTank: 55, tempRange: [50,60], pHRange: [7.8,8.4], compat: ['seastar','kelp'], fact: 'Some rockfish live over 200 years!' },
+                { id: 'seastar', name: 'Sunflower Star', icon: '⭐', load: 4, minTank: 40, tempRange: [48,58], pHRange: [7.8,8.4], compat: ['rockfish','kelp'], fact: 'Sunflower stars have up to 24 arms and can move 1 meter per minute.' },
+                { id: 'kelp', name: 'Giant Kelp', icon: '🌿', load: 1, minTank: 30, tempRange: [50,65], pHRange: [7.5,8.5], compat: ['rockfish','seastar'], fact: 'Giant kelp can grow up to 2 feet per day!' }
+              ],
+              brackish: [
+                { id: 'archer', name: 'Archerfish', icon: '🐟', load: 3, minTank: 20, tempRange: [72,82], pHRange: [7.0,8.5], compat: ['puffer','mudskip'], fact: 'Archerfish shoot jets of water to knock insects off branches!' },
+                { id: 'puffer', name: 'Figure-8 Puffer', icon: '🐡', load: 4, minTank: 15, tempRange: [72,79], pHRange: [7.5,8.5], compat: ['archer'], fact: 'Puffers need to crunch hard-shelled food to keep their beaks trimmed.' },
+                { id: 'mudskip', name: 'Mudskipper', icon: '🐸', load: 3, minTank: 20, tempRange: [75,86], pHRange: [7.0,8.5], compat: ['archer'], fact: 'Mudskippers are fish that can walk on land and breathe air!' }
+              ]
+            };
+
+            // ── Current state ──
+            var selectedTank = d.selectedTank || null;
+            var tankFish = d.tankFish || [];
+            var waterChem = d.waterChem || null;
+            var simTick = d.simTick || 0;
+            var simRunning = d.simRunning || false;
+            var fishHealth = d.fishHealth || {};
+            var eventLog = d.eventLog || [];
+
+            // ── Ocean Ecology state ──
+            var oceanPop = d.oceanPop || { sardines: 800, tuna: 200, sharks: 50 };
+            var harvestRate = d.harvestRate != null ? d.harvestRate : 20;
+            var meshSize = d.meshSize || 'medium';
+            var mpaPercent = d.mpaPercent != null ? d.mpaPercent : 10;
+            var isOpenSeason = d.isOpenSeason != null ? d.isOpenSeason : true;
+            var oceanHistory = d.oceanHistory || [];
+            var oceanYear = d.oceanYear || 0;
+            var oceanRevenue = d.oceanRevenue || 0;
+            var oceanBycatch = d.oceanBycatch || 0;
+            var oceanCollapsed = d.oceanCollapsed || false;
+            var oceanScenario = d.oceanScenario || null;
+
+            // ── Marine Science state ──
+            var selectedZone = d.selectedZone || null;
+            var selectedSpecies = d.selectedSpecies || null;
+            var quizActive = d.quizActive || false;
+            var quizScore = d.quizScore || { correct: 0, total: 0 };
+            var quizQ = d.quizQ || null;
+
+            // ── Tank setup helpers ──
+            var initTank = function (tankId) {
+              var tank = TANK_TYPES.find(function (t) { return t.id === tankId; });
+              if (!tank) return;
+              updMulti({
+                selectedTank: tankId,
+                tankFish: [],
+                waterChem: { pH: tank.pH, temp: tank.temp, ammonia: 0, nitrite: 0, nitrate: 5, salinity: tank.salinity },
+                simTick: 0, simRunning: false, fishHealth: {}, eventLog: [{ tick: 0, msg: '🐠 ' + tank.name + ' tank initialized!' }]
+              });
+            };
+
+            var addFish = function (speciesId) {
+              var tank = TANK_TYPES.find(function (t) { return t.id === selectedTank; });
+              var species = (SPECIES_BY_TANK[selectedTank] || []).find(function (s) { return s.id === speciesId; });
+              if (!tank || !species) return;
+              var currentLoad = tankFish.reduce(function (sum, f) {
+                var sp = (SPECIES_BY_TANK[selectedTank] || []).find(function (s) { return s.id === f; });
+                return sum + (sp ? sp.load : 0);
+              }, 0);
+              var maxLoad = Math.floor(tank.size / 2);
+              if (currentLoad + species.load > maxLoad) {
+                if (addToast) addToast('⚠️ Tank is at capacity! Bioload would exceed safe limits.', 'warning');
+                return;
+              }
+              var newFish = tankFish.concat([speciesId]);
+              var newHealth = Object.assign({}, fishHealth);
+              newHealth[speciesId] = (newHealth[speciesId] || 0) + 1;
+              updMulti({ tankFish: newFish, fishHealth: newHealth, eventLog: eventLog.concat([{ tick: simTick, msg: '🐟 Added ' + species.name + ' to tank' }]) });
+            };
+
+            var removeFish = function (idx) {
+              var newFish = tankFish.slice();
+              var removed = newFish.splice(idx, 1)[0];
+              var sp = (SPECIES_BY_TANK[selectedTank] || []).find(function (s) { return s.id === removed; });
+              updMulti({ tankFish: newFish, eventLog: eventLog.concat([{ tick: simTick, msg: '🔄 Removed ' + (sp ? sp.name : removed) }]) });
+            };
+
+            // ── Water chemistry helpers ──
+            var getChemStatus = function (param, value) {
+              var tank = TANK_TYPES.find(function (t) { return t.id === selectedTank; });
+              if (!tank) return 'ok';
+              if (param === 'ammonia') return value < 0.25 ? 'ok' : value < 1.0 ? 'warn' : 'danger';
+              if (param === 'nitrite') return value < 0.25 ? 'ok' : value < 1.0 ? 'warn' : 'danger';
+              if (param === 'nitrate') return value < 40 ? 'ok' : value < 80 ? 'warn' : 'danger';
+              if (param === 'pH') {
+                var diff = Math.abs(value - tank.pH);
+                return diff < 0.5 ? 'ok' : diff < 1.0 ? 'warn' : 'danger';
+              }
+              if (param === 'temp') {
+                var tdiff = Math.abs(value - tank.temp);
+                return tdiff < 3 ? 'ok' : tdiff < 6 ? 'warn' : 'danger';
+              }
+              return 'ok';
+            };
+
+            var statusIcon = function (s) { return s === 'ok' ? '✅' : s === 'warn' ? '⚠️' : '❌'; };
+            var statusColor = function (s) { return s === 'ok' ? 'text-green-600' : s === 'warn' ? 'text-amber-600' : 'text-red-600'; };
+
+            var doWaterChange = function () {
+              if (!waterChem) return;
+              var tank = TANK_TYPES.find(function (t) { return t.id === selectedTank; });
+              var newChem = Object.assign({}, waterChem, {
+                ammonia: Math.max(0, waterChem.ammonia * 0.5),
+                nitrite: Math.max(0, waterChem.nitrite * 0.5),
+                nitrate: Math.max(0, waterChem.nitrate * 0.6),
+                pH: waterChem.pH + (tank.pH - waterChem.pH) * 0.3
+              });
+              updMulti({ waterChem: newChem, eventLog: eventLog.concat([{ tick: simTick, msg: '💧 25% water change performed' }]) });
+              if (addToast) addToast('💧 Water change complete!', 'success');
+            };
+
+            var feedFish = function () {
+              if (!waterChem) return;
+              var newChem = Object.assign({}, waterChem, {
+                ammonia: waterChem.ammonia + 0.15 * (tankFish.length || 1),
+              });
+              updMulti({ waterChem: newChem, eventLog: eventLog.concat([{ tick: simTick, msg: '🍽️ Fish fed' }]) });
+            };
+
+            // ── Simulation tick (water chemistry drift) ──
+            var simStep = function () {
+              if (!waterChem || !selectedTank) return;
+              var bioload = tankFish.reduce(function (sum, f) {
+                var sp = (SPECIES_BY_TANK[selectedTank] || []).find(function (s) { return s.id === f; });
+                return sum + (sp ? sp.load : 0);
+              }, 0);
+              var ammoniaGen = bioload * 0.02;
+              var newAmm = Math.max(0, waterChem.ammonia + ammoniaGen - waterChem.ammonia * 0.05);
+              var nitriteBact = waterChem.ammonia * 0.15;
+              var newNitrite = Math.max(0, waterChem.nitrite + nitriteBact - waterChem.nitrite * 0.08);
+              var nitrateBact = waterChem.nitrite * 0.2;
+              var newNitrate = Math.max(0, waterChem.nitrate + nitrateBact);
+              var pHdrift = (Math.random() - 0.5) * 0.05;
+              var tempDrift = (Math.random() - 0.5) * 0.3;
+              var newChem = {
+                pH: Math.max(5.5, Math.min(9.0, waterChem.pH + pHdrift)),
+                temp: Math.max(40, Math.min(95, waterChem.temp + tempDrift)),
+                ammonia: Math.round(newAmm * 100) / 100,
+                nitrite: Math.round(newNitrite * 100) / 100,
+                nitrate: Math.round(newNitrate * 10) / 10,
+                salinity: waterChem.salinity
+              };
+              var newTick = simTick + 1;
+              var newLog = eventLog.slice();
+              // Random events
+              if (newTick % 10 === 0 && Math.random() < 0.3) {
+                var events = ['🌿 Algae bloom detected!', '🌡️ Heater fluctuation!', '💀 Ammonia spike from overfeeding!'];
+                var evt = events[Math.floor(Math.random() * events.length)];
+                if (evt.includes('Ammonia')) newChem.ammonia += 0.5;
+                if (evt.includes('Heater')) newChem.temp += (Math.random() > 0.5 ? 3 : -3);
+                newLog.push({ tick: newTick, msg: evt });
+              }
+              // XP for maintaining healthy parameters
+              var allOk = getChemStatus('ammonia', newChem.ammonia) === 'ok' &&
+                getChemStatus('nitrite', newChem.nitrite) === 'ok' &&
+                getChemStatus('pH', newChem.pH) === 'ok';
+              if (allOk && tankFish.length > 0 && newTick % 5 === 0) {
+                awardXP(2, 'Healthy tank maintenance');
+              }
+              updMulti({ waterChem: newChem, simTick: newTick, eventLog: newLog.slice(-20) });
+            };
+
+            // ── Ocean Ecology helpers ──
+            var OCEAN_SPECIES = [
+              { id: 'sardines', name: 'Sardines', icon: '🐟', r: 0.4, K: 1000, value: 1, desc: 'Fast-reproducing small fish. Foundation of the marine food web.' },
+              { id: 'tuna', name: 'Tuna', icon: '🐠', r: 0.15, K: 400, value: 8, desc: 'Mid-level predator. High commercial value but slow to recover.' },
+              { id: 'sharks', name: 'Sharks', icon: '🦈', r: 0.05, K: 100, value: 3, desc: 'Apex predator. Extremely slow reproduction — vulnerable to overfishing.' }
+            ];
+
+            var stepOcean = function () {
+              var newPop = Object.assign({}, oceanPop);
+              var harvestFactor = isOpenSeason ? harvestRate / 100 : 0;
+              var mpaFactor = 1 - mpaPercent / 100;
+              var bycatchMult = meshSize === 'small' ? 0.15 : meshSize === 'medium' ? 0.05 : 0.02;
+              var yearRevenue = 0;
+              var yearBycatch = 0;
+
+              OCEAN_SPECIES.forEach(function (sp) {
+                var N = newPop[sp.id];
+                var growth = sp.r * N * (1 - N / sp.K);
+                var predation = 0;
+                if (sp.id === 'sardines') predation = 0.003 * N * newPop.tuna;
+                if (sp.id === 'tuna') predation = 0.004 * N * newPop.sharks;
+                var harvest = sp.id !== 'sharks' ? harvestFactor * mpaFactor * N * 0.1 : harvestFactor * mpaFactor * N * 0.03;
+                var bycatch = sp.id === 'sharks' ? harvest * bycatchMult * 3 : 0;
+                yearBycatch += bycatch;
+                yearRevenue += harvest * sp.value;
+                newPop[sp.id] = Math.max(0, Math.round(N + growth - predation - harvest - bycatch));
+              });
+
+              var newYear = oceanYear + 1;
+              var newHistory = oceanHistory.concat([{ year: newYear, sardines: newPop.sardines, tuna: newPop.tuna, sharks: newPop.sharks, revenue: Math.round(yearRevenue) }]);
+              var collapsed = newPop.sardines < 50 || newPop.tuna < 20;
+
+              updMulti({
+                oceanPop: newPop,
+                oceanYear: newYear,
+                oceanRevenue: oceanRevenue + Math.round(yearRevenue),
+                oceanBycatch: oceanBycatch + Math.round(yearBycatch),
+                oceanHistory: newHistory.slice(-50),
+                oceanCollapsed: collapsed
+              });
+
+              if (collapsed && !oceanCollapsed) {
+                if (addToast) addToast('🚨 Fish stock collapse! Populations have crashed below sustainable levels.', 'error');
+              }
+              if (!collapsed && newYear % 5 === 0) {
+                awardXP(3, 'Sustainable fishing for 5 years');
+              }
+            };
+
+            var resetOcean = function () {
+              updMulti({
+                oceanPop: { sardines: 800, tuna: 200, sharks: 50 },
+                harvestRate: 20, meshSize: 'medium', mpaPercent: 10, isOpenSeason: true,
+                oceanHistory: [], oceanYear: 0, oceanRevenue: 0, oceanBycatch: 0,
+                oceanCollapsed: false, oceanScenario: null
+              });
+            };
+
+            // ── Marine Science data ──
+            var OCEAN_ZONES = [
+              { id: 'sunlight', name: 'Sunlight Zone (Epipelagic)', depth: '0-200m', light: '100%', temp: '20-25°C', color: '#38bdf8', species: ['clownfish','dolphin','jellyfish','turtle'] },
+              { id: 'twilight', name: 'Twilight Zone (Mesopelagic)', depth: '200-1000m', light: '1%', temp: '5-20°C', color: '#1e40af', species: ['squid','hatchetfish','swordfish'] },
+              { id: 'midnight', name: 'Midnight Zone (Bathypelagic)', depth: '1000-4000m', light: '0%', temp: '2-5°C', color: '#1e1b4b', species: ['anglerfish','gulpereel','giantsquid'] },
+              { id: 'abyssal', name: 'Abyssal Zone (Abyssopelagic)', depth: '4000-6000m', light: '0%', temp: '1-2°C', color: '#0f0a2e', species: ['tubeworms','seacucumber'] },
+              { id: 'hadal', name: 'Hadal Zone (Trenches)', depth: '6000-11000m', light: '0%', temp: '1-4°C', color: '#050210', species: ['amphipod','snailfish'] }
+            ];
+
+            var MARINE_SPECIES = [
+              { id: 'clownfish', name: 'Clownfish', icon: '🐠', zone: 'sunlight', habitat: 'Coral Reef', diet: 'Omnivore', status: 'LC', fact: 'Lives in symbiosis with venomous sea anemones.', quiz: 'What protects clownfish from anemone stings?' },
+              { id: 'dolphin', name: 'Bottlenose Dolphin', icon: '🐬', zone: 'sunlight', habitat: 'Open Ocean', diet: 'Carnivore', status: 'LC', fact: 'Dolphins sleep with one eye open — one brain hemisphere at a time.', quiz: 'How do dolphins breathe while sleeping?' },
+              { id: 'jellyfish', name: 'Moon Jellyfish', icon: '🪼', zone: 'sunlight', habitat: 'Coastal', diet: 'Carnivore', status: 'LC', fact: 'Jellyfish have no brain, heart, or blood — just a nerve net.', quiz: 'What body system do jellyfish lack?' },
+              { id: 'turtle', name: 'Green Sea Turtle', icon: '🐢', zone: 'sunlight', habitat: 'Coastal & Reef', diet: 'Herbivore', status: 'EN', fact: 'Sea turtles navigate using Earth\'s magnetic field.', quiz: 'How do sea turtles find their nesting beaches?' },
+              { id: 'squid', name: 'Firefly Squid', icon: '🦑', zone: 'twilight', habitat: 'Open Ocean', diet: 'Carnivore', status: 'LC', fact: 'Firefly squid produce bioluminescent light from photophores.', quiz: 'What is the light-producing ability of deep sea creatures called?' },
+              { id: 'hatchetfish', name: 'Hatchetfish', icon: '🐟', zone: 'twilight', habitat: 'Open Ocean', diet: 'Carnivore', status: 'LC', fact: 'Uses counter-illumination to hide from predators below.', quiz: 'Why do hatchetfish have light organs on their belly?' },
+              { id: 'swordfish', name: 'Swordfish', icon: '🐟', zone: 'twilight', habitat: 'Open Ocean', diet: 'Carnivore', status: 'LC', fact: 'Swordfish heat their eyes and brain to hunt in cold deep waters.', quiz: 'What unique adaptation helps swordfish hunt in cold water?' },
+              { id: 'anglerfish', name: 'Anglerfish', icon: '🐡', zone: 'midnight', habitat: 'Deep Sea', diet: 'Carnivore', status: 'LC', fact: 'The glowing lure is a bioluminescent bacteria colony.', quiz: 'What zone does the anglerfish inhabit?' },
+              { id: 'gulpereel', name: 'Gulper Eel', icon: '🐍', zone: 'midnight', habitat: 'Deep Sea', diet: 'Carnivore', status: 'LC', fact: 'Can unhinge its jaw to swallow prey larger than itself.', quiz: 'What adaptation lets the gulper eel eat large prey?' },
+              { id: 'giantsquid', name: 'Giant Squid', icon: '🦑', zone: 'midnight', habitat: 'Deep Sea', diet: 'Carnivore', status: 'LC', fact: 'Has the largest eyes in the animal kingdom — up to 10 inches across.', quiz: 'How large can a giant squid\'s eyes grow?' },
+              { id: 'tubeworms', name: 'Giant Tube Worms', icon: '🪱', zone: 'abyssal', habitat: 'Hydrothermal Vents', diet: 'Chemosynthetic', status: 'LC', fact: 'They have no mouth or stomach — bacteria inside them convert chemicals to energy.', quiz: 'What process do tube worm symbionts use instead of photosynthesis?' },
+              { id: 'seacucumber', name: 'Sea Cucumber', icon: '🥒', zone: 'abyssal', habitat: 'Abyssal Plain', diet: 'Detritivore', status: 'LC', fact: 'Can expel their internal organs as a defense and regrow them.', quiz: 'What defense mechanism do sea cucumbers use?' },
+              { id: 'amphipod', name: 'Supergiant Amphipod', icon: '🦐', zone: 'hadal', habitat: 'Trenches', diet: 'Scavenger', status: 'LC', fact: 'Found 7 miles deep in the Mariana Trench.', quiz: 'What is the deepest ocean trench on Earth?' },
+              { id: 'snailfish', name: 'Mariana Snailfish', icon: '🐟', zone: 'hadal', habitat: 'Trenches', diet: 'Carnivore', status: 'LC', fact: 'Deepest-living fish ever recorded at 8,178 meters.', quiz: 'What is the deepest-living fish species discovered?' },
+              { id: 'mantaray', name: 'Manta Ray', icon: '🐟', zone: 'sunlight', habitat: 'Open Ocean', diet: 'Filter Feeder', status: 'VU', fact: 'Mantas have the largest brain-to-body ratio of any fish.', quiz: 'What type of feeding do manta rays use?' },
+              { id: 'bluewhale', name: 'Blue Whale', icon: '🐋', zone: 'sunlight', habitat: 'Open Ocean', diet: 'Filter Feeder', status: 'EN', fact: 'The largest animal ever — their heart is the size of a small car.', quiz: 'What is the largest animal that has ever lived?' },
+              { id: 'seahorse', name: 'Seahorse', icon: '🐟', zone: 'sunlight', habitat: 'Coastal', diet: 'Carnivore', status: 'VU', fact: 'Males carry and give birth to the babies — unique in the animal kingdom.', quiz: 'Which seahorse parent carries the eggs?' },
+              { id: 'octopus', name: 'Dumbo Octopus', icon: '🐙', zone: 'midnight', habitat: 'Deep Sea', diet: 'Carnivore', status: 'LC', fact: 'Named for their ear-like fins. Three hearts pump blue blood.', quiz: 'How many hearts does an octopus have?' },
+              { id: 'nautilus', name: 'Nautilus', icon: '🐚', zone: 'twilight', habitat: 'Deep Reef', diet: 'Scavenger', status: 'VU', fact: 'A living fossil — virtually unchanged for 500 million years.', quiz: 'How long have nautiluses existed?' },
+              { id: 'coelacanth', name: 'Coelacanth', icon: '🐟', zone: 'twilight', habitat: 'Deep Caves', diet: 'Carnivore', status: 'CR', fact: 'Thought extinct for 66 million years until rediscovered in 1938!', quiz: 'When was the coelacanth rediscovered?' }
+            ];
+
+            var generateQuiz = function () {
+              var sp = MARINE_SPECIES[Math.floor(Math.random() * MARINE_SPECIES.length)];
+              var q = {
+                species: sp.id, question: sp.quiz, answer: sp.name,
+                options: [sp.name].concat(
+                  MARINE_SPECIES.filter(function (s) { return s.id !== sp.id; })
+                    .sort(function () { return Math.random() - 0.5; }).slice(0, 3)
+                    .map(function (s) { return s.name; })
+                ).sort(function () { return Math.random() - 0.5; })
+              };
+              updMulti({ quizQ: q, quizActive: true });
+            };
+
+            var answerQuiz = function (ans) {
+              if (!quizQ) return;
+              var correct = ans === quizQ.answer;
+              announceToSR(correct ? 'Correct!' : 'Incorrect');
+              if (correct) awardXP(3, 'Marine science quiz');
+              updMulti({
+                quizScore: { correct: quizScore.correct + (correct ? 1 : 0), total: quizScore.total + 1 },
+                quizQ: Object.assign({}, quizQ, { answered: ans, correct: correct })
+              });
+            };
+
+
+
+            // ═══ RENDER ═══
+            var modeColors = { tank: 'cyan', ocean: 'blue', marine: 'indigo' };
+            var mColor = modeColors[mode] || 'cyan';
+
+            return React.createElement("div", { className: "space-y-4 max-w-3xl mx-auto animate-in fade-in duration-200" },
+
+              // ── Header ──
+              React.createElement("div", { className: "flex items-center gap-3 mb-2" },
+                React.createElement("button", {
+                  onClick: function () { setStemLabTool(null); updMulti({ simRunning: false }); },
+                  className: "p-1.5 hover:bg-slate-100 rounded-lg transition-colors"
+                }, React.createElement(ArrowLeft, { size: 18, className: "text-slate-500" })),
+                React.createElement("h3", { className: "text-lg font-bold text-cyan-800" }, "\uD83D\uDC20 Aquaculture & Ocean Lab"),
+                React.createElement("div", { className: "flex items-center gap-2 ml-auto" },
+                  React.createElement("button", {
+                    onClick: function () {
+                      var snap = { id: 'aqua-' + Date.now(), tool: 'aquarium', label: mode === 'tank' ? 'Tank: ' + (selectedTank || 'none') : mode === 'ocean' ? 'Ocean Year ' + oceanYear : 'Marine Science', data: Object.assign({}, d), timestamp: Date.now() };
+                      setToolSnapshots(function (prev) { return prev.concat([snap]); });
+                      if (addToast) addToast('\uD83D\uDCF8 Snapshot saved!', 'success');
+                    },
+                    className: "text-[10px] font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-full px-2 py-0.5 transition-all"
+                  }, "\uD83D\uDCF8 Snapshot")
+                )
+              ),
+
+              // ── Mode Tabs ──
+              React.createElement("div", { className: "flex gap-1 bg-slate-100 rounded-xl p-1" },
+                [
+                  { id: 'tank', icon: '\uD83D\uDC20', label: 'Aquarium Lab' },
+                  { id: 'ocean', icon: '\uD83C\uDF0A', label: 'Ocean Ecology' },
+                  { id: 'marine', icon: '\uD83D\uDD2C', label: 'Marine Science' }
+                ].map(function (tab) {
+                  return React.createElement("button", {
+                    key: tab.id,
+                    onClick: function () { upd('mode', tab.id); },
+                    className: "flex-1 py-2 px-3 rounded-lg text-sm font-bold transition-all " + (mode === tab.id ? "bg-white text-" + modeColors[tab.id] + "-800 shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50")
+                  }, tab.icon, " ", tab.label);
+                })
+              ),
+
+              // ═══════════════ MODE 1: AQUARIUM LAB ═══════════════
+              mode === 'tank' && !selectedTank && React.createElement("div", { className: "space-y-3" },
+                React.createElement("h4", { className: "text-sm font-bold text-cyan-700" }, "\uD83D\uDC1F Choose Your Tank"),
+                React.createElement("div", { className: "grid grid-cols-2 gap-3" },
+                  TANK_TYPES.map(function (tank) {
+                    return React.createElement("button", {
+                      key: tank.id,
+                      onClick: function () { initTank(tank.id); },
+                      className: "p-4 rounded-xl border-2 text-left transition-all hover:scale-[1.02] hover:shadow-lg bg-gradient-to-br from-cyan-50 to-sky-50 border-cyan-200 hover:border-cyan-400"
+                    },
+                      React.createElement("div", { className: "flex items-center gap-2 mb-1" },
+                        React.createElement("span", { className: "text-xl" }, tank.name.split(' ')[0]),
+                        React.createElement("span", { className: "text-xs font-bold text-cyan-800" }, tank.name.split(' ').slice(1).join(' ')),
+                        React.createElement("span", { className: "ml-auto text-[10px] text-amber-600 font-bold" }, '\u2B50'.repeat(tank.diff))
+                      ),
+                      React.createElement("p", { className: "text-[11px] text-slate-500 mb-2" }, tank.desc),
+                      React.createElement("div", { className: "flex gap-2 text-[10px] text-cyan-600" },
+                        React.createElement("span", null, tank.size + " gal"),
+                        React.createElement("span", null, "\u2022"),
+                        React.createElement("span", null, tank.temp + "\u00B0F"),
+                        React.createElement("span", null, "\u2022"),
+                        React.createElement("span", null, "pH " + tank.pH),
+                        tank.salinity > 0 && React.createElement("span", null, "\u2022 " + tank.salinity + " ppt")
+                      )
+                    );
+                  })
+                )
+              ),
+
+              // ── Active Tank View ──
+              mode === 'tank' && selectedTank && (() => {
+                var tank = TANK_TYPES.find(function (t) { return t.id === selectedTank; });
+                var species = SPECIES_BY_TANK[selectedTank] || [];
+                var currentLoad = tankFish.reduce(function (sum, f) {
+                  var sp = species.find(function (s) { return s.id === f; });
+                  return sum + (sp ? sp.load : 0);
+                }, 0);
+                var maxLoad = Math.floor(tank.size / 2);
+                var loadPct = Math.min(100, Math.round(currentLoad / maxLoad * 100));
+
+                return React.createElement("div", { className: "space-y-3" },
+                  // Tank header
+                  React.createElement("div", { className: "flex items-center gap-2" },
+                    React.createElement("button", {
+                      onClick: function () { updMulti({ selectedTank: null, simRunning: false }); },
+                      className: "text-xs text-cyan-600 hover:text-cyan-800 font-bold"
+                    }, "\u2190 Change Tank"),
+                    React.createElement("span", { className: "text-sm font-bold text-cyan-800" }, tank.name),
+                    React.createElement("span", { className: "text-[10px] text-slate-400" }, "Tick: " + simTick)
+                  ),
+
+                  // Water Chemistry Panel
+                  waterChem && React.createElement("div", { className: "bg-gradient-to-br from-cyan-50 to-blue-50 rounded-xl p-3 border border-cyan-200" },
+                    React.createElement("h4", { className: "text-xs font-bold text-cyan-700 mb-2" }, "\uD83E\uDDEA Water Chemistry"),
+                    React.createElement("div", { className: "grid grid-cols-3 gap-2" },
+                      [
+                        { key: 'pH', label: 'pH', val: waterChem.pH.toFixed(1) },
+                        { key: 'temp', label: 'Temp', val: waterChem.temp.toFixed(0) + '\u00B0F' },
+                        { key: 'ammonia', label: 'NH\u2083', val: waterChem.ammonia.toFixed(2) + ' ppm' },
+                        { key: 'nitrite', label: 'NO\u2082', val: waterChem.nitrite.toFixed(2) + ' ppm' },
+                        { key: 'nitrate', label: 'NO\u2083', val: waterChem.nitrate.toFixed(1) + ' ppm' },
+                        { key: 'salinity', label: 'Salt', val: waterChem.salinity + ' ppt' }
+                      ].map(function (p) {
+                        var st = getChemStatus(p.key, waterChem[p.key]);
+                        return React.createElement("div", { key: p.key, className: "bg-white/70 rounded-lg p-2 text-center" },
+                          React.createElement("div", { className: "text-[10px] text-slate-500 font-bold" }, p.label),
+                          React.createElement("div", { className: "text-sm font-bold " + statusColor(st) }, statusIcon(st) + " " + p.val)
+                        );
+                      })
+                    ),
+                    // Nitrogen cycle mini-diagram
+                    React.createElement("div", { className: "mt-2 flex items-center justify-center gap-1 text-[10px] text-slate-500 bg-white/50 rounded-lg p-2" },
+                      React.createElement("span", { className: "font-bold text-red-500" }, "NH\u2083"),
+                      React.createElement("span", null, " \u2192 "),
+                      React.createElement("span", { className: "font-bold text-orange-500" }, "NO\u2082"),
+                      React.createElement("span", null, " \u2192 "),
+                      React.createElement("span", { className: "font-bold text-green-500" }, "NO\u2083"),
+                      React.createElement("span", { className: "ml-2 text-slate-400" }, "(Nitrogen Cycle)")
+                    )
+                  ),
+
+                  // Bioload Meter
+                  React.createElement("div", { className: "bg-white rounded-xl p-3 border border-slate-200" },
+                    React.createElement("div", { className: "flex items-center justify-between mb-1" },
+                      React.createElement("span", { className: "text-xs font-bold text-slate-600" }, "\uD83D\uDC1F Bioload"),
+                      React.createElement("span", { className: "text-xs font-mono " + (loadPct > 80 ? 'text-red-600' : loadPct > 60 ? 'text-amber-600' : 'text-green-600') }, currentLoad + " / " + maxLoad + " (" + loadPct + "%)")
+                    ),
+                    React.createElement("div", { className: "h-3 bg-slate-100 rounded-full overflow-hidden" },
+                      React.createElement("div", { style: { width: loadPct + '%', transition: 'width 0.3s' }, className: "h-full rounded-full " + (loadPct > 80 ? 'bg-red-500' : loadPct > 60 ? 'bg-amber-400' : 'bg-green-500') })
+                    )
+                  ),
+
+                  // Tank visualization (animated fish)
+                  React.createElement("div", {
+                    className: "relative bg-gradient-to-b from-cyan-200 via-cyan-400 to-blue-600 rounded-xl overflow-hidden border-2 border-cyan-300",
+                    style: { height: '200px' }
+                  },
+                    // Substrate
+                    React.createElement("div", { className: "absolute bottom-0 w-full h-8 bg-gradient-to-t from-amber-600/50 to-amber-400/20", style: { borderRadius: '0 0 12px 12px' } }),
+                    // Fish icons
+                    tankFish.map(function (fId, idx) {
+                      var sp = species.find(function (s) { return s.id === fId; });
+                      var yPos = 20 + (idx * 23) % 140;
+                      var xPos = 10 + (idx * 37 + idx * idx * 7) % 80;
+                      var animDelay = (idx * 0.7) % 3;
+                      return React.createElement("div", {
+                        key: idx,
+                        style: { position: 'absolute', top: yPos + 'px', left: xPos + '%', animation: 'pulse 3s ease-in-out ' + animDelay + 's infinite', cursor: 'pointer', fontSize: '24px', transition: 'transform 0.2s' },
+                        title: sp ? sp.name + ': ' + sp.fact : fId,
+                        onClick: function () {
+                          if (addToast) addToast('\uD83D\uDC1F ' + (sp ? sp.name + ': ' + sp.fact : fId), 'info');
+                        }
+                      }, sp ? sp.icon : '\uD83D\uDC1F');
+                    }),
+                    // Bubbles
+                    [0,1,2,3,4].map(function (i) {
+                      return React.createElement("div", {
+                        key: 'bubble-' + i,
+                        style: {
+                          position: 'absolute', bottom: '10px', left: (15 + i * 18) + '%',
+                          width: (4 + i * 2) + 'px', height: (4 + i * 2) + 'px',
+                          background: 'rgba(255,255,255,0.4)', borderRadius: '50%',
+                          animation: 'pulse 2s ease-in-out ' + (i * 0.5) + 's infinite'
+                        }
+                      });
+                    })
+                  ),
+
+                  // Fish stocking list
+                  React.createElement("div", { className: "bg-white rounded-xl p-3 border border-slate-200" },
+                    React.createElement("h4", { className: "text-xs font-bold text-slate-600 mb-2" }, "\u2795 Add Fish"),
+                    React.createElement("div", { className: "flex flex-wrap gap-1" },
+                      species.map(function (sp) {
+                        return React.createElement("button", {
+                          key: sp.id,
+                          onClick: function () { addFish(sp.id); },
+                          className: "px-2 py-1 text-[11px] font-bold bg-cyan-50 text-cyan-700 border border-cyan-200 rounded-full hover:bg-cyan-100 transition-all",
+                          title: sp.fact
+                        }, sp.icon + " " + sp.name + " (" + sp.load + ")");
+                      })
+                    ),
+                    tankFish.length > 0 && React.createElement("div", { className: "mt-2 flex flex-wrap gap-1" },
+                      tankFish.map(function (fId, idx) {
+                        var sp = species.find(function (s) { return s.id === fId; });
+                        return React.createElement("span", {
+                          key: idx,
+                          onClick: function () { removeFish(idx); },
+                          className: "px-2 py-0.5 text-[10px] bg-cyan-100 text-cyan-800 rounded-full cursor-pointer hover:bg-red-100 hover:text-red-700 transition-all",
+                          title: "Click to remove"
+                        }, (sp ? sp.icon + " " + sp.name : fId) + " \u00D7");
+                      })
+                    )
+                  ),
+
+                  // Action buttons
+                  React.createElement("div", { className: "flex gap-2" },
+                    React.createElement("button", {
+                      onClick: function () {
+                        if (simRunning) {
+                          upd('simRunning', false);
+                        } else {
+                          upd('simRunning', true);
+                          var iv = setInterval(function () {
+                            simStep();
+                          }, 2000);
+                          setTimeout(function () { clearInterval(iv); upd('simRunning', false); }, 60000);
+                        }
+                      },
+                      className: "flex-1 py-2 font-bold rounded-lg text-sm transition-all shadow-md " + (simRunning ? "bg-red-500 text-white hover:bg-red-600" : "bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-600 hover:to-blue-600")
+                    }, simRunning ? "\u23F8 Pause Sim" : "\u25B6 Run Simulation"),
+                    React.createElement("button", {
+                      onClick: doWaterChange,
+                      className: "px-4 py-2 bg-blue-100 text-blue-700 font-bold rounded-lg text-sm hover:bg-blue-200 transition-all"
+                    }, "\uD83D\uDCA7 Water Change"),
+                    React.createElement("button", {
+                      onClick: feedFish,
+                      className: "px-4 py-2 bg-amber-100 text-amber-700 font-bold rounded-lg text-sm hover:bg-amber-200 transition-all"
+                    }, "\uD83C\uDF7D\uFE0F Feed")
+                  ),
+
+                  // Event log
+                  eventLog.length > 0 && React.createElement("div", { className: "bg-slate-50 rounded-xl p-2 border border-slate-200 max-h-32 overflow-y-auto" },
+                    React.createElement("h4", { className: "text-[10px] font-bold text-slate-400 mb-1" }, "\uD83D\uDCDC Event Log"),
+                    eventLog.slice().reverse().slice(0, 8).map(function (evt, i) {
+                      return React.createElement("p", { key: i, className: "text-[10px] text-slate-500" }, "[" + evt.tick + "] " + evt.msg);
+                    })
+                  )
+                );
+              })(),
+
+              // ═══════════════ MODE 2: OCEAN ECOLOGY ═══════════════
+              mode === 'ocean' && React.createElement("div", { className: "space-y-3" },
+
+                // Scenario selector
+                React.createElement("div", { className: "flex gap-2 flex-wrap" },
+                  [
+                    { id: 'free', label: '\uD83C\uDF0A Free Play', desc: 'Manage fisheries freely' },
+                    { id: 'feed', label: '\uD83C\uDFC6 Feed the Town', desc: 'Sustain harvest for 10 years' },
+                    { id: 'recover', label: '\uD83D\uDEE0\uFE0F Recovery Plan', desc: 'Rebuild collapsed stocks' },
+                    { id: 'balance', label: '\u2696\uFE0F Balanced Eco', desc: 'Keep all species above 50' }
+                  ].map(function (sc) {
+                    return React.createElement("button", {
+                      key: sc.id,
+                      onClick: function () {
+                        if (sc.id === 'recover') {
+                          updMulti({ oceanScenario: sc.id, oceanPop: { sardines: 30, tuna: 10, sharks: 5 }, harvestRate: 0, oceanYear: 0, oceanHistory: [], oceanRevenue: 0, oceanBycatch: 0, oceanCollapsed: true });
+                        } else if (sc.id === 'free' || sc.id === 'feed' || sc.id === 'balance') {
+                          resetOcean();
+                          upd('oceanScenario', sc.id);
+                        }
+                      },
+                      className: "px-3 py-2 text-xs font-bold rounded-lg border transition-all " + (oceanScenario === sc.id ? "bg-blue-500 text-white border-blue-600 shadow-md" : "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100")
+                    }, sc.label);
+                  })
+                ),
+
+                // Population Display
+                React.createElement("div", { className: "grid grid-cols-3 gap-3" },
+                  OCEAN_SPECIES.map(function (sp) {
+                    var pop = oceanPop[sp.id];
+                    var pct = Math.min(100, Math.round(pop / sp.K * 100));
+                    var critical = pop < sp.K * 0.1;
+                    return React.createElement("div", {
+                      key: sp.id,
+                      className: "bg-white rounded-xl p-3 border " + (critical ? "border-red-300 bg-red-50" : "border-slate-200") + " text-center"
+                    },
+                      React.createElement("div", { className: "text-2xl mb-1" }, sp.icon),
+                      React.createElement("div", { className: "text-xs font-bold " + (critical ? "text-red-700" : "text-slate-700") }, sp.name),
+                      React.createElement("div", { className: "text-lg font-bold " + (critical ? "text-red-600" : "text-blue-600") }, pop.toLocaleString()),
+                      React.createElement("div", { className: "h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden" },
+                        React.createElement("div", { style: { width: pct + '%' }, className: "h-full rounded-full transition-all " + (critical ? "bg-red-500" : pct > 50 ? "bg-green-500" : "bg-amber-400") })
+                      ),
+                      React.createElement("div", { className: "text-[10px] text-slate-400 mt-0.5" }, pct + "% of carrying capacity")
+                    );
+                  })
+                ),
+
+                // Population history chart (simple bar visualization)
+                oceanHistory.length > 1 && React.createElement("div", { className: "bg-white rounded-xl p-3 border border-slate-200" },
+                  React.createElement("h4", { className: "text-xs font-bold text-slate-600 mb-2" }, "\uD83D\uDCC8 Population History (last " + Math.min(20, oceanHistory.length) + " years)"),
+                  React.createElement("div", { className: "flex items-end gap-px h-24" },
+                    oceanHistory.slice(-20).map(function (h, i) {
+                      var maxPop = 1000;
+                      return React.createElement("div", { key: i, className: "flex-1 flex flex-col gap-px" },
+                        React.createElement("div", { style: { height: Math.max(1, h.sardines / maxPop * 80) + 'px' }, className: "bg-sky-400 rounded-t-sm", title: 'Sardines: ' + h.sardines }),
+                        React.createElement("div", { style: { height: Math.max(1, h.tuna / maxPop * 80) + 'px' }, className: "bg-blue-500", title: 'Tuna: ' + h.tuna }),
+                        React.createElement("div", { style: { height: Math.max(1, h.sharks / maxPop * 80) + 'px' }, className: "bg-indigo-600 rounded-b-sm", title: 'Sharks: ' + h.sharks })
+                      );
+                    })
+                  ),
+                  React.createElement("div", { className: "flex gap-3 mt-1 text-[10px]" },
+                    React.createElement("span", { className: "text-sky-500 font-bold" }, "\u25CF Sardines"),
+                    React.createElement("span", { className: "text-blue-600 font-bold" }, "\u25CF Tuna"),
+                    React.createElement("span", { className: "text-indigo-700 font-bold" }, "\u25CF Sharks")
+                  )
+                ),
+
+                // Controls
+                React.createElement("div", { className: "bg-gradient-to-br from-blue-50 to-sky-50 rounded-xl p-3 border border-blue-200 space-y-3" },
+                  React.createElement("h4", { className: "text-xs font-bold text-blue-700" }, "\u2699\uFE0F Fishery Controls"),
+
+                  // Harvest Rate
+                  React.createElement("div", null,
+                    React.createElement("div", { className: "flex justify-between text-xs mb-1" },
+                      React.createElement("span", { className: "font-bold text-slate-600" }, "\uD83C\uDFA3 Harvest Rate"),
+                      React.createElement("span", { className: "font-mono " + (harvestRate > 50 ? "text-red-600" : "text-green-600") }, harvestRate + "%")
+                    ),
+                    React.createElement("input", {
+                      type: "range", min: "0", max: "100", value: harvestRate,
+                      onChange: function (e) { upd('harvestRate', parseInt(e.target.value)); },
+                      className: "w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                    })
+                  ),
+
+                  // MPA
+                  React.createElement("div", null,
+                    React.createElement("div", { className: "flex justify-between text-xs mb-1" },
+                      React.createElement("span", { className: "font-bold text-slate-600" }, "\uD83C\uDFDD\uFE0F Marine Protected Area"),
+                      React.createElement("span", { className: "font-mono text-green-600" }, mpaPercent + "% protected")
+                    ),
+                    React.createElement("input", {
+                      type: "range", min: "0", max: "80", value: mpaPercent,
+                      onChange: function (e) { upd('mpaPercent', parseInt(e.target.value)); },
+                      className: "w-full h-2 bg-green-200 rounded-lg appearance-none cursor-pointer accent-green-600"
+                    })
+                  ),
+
+                  // Mesh Size
+                  React.createElement("div", { className: "flex items-center gap-2" },
+                    React.createElement("span", { className: "text-xs font-bold text-slate-600" }, "\uD83E\uDE7A Mesh Size"),
+                    ['small', 'medium', 'large'].map(function (m) {
+                      return React.createElement("button", {
+                        key: m,
+                        onClick: function () { upd('meshSize', m); },
+                        className: "px-3 py-1 text-xs font-bold rounded-full transition-all " + (meshSize === m ? "bg-blue-500 text-white" : "bg-white text-blue-700 border border-blue-200 hover:bg-blue-50")
+                      }, m.charAt(0).toUpperCase() + m.slice(1));
+                    }),
+                    React.createElement("span", { className: "text-[10px] text-slate-400 ml-1" }, meshSize === 'small' ? '\u26A0\uFE0F High bycatch' : meshSize === 'large' ? '\u2705 Low bycatch' : '')
+                  ),
+
+                  // Season toggle
+                  React.createElement("div", { className: "flex items-center gap-3" },
+                    React.createElement("span", { className: "text-xs font-bold text-slate-600" }, "\uD83D\uDCC5 Season"),
+                    React.createElement("button", {
+                      onClick: function () { upd('isOpenSeason', !isOpenSeason); },
+                      className: "px-4 py-1.5 text-xs font-bold rounded-full transition-all " + (isOpenSeason ? "bg-green-500 text-white" : "bg-red-100 text-red-700 border border-red-200")
+                    }, isOpenSeason ? "\uD83D\uDFE2 Open Season" : "\uD83D\uDD34 Closed Season")
+                  )
+                ),
+
+                // Stats row
+                React.createElement("div", { className: "grid grid-cols-4 gap-2" },
+                  [
+                    { label: 'Year', val: oceanYear, icon: '\uD83D\uDCC5' },
+                    { label: 'Revenue', val: '$' + oceanRevenue.toLocaleString(), icon: '\uD83D\uDCB0' },
+                    { label: 'Bycatch', val: oceanBycatch, icon: '\u26A0\uFE0F' },
+                    { label: 'Status', val: oceanCollapsed ? 'COLLAPSED' : 'Healthy', icon: oceanCollapsed ? '\u274C' : '\u2705' }
+                  ].map(function (s) {
+                    return React.createElement("div", { key: s.label, className: "bg-white rounded-lg p-2 text-center border border-slate-200" },
+                      React.createElement("div", { className: "text-xs text-slate-400" }, s.icon + " " + s.label),
+                      React.createElement("div", { className: "text-sm font-bold " + (s.label === 'Status' && oceanCollapsed ? 'text-red-600' : 'text-slate-700') }, s.val)
+                    );
+                  })
+                ),
+
+                // Advance button
+                React.createElement("div", { className: "flex gap-2" },
+                  React.createElement("button", {
+                    onClick: stepOcean,
+                    className: "flex-1 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold rounded-lg text-sm hover:from-blue-600 hover:to-indigo-600 transition-all shadow-md"
+                  }, "\u23E9 Advance 1 Year"),
+                  React.createElement("button", {
+                    onClick: function () { for (var i = 0; i < 5; i++) stepOcean(); },
+                    className: "px-4 py-2 bg-indigo-100 text-indigo-700 font-bold rounded-lg text-sm hover:bg-indigo-200 transition-all"
+                  }, "\u23E9\u00D75"),
+                  React.createElement("button", {
+                    onClick: resetOcean,
+                    className: "px-4 py-2 bg-slate-200 text-slate-700 font-bold rounded-lg text-sm hover:bg-slate-300 transition-all"
+                  }, "\u21BA Reset")
+                )
+              ),
+
+              // ═══════════════ MODE 3: MARINE SCIENCE ═══════════════
+              mode === 'marine' && React.createElement("div", { className: "space-y-3" },
+
+                // Ocean Zones Cross-Section
+                React.createElement("div", { className: "rounded-xl overflow-hidden border-2 border-blue-300" },
+                  OCEAN_ZONES.map(function (zone) {
+                    var zoneSpecies = MARINE_SPECIES.filter(function (s) { return s.zone === zone.id; });
+                    return React.createElement("button", {
+                      key: zone.id,
+                      onClick: function () { upd('selectedZone', selectedZone === zone.id ? null : zone.id); },
+                      className: "w-full text-left transition-all hover:brightness-110",
+                      style: { background: zone.color, padding: selectedZone === zone.id ? '16px 12px' : '10px 12px', transition: 'padding 0.2s' }
+                    },
+                      React.createElement("div", { className: "flex items-center gap-2" },
+                        React.createElement("span", { className: "text-xs font-bold text-white/90" }, zone.name),
+                        React.createElement("span", { className: "text-[10px] text-white/60 ml-auto" }, zone.depth),
+                        React.createElement("span", { className: "text-[10px] text-white/50" }, zone.temp)
+                      ),
+                      selectedZone === zone.id && React.createElement("div", { className: "mt-2 flex flex-wrap gap-2" },
+                        zoneSpecies.map(function (sp) {
+                          return React.createElement("button", {
+                            key: sp.id,
+                            onClick: function (e) { e.stopPropagation(); upd('selectedSpecies', sp.id); },
+                            className: "px-2 py-1 bg-white/20 rounded-full text-[11px] text-white font-bold hover:bg-white/30 transition-all"
+                          }, sp.icon + " " + sp.name);
+                        }),
+                        zoneSpecies.length === 0 && React.createElement("span", { className: "text-[10px] text-white/50 italic" }, "Few species survive here")
+                      )
+                    );
+                  })
+                ),
+
+                // Selected Species Card
+                selectedSpecies && (() => {
+                  var sp = MARINE_SPECIES.find(function (s) { return s.id === selectedSpecies; });
+                  if (!sp) return null;
+                  var statusColors = { LC: 'text-green-600 bg-green-50', VU: 'text-amber-600 bg-amber-50', EN: 'text-red-600 bg-red-50', CR: 'text-red-800 bg-red-100' };
+                  var statusLabels = { LC: 'Least Concern', VU: 'Vulnerable', EN: 'Endangered', CR: 'Critically Endangered' };
+                  return React.createElement("div", { className: "bg-white rounded-xl p-4 border-2 border-indigo-200 animate-in fade-in duration-200" },
+                    React.createElement("div", { className: "flex items-start gap-3" },
+                      React.createElement("div", { className: "text-4xl" }, sp.icon),
+                      React.createElement("div", { className: "flex-1" },
+                        React.createElement("h4", { className: "text-sm font-bold text-indigo-800" }, sp.name),
+                        React.createElement("div", { className: "flex gap-2 mt-1 flex-wrap" },
+                          React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-bold" }, "\uD83C\uDF0A " + sp.habitat),
+                          React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full bg-slate-50 text-slate-600 font-bold" }, "\uD83C\uDF7D\uFE0F " + sp.diet),
+                          React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full font-bold " + (statusColors[sp.status] || '') }, "\uD83D\uDEE1\uFE0F " + (statusLabels[sp.status] || sp.status))
+                        )
+                      ),
+                      React.createElement("button", {
+                        onClick: function () { upd('selectedSpecies', null); },
+                        className: "text-slate-400 hover:text-slate-600 text-lg"
+                      }, "\u2715")
+                    ),
+                    React.createElement("div", { className: "mt-3 bg-indigo-50 rounded-lg p-3" },
+                      React.createElement("p", { className: "text-xs text-indigo-800 leading-relaxed" }, "\uD83D\uDCA1 " + sp.fact)
+                    ),
+                    React.createElement("div", { className: "mt-2 bg-amber-50 rounded-lg p-2" },
+                      React.createElement("p", { className: "text-xs text-amber-700 font-bold" }, "\u2753 " + sp.quiz)
+                    )
+                  );
+                })(),
+
+                // Quiz Section
+                React.createElement("div", { className: "flex gap-2 items-center" },
+                  React.createElement("button", {
+                    onClick: generateQuiz,
+                    className: "flex-1 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-bold rounded-lg text-sm hover:from-indigo-600 hover:to-purple-600 transition-all shadow-md"
+                  }, "\uD83E\uDDE0 Marine Science Quiz"),
+                  quizScore.total > 0 && React.createElement("span", { className: "text-xs font-bold text-indigo-600" }, "\u2705 " + quizScore.correct + "/" + quizScore.total)
+                ),
+
+                quizQ && React.createElement("div", { className: "bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-4 border border-indigo-200" },
+                  React.createElement("p", { className: "text-sm font-bold text-indigo-800 mb-3" }, "\u2753 " + quizQ.question),
+                  React.createElement("div", { className: "grid grid-cols-2 gap-2" },
+                    quizQ.options.map(function (opt) {
+                      var answered = quizQ.answered != null;
+                      var isCorrect = opt === quizQ.answer;
+                      var isChosen = opt === quizQ.answered;
+                      return React.createElement("button", {
+                        key: opt,
+                        onClick: function () { if (!answered) answerQuiz(opt); },
+                        disabled: answered,
+                        className: "py-2 px-3 text-xs font-bold rounded-lg border transition-all " + (answered ? (isCorrect ? "bg-green-100 border-green-400 text-green-800" : isChosen ? "bg-red-100 border-red-400 text-red-800" : "bg-slate-50 border-slate-200 text-slate-400") : "bg-white border-indigo-200 text-indigo-700 hover:bg-indigo-50 hover:border-indigo-400")
+                      }, opt);
+                    })
+                  ),
+                  quizQ.answered && React.createElement("div", { className: "mt-2" },
+                    React.createElement("p", { className: "text-xs font-bold " + (quizQ.correct ? "text-green-600" : "text-red-600") }, quizQ.correct ? "\u2705 Correct! +3 XP" : "\u274C The answer is: " + quizQ.answer),
+                    React.createElement("button", {
+                      onClick: generateQuiz,
+                      className: "mt-1 px-3 py-1 text-[10px] font-bold bg-indigo-500 text-white rounded-full hover:bg-indigo-600"
+                    }, "Next Question \u2192")
+                  )
+                )
+              )
             );
           })(),
 
