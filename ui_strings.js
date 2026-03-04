@@ -5416,23 +5416,18 @@
           "stem_assessment": "STEM Assessment: "
     },
     "volume": {
-      "u0001f4f8_snapshot_saved": "\\U0001f4f8 Snapshot saved!",
         "volume": "Volume: "
     },
     "place_value": {
-      "u0001f4f8_snapshot_saved": "\\U0001f4f8 Snapshot saved!",
         "base10": "Base-10: "
     },
     "coordinate": {
-      "u0001f4f8_snapshot_saved": "\\U0001f4f8 Snapshot saved!",
         "grid": "Grid: "
     },
     "angle": {
-      "u0001f4f8_snapshot_saved": "\\U0001f4f8 Snapshot saved!",
         "angle": "Angle: "
     },
     "calculus": {
-      "ud83dudcf8_calculus_snapshot_saved": "\\uD83D\\uDCF8 Calculus snapshot saved!",
         "left": "Left",
           "midpoint": "Midpoint",
             "right": "Right",
@@ -5444,17 +5439,14 @@
     "wave": {
       "u26a0_audio_not_supported_in": "\\u26A0 Audio not supported in this browser",
         "ud83cudfaf_match_the_yellow_dashed": "\\uD83C\\uDFAF Match the yellow dashed wave!",
-          "ud83dudcf8_wave_snapshot_saved": "\\uD83D\\uDCF8 Wave snapshot saved!"
     },
     "func_graph": {
-      "ud83dudcf8_cell_simulator_snapshot_saved": "\\uD83D\\uDCF8 Cell Simulator snapshot saved!",
         "cell_sim": "Cell Sim"
     },
     "func_grapher": {
       "ud83dudcc8": "\\uD83D\\uDCC8 ",
         "correct_it": "✅ Correct! It\\",
           "that": "❌ That\\",
-            "ud83dudcf8_function_snapshot_saved": "\\uD83D\\uDCF8 Function snapshot saved!",
               "linear": "Linear",
                 "quadratic": "Quadratic",
                   "cubic": "Cubic",
@@ -5463,14 +5455,12 @@
                         "absolute": "Absolute"
     },
     "physics": {
-      "ud83dudcf8_physics_snapshot_saved": "\\uD83D\\uDCF8 Physics snapshot saved!",
         "angle_u00b0": "Angle (\\u00B0)",
           "velocity_ms": "Velocity (m/s)",
             "gravity_msu00b2": "Gravity (m/s\\u00B2)"
     },
     "chem_balance": {
       "ud83cudfb2_random": "\\uD83C\\uDFB2 Random: ",
-        "ud83dudcf8_snapshot_saved": "\\uD83D\\uDCF8 Snapshot saved!",
           "water": "Water",
             "table_salt": "Table Salt",
               "magnesium_oxide": "Magnesium Oxide",
@@ -5486,7 +5476,6 @@
     },
     "punnett": {
       "ud83euddec": "\\uD83E\\uDDEC ",
-        "ud83dudcf8_punnett_snapshot_saved": "\\uD83D\\uDCF8 Punnett snapshot saved!",
           "complete_dominance": "Complete Dominance",
             "incomplete_dominance": "Incomplete Dominance",
               "codominance": "Codominance",
@@ -5495,7 +5484,6 @@
     "circuit": {
       "u2705_challenge_complete_you_hit": "\\u2705 Challenge complete! You hit ",
         "ud83cudfaf_target": "\\uD83C\\uDFAF Target: ",
-          "ud83dudcf8_circuit_snapshot_saved": "\\uD83D\\uDCF8 Circuit snapshot saved!",
             "mode": "Mode",
               "resistance": "Resistance",
                 "current": "Current",
@@ -5509,10 +5497,8 @@
     "data_plot": {
       "correct": "✅ Correct! ",
         "it": "❌ It\\",
-          "data_snapshot_saved": "📸 Data snapshot saved!"
     },
     "inequality": {
-      "ud83dudcf8_inequality_snapshot_saved": "\\uD83D\\uDCF8 Inequality snapshot saved!",
         "type_your_answer": "Type your answer..."
     },
     "periodic": {
@@ -5716,13 +5702,11 @@
     "planet_quiz": {
       "u2705_correct": "\\u2705 Correct! ",
         "u274c_the_answer_is": "\\u274C The answer is ",
-          "ud83dudcf8_snapshot_saved": "\\uD83D\\uDCF8 Snapshot saved!",
             "discoveries": "Discoveries",
               "xp_earned": "XP Earned",
                 "wasd": "WASD"
     },
     "galaxy": {
-      "ud83dudcf8_galaxy_snapshot_saved": "\\uD83D\\uDCF8 Galaxy snapshot saved!",
         "otype": "O-type",
           "btype": "B-type",
             "atype": "A-type",
@@ -5796,7 +5780,6 @@
                                                                                                                                                     "galaxy": "Galaxy"
     },
     "universe": {
-      "ud83dudcf8_universe_snapshot_saved": "\\uD83D\\uDCF8 Universe snapshot saved!",
         "the_big_bang": "The Big Bang",
           "recombination": "Recombination",
             "the_dark_ages": "The Dark Ages",
@@ -5807,7 +5790,6 @@
                       "universe": "Universe: "
     },
     "rocks": {
-      "ud83dudcf8_rocks_snapshot_saved": "\\uD83D\\uDCF8 Rocks snapshot saved!",
         "igneous": "Igneous",
           "formed_from_cooled_magma_or": "Formed from cooled magma or lava",
             "sedimentary": "Sedimentary",
@@ -5863,7 +5845,6 @@
                                                                                                                 "rocks": "Rocks"
     },
     "water_cycle": {
-      "ud83dudcf8_snapshot_saved": "\\uD83D\\uDCF8 Snapshot saved!",
         "evaporation": "Evaporation",
           "condensation": "Condensation",
             "precipitation": "Precipitation",
@@ -5871,24 +5852,18 @@
                 "transpiration": "Transpiration",
                   "infiltration": "Infiltration"
     },
-    "rock_quiz": {
-      "ud83dudcf8_snapshot_saved": "\\uD83D\\uDCF8 Snapshot saved!"
-    },
     "ecosystem": {
-      "ud83dudcf8_snapshot_saved": "\\uD83D\\uDCF8 Snapshot saved!",
         "prey_birth": "Prey Birth",
           "pred_death": "Pred Death"
     },
     "fractions": {
       "correct": "✅ Correct! ",
-        "ud83dudcf8_snapshot_saved": "\\uD83D\\uDCF8 Snapshot saved!",
           "fraction_a": "Fraction A",
             "fraction_b": "Fraction B"
     },
     "decomposer": {
       "correct": "✅ Correct!",
         "the_answer_is": "❌ The answer is ",
-          "snapshot_saved": "📸 Snapshot saved!",
             "sugar_sucrose": "Sugar (Sucrose)",
               "a_pungent_compound_essential_for": "A pungent compound essential for fertilizers and amino acids.",
                 "found_in_chalk_limestone_marble": "Found in chalk, limestone, marble, seashells, and eggshells.",
@@ -5896,16 +5871,13 @@
     },
     "converter": {
       "u2705_saved_to_history": "\\u2705 Saved to history!",
-        "ud83dudcf8_snapshot_saved": "\\uD83D\\uDCF8 Snapshot saved!",
           "your_answer": "Your answer..."
     },
     "probability": {
-      "ud83dudcf8_snapshot_saved": "\\uD83D\\uDCF8 Snapshot saved!",
         "expected": "Expected: "
     },
     "synth": {
       "ud83dudcbe_composition": "\\uD83D\\uDCBE Composition ",
-        "ud83dudcf8_snapshot_saved": "\\uD83D\\uDCF8 Snapshot saved!",
           "ud83cudfb5_loaded": "\\uD83C\\uDFB5 Loaded ",
             "ud83duddd1_deleted": "\\uD83D\\uDDD1 Deleted ",
               "happy_bright_the_most_common": "Happy, bright. The most common Western scale.",
@@ -6003,7 +5975,6 @@
                                                                                                                                                                                                       "sustaindamping": "Sustain/Damping"
     },
     "synth_ui": {
-      "ud83dudcf8_synthesizer_snapshot_saved": "\\uD83D\\uDCF8 Synthesizer snapshot saved!",
         "synth": "Synth: ",
           "skeletal": "Skeletal",
             "skull_cranium": "Skull (Cranium)",
