@@ -23097,6 +23097,20 @@
             };
 
             var mode = d.mode || 'tank';
+
+            // ── Inject aquarium CSS animations ──
+            if (!document.getElementById('aqua-css')) {
+              var style = document.createElement('style');
+              style.id = 'aqua-css';
+              style.textContent = [
+                '@keyframes aquaSwim { 0% { transform: translateX(0) translateY(0); } 25% { transform: translateX(12px) translateY(-4px); } 50% { transform: translateX(-8px) translateY(3px); } 75% { transform: translateX(6px) translateY(-2px); } 100% { transform: translateX(0) translateY(0); } }',
+                '@keyframes aquaBubble { 0% { bottom: 30px; opacity: 0.6; } 50% { opacity: 0.8; } 100% { bottom: 220px; opacity: 0; } }',
+                '@keyframes aquaWave { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }',
+                '@keyframes oceanPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }',
+                '.aqua-fish:hover { transform: scale(1.3) !important; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3)) !important; }'
+              ].join('\n');
+              document.head.appendChild(style);
+            }
             var TANK_TYPES = [
               { id: 'freshwater', name: '🐠 Freshwater Community', size: 20, temp: 76, salinity: 0, pH: 7.0, diff: 1, desc: 'Classic beginner setup with tetras, guppies, and corydoras.' },
               { id: 'planted', name: '🌿 Planted Tropical', size: 40, temp: 78, salinity: 0, pH: 6.8, diff: 2, desc: 'Lush aquascape with live plants and small schooling fish.' },
@@ -23429,7 +23443,7 @@
             var modeColors = { tank: 'cyan', ocean: 'blue', marine: 'indigo' };
             var mColor = modeColors[mode] || 'cyan';
 
-            return React.createElement("div", { className: "space-y-4 max-w-3xl mx-auto animate-in fade-in duration-200" },
+            return React.createElement("div", { className: "space-y-4 max-w-3xl mx-auto animate-in fade-in duration-300" },
 
               // ── Header ──
               React.createElement("div", { className: "flex items-center gap-3 mb-2" },
@@ -23437,7 +23451,7 @@
                   onClick: function () { setStemLabTool(null); updMulti({ simRunning: false }); },
                   className: "p-1.5 hover:bg-slate-100 rounded-lg transition-colors"
                 }, React.createElement(ArrowLeft, { size: 18, className: "text-slate-500" })),
-                React.createElement("h3", { className: "text-lg font-bold text-cyan-800" }, "\uD83D\uDC20 Aquaculture & Ocean Lab"),
+                React.createElement("h3", { className: "text-lg font-bold bg-gradient-to-r from-cyan-700 via-blue-600 to-indigo-700 bg-clip-text text-transparent" }, "\uD83D\uDC20 Aquaculture & Ocean Lab"),
                 React.createElement("div", { className: "flex items-center gap-2 ml-auto" },
                   React.createElement("button", {
                     onClick: function () {
@@ -23460,7 +23474,7 @@
                   return React.createElement("button", {
                     key: tab.id,
                     onClick: function () { upd('mode', tab.id); },
-                    className: "flex-1 py-2 px-3 rounded-lg text-sm font-bold transition-all " + (mode === tab.id ? "bg-white text-" + modeColors[tab.id] + "-800 shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50")
+                    className: "flex-1 py-2.5 px-3 rounded-xl text-sm font-bold transition-all duration-200 " + (mode === tab.id ? "bg-gradient-to-r from-" + modeColors[tab.id] + "-500 to-" + modeColors[tab.id] + "-600 text-white shadow-lg shadow-" + modeColors[tab.id] + "-500/25" : "text-slate-500 hover:text-slate-700 hover:bg-white/60")
                   }, tab.icon, " ", tab.label);
                 })
               ),
@@ -23473,7 +23487,7 @@
                     return React.createElement("button", {
                       key: tank.id,
                       onClick: function () { initTank(tank.id); },
-                      className: "p-4 rounded-xl border-2 text-left transition-all hover:scale-[1.02] hover:shadow-lg bg-gradient-to-br from-cyan-50 to-sky-50 border-cyan-200 hover:border-cyan-400"
+                      className: "group p-4 rounded-2xl border-2 text-left transition-all duration-300 hover:scale-[1.03] hover:shadow-xl hover:shadow-cyan-500/10 bg-gradient-to-br from-white via-cyan-50/50 to-sky-50 border-cyan-200/60 hover:border-cyan-400"
                     },
                       React.createElement("div", { className: "flex items-center gap-2 mb-1" },
                         React.createElement("span", { className: "text-xl" }, tank.name.split(' ')[0]),
@@ -23517,7 +23531,7 @@
                   ),
 
                   // Water Chemistry Panel
-                  waterChem && React.createElement("div", { className: "bg-gradient-to-br from-cyan-50 to-blue-50 rounded-xl p-3 border border-cyan-200" },
+                  waterChem && React.createElement("div", { className: "bg-gradient-to-br from-cyan-50 via-sky-50 to-blue-50 rounded-2xl p-4 border border-cyan-200/60 shadow-sm" },
                     React.createElement("h4", { className: "text-xs font-bold text-cyan-700 mb-2" }, "\uD83E\uDDEA Water Chemistry"),
                     React.createElement("div", { className: "grid grid-cols-3 gap-2" },
                       [
@@ -23536,7 +23550,7 @@
                       })
                     ),
                     // Nitrogen cycle mini-diagram
-                    React.createElement("div", { className: "mt-2 flex items-center justify-center gap-1 text-[10px] text-slate-500 bg-white/50 rounded-lg p-2" },
+                    React.createElement("div", { className: "mt-3 flex items-center justify-center gap-1 text-[10px] text-slate-500 bg-gradient-to-r from-red-50/50 via-orange-50/50 to-green-50/50 rounded-xl p-2.5 border border-slate-100" },
                       React.createElement("span", { className: "font-bold text-red-500" }, "NH\u2083"),
                       React.createElement("span", null, " \u2192 "),
                       React.createElement("span", { className: "font-bold text-orange-500" }, "NO\u2082"),
@@ -23559,39 +23573,112 @@
 
                   // Tank visualization (animated fish)
                   React.createElement("div", {
-                    className: "relative bg-gradient-to-b from-cyan-200 via-cyan-400 to-blue-600 rounded-xl overflow-hidden border-2 border-cyan-300",
-                    style: { height: '200px' }
+                    className: "relative rounded-2xl overflow-hidden border-2 border-cyan-300/60 shadow-lg shadow-cyan-500/20",
+                    style: { height: '240px', background: selectedTank === 'reef' || selectedTank === 'invert' ? 'linear-gradient(180deg, #67e8f9 0%, #22d3ee 15%, #0891b2 40%, #155e75 70%, #164e63 100%)' : selectedTank === 'coldwater' ? 'linear-gradient(180deg, #bae6fd 0%, #7dd3fc 15%, #3b82f6 40%, #1e40af 70%, #1e3a5f 100%)' : selectedTank === 'brackish' ? 'linear-gradient(180deg, #a7f3d0 0%, #6ee7b7 15%, #059669 40%, #065f46 70%, #064e3b 100%)' : 'linear-gradient(180deg, #a5f3fc 0%, #67e8f9 15%, #22d3ee 40%, #0891b2 70%, #155e75 100%)' }
                   },
-                    // Substrate
-                    React.createElement("div", { className: "absolute bottom-0 w-full h-8 bg-gradient-to-t from-amber-600/50 to-amber-400/20", style: { borderRadius: '0 0 12px 12px' } }),
-                    // Fish icons
+                    // Water surface shimmer
+                    React.createElement("div", {
+                      style: { position: 'absolute', top: 0, left: 0, right: 0, height: '30px', background: 'linear-gradient(180deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.1) 40%, transparent 100%)', zIndex: 5 }
+                    }),
+                    // Light rays
+                    [0,1,2].map(function (i) {
+                      return React.createElement("div", {
+                        key: 'ray-' + i,
+                        style: {
+                          position: 'absolute', top: 0, left: (20 + i * 30) + '%',
+                          width: '40px', height: '100%',
+                          background: 'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, transparent 70%)',
+                          transform: 'skewX(-15deg)', zIndex: 1
+                        }
+                      });
+                    }),
+                    // Decorative plants
+                    (selectedTank === 'planted' || selectedTank === 'freshwater' || selectedTank === 'brackish') && [0,1,2,3].map(function (i) {
+                      var heights = [50, 35, 60, 40];
+                      return React.createElement("div", {
+                        key: 'plant-' + i,
+                        style: {
+                          position: 'absolute', bottom: '24px', left: (8 + i * 25) + '%',
+                          width: '8px', height: heights[i] + 'px', borderRadius: '4px 4px 0 0',
+                          background: 'linear-gradient(180deg, #22c55e 0%, #15803d 100%)',
+                          opacity: 0.7, zIndex: 2,
+                          animation: 'pulse 4s ease-in-out ' + (i * 0.8) + 's infinite'
+                        }
+                      });
+                    }),
+                    // Coral for reef tanks
+                    (selectedTank === 'reef' || selectedTank === 'invert') && [0,1,2].map(function (i) {
+                      var colors = ['#f472b6', '#fb923c', '#a78bfa'];
+                      return React.createElement("div", {
+                        key: 'coral-' + i,
+                        style: {
+                          position: 'absolute', bottom: '24px', left: (15 + i * 30) + '%',
+                          width: '20px', height: (25 + i * 8) + 'px', borderRadius: '8px 8px 0 0',
+                          background: colors[i], opacity: 0.6, zIndex: 2,
+                          animation: 'pulse 5s ease-in-out ' + (i * 1.2) + 's infinite'
+                        }
+                      });
+                    }),
+                    // Rocky substrate
+                    React.createElement("div", {
+                      style: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '28px', borderRadius: '0 0 12px 12px', zIndex: 3, background: selectedTank === 'reef' || selectedTank === 'invert' ? 'linear-gradient(0deg, #92400e 0%, #b45309 40%, transparent 100%)' : 'linear-gradient(0deg, #92400e 0%, #d97706 40%, transparent 100%)' }
+                    }),
+                    // Pebbles on substrate
+                    [0,1,2,3,4,5,6].map(function (i) {
+                      return React.createElement("div", {
+                        key: 'pebble-' + i,
+                        style: {
+                          position: 'absolute', bottom: (3 + (i % 3) * 4) + 'px', left: (5 + i * 13) + '%',
+                          width: (5 + (i % 3) * 3) + 'px', height: (4 + (i % 2) * 2) + 'px',
+                          borderRadius: '50%', background: i % 2 === 0 ? 'rgba(120,100,80,0.5)' : 'rgba(160,140,110,0.4)',
+                          zIndex: 4
+                        }
+                      });
+                    }),
+                    // Fish with smooth swimming animation
                     tankFish.map(function (fId, idx) {
                       var sp = species.find(function (s) { return s.id === fId; });
-                      var yPos = 20 + (idx * 23) % 140;
-                      var xPos = 10 + (idx * 37 + idx * idx * 7) % 80;
-                      var animDelay = (idx * 0.7) % 3;
+                      var yPos = 30 + (idx * 29 + idx * 7) % 150;
+                      var xPos = 5 + (idx * 31 + idx * idx * 11) % 85;
+                      var swimDuration = 3 + (idx % 3) * 1.5;
+                      var swimDelay = (idx * 0.9) % 4;
+                      var direction = idx % 2 === 0 ? 1 : -1;
                       return React.createElement("div", {
                         key: idx,
-                        style: { position: 'absolute', top: yPos + 'px', left: xPos + '%', animation: 'pulse 3s ease-in-out ' + animDelay + 's infinite', cursor: 'pointer', fontSize: '24px', transition: 'transform 0.2s' },
+                        style: {
+                          position: 'absolute', top: yPos + 'px', left: xPos + '%',
+                          cursor: 'pointer', fontSize: '28px', zIndex: 6, userSelect: 'none',
+                          transform: direction < 0 ? 'scaleX(-1)' : 'none',
+                          animation: 'aquaSwim ' + swimDuration + 's ease-in-out ' + swimDelay + 's infinite alternate',
+                          filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))',
+                          transition: 'transform 0.3s'
+                        },
                         title: sp ? sp.name + ': ' + sp.fact : fId,
                         onClick: function () {
                           if (addToast) addToast('\uD83D\uDC1F ' + (sp ? sp.name + ': ' + sp.fact : fId), 'info');
                         }
                       }, sp ? sp.icon : '\uD83D\uDC1F');
                     }),
-                    // Bubbles
-                    [0,1,2,3,4].map(function (i) {
+                    // Animated bubbles
+                    [0,1,2,3,4,5,6,7].map(function (i) {
+                      var sizes = [3,5,4,6,3,7,4,5];
                       return React.createElement("div", {
                         key: 'bubble-' + i,
                         style: {
-                          position: 'absolute', bottom: '10px', left: (15 + i * 18) + '%',
-                          width: (4 + i * 2) + 'px', height: (4 + i * 2) + 'px',
-                          background: 'rgba(255,255,255,0.4)', borderRadius: '50%',
-                          animation: 'pulse 2s ease-in-out ' + (i * 0.5) + 's infinite'
+                          position: 'absolute', left: (8 + i * 12) + '%',
+                          width: sizes[i] + 'px', height: sizes[i] + 'px',
+                          background: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.7), rgba(255,255,255,0.2))',
+                          borderRadius: '50%', zIndex: 5,
+                          animation: 'aquaBubble ' + (2 + i * 0.5) + 's ease-in-out ' + (i * 0.7) + 's infinite'
                         }
                       });
-                    })
+                    }),
+                    // Tank label overlay
+                    React.createElement("div", {
+                      style: { position: 'absolute', top: '8px', right: '10px', zIndex: 10, padding: '2px 8px', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', backdropFilter: 'blur(4px)' }
+                    }, React.createElement("span", { style: { fontSize: '10px', color: 'rgba(255,255,255,0.8)', fontWeight: 'bold' } }, tank.name))
                   ),
+
 
                   // Fish stocking list
                   React.createElement("div", { className: "bg-white rounded-xl p-3 border border-slate-200" },
@@ -23689,7 +23776,7 @@
                     var critical = pop < sp.K * 0.1;
                     return React.createElement("div", {
                       key: sp.id,
-                      className: "bg-white rounded-xl p-3 border " + (critical ? "border-red-300 bg-red-50" : "border-slate-200") + " text-center"
+                      className: "rounded-2xl p-3 border-2 text-center transition-all duration-300 shadow-sm " + (critical ? "border-red-300 bg-gradient-to-br from-red-50 to-red-100 shadow-red-500/10" : "border-slate-200/60 bg-gradient-to-br from-white to-slate-50 hover:shadow-md")
                     },
                       React.createElement("div", { className: "text-2xl mb-1" }, sp.icon),
                       React.createElement("div", { className: "text-xs font-bold " + (critical ? "text-red-700" : "text-slate-700") }, sp.name),
@@ -23704,7 +23791,7 @@
 
                 // Population history chart (simple bar visualization)
                 oceanHistory.length > 1 && React.createElement("div", { className: "bg-white rounded-xl p-3 border border-slate-200" },
-                  React.createElement("h4", { className: "text-xs font-bold text-slate-600 mb-2" }, "\uD83D\uDCC8 Population History (last " + Math.min(20, oceanHistory.length) + " years)"),
+                  React.createElement("h4", { className: "text-xs font-bold text-slate-700 mb-2 flex items-center gap-2" }, "\uD83D\uDCC8 Population History", React.createElement("span", { className: "text-[10px] text-slate-400 font-normal" }, "last " + Math.min(20, oceanHistory.length) + " years")),
                   React.createElement("div", { className: "flex items-end gap-px h-24" },
                     oceanHistory.slice(-20).map(function (h, i) {
                       var maxPop = 1000;
@@ -23723,7 +23810,7 @@
                 ),
 
                 // Controls
-                React.createElement("div", { className: "bg-gradient-to-br from-blue-50 to-sky-50 rounded-xl p-3 border border-blue-200 space-y-3" },
+                React.createElement("div", { className: "bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-50 rounded-2xl p-4 border border-blue-200/60 shadow-sm space-y-3" },
                   React.createElement("h4", { className: "text-xs font-bold text-blue-700" }, "\u2699\uFE0F Fishery Controls"),
 
                   // Harvest Rate
@@ -23794,7 +23881,7 @@
                 React.createElement("div", { className: "flex gap-2" },
                   React.createElement("button", {
                     onClick: stepOcean,
-                    className: "flex-1 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold rounded-lg text-sm hover:from-blue-600 hover:to-indigo-600 transition-all shadow-md"
+                    className: "flex-1 py-2.5 bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 text-white font-bold rounded-xl text-sm hover:from-blue-600 hover:via-blue-700 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/25 hover:shadow-blue-600/30 active:scale-[0.98]"
                   }, "\u23E9 Advance 1 Year"),
                   React.createElement("button", {
                     onClick: function () { for (var i = 0; i < 5; i++) stepOcean(); },
@@ -23814,23 +23901,24 @@
                 React.createElement("div", { className: "rounded-xl overflow-hidden border-2 border-blue-300" },
                   OCEAN_ZONES.map(function (zone) {
                     var zoneSpecies = MARINE_SPECIES.filter(function (s) { return s.zone === zone.id; });
-                    return React.createElement("button", {
+                    return React.createElement("div", {
                       key: zone.id,
+                      role: "button", tabIndex: 0,
                       onClick: function () { upd('selectedZone', selectedZone === zone.id ? null : zone.id); },
-                      className: "w-full text-left transition-all hover:brightness-110",
-                      style: { background: zone.color, padding: selectedZone === zone.id ? '16px 12px' : '10px 12px', transition: 'padding 0.2s' }
+                      className: "w-full text-left transition-all hover:brightness-110 cursor-pointer",
+                      style: { background: 'linear-gradient(135deg, ' + zone.color + ', ' + zone.color + '88)', padding: selectedZone === zone.id ? '16px 12px' : '10px 12px', transition: 'all 0.3s ease', borderBottom: '1px solid rgba(255,255,255,0.1)' }
                     },
                       React.createElement("div", { className: "flex items-center gap-2" },
-                        React.createElement("span", { className: "text-xs font-bold text-white/90" }, zone.name),
-                        React.createElement("span", { className: "text-[10px] text-white/60 ml-auto" }, zone.depth),
-                        React.createElement("span", { className: "text-[10px] text-white/50" }, zone.temp)
+                        React.createElement("span", { className: "text-xs font-bold text-white drop-shadow-sm" }, zone.name),
+                        React.createElement("span", { className: "text-[10px] text-white/70 ml-auto font-mono bg-white/10 px-1.5 py-0.5 rounded" }, zone.depth),
+                        React.createElement("span", { className: "text-[10px] text-white/60 font-mono bg-white/10 px-1.5 py-0.5 rounded" }, zone.temp)
                       ),
                       selectedZone === zone.id && React.createElement("div", { className: "mt-2 flex flex-wrap gap-2" },
                         zoneSpecies.map(function (sp) {
                           return React.createElement("button", {
                             key: sp.id,
                             onClick: function (e) { e.stopPropagation(); upd('selectedSpecies', sp.id); },
-                            className: "px-2 py-1 bg-white/20 rounded-full text-[11px] text-white font-bold hover:bg-white/30 transition-all"
+                            className: "px-2.5 py-1 bg-white/25 rounded-full text-[11px] text-white font-bold hover:bg-white/40 hover:shadow-lg transition-all duration-200 backdrop-blur-sm border border-white/10"
                           }, sp.icon + " " + sp.name);
                         }),
                         zoneSpecies.length === 0 && React.createElement("span", { className: "text-[10px] text-white/50 italic" }, "Few species survive here")
@@ -23845,7 +23933,7 @@
                   if (!sp) return null;
                   var statusColors = { LC: 'text-green-600 bg-green-50', VU: 'text-amber-600 bg-amber-50', EN: 'text-red-600 bg-red-50', CR: 'text-red-800 bg-red-100' };
                   var statusLabels = { LC: 'Least Concern', VU: 'Vulnerable', EN: 'Endangered', CR: 'Critically Endangered' };
-                  return React.createElement("div", { className: "bg-white rounded-xl p-4 border-2 border-indigo-200 animate-in fade-in duration-200" },
+                  return React.createElement("div", { className: "bg-gradient-to-br from-white via-indigo-50/30 to-purple-50/30 rounded-2xl p-4 border-2 border-indigo-200/60 shadow-lg shadow-indigo-500/10 animate-in fade-in duration-200" },
                     React.createElement("div", { className: "flex items-start gap-3" },
                       React.createElement("div", { className: "text-4xl" }, sp.icon),
                       React.createElement("div", { className: "flex-1" },
@@ -23879,7 +23967,7 @@
                   quizScore.total > 0 && React.createElement("span", { className: "text-xs font-bold text-indigo-600" }, "\u2705 " + quizScore.correct + "/" + quizScore.total)
                 ),
 
-                quizQ && React.createElement("div", { className: "bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-4 border border-indigo-200" },
+                quizQ && React.createElement("div", { className: "bg-gradient-to-br from-indigo-50 via-purple-50 to-violet-50 rounded-2xl p-4 border border-indigo-200/60 shadow-sm" },
                   React.createElement("p", { className: "text-sm font-bold text-indigo-800 mb-3" }, "\u2753 " + quizQ.question),
                   React.createElement("div", { className: "grid grid-cols-2 gap-2" },
                     quizQ.options.map(function (opt) {
