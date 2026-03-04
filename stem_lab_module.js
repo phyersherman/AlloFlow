@@ -16062,55 +16062,366 @@
                 anatTick++;
                 ctx.clearRect(0, 0, W, H);
 
-                // Body silhouette
+                // ── Enhanced Anatomical Figure ──
                 ctx.save();
-                ctx.fillStyle = '#f5f0eb';
-                ctx.strokeStyle = '#cbd5e1';
-                ctx.lineWidth = 1.5;
                 ctx.lineJoin = 'round';
                 ctx.lineCap = 'round';
-                // Head
-                ctx.beginPath(); ctx.ellipse(W * 0.5, H * 0.065, W * 0.055, H * 0.045, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-                // Neck
-                ctx.beginPath(); ctx.rect(W * 0.47, H * 0.1, W * 0.06, H * 0.03); ctx.fill(); ctx.stroke();
-                // Torso
+
+                // Skin gradient for realistic shading
+                var skinGrad = ctx.createLinearGradient(W * 0.3, 0, W * 0.7, H);
+                skinGrad.addColorStop(0, '#f5e6d3');
+                skinGrad.addColorStop(0.3, '#f0ddd0');
+                skinGrad.addColorStop(0.6, '#ebd5c6');
+                skinGrad.addColorStop(1, '#e8cfc0');
+
+                // Ambient shadow gradient
+                var shadowGrad = ctx.createRadialGradient(W * 0.5, H * 0.4, W * 0.05, W * 0.5, H * 0.4, W * 0.4);
+                shadowGrad.addColorStop(0, 'rgba(180,160,140,0.08)');
+                shadowGrad.addColorStop(1, 'rgba(180,160,140,0)');
+
+                // Helper: draw body part with gradient/shadow
+                function drawBodyPart(pathFn, extraShadow) {
+                  // Shadow layer
+                  ctx.save();
+                  ctx.shadowColor = 'rgba(120,100,80,0.15)';
+                  ctx.shadowBlur = 6;
+                  ctx.shadowOffsetX = 2;
+                  ctx.shadowOffsetY = 3;
+                  ctx.beginPath(); pathFn(ctx);
+                  ctx.fillStyle = skinGrad;
+                  ctx.fill();
+                  ctx.restore();
+                  // Main fill
+                  ctx.beginPath(); pathFn(ctx);
+                  ctx.fillStyle = skinGrad;
+                  ctx.fill();
+                  // Outline
+                  ctx.beginPath(); pathFn(ctx);
+                  ctx.strokeStyle = '#c4aa94';
+                  ctx.lineWidth = 1.2;
+                  ctx.stroke();
+                }
+
+                // Head (oval with jaw definition)
+                drawBodyPart(function (c) {
+                  c.ellipse(W * 0.5, H * 0.06, W * 0.058, H * 0.046, 0, 0, Math.PI * 2);
+                });
+                // Jaw hint
                 ctx.beginPath();
-                ctx.moveTo(W * 0.32, H * 0.135); ctx.lineTo(W * 0.68, H * 0.135);
-                ctx.quadraticCurveTo(W * 0.70, H * 0.22, W * 0.64, H * 0.40);
-                ctx.lineTo(W * 0.57, H * 0.43); ctx.lineTo(W * 0.43, H * 0.43);
-                ctx.lineTo(W * 0.36, H * 0.40);
-                ctx.quadraticCurveTo(W * 0.30, H * 0.22, W * 0.32, H * 0.135);
-                ctx.fill(); ctx.stroke();
-                // Left arm
+                ctx.moveTo(W * 0.46, H * 0.085);
+                ctx.quadraticCurveTo(W * 0.50, H * 0.11, W * 0.54, H * 0.085);
+                ctx.strokeStyle = '#d4b8a0'; ctx.lineWidth = 0.7; ctx.stroke();
+                // Ear hints
+                ctx.beginPath(); ctx.ellipse(W * 0.44, H * 0.06, W * 0.008, H * 0.018, 0, 0, Math.PI * 2);
+                ctx.strokeStyle = '#d4b8a0'; ctx.lineWidth = 0.6; ctx.stroke();
+                ctx.beginPath(); ctx.ellipse(W * 0.56, H * 0.06, W * 0.008, H * 0.018, 0, 0, Math.PI * 2);
+                ctx.strokeStyle = '#d4b8a0'; ctx.lineWidth = 0.6; ctx.stroke();
+
+                // Neck (tapered)
+                drawBodyPart(function (c) {
+                  c.moveTo(W * 0.465, H * 0.10);
+                  c.quadraticCurveTo(W * 0.46, H * 0.115, W * 0.44, H * 0.135);
+                  c.lineTo(W * 0.56, H * 0.135);
+                  c.quadraticCurveTo(W * 0.54, H * 0.115, W * 0.535, H * 0.10);
+                  c.closePath();
+                });
+                // Sternocleidomastoid hint
                 ctx.beginPath();
-                ctx.moveTo(W * 0.32, H * 0.14); ctx.quadraticCurveTo(W * 0.22, H * 0.20, W * 0.19, H * 0.30);
-                ctx.quadraticCurveTo(W * 0.16, H * 0.38, W * 0.14, H * 0.45);
-                ctx.lineTo(W * 0.18, H * 0.45); ctx.quadraticCurveTo(W * 0.20, H * 0.38, W * 0.23, H * 0.30);
-                ctx.quadraticCurveTo(W * 0.26, H * 0.22, W * 0.35, H * 0.14);
-                ctx.fill(); ctx.stroke();
+                ctx.moveTo(W * 0.47, H * 0.105); ctx.quadraticCurveTo(W * 0.45, H * 0.12, W * 0.45, H * 0.135);
+                ctx.strokeStyle = '#d9c0a8'; ctx.lineWidth = 0.5; ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(W * 0.53, H * 0.105); ctx.quadraticCurveTo(W * 0.55, H * 0.12, W * 0.55, H * 0.135);
+                ctx.stroke();
+
+                // Torso (anatomical proportions with waist taper)
+                drawBodyPart(function (c) {
+                  c.moveTo(W * 0.34, H * 0.135);
+                  c.quadraticCurveTo(W * 0.38, H * 0.13, W * 0.50, H * 0.132);
+                  c.quadraticCurveTo(W * 0.62, H * 0.13, W * 0.66, H * 0.135);
+                  c.quadraticCurveTo(W * 0.69, H * 0.16, W * 0.68, H * 0.20);
+                  c.quadraticCurveTo(W * 0.67, H * 0.28, W * 0.64, H * 0.34);
+                  c.quadraticCurveTo(W * 0.61, H * 0.38, W * 0.58, H * 0.40);
+                  c.quadraticCurveTo(W * 0.55, H * 0.425, W * 0.50, H * 0.43);
+                  c.quadraticCurveTo(W * 0.45, H * 0.425, W * 0.42, H * 0.40);
+                  c.quadraticCurveTo(W * 0.39, H * 0.38, W * 0.36, H * 0.34);
+                  c.quadraticCurveTo(W * 0.33, H * 0.28, W * 0.32, H * 0.20);
+                  c.quadraticCurveTo(W * 0.31, H * 0.16, W * 0.34, H * 0.135);
+                });
+                // Torso musculature contours
+                ctx.globalAlpha = 0.3;
+                // Pec line
+                ctx.beginPath();
+                ctx.moveTo(W * 0.36, H * 0.155); ctx.quadraticCurveTo(W * 0.42, H * 0.19, W * 0.50, H * 0.19);
+                ctx.quadraticCurveTo(W * 0.58, H * 0.19, W * 0.64, H * 0.155);
+                ctx.strokeStyle = '#c4aa94'; ctx.lineWidth = 0.6; ctx.stroke();
+                // Midline (linea alba)
+                ctx.beginPath();
+                ctx.moveTo(W * 0.50, H * 0.15); ctx.lineTo(W * 0.50, H * 0.42);
+                ctx.strokeStyle = '#c4aa94'; ctx.lineWidth = 0.5; ctx.stroke();
+                // Rib hints (subtle curves)
+                for (var ri = 0; ri < 4; ri++) {
+                  var ry = H * (0.19 + ri * 0.032);
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.42, ry); ctx.quadraticCurveTo(W * 0.46, ry + H * 0.008, W * 0.50, ry + H * 0.003);
+                  ctx.strokeStyle = '#d0b89e'; ctx.lineWidth = 0.4; ctx.stroke();
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.58, ry); ctx.quadraticCurveTo(W * 0.54, ry + H * 0.008, W * 0.50, ry + H * 0.003);
+                  ctx.stroke();
+                }
+                // Rectus abdominis segments
+                for (var ai = 0; ai < 3; ai++) {
+                  var ay = H * (0.30 + ai * 0.035);
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.44, ay); ctx.lineTo(W * 0.56, ay);
+                  ctx.strokeStyle = '#d0b89e'; ctx.lineWidth = 0.4; ctx.stroke();
+                }
+                // Navel
+                ctx.beginPath(); ctx.arc(W * 0.50, H * 0.36, 2.5, 0, Math.PI * 2);
+                ctx.strokeStyle = '#c4aa94'; ctx.lineWidth = 0.5; ctx.stroke();
+                ctx.globalAlpha = 1.0;
+
+                // Shoulders (defined deltoid caps)
+                drawBodyPart(function (c) {
+                  c.moveTo(W * 0.34, H * 0.135);
+                  c.quadraticCurveTo(W * 0.28, H * 0.125, W * 0.25, H * 0.145);
+                  c.quadraticCurveTo(W * 0.24, H * 0.165, W * 0.27, H * 0.185);
+                  c.quadraticCurveTo(W * 0.30, H * 0.17, W * 0.34, H * 0.155);
+                  c.closePath();
+                });
+                drawBodyPart(function (c) {
+                  c.moveTo(W * 0.66, H * 0.135);
+                  c.quadraticCurveTo(W * 0.72, H * 0.125, W * 0.75, H * 0.145);
+                  c.quadraticCurveTo(W * 0.76, H * 0.165, W * 0.73, H * 0.185);
+                  c.quadraticCurveTo(W * 0.70, H * 0.17, W * 0.66, H * 0.155);
+                  c.closePath();
+                });
+
+                // Left arm (bicep/forearm definition)
+                drawBodyPart(function (c) {
+                  c.moveTo(W * 0.27, H * 0.185);
+                  c.quadraticCurveTo(W * 0.22, H * 0.22, W * 0.20, H * 0.28);
+                  c.quadraticCurveTo(W * 0.185, H * 0.33, W * 0.175, H * 0.36);
+                  c.quadraticCurveTo(W * 0.17, H * 0.39, W * 0.155, H * 0.44);
+                  c.lineTo(W * 0.13, H * 0.46);
+                  c.lineTo(W * 0.17, H * 0.47);
+                  c.quadraticCurveTo(W * 0.19, H * 0.42, W * 0.195, H * 0.38);
+                  c.quadraticCurveTo(W * 0.21, H * 0.33, W * 0.22, H * 0.29);
+                  c.quadraticCurveTo(W * 0.25, H * 0.22, W * 0.30, H * 0.185);
+                  c.closePath();
+                });
+                // Left arm muscle contour
+                ctx.globalAlpha = 0.25;
+                ctx.beginPath();
+                ctx.moveTo(W * 0.24, H * 0.22); ctx.quadraticCurveTo(W * 0.215, H * 0.27, W * 0.20, H * 0.30);
+                ctx.strokeStyle = '#c4aa94'; ctx.lineWidth = 0.5; ctx.stroke();
+                ctx.globalAlpha = 1.0;
+
                 // Right arm
+                drawBodyPart(function (c) {
+                  c.moveTo(W * 0.73, H * 0.185);
+                  c.quadraticCurveTo(W * 0.78, H * 0.22, W * 0.80, H * 0.28);
+                  c.quadraticCurveTo(W * 0.815, H * 0.33, W * 0.825, H * 0.36);
+                  c.quadraticCurveTo(W * 0.83, H * 0.39, W * 0.845, H * 0.44);
+                  c.lineTo(W * 0.87, H * 0.46);
+                  c.lineTo(W * 0.83, H * 0.47);
+                  c.quadraticCurveTo(W * 0.81, H * 0.42, W * 0.805, H * 0.38);
+                  c.quadraticCurveTo(W * 0.79, H * 0.33, W * 0.78, H * 0.29);
+                  c.quadraticCurveTo(W * 0.75, H * 0.22, W * 0.70, H * 0.185);
+                  c.closePath();
+                });
+                // Right arm muscle contour
+                ctx.globalAlpha = 0.25;
                 ctx.beginPath();
-                ctx.moveTo(W * 0.68, H * 0.14); ctx.quadraticCurveTo(W * 0.78, H * 0.20, W * 0.81, H * 0.30);
-                ctx.quadraticCurveTo(W * 0.84, H * 0.38, W * 0.86, H * 0.45);
-                ctx.lineTo(W * 0.82, H * 0.45); ctx.quadraticCurveTo(W * 0.80, H * 0.38, W * 0.77, H * 0.30);
-                ctx.quadraticCurveTo(W * 0.74, H * 0.22, W * 0.65, H * 0.14);
-                ctx.fill(); ctx.stroke();
-                // Left leg
+                ctx.moveTo(W * 0.76, H * 0.22); ctx.quadraticCurveTo(W * 0.785, H * 0.27, W * 0.80, H * 0.30);
+                ctx.strokeStyle = '#c4aa94'; ctx.lineWidth = 0.5; ctx.stroke();
+                ctx.globalAlpha = 1.0;
+
+                // Hands (simple paddle shape)
+                drawBodyPart(function (c) { c.ellipse(W * 0.15, H * 0.468, W * 0.022, H * 0.014, -0.2, 0, Math.PI * 2); });
+                drawBodyPart(function (c) { c.ellipse(W * 0.85, H * 0.468, W * 0.022, H * 0.014, 0.2, 0, Math.PI * 2); });
+
+                // Left leg (thigh + calf muscle definition)
+                drawBodyPart(function (c) {
+                  c.moveTo(W * 0.42, H * 0.425);
+                  c.quadraticCurveTo(W * 0.39, H * 0.46, W * 0.375, H * 0.52);
+                  c.quadraticCurveTo(W * 0.365, H * 0.58, W * 0.355, H * 0.63);
+                  c.quadraticCurveTo(W * 0.35, H * 0.66, W * 0.36, H * 0.70);
+                  c.quadraticCurveTo(W * 0.355, H * 0.74, W * 0.345, H * 0.80);
+                  c.quadraticCurveTo(W * 0.34, H * 0.86, W * 0.335, H * 0.90);
+                  c.lineTo(W * 0.30, H * 0.935);
+                  c.lineTo(W * 0.39, H * 0.935);
+                  c.lineTo(W * 0.40, H * 0.90);
+                  c.quadraticCurveTo(W * 0.405, H * 0.86, W * 0.41, H * 0.80);
+                  c.quadraticCurveTo(W * 0.42, H * 0.74, W * 0.425, H * 0.70);
+                  c.quadraticCurveTo(W * 0.43, H * 0.66, W * 0.435, H * 0.63);
+                  c.quadraticCurveTo(W * 0.44, H * 0.58, W * 0.45, H * 0.52);
+                  c.quadraticCurveTo(W * 0.46, H * 0.46, W * 0.49, H * 0.425);
+                  c.closePath();
+                });
+                // Left leg muscle contours
+                ctx.globalAlpha = 0.22;
                 ctx.beginPath();
-                ctx.moveTo(W * 0.43, H * 0.43); ctx.quadraticCurveTo(W * 0.38, H * 0.56, W * 0.36, H * 0.68);
-                ctx.quadraticCurveTo(W * 0.35, H * 0.78, W * 0.34, H * 0.88);
-                ctx.lineTo(W * 0.30, H * 0.93); ctx.lineTo(W * 0.40, H * 0.93);
-                ctx.lineTo(W * 0.42, H * 0.88); ctx.quadraticCurveTo(W * 0.43, H * 0.78, W * 0.44, H * 0.68);
-                ctx.quadraticCurveTo(W * 0.46, H * 0.56, W * 0.50, H * 0.43);
-                ctx.fill(); ctx.stroke();
+                ctx.moveTo(W * 0.40, H * 0.46); ctx.quadraticCurveTo(W * 0.39, H * 0.54, W * 0.38, H * 0.62);
+                ctx.strokeStyle = '#c4aa94'; ctx.lineWidth = 0.5; ctx.stroke();
+                // Kneecap hint
+                ctx.beginPath(); ctx.arc(W * 0.395, H * 0.68, 4, 0, Math.PI * 2);
+                ctx.strokeStyle = '#c4aa94'; ctx.lineWidth = 0.5; ctx.stroke();
+                // Calf bulge
+                ctx.beginPath();
+                ctx.moveTo(W * 0.37, H * 0.73); ctx.quadraticCurveTo(W * 0.36, H * 0.77, W * 0.36, H * 0.80);
+                ctx.stroke();
+                ctx.globalAlpha = 1.0;
+
                 // Right leg
+                drawBodyPart(function (c) {
+                  c.moveTo(W * 0.58, H * 0.425);
+                  c.quadraticCurveTo(W * 0.61, H * 0.46, W * 0.625, H * 0.52);
+                  c.quadraticCurveTo(W * 0.635, H * 0.58, W * 0.645, H * 0.63);
+                  c.quadraticCurveTo(W * 0.65, H * 0.66, W * 0.64, H * 0.70);
+                  c.quadraticCurveTo(W * 0.645, H * 0.74, W * 0.655, H * 0.80);
+                  c.quadraticCurveTo(W * 0.66, H * 0.86, W * 0.665, H * 0.90);
+                  c.lineTo(W * 0.70, H * 0.935);
+                  c.lineTo(W * 0.61, H * 0.935);
+                  c.lineTo(W * 0.60, H * 0.90);
+                  c.quadraticCurveTo(W * 0.595, H * 0.86, W * 0.59, H * 0.80);
+                  c.quadraticCurveTo(W * 0.58, H * 0.74, W * 0.575, H * 0.70);
+                  c.quadraticCurveTo(W * 0.57, H * 0.66, W * 0.565, H * 0.63);
+                  c.quadraticCurveTo(W * 0.56, H * 0.58, W * 0.55, H * 0.52);
+                  c.quadraticCurveTo(W * 0.54, H * 0.46, W * 0.51, H * 0.425);
+                  c.closePath();
+                });
+                // Right leg muscle contours
+                ctx.globalAlpha = 0.22;
                 ctx.beginPath();
-                ctx.moveTo(W * 0.57, H * 0.43); ctx.quadraticCurveTo(W * 0.62, H * 0.56, W * 0.64, H * 0.68);
-                ctx.quadraticCurveTo(W * 0.65, H * 0.78, W * 0.66, H * 0.88);
-                ctx.lineTo(W * 0.70, H * 0.93); ctx.lineTo(W * 0.60, H * 0.93);
-                ctx.lineTo(W * 0.58, H * 0.88); ctx.quadraticCurveTo(W * 0.57, H * 0.78, W * 0.56, H * 0.68);
-                ctx.quadraticCurveTo(W * 0.54, H * 0.56, W * 0.50, H * 0.43);
-                ctx.fill(); ctx.stroke();
+                ctx.moveTo(W * 0.60, H * 0.46); ctx.quadraticCurveTo(W * 0.61, H * 0.54, W * 0.62, H * 0.62);
+                ctx.strokeStyle = '#c4aa94'; ctx.lineWidth = 0.5; ctx.stroke();
+                ctx.beginPath(); ctx.arc(W * 0.605, H * 0.68, 4, 0, Math.PI * 2);
+                ctx.strokeStyle = '#c4aa94'; ctx.lineWidth = 0.5; ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(W * 0.63, H * 0.73); ctx.quadraticCurveTo(W * 0.64, H * 0.77, W * 0.64, H * 0.80);
+                ctx.stroke();
+                ctx.globalAlpha = 1.0;
+
+                // Feet
+                drawBodyPart(function (c) {
+                  c.moveTo(W * 0.30, H * 0.935); c.lineTo(W * 0.28, H * 0.955); c.quadraticCurveTo(W * 0.30, H * 0.965, W * 0.38, H * 0.96); c.lineTo(W * 0.39, H * 0.935); c.closePath();
+                });
+                drawBodyPart(function (c) {
+                  c.moveTo(W * 0.70, H * 0.935); c.lineTo(W * 0.72, H * 0.955); c.quadraticCurveTo(W * 0.70, H * 0.965, W * 0.62, H * 0.96); c.lineTo(W * 0.61, H * 0.935); c.closePath();
+                });
+
+                // ── System-specific overlay ──
+                ctx.globalAlpha = 0.30;
+                if (sysKey === 'skeletal') {
+                  // Spine line
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.50, H * 0.10);
+                  for (var si = 0; si < 18; si++) {
+                    var sy = H * (0.11 + si * 0.018);
+                    ctx.lineTo(W * (0.50 + Math.sin(si * 0.3) * 0.003), sy);
+                  }
+                  ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 3; ctx.stroke();
+                  // Vertebra marks
+                  for (var vi2 = 0; vi2 < 18; vi2++) {
+                    var vy2 = H * (0.11 + vi2 * 0.018);
+                    ctx.beginPath();
+                    ctx.moveTo(W * 0.48, vy2); ctx.lineTo(W * 0.52, vy2);
+                    ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 1.5; ctx.stroke();
+                  }
+                  // Pelvis outline
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.40, H * 0.39); ctx.quadraticCurveTo(W * 0.36, H * 0.42, W * 0.38, H * 0.45);
+                  ctx.quadraticCurveTo(W * 0.44, H * 0.46, W * 0.50, H * 0.44);
+                  ctx.quadraticCurveTo(W * 0.56, H * 0.46, W * 0.62, H * 0.45);
+                  ctx.quadraticCurveTo(W * 0.64, H * 0.42, W * 0.60, H * 0.39);
+                  ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 2; ctx.stroke();
+                  // Clavicles
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.42, H * 0.138); ctx.quadraticCurveTo(W * 0.36, H * 0.132, W * 0.30, H * 0.145);
+                  ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 1.5; ctx.stroke();
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.58, H * 0.138); ctx.quadraticCurveTo(W * 0.64, H * 0.132, W * 0.70, H * 0.145);
+                  ctx.stroke();
+                } else if (sysKey === 'muscular') {
+                  // Pectoral muscle outlines
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.37, H * 0.14); ctx.quadraticCurveTo(W * 0.42, H * 0.19, W * 0.49, H * 0.19);
+                  ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 1.2; ctx.stroke();
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.63, H * 0.14); ctx.quadraticCurveTo(W * 0.58, H * 0.19, W * 0.51, H * 0.19);
+                  ctx.stroke();
+                  // Abs lines (more visible)
+                  for (var mi = 0; mi < 4; mi++) {
+                    var my = H * (0.28 + mi * 0.03);
+                    ctx.beginPath(); ctx.moveTo(W * 0.45, my); ctx.lineTo(W * 0.55, my);
+                    ctx.strokeStyle = '#dc262680'; ctx.lineWidth = 0.8; ctx.stroke();
+                  }
+                  // Quad outlines
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.42, H * 0.44); ctx.quadraticCurveTo(W * 0.40, H * 0.54, W * 0.39, H * 0.64);
+                  ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 1; ctx.stroke();
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.58, H * 0.44); ctx.quadraticCurveTo(W * 0.60, H * 0.54, W * 0.61, H * 0.64);
+                  ctx.stroke();
+                } else if (sysKey === 'circulatory') {
+                  // Pulsing heart
+                  var heartPulse = 1.0 + Math.sin(anatTick * 0.08) * 0.08;
+                  ctx.save();
+                  ctx.translate(W * 0.52, H * 0.22);
+                  ctx.scale(heartPulse, heartPulse);
+                  ctx.beginPath();
+                  ctx.moveTo(0, 8);
+                  ctx.bezierCurveTo(-12, -6, -22, -2, -22, 8);
+                  ctx.bezierCurveTo(-22, 18, -5, 26, 0, 35);
+                  ctx.bezierCurveTo(5, 26, 22, 18, 22, 8);
+                  ctx.bezierCurveTo(22, -2, 12, -6, 0, 8);
+                  ctx.fillStyle = '#ef4444';
+                  ctx.globalAlpha = 0.5;
+                  ctx.fill();
+                  ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 1.5; ctx.stroke();
+                  ctx.restore();
+                  ctx.globalAlpha = 0.30;
+                  // Major vessels
+                  ctx.beginPath(); ctx.moveTo(W * 0.50, H * 0.15); ctx.lineTo(W * 0.50, H * 0.42);
+                  ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 2; ctx.stroke();
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.50, H * 0.44); ctx.lineTo(W * 0.42, H * 0.65); ctx.moveTo(W * 0.50, H * 0.44); ctx.lineTo(W * 0.58, H * 0.65);
+                  ctx.stroke();
+                } else if (sysKey === 'nervous') {
+                  // Central spine/cord
+                  ctx.beginPath(); ctx.moveTo(W * 0.50, H * 0.08); ctx.lineTo(W * 0.50, H * 0.42);
+                  ctx.strokeStyle = '#eab308'; ctx.lineWidth = 2.5; ctx.stroke();
+                  // Neural branches
+                  var nervePts = [
+                    [0.50, 0.15, 0.30, 0.30], [0.50, 0.15, 0.70, 0.30],
+                    [0.50, 0.25, 0.35, 0.36], [0.50, 0.25, 0.65, 0.36],
+                    [0.50, 0.42, 0.40, 0.70], [0.50, 0.42, 0.60, 0.70]
+                  ];
+                  nervePts.forEach(function (np) {
+                    ctx.beginPath();
+                    ctx.moveTo(W * np[0], H * np[1]);
+                    ctx.quadraticCurveTo(W * (np[0] + np[2]) * 0.5, H * (np[1] + np[3]) * 0.5, W * np[2], H * np[3]);
+                    ctx.strokeStyle = '#eab30880'; ctx.lineWidth = 1; ctx.stroke();
+                  });
+                  // Brain glow
+                  ctx.beginPath(); ctx.arc(W * 0.50, H * 0.055, 18, 0, Math.PI * 2);
+                  ctx.fillStyle = '#eab30820'; ctx.fill();
+                } else if (sysKey === 'digestive') {
+                  // Esophagus
+                  ctx.beginPath(); ctx.moveTo(W * 0.50, H * 0.13); ctx.lineTo(W * 0.50, H * 0.26);
+                  ctx.strokeStyle = '#16a34a'; ctx.lineWidth = 2; ctx.stroke();
+                  // Stomach
+                  ctx.beginPath(); ctx.ellipse(W * 0.47, H * 0.29, W * 0.04, H * 0.035, -0.3, 0, Math.PI * 2);
+                  ctx.fillStyle = '#16a34a40'; ctx.fill(); ctx.strokeStyle = '#16a34a'; ctx.lineWidth = 1; ctx.stroke();
+                  // Intestines (coil hint)
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.44, H * 0.33);
+                  for (var ii = 0; ii < 8; ii++) {
+                    ctx.lineTo(W * (0.44 + (ii % 2 === 0 ? 0.06 : 0)), H * (0.34 + ii * 0.012));
+                  }
+                  ctx.strokeStyle = '#16a34a'; ctx.lineWidth = 1; ctx.stroke();
+                }
+                ctx.globalAlpha = 1.0;
                 ctx.restore();
 
                 // Draw structure markers
@@ -16558,14 +16869,97 @@
                   canvas._brainAnim = requestAnimationFrame(drawBrainFrame); return;
                 }
 
-                // Brain outline per view
-                ctx.fillStyle = '#f5f0f8';
-                ctx.strokeStyle = '#a78bfa';
-                ctx.lineWidth = 2;
+                // ── Enhanced Brain Rendering ──
                 ctx.lineJoin = 'round';
+                ctx.lineCap = 'round';
+
+                // Brain gradient for realistic tissue appearance
+                var brainGrad = ctx.createRadialGradient(W * 0.5, H * 0.4, W * 0.05, W * 0.5, H * 0.4, W * 0.45);
+                brainGrad.addColorStop(0, '#f0e6f6');
+                brainGrad.addColorStop(0.4, '#ebe0f0');
+                brainGrad.addColorStop(0.8, '#e4d8ea');
+                brainGrad.addColorStop(1, '#ddd0e2');
+
+                // Helper: draw gyri convolutions on a brain surface
+                function drawGyri(cx, cy, radius, count, spread) {
+                  ctx.save();
+                  ctx.globalAlpha = 0.18;
+                  ctx.strokeStyle = '#9b7fb8';
+                  ctx.lineWidth = 0.7;
+                  for (var gi = 0; gi < count; gi++) {
+                    var angle = (gi / count) * Math.PI * 2 + brainTick * 0.001;
+                    var r1 = radius * (0.3 + Math.random() * 0.5);
+                    var gx = cx + Math.cos(angle) * r1;
+                    var gy = cy + Math.sin(angle) * r1;
+                    ctx.beginPath();
+                    ctx.arc(gx, gy, spread * (0.6 + Math.random() * 0.4), angle, angle + Math.PI * (0.5 + Math.random() * 0.8));
+                    ctx.stroke();
+                  }
+                  ctx.restore();
+                }
+
+                // Helper: draw cerebellum with foliation
+                function drawCerebellum(cx, cy, rx, ry) {
+                  // Gradient fill
+                  var cbGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, rx);
+                  cbGrad.addColorStop(0, '#f0e9ff');
+                  cbGrad.addColorStop(1, '#ddd0f0');
+                  ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+                  ctx.fillStyle = cbGrad; ctx.fill();
+                  ctx.strokeStyle = '#a78bfa'; ctx.lineWidth = 1.5; ctx.stroke();
+                  // Foliation lines
+                  ctx.save();
+                  ctx.globalAlpha = 0.25;
+                  ctx.strokeStyle = '#8b6fc0';
+                  ctx.lineWidth = 0.6;
+                  for (var fi = 0; fi < 7; fi++) {
+                    var fy = cy - ry * 0.7 + fi * (ry * 1.4 / 7);
+                    var fxSpread = rx * Math.sqrt(1 - Math.pow((fy - cy) / ry, 2)) * 0.85;
+                    if (fxSpread > 2) {
+                      ctx.beginPath();
+                      ctx.moveTo(cx - fxSpread, fy);
+                      ctx.quadraticCurveTo(cx, fy + (fi % 2 === 0 ? 2 : -2), cx + fxSpread, fy);
+                      ctx.stroke();
+                    }
+                  }
+                  ctx.restore();
+                }
+
+                // Helper: draw brainstem with gradient
+                function drawBrainstem(x1, y1, x2, y2, x3, y3, x4, y4) {
+                  var bsGrad = ctx.createLinearGradient(x1, y1, x2, y2);
+                  bsGrad.addColorStop(0, '#e8ddf5');
+                  bsGrad.addColorStop(0.5, '#dcd0ea');
+                  bsGrad.addColorStop(1, '#d2c4e0');
+                  ctx.beginPath();
+                  ctx.moveTo(x1, y1);
+                  ctx.quadraticCurveTo((x1 + x2) * 0.5 + 3, (y1 + y2) * 0.5, x2, y2);
+                  ctx.lineTo(x3, y3);
+                  ctx.quadraticCurveTo((x4 + x3) * 0.5 - 3, (y4 + y3) * 0.5, x4, y4);
+                  ctx.closePath();
+                  ctx.fillStyle = bsGrad; ctx.fill();
+                  ctx.strokeStyle = '#a78bfa'; ctx.lineWidth = 1.5; ctx.stroke();
+                  // Medulla segments
+                  ctx.save();
+                  ctx.globalAlpha = 0.15;
+                  ctx.strokeStyle = '#8b6fc0'; ctx.lineWidth = 0.5;
+                  for (var si = 1; si < 4; si++) {
+                    var t = si / 4;
+                    var sx1 = x1 + (x2 - x1) * t, sy1 = y1 + (y2 - y1) * t;
+                    var sx2 = x4 + (x3 - x4) * t, sy2 = y4 + (y3 - y4) * t;
+                    ctx.beginPath(); ctx.moveTo(sx1, sy1); ctx.lineTo(sx2, sy2); ctx.stroke();
+                  }
+                  ctx.restore();
+                }
 
                 if (viewKey === 'lateral') {
-                  // Side view brain shape
+                  // ── Lateral View ──
+                  // Main brain shape with shadow
+                  ctx.save();
+                  ctx.shadowColor = 'rgba(100,70,130,0.15)';
+                  ctx.shadowBlur = 10;
+                  ctx.shadowOffsetX = 3;
+                  ctx.shadowOffsetY = 4;
                   ctx.beginPath();
                   ctx.moveTo(W * 0.15, H * 0.45);
                   ctx.quadraticCurveTo(W * 0.12, H * 0.20, W * 0.35, H * 0.12);
@@ -16576,27 +16970,108 @@
                   ctx.quadraticCurveTo(W * 0.50, H * 0.78, W * 0.42, H * 0.72);
                   ctx.quadraticCurveTo(W * 0.30, H * 0.62, W * 0.20, H * 0.55);
                   ctx.quadraticCurveTo(W * 0.14, H * 0.50, W * 0.15, H * 0.45);
-                  ctx.fill(); ctx.stroke();
-                  // Central sulcus (divides frontal/parietal)
-                  ctx.beginPath(); ctx.setLineDash([4, 3]);
-                  ctx.moveTo(W * 0.50, H * 0.12); ctx.lineTo(W * 0.42, H * 0.55);
-                  ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1; ctx.stroke();
-                  // Lateral sulcus (Sylvian fissure)
+                  ctx.fillStyle = brainGrad; ctx.fill();
+                  ctx.restore();
+
+                  // Lobe coloring (Frontal – blue, Parietal – green, Temporal – yellow, Occipital – red)
+                  ctx.save(); ctx.globalAlpha = 0.12;
+                  // Frontal lobe region
                   ctx.beginPath();
-                  ctx.moveTo(W * 0.35, H * 0.50); ctx.quadraticCurveTo(W * 0.50, H * 0.48, W * 0.65, H * 0.42);
-                  ctx.stroke();
+                  ctx.moveTo(W * 0.15, H * 0.45);
+                  ctx.quadraticCurveTo(W * 0.12, H * 0.20, W * 0.35, H * 0.12);
+                  ctx.quadraticCurveTo(W * 0.43, H * 0.10, W * 0.48, H * 0.12);
+                  ctx.lineTo(W * 0.40, H * 0.55);
+                  ctx.quadraticCurveTo(W * 0.30, H * 0.52, W * 0.20, H * 0.50);
+                  ctx.closePath();
+                  ctx.fillStyle = '#3b82f6'; ctx.fill();
+                  // Parietal lobe region
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.48, H * 0.12);
+                  ctx.quadraticCurveTo(W * 0.60, H * 0.09, W * 0.72, H * 0.15);
+                  ctx.quadraticCurveTo(W * 0.82, H * 0.22, W * 0.85, H * 0.35);
+                  ctx.lineTo(W * 0.65, H * 0.42);
+                  ctx.lineTo(W * 0.40, H * 0.50);
+                  ctx.closePath();
+                  ctx.fillStyle = '#22c55e'; ctx.fill();
+                  // Temporal lobe region
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.20, H * 0.52);
+                  ctx.quadraticCurveTo(W * 0.35, H * 0.50, W * 0.50, H * 0.48);
+                  ctx.lineTo(W * 0.62, H * 0.76);
+                  ctx.quadraticCurveTo(W * 0.50, H * 0.78, W * 0.42, H * 0.72);
+                  ctx.quadraticCurveTo(W * 0.30, H * 0.62, W * 0.20, H * 0.55);
+                  ctx.closePath();
+                  ctx.fillStyle = '#eab308'; ctx.fill();
+                  // Occipital lobe region
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.85, H * 0.35);
+                  ctx.quadraticCurveTo(W * 0.90, H * 0.42, W * 0.88, H * 0.55);
+                  ctx.quadraticCurveTo(W * 0.85, H * 0.58, W * 0.78, H * 0.60);
+                  ctx.lineTo(W * 0.65, H * 0.42);
+                  ctx.closePath();
+                  ctx.fillStyle = '#ef4444'; ctx.fill();
+                  ctx.restore();
+
+                  // Brain outline
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.15, H * 0.45);
+                  ctx.quadraticCurveTo(W * 0.12, H * 0.20, W * 0.35, H * 0.12);
+                  ctx.quadraticCurveTo(W * 0.55, H * 0.08, W * 0.72, H * 0.15);
+                  ctx.quadraticCurveTo(W * 0.88, H * 0.25, W * 0.90, H * 0.42);
+                  ctx.quadraticCurveTo(W * 0.88, H * 0.55, W * 0.78, H * 0.60);
+                  ctx.quadraticCurveTo(W * 0.70, H * 0.72, W * 0.62, H * 0.76);
+                  ctx.quadraticCurveTo(W * 0.50, H * 0.78, W * 0.42, H * 0.72);
+                  ctx.quadraticCurveTo(W * 0.30, H * 0.62, W * 0.20, H * 0.55);
+                  ctx.quadraticCurveTo(W * 0.14, H * 0.50, W * 0.15, H * 0.45);
+                  ctx.strokeStyle = '#8b6fc0'; ctx.lineWidth = 2; ctx.stroke();
+
+                  // Gyri convolutions
+                  drawGyri(W * 0.35, H * 0.30, W * 0.15, 12, 8);
+                  drawGyri(W * 0.60, H * 0.30, W * 0.12, 10, 7);
+                  drawGyri(W * 0.45, H * 0.60, W * 0.10, 8, 6);
+
+                  // Central sulcus (bold, anatomical curve)
+                  ctx.beginPath(); ctx.setLineDash([5, 3]);
+                  ctx.moveTo(W * 0.50, H * 0.11);
+                  ctx.quadraticCurveTo(W * 0.47, H * 0.28, W * 0.44, H * 0.38);
+                  ctx.quadraticCurveTo(W * 0.42, H * 0.48, W * 0.40, H * 0.55);
+                  ctx.strokeStyle = '#6d5a8f'; ctx.lineWidth = 1.2; ctx.stroke();
+                  // Lateral sulcus (Sylvian fissure — deeper curve)
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.22, H * 0.52);
+                  ctx.quadraticCurveTo(W * 0.35, H * 0.50, W * 0.50, H * 0.47);
+                  ctx.quadraticCurveTo(W * 0.58, H * 0.44, W * 0.65, H * 0.42);
+                  ctx.strokeStyle = '#6d5a8f'; ctx.lineWidth = 1.2; ctx.stroke();
+                  // Parieto-occipital sulcus
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.78, H * 0.15);
+                  ctx.quadraticCurveTo(W * 0.75, H * 0.28, W * 0.72, H * 0.38);
+                  ctx.strokeStyle = '#8b7faa'; ctx.lineWidth = 0.8; ctx.stroke();
                   ctx.setLineDash([]); ctx.strokeStyle = '#a78bfa'; ctx.lineWidth = 2;
-                  // Cerebellum (separate shape)
-                  ctx.beginPath();
-                  ctx.ellipse(W * 0.80, H * 0.65, W * 0.10, H * 0.08, 0, 0, Math.PI * 2);
-                  ctx.fillStyle = '#ede9fe'; ctx.fill(); ctx.stroke();
-                  // Brainstem
-                  ctx.beginPath();
-                  ctx.moveTo(W * 0.62, H * 0.62); ctx.lineTo(W * 0.65, H * 0.78);
-                  ctx.lineTo(W * 0.58, H * 0.78); ctx.lineTo(W * 0.55, H * 0.62);
-                  ctx.fillStyle = '#e0d6f8'; ctx.fill(); ctx.stroke();
+
+                  // Additional sulci (precentral, postcentral)
+                  ctx.save(); ctx.globalAlpha = 0.15; ctx.strokeStyle = '#9b87c0'; ctx.lineWidth = 0.6;
+                  // Precentral sulcus
+                  ctx.beginPath(); ctx.moveTo(W * 0.43, H * 0.14); ctx.quadraticCurveTo(W * 0.40, H * 0.30, W * 0.38, H * 0.48); ctx.stroke();
+                  // Postcentral sulcus
+                  ctx.beginPath(); ctx.moveTo(W * 0.55, H * 0.13); ctx.quadraticCurveTo(W * 0.52, H * 0.28, W * 0.48, H * 0.46); ctx.stroke();
+                  // Superior temporal sulcus
+                  ctx.beginPath(); ctx.moveTo(W * 0.28, H * 0.56); ctx.quadraticCurveTo(W * 0.40, H * 0.58, W * 0.55, H * 0.55); ctx.stroke();
+                  ctx.restore();
+
+                  // Cerebellum with foliation
+                  drawCerebellum(W * 0.80, H * 0.65, W * 0.10, H * 0.08);
+                  // Brainstem with gradient
+                  drawBrainstem(W * 0.62, H * 0.62, W * 0.65, H * 0.80, W * 0.58, H * 0.80, W * 0.55, H * 0.62);
+
                 } else if (viewKey === 'medial') {
-                  // Sagittal brain
+                  // ── Medial (Sagittal) View ──
+                  // Main brain shape with shadow
+                  ctx.save();
+                  ctx.shadowColor = 'rgba(100,70,130,0.15)';
+                  ctx.shadowBlur = 10;
+                  ctx.shadowOffsetX = 3;
+                  ctx.shadowOffsetY = 4;
                   ctx.beginPath();
                   ctx.moveTo(W * 0.20, H * 0.50);
                   ctx.quadraticCurveTo(W * 0.15, H * 0.22, W * 0.40, H * 0.12);
@@ -16606,56 +17081,234 @@
                   ctx.lineTo(W * 0.60, H * 0.60);
                   ctx.quadraticCurveTo(W * 0.50, H * 0.58, W * 0.40, H * 0.60);
                   ctx.quadraticCurveTo(W * 0.25, H * 0.58, W * 0.20, H * 0.50);
-                  ctx.fill(); ctx.stroke();
-                  // Corpus callosum (arc)
-                  ctx.beginPath(); ctx.lineWidth = 4; ctx.strokeStyle = '#c084fc';
-                  ctx.moveTo(W * 0.35, H * 0.38); ctx.quadraticCurveTo(W * 0.52, H * 0.28, W * 0.68, H * 0.35);
-                  ctx.stroke(); ctx.lineWidth = 2; ctx.strokeStyle = '#a78bfa';
-                  // Cerebellum
+                  ctx.fillStyle = brainGrad; ctx.fill();
+                  ctx.restore();
+
+                  // Medial lobe coloring
+                  ctx.save(); ctx.globalAlpha = 0.10;
+                  // Cingulate gyrus (above corpus callosum)
                   ctx.beginPath();
-                  ctx.ellipse(W * 0.78, H * 0.68, W * 0.09, H * 0.08, 0, 0, Math.PI * 2);
-                  ctx.fillStyle = '#ede9fe'; ctx.fill(); ctx.stroke();
-                  // Brainstem
+                  ctx.moveTo(W * 0.30, H * 0.32);
+                  ctx.quadraticCurveTo(W * 0.50, H * 0.22, W * 0.72, H * 0.30);
+                  ctx.quadraticCurveTo(W * 0.72, H * 0.38, W * 0.50, H * 0.34);
+                  ctx.quadraticCurveTo(W * 0.35, H * 0.36, W * 0.30, H * 0.38);
+                  ctx.closePath();
+                  ctx.fillStyle = '#8b5cf6'; ctx.fill();
+                  ctx.restore();
+
+                  // Brain outline
                   ctx.beginPath();
-                  ctx.moveTo(W * 0.58, H * 0.58); ctx.lineTo(W * 0.62, H * 0.78);
-                  ctx.lineTo(W * 0.55, H * 0.78); ctx.lineTo(W * 0.50, H * 0.58);
-                  ctx.fillStyle = '#e0d6f8'; ctx.fill(); ctx.stroke();
-                } else if (viewKey === 'superior') {
-                  // Top-down: two hemispheres
+                  ctx.moveTo(W * 0.20, H * 0.50);
+                  ctx.quadraticCurveTo(W * 0.15, H * 0.22, W * 0.40, H * 0.12);
+                  ctx.quadraticCurveTo(W * 0.60, H * 0.08, W * 0.78, H * 0.18);
+                  ctx.quadraticCurveTo(W * 0.88, H * 0.32, W * 0.85, H * 0.50);
+                  ctx.quadraticCurveTo(W * 0.82, H * 0.60, W * 0.72, H * 0.62);
+                  ctx.lineTo(W * 0.60, H * 0.60);
+                  ctx.quadraticCurveTo(W * 0.50, H * 0.58, W * 0.40, H * 0.60);
+                  ctx.quadraticCurveTo(W * 0.25, H * 0.58, W * 0.20, H * 0.50);
+                  ctx.strokeStyle = '#8b6fc0'; ctx.lineWidth = 2; ctx.stroke();
+
+                  // Gyri on medial surface
+                  drawGyri(W * 0.45, H * 0.25, W * 0.18, 10, 7);
+
+                  // Corpus callosum (thick C-shaped band with gradient)
+                  ctx.save();
+                  var ccGrad = ctx.createLinearGradient(W * 0.30, H * 0.34, W * 0.70, H * 0.34);
+                  ccGrad.addColorStop(0, '#e0d6f8');
+                  ccGrad.addColorStop(0.5, '#d4c8f0');
+                  ccGrad.addColorStop(1, '#e0d6f8');
                   ctx.beginPath();
-                  ctx.ellipse(W * 0.35, H * 0.50, W * 0.20, H * 0.38, 0, 0, Math.PI * 2);
-                  ctx.fill(); ctx.stroke();
+                  ctx.moveTo(W * 0.30, H * 0.40);
+                  ctx.quadraticCurveTo(W * 0.50, H * 0.30, W * 0.70, H * 0.36);
+                  ctx.quadraticCurveTo(W * 0.72, H * 0.38, W * 0.71, H * 0.40);
+                  ctx.quadraticCurveTo(W * 0.50, H * 0.34, W * 0.32, H * 0.43);
+                  ctx.closePath();
+                  ctx.fillStyle = ccGrad; ctx.fill();
+                  ctx.strokeStyle = '#b49de0'; ctx.lineWidth = 1.2; ctx.stroke();
+                  // Corpus callosum label area
+                  ctx.font = '7px Inter, system-ui, sans-serif';
+                  ctx.fillStyle = '#8b6fc080'; ctx.textAlign = 'center';
+                  ctx.fillText('CC', W * 0.50, H * 0.38);
+                  ctx.restore();
+
+                  // Thalamus (egg shape in center)
                   ctx.beginPath();
-                  ctx.ellipse(W * 0.65, H * 0.50, W * 0.20, H * 0.38, 0, 0, Math.PI * 2);
-                  ctx.fill(); ctx.stroke();
-                  // Longitudinal fissure
-                  ctx.beginPath(); ctx.setLineDash([5, 3]);
-                  ctx.moveTo(W * 0.50, H * 0.10); ctx.lineTo(W * 0.50, H * 0.90);
-                  ctx.strokeStyle = '#7c3aed'; ctx.lineWidth = 2; ctx.stroke();
-                  // Central sulcus
+                  ctx.ellipse(W * 0.52, H * 0.44, W * 0.06, H * 0.04, 0, 0, Math.PI * 2);
+                  ctx.fillStyle = '#fde68a40'; ctx.fill();
+                  ctx.strokeStyle = '#d97706'; ctx.lineWidth = 1; ctx.stroke();
+                  ctx.font = '6px Inter, system-ui, sans-serif';
+                  ctx.fillStyle = '#b4590080'; ctx.textAlign = 'center';
+                  ctx.fillText('Thalamus', W * 0.52, H * 0.445);
+
+                  // Hypothalamus (small oval below)
                   ctx.beginPath();
-                  ctx.moveTo(W * 0.20, H * 0.38); ctx.quadraticCurveTo(W * 0.50, H * 0.35, W * 0.80, H * 0.38);
+                  ctx.ellipse(W * 0.45, H * 0.50, W * 0.03, H * 0.02, 0, 0, Math.PI * 2);
+                  ctx.fillStyle = '#fecaca40'; ctx.fill();
+                  ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 0.8; ctx.stroke();
+
+                  // Medial sulci
+                  ctx.save(); ctx.globalAlpha = 0.15; ctx.strokeStyle = '#9b87c0'; ctx.lineWidth = 0.6;
+                  ctx.setLineDash([3, 2]);
+                  // Calcarine sulcus
+                  ctx.beginPath(); ctx.moveTo(W * 0.72, H * 0.42); ctx.quadraticCurveTo(W * 0.80, H * 0.48, W * 0.84, H * 0.50); ctx.stroke();
+                  // Cingulate sulcus
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.25, H * 0.30);
+                  ctx.quadraticCurveTo(W * 0.45, H * 0.18, W * 0.68, H * 0.22);
                   ctx.stroke();
-                  ctx.setLineDash([]); ctx.strokeStyle = '#a78bfa';
+                  ctx.setLineDash([]);
+                  ctx.restore();
+
+                  // Cerebellum with foliation
+                  drawCerebellum(W * 0.78, H * 0.68, W * 0.09, H * 0.08);
+                  // Brainstem with gradient
+                  drawBrainstem(W * 0.58, H * 0.58, W * 0.62, H * 0.80, W * 0.55, H * 0.80, W * 0.50, H * 0.58);
+
+                } else if (viewKey === 'superior') {
+                  // ── Superior (Top-Down) View ──
+                  // Left hemisphere with shadow
+                  ctx.save();
+                  ctx.shadowColor = 'rgba(100,70,130,0.12)';
+                  ctx.shadowBlur = 8;
+                  ctx.beginPath();
+                  ctx.ellipse(W * 0.38, H * 0.50, W * 0.18, H * 0.38, 0, 0, Math.PI * 2);
+                  ctx.fillStyle = brainGrad; ctx.fill();
+                  ctx.restore();
+                  // Right hemisphere
+                  ctx.save();
+                  ctx.shadowColor = 'rgba(100,70,130,0.12)';
+                  ctx.shadowBlur = 8;
+                  ctx.beginPath();
+                  ctx.ellipse(W * 0.62, H * 0.50, W * 0.18, H * 0.38, 0, 0, Math.PI * 2);
+                  ctx.fillStyle = brainGrad; ctx.fill();
+                  ctx.restore();
+
+                  // Lobe coloring top-down
+                  ctx.save(); ctx.globalAlpha = 0.10;
+                  // Frontal (anterior half)
+                  ctx.beginPath(); ctx.ellipse(W * 0.38, H * 0.35, W * 0.16, H * 0.22, 0, 0, Math.PI * 2); ctx.fillStyle = '#3b82f6'; ctx.fill();
+                  ctx.beginPath(); ctx.ellipse(W * 0.62, H * 0.35, W * 0.16, H * 0.22, 0, 0, Math.PI * 2); ctx.fill();
+                  // Occipital (posterior)
+                  ctx.beginPath(); ctx.ellipse(W * 0.38, H * 0.72, W * 0.10, H * 0.14, 0, 0, Math.PI * 2); ctx.fillStyle = '#ef4444'; ctx.fill();
+                  ctx.beginPath(); ctx.ellipse(W * 0.62, H * 0.72, W * 0.10, H * 0.14, 0, 0, Math.PI * 2); ctx.fill();
+                  ctx.restore();
+
+                  // Hemisphere outlines
+                  ctx.beginPath(); ctx.ellipse(W * 0.38, H * 0.50, W * 0.18, H * 0.38, 0, 0, Math.PI * 2);
+                  ctx.strokeStyle = '#8b6fc0'; ctx.lineWidth = 2; ctx.stroke();
+                  ctx.beginPath(); ctx.ellipse(W * 0.62, H * 0.50, W * 0.18, H * 0.38, 0, 0, Math.PI * 2);
+                  ctx.stroke();
+
+                  // Gyri on top surface
+                  drawGyri(W * 0.38, H * 0.45, W * 0.12, 14, 6);
+                  drawGyri(W * 0.62, H * 0.45, W * 0.12, 14, 6);
+
+                  // Longitudinal fissure (deep shadow line)
+                  ctx.save();
+                  ctx.shadowColor = 'rgba(80,50,120,0.2)';
+                  ctx.shadowBlur = 4;
+                  ctx.beginPath(); ctx.setLineDash([6, 3]);
+                  ctx.moveTo(W * 0.50, H * 0.10); ctx.lineTo(W * 0.50, H * 0.90);
+                  ctx.strokeStyle = '#6d4a8e'; ctx.lineWidth = 2.5; ctx.stroke();
+                  ctx.restore();
+                  // Central sulcus (curved)
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.20, H * 0.38);
+                  ctx.quadraticCurveTo(W * 0.35, H * 0.35, W * 0.50, H * 0.36);
+                  ctx.quadraticCurveTo(W * 0.65, H * 0.35, W * 0.80, H * 0.38);
+                  ctx.strokeStyle = '#8b7faa'; ctx.lineWidth = 1; ctx.stroke();
+                  ctx.setLineDash([]);
+
+                  // Additional sulci
+                  ctx.save(); ctx.globalAlpha = 0.12; ctx.strokeStyle = '#9b87c0'; ctx.lineWidth = 0.5;
+                  for (var tsi = 0; tsi < 6; tsi++) {
+                    var tsAngle = (tsi / 6) * Math.PI * 0.6 + 0.3;
+                    ctx.beginPath();
+                    ctx.moveTo(W * 0.38 + Math.cos(tsAngle) * W * 0.04, H * 0.50 + Math.sin(tsAngle) * H * 0.08);
+                    ctx.lineTo(W * 0.38 + Math.cos(tsAngle) * W * 0.16, H * 0.50 + Math.sin(tsAngle) * H * 0.34);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(W * 0.62 + Math.cos(Math.PI - tsAngle) * W * 0.04, H * 0.50 + Math.sin(tsAngle) * H * 0.08);
+                    ctx.lineTo(W * 0.62 + Math.cos(Math.PI - tsAngle) * W * 0.16, H * 0.50 + Math.sin(tsAngle) * H * 0.34);
+                    ctx.stroke();
+                  }
+                  ctx.restore();
+
                 } else if (viewKey === 'inferior') {
-                  // Bottom view
+                  // ── Inferior (Bottom) View ──
+                  // Main cerebral base with shadow
+                  ctx.save();
+                  ctx.shadowColor = 'rgba(100,70,130,0.15)';
+                  ctx.shadowBlur = 10;
                   ctx.beginPath();
-                  ctx.ellipse(W * 0.50, H * 0.40, W * 0.30, H * 0.30, 0, 0, Math.PI * 2);
-                  ctx.fill(); ctx.stroke();
-                  // Cerebellum
+                  ctx.ellipse(W * 0.50, H * 0.38, W * 0.30, H * 0.28, 0, 0, Math.PI * 2);
+                  ctx.fillStyle = brainGrad; ctx.fill();
+                  ctx.restore();
                   ctx.beginPath();
-                  ctx.ellipse(W * 0.50, H * 0.72, W * 0.22, H * 0.12, 0, 0, Math.PI * 2);
-                  ctx.fillStyle = '#ede9fe'; ctx.fill(); ctx.stroke();
+                  ctx.ellipse(W * 0.50, H * 0.38, W * 0.30, H * 0.28, 0, 0, Math.PI * 2);
+                  ctx.strokeStyle = '#8b6fc0'; ctx.lineWidth = 2; ctx.stroke();
+
+                  // Temporal lobe regions
+                  ctx.save(); ctx.globalAlpha = 0.10;
+                  ctx.beginPath(); ctx.ellipse(W * 0.35, H * 0.35, W * 0.12, H * 0.18, 0.2, 0, Math.PI * 2);
+                  ctx.fillStyle = '#eab308'; ctx.fill();
+                  ctx.beginPath(); ctx.ellipse(W * 0.65, H * 0.35, W * 0.12, H * 0.18, -0.2, 0, Math.PI * 2);
+                  ctx.fill();
+                  ctx.restore();
+
+                  // Gyri on inferior surface
+                  drawGyri(W * 0.40, H * 0.35, W * 0.12, 8, 5);
+                  drawGyri(W * 0.60, H * 0.35, W * 0.12, 8, 5);
+
+                  // Longitudinal fissure (ventral)
+                  ctx.beginPath(); ctx.setLineDash([4, 3]);
+                  ctx.moveTo(W * 0.50, H * 0.12); ctx.lineTo(W * 0.50, H * 0.64);
+                  ctx.strokeStyle = '#6d4a8e'; ctx.lineWidth = 1.5; ctx.stroke();
+                  ctx.setLineDash([]);
+
+                  // Cerebellum with foliation
+                  drawCerebellum(W * 0.50, H * 0.72, W * 0.22, H * 0.12);
                   // Brainstem
+                  drawBrainstem(W * 0.46, H * 0.55, W * 0.48, H * 0.68, W * 0.52, H * 0.68, W * 0.54, H * 0.55);
+
+                  // Optic chiasm (X shape with nerve paths)
+                  ctx.save();
+                  ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 2;
+                  // Optic nerves coming in
                   ctx.beginPath();
-                  ctx.moveTo(W * 0.46, H * 0.55); ctx.lineTo(W * 0.48, H * 0.68);
-                  ctx.lineTo(W * 0.52, H * 0.68); ctx.lineTo(W * 0.54, H * 0.55);
-                  ctx.fillStyle = '#e0d6f8'; ctx.fill(); ctx.stroke();
-                  // Optic chiasm X
-                  ctx.beginPath(); ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 2;
-                  ctx.moveTo(W * 0.44, H * 0.30); ctx.lineTo(W * 0.56, H * 0.36);
-                  ctx.moveTo(W * 0.56, H * 0.30); ctx.lineTo(W * 0.44, H * 0.36);
-                  ctx.stroke(); ctx.strokeStyle = '#a78bfa';
+                  ctx.moveTo(W * 0.36, H * 0.26); ctx.quadraticCurveTo(W * 0.42, H * 0.28, W * 0.48, H * 0.33);
+                  ctx.stroke();
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.64, H * 0.26); ctx.quadraticCurveTo(W * 0.58, H * 0.28, W * 0.52, H * 0.33);
+                  ctx.stroke();
+                  // The crossing
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.48, H * 0.33); ctx.lineTo(W * 0.55, H * 0.38);
+                  ctx.moveTo(W * 0.52, H * 0.33); ctx.lineTo(W * 0.45, H * 0.38);
+                  ctx.lineWidth = 1.5; ctx.stroke();
+                  // Optic tracts going back
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.45, H * 0.38); ctx.quadraticCurveTo(W * 0.40, H * 0.42, W * 0.38, H * 0.48);
+                  ctx.stroke();
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.55, H * 0.38); ctx.quadraticCurveTo(W * 0.60, H * 0.42, W * 0.62, H * 0.48);
+                  ctx.stroke();
+                  // Label
+                  ctx.font = '7px Inter, system-ui, sans-serif';
+                  ctx.fillStyle = '#b4590090'; ctx.textAlign = 'center';
+                  ctx.fillText('Optic Chiasm', W * 0.50, H * 0.30);
+                  ctx.restore();
+
+                  // Cranial nerve stumps (simplified)
+                  ctx.save(); ctx.globalAlpha = 0.3; ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1;
+                  var cnPositions = [[0.42, 0.46], [0.58, 0.46], [0.44, 0.50], [0.56, 0.50], [0.46, 0.54], [0.54, 0.54]];
+                  cnPositions.forEach(function (cn) {
+                    ctx.beginPath();
+                    ctx.moveTo(W * cn[0], H * cn[1]);
+                    ctx.lineTo(W * (cn[0] + (cn[0] < 0.5 ? -0.04 : 0.04)), H * (cn[1] + 0.02));
+                    ctx.stroke();
+                  });
+                  ctx.restore();
                 }
 
                 ctx.restore();
