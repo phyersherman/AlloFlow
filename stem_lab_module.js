@@ -4452,18 +4452,198 @@
               var ctx = canvasEl.getContext('2d');
               var dpr = 2;
               var tick = 0;
+
+              // ── Underwater scene persistent elements ──
+              var _bubbles = [];
+              for (var bi = 0; bi < 25; bi++) {
+                _bubbles.push({ x: Math.random() * cW, y: cH * 0.3 + Math.random() * cH * 0.65, r: 1.5 + Math.random() * 3, speed: 0.3 + Math.random() * 0.7, wobble: Math.random() * Math.PI * 2, wobbleAmp: 0.5 + Math.random() * 1.5 });
+              }
+              var _plankton = [];
+              for (var pi = 0; pi < 15; pi++) {
+                _plankton.push({ x: Math.random() * cW, y: cH * 0.15 + Math.random() * cH * 0.65, size: 0.8 + Math.random() * 1.5, vx: (Math.random() - 0.5) * 0.3, vy: (Math.random() - 0.5) * 0.15, phase: Math.random() * Math.PI * 2 });
+              }
+              var _seaGrass = [];
+              for (var sgi = 0; sgi < 18; sgi++) {
+                _seaGrass.push({ x: sgi * (cW / 18) + Math.random() * (cW / 22), h: 20 + Math.random() * 35, w: 2 + Math.random() * 2.5, phase: Math.random() * Math.PI * 2, hue: 100 + Math.random() * 40 });
+              }
+              var _pebbles = [];
+              for (var pb = 0; pb < 20; pb++) {
+                _pebbles.push({ x: Math.random() * cW, w: 4 + Math.random() * 8, h: 2 + Math.random() * 4, shade: 0.3 + Math.random() * 0.3 });
+              }
+              var _mediumParticles = [];
+              for (var mp = 0; mp < 24; mp++) {
+                _mediumParticles.push({ x: (mp + 0.5) * (cW / 24), baseY: cH * 0.3 + Math.random() * cH * 0.35, phase: Math.random() * Math.PI * 2 });
+              }
+              var _causticPts = [];
+              for (var cp = 0; cp < 6; cp++) {
+                _causticPts.push({ x: cW * 0.1 + cp * cW * 0.16, w: 15 + Math.random() * 25, speed: 0.005 + Math.random() * 0.008, phase: Math.random() * Math.PI * 2 });
+              }
+
               function draw() {
                 tick++;
                 ctx.clearRect(0, 0, cW, cH);
-                // Background gradient
-                var grad = ctx.createLinearGradient(0, 0, 0, cH);
-                grad.addColorStop(0, '#0c4a6e');
-                grad.addColorStop(1, '#0ea5e9');
-                ctx.fillStyle = grad;
+
+                // ── Underwater ocean gradient ──
+                var oceanGrad = ctx.createLinearGradient(0, 0, 0, cH);
+                oceanGrad.addColorStop(0, '#064e6e');
+                oceanGrad.addColorStop(0.08, '#0a6a8a');
+                oceanGrad.addColorStop(0.3, '#0c7d9e');
+                oceanGrad.addColorStop(0.65, '#0a5f7d');
+                oceanGrad.addColorStop(0.85, '#083f58');
+                oceanGrad.addColorStop(1, '#052e42');
+                ctx.fillStyle = oceanGrad;
                 ctx.fillRect(0, 0, cW, cH);
-                // Grid
-                ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-                ctx.lineWidth = 1;
+
+                // ── Surface shimmer line ──
+                ctx.save();
+                var surfaceY = cH * 0.04;
+                var surfGrad = ctx.createLinearGradient(0, 0, 0, surfaceY + 20);
+                surfGrad.addColorStop(0, 'rgba(180,230,255,0.25)');
+                surfGrad.addColorStop(0.5, 'rgba(120,210,255,0.12)');
+                surfGrad.addColorStop(1, 'rgba(80,180,240,0)');
+                ctx.fillStyle = surfGrad;
+                ctx.fillRect(0, 0, cW, surfaceY + 20);
+                ctx.beginPath();
+                for (var sx = 0; sx < cW; sx += 2) {
+                  var sy = surfaceY + Math.sin(sx * 0.02 + tick * 0.04) * 3 + Math.sin(sx * 0.007 + tick * 0.02) * 2;
+                  if (sx === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+                }
+                ctx.strokeStyle = 'rgba(200,240,255,0.4)';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+                ctx.restore();
+
+                // ── Caustic light rays ──
+                ctx.save();
+                for (var ci = 0; ci < _causticPts.length; ci++) {
+                  var cr = _causticPts[ci];
+                  var crx = cr.x + Math.sin(tick * cr.speed + cr.phase) * 40;
+                  var crW = cr.w + Math.sin(tick * cr.speed * 1.3 + cr.phase) * 8;
+                  var rayGrad = ctx.createLinearGradient(crx, 0, crx, cH * 0.85);
+                  rayGrad.addColorStop(0, 'rgba(180,230,255,0.06)');
+                  rayGrad.addColorStop(0.3, 'rgba(140,210,245,0.04)');
+                  rayGrad.addColorStop(0.7, 'rgba(100,190,230,0.02)');
+                  rayGrad.addColorStop(1, 'rgba(80,170,220,0)');
+                  ctx.beginPath();
+                  ctx.moveTo(crx - crW * 0.3, 0);
+                  ctx.lineTo(crx + crW * 0.3, 0);
+                  ctx.lineTo(crx + crW * 0.8, cH * 0.85);
+                  ctx.lineTo(crx - crW * 0.8, cH * 0.85);
+                  ctx.closePath();
+                  ctx.fillStyle = rayGrad;
+                  ctx.fill();
+                }
+                ctx.restore();
+
+                // ── Sandy ocean floor ──
+                var floorY = cH * 0.88;
+                ctx.save();
+                var sandGrad = ctx.createLinearGradient(0, floorY, 0, cH);
+                sandGrad.addColorStop(0, '#5d7a5e');
+                sandGrad.addColorStop(0.3, '#8a9a6e');
+                sandGrad.addColorStop(0.7, '#a8a882');
+                sandGrad.addColorStop(1, '#b5ac8a');
+                ctx.beginPath();
+                ctx.moveTo(0, floorY);
+                for (var fx = 0; fx < cW; fx += 8) {
+                  ctx.lineTo(fx, floorY + Math.sin(fx * 0.015) * 6 + Math.sin(fx * 0.04) * 2);
+                }
+                ctx.lineTo(cW, cH); ctx.lineTo(0, cH); ctx.closePath();
+                ctx.fillStyle = sandGrad; ctx.fill();
+                ctx.restore();
+
+                // ── Pebbles on ocean floor ──
+                ctx.save();
+                for (var pbi = 0; pbi < _pebbles.length; pbi++) {
+                  var pbl = _pebbles[pbi];
+                  var pbY = floorY + Math.sin(pbl.x * 0.015) * 6 + 4;
+                  ctx.beginPath();
+                  ctx.ellipse(pbl.x, pbY, pbl.w, pbl.h, 0, 0, Math.PI * 2);
+                  ctx.fillStyle = 'rgba(90,100,80,' + pbl.shade + ')';
+                  ctx.fill();
+                }
+                ctx.restore();
+
+                // ── Sea grass blades swaying ──
+                ctx.save();
+                for (var sj = 0; sj < _seaGrass.length; sj++) {
+                  var sg = _seaGrass[sj];
+                  var sgBaseY = floorY + Math.sin(sg.x * 0.015) * 6;
+                  var sway = Math.sin(tick * 0.025 + sg.phase) * 8;
+                  ctx.beginPath();
+                  ctx.moveTo(sg.x, sgBaseY);
+                  ctx.quadraticCurveTo(sg.x + sway * 0.5, sgBaseY - sg.h * 0.5, sg.x + sway, sgBaseY - sg.h);
+                  ctx.strokeStyle = 'hsla(' + sg.hue + ', 50%, 35%, 0.55)';
+                  ctx.lineWidth = sg.w;
+                  ctx.lineCap = 'round';
+                  ctx.stroke();
+                }
+                ctx.restore();
+
+                // ── Plankton drifting ──
+                ctx.save();
+                for (var pk = 0; pk < _plankton.length; pk++) {
+                  var pl = _plankton[pk];
+                  pl.x += pl.vx + Math.sin(tick * 0.01 + pl.phase) * 0.1;
+                  pl.y += pl.vy;
+                  if (pl.x < 0) pl.x = cW; if (pl.x > cW) pl.x = 0;
+                  if (pl.y < cH * 0.1) pl.y = cH * 0.8; if (pl.y > cH * 0.85) pl.y = cH * 0.1;
+                  ctx.globalAlpha = 0.3 + Math.sin(tick * 0.03 + pk) * 0.15;
+                  ctx.beginPath(); ctx.arc(pl.x, pl.y, pl.size * dpr, 0, Math.PI * 2);
+                  ctx.fillStyle = '#a0e8c0'; ctx.fill();
+                }
+                ctx.globalAlpha = 1;
+                ctx.restore();
+
+                // ── Medium particles (water molecules oscillating with wave) ──
+                ctx.save();
+                var mAmp = parseFloat(canvasEl.dataset.amp || '50');
+                var mFreq = parseFloat(canvasEl.dataset.freq || '2');
+                var mSpeed = parseFloat(canvasEl.dataset.speed || '1');
+                for (var mi = 0; mi < _mediumParticles.length; mi++) {
+                  var mPart = _mediumParticles[mi];
+                  var mWaveT = mPart.x / cW * Math.PI * 2 * mFreq - tick * 0.03 * mSpeed;
+                  var mDisp = Math.sin(mWaveT) * mAmp * dpr * 0.3;
+                  var mpy = mPart.baseY - mDisp;
+                  // Glow
+                  ctx.globalAlpha = 0.15;
+                  ctx.beginPath(); ctx.arc(mPart.x, mpy, 7 * dpr, 0, Math.PI * 2);
+                  var mpGlow = ctx.createRadialGradient(mPart.x, mpy, 0, mPart.x, mpy, 7 * dpr);
+                  mpGlow.addColorStop(0, '#80d8ff');
+                  mpGlow.addColorStop(1, '#80d8ff00');
+                  ctx.fillStyle = mpGlow; ctx.fill();
+                  // Core
+                  ctx.globalAlpha = 0.35;
+                  ctx.beginPath(); ctx.arc(mPart.x, mpy, 2.5 * dpr, 0, Math.PI * 2);
+                  ctx.fillStyle = '#b0e8ff'; ctx.fill();
+                  ctx.strokeStyle = 'rgba(130,210,255,0.3)'; ctx.lineWidth = 0.5;
+                  ctx.stroke();
+                }
+                ctx.globalAlpha = 1;
+                ctx.restore();
+
+                // ── Rising bubbles ──
+                ctx.save();
+                for (var bj = 0; bj < _bubbles.length; bj++) {
+                  var bub = _bubbles[bj];
+                  bub.y -= bub.speed;
+                  bub.x += Math.sin(tick * 0.02 + bub.wobble) * bub.wobbleAmp;
+                  if (bub.y < cH * 0.03) { bub.y = cH * 0.9 + Math.random() * cH * 0.1; bub.x = Math.random() * cW; }
+                  var bubR = bub.r * dpr;
+                  ctx.globalAlpha = 0.25;
+                  ctx.beginPath(); ctx.arc(bub.x, bub.y, bubR, 0, Math.PI * 2);
+                  ctx.strokeStyle = 'rgba(200,240,255,0.6)'; ctx.lineWidth = 0.8;
+                  ctx.stroke();
+                  // Highlight
+                  ctx.beginPath(); ctx.arc(bub.x - bubR * 0.3, bub.y - bubR * 0.3, bubR * 0.3, 0, Math.PI * 2);
+                  ctx.fillStyle = 'rgba(230,250,255,0.5)'; ctx.fill();
+                }
+                ctx.globalAlpha = 1;
+                ctx.restore();
+
+                // ── Measurement grid (subtle overlay) ──
+                ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+                ctx.lineWidth = 0.5;
                 for (var gx = 0; gx < cW; gx += 30 * dpr) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, cH); ctx.stroke(); }
                 for (var gy = 0; gy < cH; gy += 30 * dpr) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(cW, gy); ctx.stroke(); }
                 // Center line
@@ -5633,15 +5813,130 @@
                   ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fill();
                 });
 
+                // ── Extracellular Matrix Fibers (collagen-like strands in culture medium) ──
+                if (!world._ecmFibers) {
+                  world._ecmFibers = [];
+                  for (var efi = 0; efi < 15; efi++) {
+                    var efx1 = Math.random() * WORLD_W, efy1 = Math.random() * WORLD_H;
+                    var efAngle = Math.random() * Math.PI;
+                    var efLen = 40 + Math.random() * 80;
+                    world._ecmFibers.push({
+                      x1: efx1, y1: efy1,
+                      x2: efx1 + Math.cos(efAngle) * efLen,
+                      y2: efy1 + Math.sin(efAngle) * efLen,
+                      cx: efx1 + Math.cos(efAngle + 0.3) * efLen * 0.5,
+                      cy: efy1 + Math.sin(efAngle - 0.2) * efLen * 0.5,
+                      width: 0.5 + Math.random() * 1.5,
+                      alpha: 0.04 + Math.random() * 0.06,
+                      phase: Math.random() * Math.PI * 2
+                    });
+                  }
+                }
+                ctx.save();
+                world._ecmFibers.forEach(function (ef) {
+                  var p1 = toScreen(ef.x1, ef.y1);
+                  var p2 = toScreen(ef.x2, ef.y2);
+                  var pc = toScreen(ef.cx, ef.cy);
+                  var efPulse = ef.alpha + 0.02 * Math.sin(world.tick * 0.015 + ef.phase);
+                  ctx.beginPath();
+                  ctx.moveTo(p1.x, p1.y);
+                  ctx.quadraticCurveTo(pc.x, pc.y, p2.x, p2.y);
+                  ctx.strokeStyle = 'rgba(180,200,170,' + efPulse + ')';
+                  ctx.lineWidth = ef.width * cam.zoom * dpr;
+                  ctx.stroke();
+                });
+                ctx.restore();
+
+                // ── Vesicle Transport (tiny membrane vesicles drifting between organisms) ──
+                if (!world._vesicles) {
+                  world._vesicles = [];
+                  for (var vi = 0; vi < 12; vi++) {
+                    world._vesicles.push({
+                      x: Math.random() * WORLD_W,
+                      y: Math.random() * WORLD_H,
+                      vx: (Math.random() - 0.5) * 0.3,
+                      vy: (Math.random() - 0.5) * 0.3,
+                      size: 1 + Math.random() * 2,
+                      hue: vi % 3 === 0 ? '160,220,180' : vi % 3 === 1 ? '180,160,220' : '220,180,160',
+                      alpha: 0.15 + Math.random() * 0.2,
+                      trail: []
+                    });
+                  }
+                }
+                ctx.save();
+                world._vesicles.forEach(function (v) {
+                  v.x += v.vx; v.y += v.vy;
+                  // Gentle wandering
+                  v.vx += (Math.random() - 0.5) * 0.02;
+                  v.vy += (Math.random() - 0.5) * 0.02;
+                  v.vx = Math.max(-0.4, Math.min(0.4, v.vx));
+                  v.vy = Math.max(-0.4, Math.min(0.4, v.vy));
+                  if (v.x < 0) v.x += WORLD_W; if (v.x > WORLD_W) v.x -= WORLD_W;
+                  if (v.y < 0) v.y += WORLD_H; if (v.y > WORLD_H) v.y -= WORLD_H;
+                  // Trail
+                  v.trail.push({ x: v.x, y: v.y });
+                  if (v.trail.length > 8) v.trail.shift();
+                  // Draw trail
+                  if (v.trail.length > 1) {
+                    for (var ti = 1; ti < v.trail.length; ti++) {
+                      var tp1 = toScreen(v.trail[ti - 1].x, v.trail[ti - 1].y);
+                      var tp2 = toScreen(v.trail[ti].x, v.trail[ti].y);
+                      ctx.beginPath(); ctx.moveTo(tp1.x, tp1.y); ctx.lineTo(tp2.x, tp2.y);
+                      ctx.strokeStyle = 'rgba(' + v.hue + ',' + (v.alpha * ti / v.trail.length * 0.3) + ')';
+                      ctx.lineWidth = 0.5 * dpr; ctx.stroke();
+                    }
+                  }
+                  // Draw vesicle
+                  var vp = toScreen(v.x, v.y);
+                  var vs = v.size * cam.zoom * dpr;
+                  var vGrad = ctx.createRadialGradient(vp.x - vs * 0.2, vp.y - vs * 0.2, 0, vp.x, vp.y, vs);
+                  vGrad.addColorStop(0, 'rgba(' + v.hue + ',' + (v.alpha * 0.8) + ')');
+                  vGrad.addColorStop(0.6, 'rgba(' + v.hue + ',' + (v.alpha * 0.4) + ')');
+                  vGrad.addColorStop(1, 'rgba(' + v.hue + ',0)');
+                  ctx.beginPath(); ctx.arc(vp.x, vp.y, vs, 0, Math.PI * 2);
+                  ctx.fillStyle = vGrad; ctx.fill();
+                  // Membrane ring
+                  ctx.beginPath(); ctx.arc(vp.x, vp.y, vs * 0.8, 0, Math.PI * 2);
+                  ctx.strokeStyle = 'rgba(' + v.hue + ',' + (v.alpha * 0.5) + ')';
+                  ctx.lineWidth = 0.4 * dpr; ctx.stroke();
+                });
+                ctx.restore();
+
                 // Organisms
                 world.organisms.forEach(function (o) { drawOrganism(o); });
 
-                // ── Circular vignette overlay ──
-                var vigGrad = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.25, W / 2, H / 2, Math.max(W, H) * 0.6);
+                // ── Enhanced Microscope Vignette Overlay ──
+                // Circular vignette
+                var vigGrad = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.2, W / 2, H / 2, Math.max(W, H) * 0.6);
                 vigGrad.addColorStop(0, 'rgba(0,0,0,0)');
-                vigGrad.addColorStop(0.7, 'rgba(0,0,0,0)');
-                vigGrad.addColorStop(1, 'rgba(0,0,0,0.15)');
+                vigGrad.addColorStop(0.6, 'rgba(0,0,0,0)');
+                vigGrad.addColorStop(0.85, 'rgba(0,0,0,0.08)');
+                vigGrad.addColorStop(1, 'rgba(0,0,0,0.2)');
                 ctx.fillStyle = vigGrad; ctx.fillRect(0, 0, W, H);
+                // Subtle lens flare (top-right)
+                ctx.save();
+                var lfx = W * 0.72, lfy = H * 0.18;
+                var lfGrad = ctx.createRadialGradient(lfx, lfy, 0, lfx, lfy, 40 * dpr);
+                lfGrad.addColorStop(0, 'rgba(200,230,255,0.06)');
+                lfGrad.addColorStop(0.5, 'rgba(180,210,240,0.02)');
+                lfGrad.addColorStop(1, 'rgba(180,210,240,0)');
+                ctx.beginPath(); ctx.arc(lfx, lfy, 40 * dpr, 0, Math.PI * 2);
+                ctx.fillStyle = lfGrad; ctx.fill();
+                ctx.restore();
+                // Aperture ring marks (subtle tick marks around vignette edge)
+                ctx.save();
+                ctx.globalAlpha = 0.04;
+                var apR = Math.min(W, H) * 0.48;
+                for (var api = 0; api < 8; api++) {
+                  var apAngle = api * Math.PI / 4;
+                  var apx1 = W / 2 + Math.cos(apAngle) * apR;
+                  var apy1 = H / 2 + Math.sin(apAngle) * apR;
+                  var apx2 = W / 2 + Math.cos(apAngle) * (apR + 8 * dpr);
+                  var apy2 = H / 2 + Math.sin(apAngle) * (apR + 8 * dpr);
+                  ctx.beginPath(); ctx.moveTo(apx1, apy1); ctx.lineTo(apx2, apy2);
+                  ctx.strokeStyle = '#334155'; ctx.lineWidth = 1 * dpr; ctx.stroke();
+                }
+                ctx.restore();
 
                 // ── Magnification label (glassmorphic) ──
                 var mag = Math.round(40 * cam.zoom);
@@ -11109,6 +11404,143 @@
                       ctx.restore();
                     }
                   }
+                }
+
+                // ── Cosmic Web Filaments (dark matter structure connecting galaxies, t > 2) ──
+                if (t > 2) {
+                  var filAlpha = Math.min(0.12, (t - 2) * 0.01);
+                  var filGalCount = Math.min(16, Math.floor((t - 1) * 2.5));
+                  ctx.save();
+                  ctx.globalAlpha = filAlpha;
+                  ctx.lineWidth = 1.2 * dpr;
+                  for (var fi = 0; fi < filGalCount; fi++) {
+                    var fx1 = ((fi * 137 + 50) % (W / dpr)) * dpr;
+                    var fy1 = ((fi * 97 + 30) % (H / dpr)) * dpr;
+                    // Connect to 2 nearest neighbors
+                    for (var fj = fi + 1; fj < Math.min(fi + 3, filGalCount); fj++) {
+                      var fx2 = ((fj * 137 + 50) % (W / dpr)) * dpr;
+                      var fy2 = ((fj * 97 + 30) % (H / dpr)) * dpr;
+                      var fDist = Math.sqrt((fx2 - fx1) * (fx2 - fx1) + (fy2 - fy1) * (fy2 - fy1));
+                      if (fDist > W * 0.6) continue;
+                      // Curved filament with glow
+                      var fmx = (fx1 + fx2) / 2 + Math.sin(fi * 2.3 + tick * 0.002) * 20;
+                      var fmy = (fy1 + fy2) / 2 + Math.cos(fj * 1.7 + tick * 0.002) * 20;
+                      var filGrad = ctx.createLinearGradient(fx1, fy1, fx2, fy2);
+                      filGrad.addColorStop(0, 'rgba(100,120,200,0)');
+                      filGrad.addColorStop(0.3, 'rgba(120,140,220,' + (filAlpha * 2) + ')');
+                      filGrad.addColorStop(0.7, 'rgba(120,140,220,' + (filAlpha * 2) + ')');
+                      filGrad.addColorStop(1, 'rgba(100,120,200,0)');
+                      ctx.beginPath();
+                      ctx.moveTo(fx1, fy1);
+                      ctx.quadraticCurveTo(fmx, fmy, fx2, fy2);
+                      ctx.strokeStyle = filGrad;
+                      ctx.stroke();
+                    }
+                  }
+                  ctx.restore();
+                }
+
+                // ── Dark Matter Halos (subtle glow behind galaxies) ──
+                if (t > 1.5) {
+                  var dmGalCount = Math.min(16, Math.floor((t - 1) * 2.5));
+                  ctx.save();
+                  for (var dmi = 0; dmi < dmGalCount; dmi++) {
+                    var dmx = ((dmi * 137 + 50) % (W / dpr)) * dpr;
+                    var dmy = ((dmi * 97 + 30) % (H / dpr)) * dpr;
+                    var dms = (10 + dmi % 6 * 5) * dpr;
+                    var dmHaloR = dms * 2.2;
+                    var dmAlpha = Math.min(0.06, (t - 1.5) * 0.01);
+                    var dmGrad = ctx.createRadialGradient(dmx, dmy, dms * 0.3, dmx, dmy, dmHaloR);
+                    dmGrad.addColorStop(0, 'rgba(80,60,180,' + dmAlpha + ')');
+                    dmGrad.addColorStop(0.5, 'rgba(60,40,160,' + (dmAlpha * 0.5) + ')');
+                    dmGrad.addColorStop(1, 'rgba(40,20,140,0)');
+                    ctx.beginPath(); ctx.arc(dmx, dmy, dmHaloR, 0, Math.PI * 2);
+                    ctx.fillStyle = dmGrad; ctx.fill();
+                  }
+                  ctx.restore();
+                }
+
+                // ── Shooting Stars / Meteor Streaks (after t > 9, Solar System era) ──
+                if (t > 9) {
+                  ctx.save();
+                  var meteorSeed = Math.floor(tick / 80);
+                  var meteorPhase = (tick % 80) / 80;
+                  for (var mti = 0; mti < 2; mti++) {
+                    var mtHash = (meteorSeed * 73 + mti * 41) % 1000;
+                    if (mtHash > 300) continue; // Only ~30% chance per slot
+                    var mtx1 = (mtHash * 7 % (W / dpr)) * dpr;
+                    var mty1 = (mtHash * 3 % Math.floor(H * 0.5 / dpr)) * dpr;
+                    var mtAngle = 0.3 + (mtHash % 5) * 0.15;
+                    var mtLen = (40 + mtHash % 60) * dpr;
+                    var mtx2 = mtx1 + Math.cos(mtAngle) * mtLen * meteorPhase;
+                    var mty2 = mty1 + Math.sin(mtAngle) * mtLen * meteorPhase;
+                    var mtAlpha = meteorPhase < 0.3 ? meteorPhase / 0.3 : (1 - meteorPhase) / 0.7;
+                    mtAlpha *= 0.7;
+                    ctx.globalAlpha = mtAlpha;
+                    var mtGrad = ctx.createLinearGradient(mtx1, mty1, mtx2, mty2);
+                    mtGrad.addColorStop(0, 'rgba(255,255,255,0)');
+                    mtGrad.addColorStop(0.6, 'rgba(255,240,200,' + mtAlpha + ')');
+                    mtGrad.addColorStop(1, 'rgba(255,255,255,' + mtAlpha + ')');
+                    ctx.beginPath(); ctx.moveTo(mtx1, mty1); ctx.lineTo(mtx2, mty2);
+                    ctx.strokeStyle = mtGrad; ctx.lineWidth = 1.5 * dpr; ctx.stroke();
+                    // Bright head
+                    ctx.beginPath(); ctx.arc(mtx2, mty2, 2 * dpr, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(255,255,240,' + (mtAlpha * 0.8) + ')'; ctx.fill();
+                  }
+                  ctx.globalAlpha = 1;
+                  ctx.restore();
+                }
+
+                // ── Protoplanetary Disk (near Sun formation, t ≈ 9.0–9.5) ──
+                if (t > 8.5 && t < 10) {
+                  var ppAlpha = t < 9.0 ? (t - 8.5) / 0.5 : t > 9.5 ? Math.max(0, 1 - (t - 9.5) / 0.5) : 1;
+                  ppAlpha *= 0.6;
+                  var ppx = W * 0.78, ppy = H * 0.25;
+                  ctx.save();
+                  ctx.translate(ppx, ppy);
+                  ctx.rotate(tick * 0.003);
+                  ctx.globalAlpha = ppAlpha;
+                  // Concentric dust rings
+                  var ppRings = [
+                    { r: 18, w: 4, color: '255,200,100' },
+                    { r: 26, w: 3, color: '220,170,80' },
+                    { r: 34, w: 5, color: '180,140,70' },
+                    { r: 44, w: 3, color: '140,120,80' }
+                  ];
+                  for (var pri = 0; pri < ppRings.length; pri++) {
+                    var ppr = ppRings[pri];
+                    var rr = ppr.r * dpr;
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, rr, rr * 0.3, 0, 0, Math.PI * 2);
+                    ctx.strokeStyle = 'rgba(' + ppr.color + ',' + (ppAlpha * 0.5) + ')';
+                    ctx.lineWidth = ppr.w * dpr;
+                    ctx.stroke();
+                  }
+                  // Central protostar glow
+                  var psGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, 12 * dpr);
+                  psGrad.addColorStop(0, 'rgba(255,230,150,' + ppAlpha + ')');
+                  psGrad.addColorStop(0.4, 'rgba(255,180,60,' + (ppAlpha * 0.6) + ')');
+                  psGrad.addColorStop(1, 'rgba(255,120,20,0)');
+                  ctx.beginPath(); ctx.arc(0, 0, 12 * dpr, 0, Math.PI * 2);
+                  ctx.fillStyle = psGrad; ctx.fill();
+                  // Planetesimal dots orbiting
+                  for (var pli = 0; pli < 5; pli++) {
+                    var plAngle = pli * Math.PI * 2 / 5 + tick * 0.008 * (1 + pli * 0.3);
+                    var plR = (22 + pli * 6) * dpr;
+                    var plpx = Math.cos(plAngle) * plR;
+                    var plpy = Math.sin(plAngle) * plR * 0.3;
+                    ctx.beginPath(); ctx.arc(plpx, plpy, (1.5 + pli * 0.3) * dpr, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(200,180,140,' + (ppAlpha * 0.8) + ')'; ctx.fill();
+                  }
+                  ctx.restore();
+                  // Label
+                  ctx.save();
+                  ctx.globalAlpha = ppAlpha * 0.8;
+                  ctx.font = (7 * dpr) + 'px sans-serif';
+                  ctx.fillStyle = 'rgba(255,200,100,' + ppAlpha + ')';
+                  ctx.textAlign = 'center';
+                  ctx.fillText('Protoplanetary Disk', ppx, ppy + 55 * dpr);
+                  ctx.restore();
                 }
 
                 // ── Epoch label overlay (bottom-left HUD) ──
