@@ -6082,6 +6082,8 @@ Use digraphs (sh,ch,th) as single sounds. Use ā,ē,ī,ō,ū for long vowels.`;
           return;
         const timer = setTimeout(() => {
           if (!isMountedRef.current) return;
+          // Re-check ref inside callback — main setup may have already handled this word
+          if (lastWordForIsolation.current?.toLowerCase() === currentWordSoundsWord?.toLowerCase()) return;
           debugLog(
             "🔧 Auto-recovery: isolationState stuck for 3s, forcing re-sync for:",
             currentWordSoundsWord,
@@ -7120,9 +7122,8 @@ Use digraphs (sh,ch,th) as single sounds. Use ā,ē,ī,ō,ū for long vowels.`;
             }
             if (
               !isCorrect &&
-              alloBotRef &&
-              alloBotRef.current &&
-              alloBotRef.current.playAnimation
+              typeof alloBotRef !== "undefined" &&
+              alloBotRef?.current?.playAnimation
             )
               alloBotRef.current.playAnimation("sympathetic-tilt", 800);
             setWordSoundsScore((prev) => ({
@@ -12616,7 +12617,7 @@ Use digraphs (sh,ch,th) as single sounds. Use ā,ē,ī,ō,ū for long vowels.`;
               });
               return Object.assign({}, prev, { progressHistory: history });
             });
-            if (appendedCount > 0 && alloBotRef.current) {
+            if (appendedCount > 0 && typeof alloBotRef !== "undefined" && alloBotRef?.current) {
               alloBotRef.current.speak(
                 "Progress snapshots saved for " +
                 appendedCount +
@@ -12630,7 +12631,7 @@ Use digraphs (sh,ch,th) as single sounds. Use ā,ē,ī,ō,ū for long vowels.`;
             !rosterKey.students ||
             Object.keys(rosterKey.students).length === 0
           ) {
-            if (alloBotRef.current) {
+            if (typeof alloBotRef !== "undefined" && alloBotRef?.current) {
               alloBotRef.current.speak(
                 "Tip: Create a Class Roster to track student progress over time.",
               );
@@ -12638,7 +12639,7 @@ Use digraphs (sh,ch,th) as single sounds. Use ā,ē,ī,ō,ū for long vowels.`;
           }
           setIsProcessing(false);
           setImportProgress({ current: 0, total: 0 });
-          if (alloBotRef.current) {
+          if (typeof alloBotRef !== "undefined" && alloBotRef?.current) {
             const totalFlags = allNewStudents.reduce(
               (acc, s) => acc + (s.safetyFlags ? s.safetyFlags.length : 0),
               0,
