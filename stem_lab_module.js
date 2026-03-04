@@ -12054,17 +12054,46 @@
                   ctx.lineWidth = 2 * dpr; ctx.stroke();
                 }
 
-                // ── Mountains ──
+                // ── Mountains (enhanced with rock texture, cracks, snow patches) ──
                 // Back mountain
                 ctx.fillStyle = '#475569';
                 ctx.beginPath(); ctx.moveTo(cW * 0.55, cH * 0.65); ctx.lineTo(cW * 0.72, cH * 0.3); ctx.lineTo(cW * 0.9, cH * 0.65); ctx.fill();
-                // Snow cap
+                // Back mountain rock cracks
+                ctx.strokeStyle = 'rgba(30,41,59,0.3)'; ctx.lineWidth = 1 * dpr;
+                for (var mci = 0; mci < 5; mci++) {
+                  var mcx = cW * 0.62 + mci * cW * 0.055;
+                  var mcy = cH * 0.4 + mci * cH * 0.04;
+                  ctx.beginPath(); ctx.moveTo(mcx, mcy); ctx.lineTo(mcx + 8 * dpr, mcy + 15 * dpr); ctx.stroke();
+                }
+                // Snow cap (larger, more detailed)
                 ctx.fillStyle = '#e2e8f0';
-                ctx.beginPath(); ctx.moveTo(cW * 0.69, cH * 0.33); ctx.lineTo(cW * 0.72, cH * 0.3); ctx.lineTo(cW * 0.75, cH * 0.33);
-                ctx.lineTo(cW * 0.735, cH * 0.36); ctx.lineTo(cW * 0.71, cH * 0.35); ctx.closePath(); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(cW * 0.685, cH * 0.34); ctx.lineTo(cW * 0.72, cH * 0.3); ctx.lineTo(cW * 0.755, cH * 0.34);
+                ctx.lineTo(cW * 0.74, cH * 0.37); ctx.lineTo(cW * 0.725, cH * 0.36); ctx.lineTo(cW * 0.71, cH * 0.375); ctx.lineTo(cW * 0.695, cH * 0.355); ctx.closePath(); ctx.fill();
+                // Snow highlights
+                ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                ctx.beginPath(); ctx.arc(cW * 0.72, cH * 0.32, 4 * dpr, 0, Math.PI * 2); ctx.fill();
+                // Snow melt stream
+                ctx.strokeStyle = 'rgba(147,197,253,0.4)'; ctx.lineWidth = 1.5 * dpr;
+                ctx.beginPath(); ctx.moveTo(cW * 0.725, cH * 0.36);
+                ctx.quadraticCurveTo(cW * 0.73, cH * 0.42, cW * 0.735, cH * 0.48);
+                ctx.quadraticCurveTo(cW * 0.728, cH * 0.54, cW * 0.74, cH * 0.6);
+                ctx.stroke();
                 // Front mountain
                 ctx.fillStyle = '#374151';
                 ctx.beginPath(); ctx.moveTo(cW * 0.65, cH * 0.65); ctx.lineTo(cW * 0.82, cH * 0.38); ctx.lineTo(cW * 0.98, cH * 0.65); ctx.fill();
+                // Front mountain rock textures
+                ctx.strokeStyle = 'rgba(55,65,81,0.4)'; ctx.lineWidth = 0.8 * dpr;
+                for (var mti = 0; mti < 6; mti++) {
+                  var mtx = cW * 0.72 + mti * cW * 0.04;
+                  var mty = cH * 0.45 + mti * cH * 0.02;
+                  ctx.beginPath(); ctx.moveTo(mtx, mty);
+                  ctx.lineTo(mtx + (mti % 2 === 0 ? 6 : -5) * dpr, mty + 12 * dpr);
+                  ctx.lineTo(mtx + 3 * dpr, mty + 20 * dpr); ctx.stroke();
+                }
+                // Front mountain snow patch
+                ctx.fillStyle = '#e2e8f0';
+                ctx.beginPath(); ctx.moveTo(cW * 0.8, cH * 0.40); ctx.lineTo(cW * 0.82, cH * 0.38); ctx.lineTo(cW * 0.84, cH * 0.41);
+                ctx.lineTo(cW * 0.83, cH * 0.43); ctx.lineTo(cW * 0.81, cH * 0.42); ctx.closePath(); ctx.fill();
 
                 // ── Ground ──
                 var groundGrad = ctx.createLinearGradient(0, cH * 0.62, 0, cH * 0.72);
@@ -12073,6 +12102,24 @@
                 groundGrad.addColorStop(1, '#166534');
                 ctx.fillStyle = groundGrad;
                 ctx.fillRect(0, cH * 0.62, cW, cH * 0.1);
+                // Grass blades along ground surface
+                for (var gbi = 0; gbi < 80; gbi++) {
+                  var gbx = (gbi / 80) * cW;
+                  // Skip water area
+                  if (gbx < cW * 0.55) continue;
+                  var gby = cH * 0.62;
+                  var gbSway = Math.sin(tick * 0.015 + gbi * 0.7) * 3 * dpr;
+                  var gbHeight = (4 + Math.random() * 5) * dpr;
+                  ctx.strokeStyle = gbi % 3 === 0 ? 'rgba(74,222,128,0.6)' : 'rgba(34,197,94,0.5)';
+                  ctx.lineWidth = 1 * dpr;
+                  ctx.beginPath(); ctx.moveTo(gbx, gby);
+                  ctx.lineTo(gbx + gbSway, gby - gbHeight); ctx.stroke();
+                  // Some grass with seed heads
+                  if (gbi % 8 === 0) {
+                    ctx.fillStyle = 'rgba(250,204,21,0.4)';
+                    ctx.beginPath(); ctx.arc(gbx + gbSway, gby - gbHeight, 1.5 * dpr, 0, Math.PI * 2); ctx.fill();
+                  }
+                }
 
                 // ── Underground / Aquifer layer ──
                 var underGrad = ctx.createLinearGradient(0, cH * 0.72, 0, cH);
@@ -12090,6 +12137,13 @@
                   ctx.lineTo(ax, cH * 0.82 + Math.sin(ax * 0.01 + tick * 0.01) * 4 * dpr);
                 }
                 ctx.lineTo(cW, cH); ctx.lineTo(0, cH); ctx.closePath(); ctx.fill();
+                // Aquifer shimmer highlights
+                ctx.fillStyle = 'rgba(56,189,248,0.08)';
+                for (var ashi = 0; ashi < 8; ashi++) {
+                  var ashx = ((tick * 0.3 + ashi * cW * 0.13) % cW);
+                  var ashy = cH * 0.84 + Math.sin(ashi * 2.3) * cH * 0.04;
+                  ctx.beginPath(); ctx.ellipse(ashx, ashy, 12 * dpr, 3 * dpr, 0, 0, Math.PI * 2); ctx.fill();
+                }
                 // Rock layer lines
                 ctx.strokeStyle = 'rgba(120,53,15,0.3)';
                 ctx.lineWidth = 1 * dpr;
@@ -12098,6 +12152,26 @@
                   var rly = cH * (0.76 + rl * 0.06);
                   for (var rx = 0; rx <= cW; rx += 8) {
                     ctx.lineTo(rx, rly + Math.sin(rx * 0.015 + rl * 2) * 3 * dpr);
+                  }
+                  ctx.stroke();
+                }
+                // Rock pebbles / gravel in underground layers
+                ctx.fillStyle = 'rgba(168,130,100,0.25)';
+                for (var rpi2 = 0; rpi2 < 15; rpi2++) {
+                  var rpx2 = (rpi2 * cW * 0.07 + cW * 0.03) % cW;
+                  var rpy2 = cH * (0.74 + (rpi2 % 4) * 0.05);
+                  ctx.beginPath(); ctx.ellipse(rpx2, rpy2, (2 + rpi2 % 3) * dpr, (1.5 + rpi2 % 2) * dpr, rpi2 * 0.5, 0, Math.PI * 2); ctx.fill();
+                }
+                // Underground tiny aquifer organisms
+                for (var aqi = 0; aqi < 5; aqi++) {
+                  var aqx = ((tick * 0.2 + aqi * cW * 0.21) % cW);
+                  var aqy = cH * 0.85 + Math.sin(tick * 0.02 + aqi * 1.7) * 4 * dpr;
+                  var aqAlpha = 0.2 + 0.15 * Math.sin(tick * 0.03 + aqi);
+                  // Tiny worm-like organism
+                  ctx.strokeStyle = 'rgba(14,165,233,' + aqAlpha + ')'; ctx.lineWidth = 1 * dpr; ctx.lineCap = 'round';
+                  ctx.beginPath(); ctx.moveTo(aqx, aqy);
+                  for (var aqw = 1; aqw <= 4; aqw++) {
+                    ctx.lineTo(aqx + aqw * 3 * dpr, aqy + Math.sin(tick * 0.05 + aqw + aqi) * 2 * dpr);
                   }
                   ctx.stroke();
                 }
@@ -12125,7 +12199,7 @@
                   ctx.stroke();
                 }
 
-                // ── River from mountain ──
+                // ── River from mountain (enhanced with rapids) ──
                 ctx.strokeStyle = 'rgba(59,130,246,0.5)';
                 ctx.lineWidth = 4 * dpr;
                 ctx.beginPath();
@@ -12135,13 +12209,21 @@
                 ctx.strokeStyle = 'rgba(186,230,253,0.3)';
                 ctx.lineWidth = 2 * dpr;
                 ctx.stroke();
+                // River ripple highlights
+                ctx.strokeStyle = 'rgba(186,230,253,0.2)'; ctx.lineWidth = 1 * dpr;
+                for (var rhi = 0; rhi < 5; rhi++) {
+                  var rhT = ((tick * 0.005 + rhi * 0.2) % 1);
+                  var rhx = (1 - rhT) * (1 - rhT) * cW * 0.78 + 2 * (1 - rhT) * rhT * cW * 0.7 + rhT * rhT * cW * 0.55;
+                  var rhy = (1 - rhT) * (1 - rhT) * cH * 0.42 + 2 * (1 - rhT) * rhT * cH * 0.52 + rhT * rhT * cH * 0.65;
+                  ctx.beginPath();
+                  ctx.ellipse(rhx, rhy, 4 * dpr, 1.5 * dpr, 0.3, 0, Math.PI * 2); ctx.stroke();
+                }
                 // River flow particles
                 for (var rfp = 0; rfp < riverPs.length; rfp++) {
                   var rp = riverPs[rfp];
                   rp.t += rp.speed;
                   if (rp.t > 1) rp.t -= 1;
                   var t2 = rp.t;
-                  // Bezier along river path
                   var rpx = (1 - t2) * (1 - t2) * cW * 0.78 + 2 * (1 - t2) * t2 * cW * 0.7 + t2 * t2 * cW * 0.55;
                   var rpy = (1 - t2) * (1 - t2) * cH * 0.42 + 2 * (1 - t2) * t2 * cH * 0.52 + t2 * t2 * cH * 0.65;
                   ctx.beginPath();
@@ -12149,19 +12231,83 @@
                   ctx.fillStyle = 'rgba(147,197,253,' + (0.4 + Math.sin(t2 * Math.PI) * 0.3) + ')';
                   ctx.fill();
                 }
+                // ── Waterfall where river meets ocean ──
+                var wfX = cW * 0.55, wfY = cH * 0.65;
+                // Falling water streaks
+                ctx.strokeStyle = 'rgba(147,197,253,0.5)'; ctx.lineWidth = 1.5 * dpr;
+                for (var wfi = 0; wfi < 5; wfi++) {
+                  var wfOffset = (wfi - 2) * 3 * dpr;
+                  var wfDrop = ((tick * 2 + wfi * 17) % 30) * dpr / 10;
+                  ctx.beginPath(); ctx.moveTo(wfX + wfOffset, wfY);
+                  ctx.lineTo(wfX + wfOffset - 1 * dpr, wfY + (4 + wfDrop) * dpr); ctx.stroke();
+                }
+                // Splash spray particles at base
+                ctx.fillStyle = 'rgba(186,230,253,0.4)';
+                for (var spi = 0; spi < 6; spi++) {
+                  var spPhase = tick * 0.06 + spi * 1.1;
+                  var spx = wfX + Math.sin(spPhase) * 6 * dpr;
+                  var spy = wfY + 3 * dpr - Math.abs(Math.sin(spPhase * 0.7)) * 5 * dpr;
+                  ctx.beginPath(); ctx.arc(spx, spy, (1 + Math.sin(spPhase) * 0.5) * dpr, 0, Math.PI * 2); ctx.fill();
+                }
+                // Mist above waterfall
+                ctx.fillStyle = 'rgba(186,230,253,0.1)';
+                ctx.beginPath(); ctx.arc(wfX, wfY - 3 * dpr, 10 * dpr, 0, Math.PI * 2); ctx.fill();
 
-                // ── Trees ──
+                // ── Trees (enhanced with bark texture, roots, fruit, leaf veins) ──
                 function drawTree(tx, ty, sz) {
-                  // Trunk
-                  ctx.fillStyle = '#92400e';
-                  ctx.fillRect((tx - 2 * sz) * dpr, (ty - 10 * sz) * dpr, 4 * sz * dpr, 12 * sz * dpr);
-                  // Canopy layers
                   var sway = Math.sin(tick * 0.01 + tx * 0.1) * 1.5;
+                  // Roots (visible underground)
+                  ctx.strokeStyle = 'rgba(120,53,15,0.5)'; ctx.lineWidth = 1.5 * sz * dpr;
+                  for (var ri = 0; ri < 4; ri++) {
+                    var rootDir = (ri - 1.5) * 8 * sz;
+                    ctx.beginPath(); ctx.moveTo(tx * dpr, (ty + 2 * sz) * dpr);
+                    ctx.quadraticCurveTo((tx + rootDir * 0.5) * dpr, (ty + 8 * sz) * dpr, (tx + rootDir) * dpr, (ty + 12 * sz + ri * 2 * sz) * dpr);
+                    ctx.stroke();
+                    // Root tips
+                    ctx.fillStyle = 'rgba(120,53,15,0.3)';
+                    ctx.beginPath(); ctx.arc((tx + rootDir) * dpr, (ty + 12 * sz + ri * 2 * sz) * dpr, 1.5 * dpr, 0, Math.PI * 2); ctx.fill();
+                  }
+                  // Trunk with bark texture
+                  var trunkGrad = ctx.createLinearGradient((tx - 2 * sz) * dpr, ty * dpr, (tx + 2 * sz) * dpr, ty * dpr);
+                  trunkGrad.addColorStop(0, '#78350f'); trunkGrad.addColorStop(0.4, '#92400e'); trunkGrad.addColorStop(0.7, '#a16207'); trunkGrad.addColorStop(1, '#78350f');
+                  ctx.fillStyle = trunkGrad;
+                  ctx.fillRect((tx - 2 * sz) * dpr, (ty - 10 * sz) * dpr, 4 * sz * dpr, 12 * sz * dpr);
+                  // Bark texture lines
+                  ctx.strokeStyle = 'rgba(60,30,10,0.3)'; ctx.lineWidth = 0.5 * dpr;
+                  for (var bi = 0; bi < 4; bi++) {
+                    var by = (ty - 8 * sz + bi * 4 * sz);
+                    ctx.beginPath(); ctx.moveTo((tx - 1.5 * sz) * dpr, by * dpr);
+                    ctx.lineTo((tx + 1.5 * sz) * dpr, (by + 1 * sz) * dpr); ctx.stroke();
+                  }
+                  // Canopy layers
                   ctx.fillStyle = '#22c55e';
                   ctx.beginPath(); ctx.arc((tx + sway) * dpr, (ty - 16 * sz) * dpr, 9 * sz * dpr, 0, Math.PI * 2); ctx.fill();
                   ctx.fillStyle = '#16a34a';
                   ctx.beginPath(); ctx.arc((tx - 4 * sz + sway * 0.7) * dpr, (ty - 12 * sz) * dpr, 7 * sz * dpr, 0, Math.PI * 2); ctx.fill();
                   ctx.beginPath(); ctx.arc((tx + 5 * sz + sway * 0.7) * dpr, (ty - 13 * sz) * dpr, 6 * sz * dpr, 0, Math.PI * 2); ctx.fill();
+                  // Dark canopy shadow
+                  ctx.fillStyle = 'rgba(22,101,52,0.3)';
+                  ctx.beginPath(); ctx.arc((tx + sway * 0.5) * dpr, (ty - 11 * sz) * dpr, 5 * sz * dpr, 0, Math.PI * 2); ctx.fill();
+                  // Leaf vein lines
+                  ctx.strokeStyle = 'rgba(21,128,61,0.25)'; ctx.lineWidth = 0.5 * dpr;
+                  for (var lvi = 0; lvi < 3; lvi++) {
+                    var lvx = tx + (lvi - 1) * 4 * sz + sway * 0.6;
+                    var lvy = ty - 14 * sz + lvi * 2 * sz;
+                    ctx.beginPath(); ctx.moveTo(lvx * dpr, lvy * dpr);
+                    ctx.lineTo((lvx + 5 * sz) * dpr, (lvy + 3 * sz) * dpr); ctx.stroke();
+                  }
+                  // Small fruit/flower dots
+                  if (Math.sin(tx) > 0) {
+                    ctx.fillStyle = 'rgba(239,68,68,0.6)';
+                    for (var fdi = 0; fdi < 3; fdi++) {
+                      ctx.beginPath(); ctx.arc((tx + (fdi - 1) * 5 * sz + sway * 0.5) * dpr, (ty - 14 * sz + fdi * 3 * sz) * dpr, 1.5 * dpr, 0, Math.PI * 2); ctx.fill();
+                    }
+                  } else {
+                    ctx.fillStyle = 'rgba(251,191,36,0.5)';
+                    for (var fli = 0; fli < 2; fli++) {
+                      ctx.beginPath(); ctx.arc((tx + (fli - 0.5) * 6 * sz + sway * 0.4) * dpr, (ty - 15 * sz + fli * 4 * sz) * dpr, 2 * dpr, 0, Math.PI * 2); ctx.fill();
+                    }
+                  }
                 }
                 drawTree(cW * 0.6 / dpr, cH * 0.62 / dpr, 1.1);
                 drawTree(cW * 0.67 / dpr, cH * 0.61 / dpr, 0.8);
@@ -12270,6 +12416,20 @@
                     ctx.setLineDash([]);
                   }
                 });
+
+                // ── Flying birds ──
+                for (var bdi = 0; bdi < 4; bdi++) {
+                  var bdx = ((tick * 0.4 + bdi * cW * 0.28) % (cW + 40 * dpr)) - 20 * dpr;
+                  var bdy = cH * (0.08 + bdi * 0.06) + Math.sin(tick * 0.015 + bdi * 2) * 8 * dpr;
+                  var bdWing = Math.sin(tick * 0.06 + bdi * 1.5) * 0.4;
+                  ctx.strokeStyle = 'rgba(30,41,59,' + (0.3 + bdi * 0.05) + ')'; ctx.lineWidth = 1.2 * dpr;
+                  // Left wing
+                  ctx.beginPath(); ctx.moveTo(bdx - 6 * dpr, bdy + bdWing * 4 * dpr);
+                  ctx.quadraticCurveTo(bdx - 3 * dpr, bdy - 3 * dpr, bdx, bdy); ctx.stroke();
+                  // Right wing
+                  ctx.beginPath(); ctx.moveTo(bdx + 6 * dpr, bdy + bdWing * 4 * dpr);
+                  ctx.quadraticCurveTo(bdx + 3 * dpr, bdy - 3 * dpr, bdx, bdy); ctx.stroke();
+                }
 
                 // ── HUD ──
                 ctx.fillStyle = 'rgba(0,0,0,0.5)';
@@ -12462,6 +12622,25 @@
                 magmaGrad.addColorStop(1, 'rgba(180,20,0,0)');
                 ctx.fillStyle = magmaGrad;
                 ctx.fillRect(0, magmaY, cW, cH - magmaY);
+                // Magma convection currents (animated flow lines)
+                ctx.strokeStyle = 'rgba(255,160,0,0.15)'; ctx.lineWidth = 2 * dpr;
+                for (var mci = 0; mci < 4; mci++) {
+                  var mcOff = ((tick * 0.3 + mci * 60) % 240) - 40;
+                  var mcXCenter = cW * (0.15 + mci * 0.22);
+                  ctx.beginPath();
+                  ctx.moveTo(mcXCenter - 20 * dpr, cH - 5 * dpr);
+                  ctx.quadraticCurveTo(mcXCenter - 15 * dpr, cH - (20 + mcOff * 0.2) * dpr, mcXCenter, cH - (30 + mcOff * 0.3) * dpr);
+                  ctx.quadraticCurveTo(mcXCenter + 15 * dpr, cH - (20 + mcOff * 0.2) * dpr, mcXCenter + 20 * dpr, cH - 5 * dpr);
+                  ctx.stroke();
+                }
+                // Heat shimmer effect near magma zone
+                for (var hsi = 0; hsi < 12; hsi++) {
+                  var hsX = (hsi / 12) * cW;
+                  var hsY = magmaY - 5 * dpr + Math.sin(tick * 0.04 + hsi * 1.3) * 4 * dpr;
+                  var hsAlpha = 0.04 + 0.03 * Math.sin(tick * 0.03 + hsi);
+                  ctx.fillStyle = 'rgba(255,150,50,' + hsAlpha + ')';
+                  ctx.beginPath(); ctx.ellipse(hsX, hsY, 10 * dpr, 3 * dpr, 0, 0, Math.PI * 2); ctx.fill();
+                }
 
                 // Lava bubbles
                 for (var lbi = 0; lbi < lavaPs.length; lbi++) {
@@ -12481,6 +12660,33 @@
                   ctx.fill();
                 }
 
+                // ── Sediment layer bands ──
+                var sedLayers = [
+                  { y: 0.68, h: 0.04, color: 'rgba(194,159,120,0.2)' },  // sandstone
+                  { y: 0.72, h: 0.03, color: 'rgba(120,100,80,0.15)' },  // clay
+                  { y: 0.75, h: 0.04, color: 'rgba(180,170,130,0.12)' }, // limestone
+                  { y: 0.79, h: 0.03, color: 'rgba(100,80,60,0.18)' },   // shale
+                  { y: 0.82, h: 0.03, color: 'rgba(140,110,90,0.1)' }    // deep sediment
+                ];
+                for (var sli = 0; sli < sedLayers.length; sli++) {
+                  var sl = sedLayers[sli];
+                  ctx.fillStyle = sl.color;
+                  ctx.beginPath(); ctx.moveTo(0, cH * sl.y);
+                  for (var slx = 0; slx < cW; slx += 6) {
+                    ctx.lineTo(slx, cH * sl.y + Math.sin(slx * 0.012 + sli * 1.5) * 2 * dpr);
+                  }
+                  ctx.lineTo(cW, cH * (sl.y + sl.h)); ctx.lineTo(0, cH * (sl.y + sl.h)); ctx.closePath(); ctx.fill();
+                  // Tiny fossil/grain marks in sedimentary layers
+                  if (sli < 3) {
+                    ctx.fillStyle = 'rgba(200,180,150,0.1)';
+                    for (var fmi = 0; fmi < 4; fmi++) {
+                      var fmx = cW * (0.15 + fmi * 0.22 + sli * 0.05);
+                      var fmy = cH * (sl.y + sl.h * 0.5);
+                      ctx.beginPath(); ctx.ellipse(fmx, fmy, 3 * dpr, 1.5 * dpr, fmi * 0.5, 0, Math.PI * 2); ctx.fill();
+                    }
+                  }
+                }
+
                 // ── Surface line ──
                 ctx.strokeStyle = '#a8a29e';
                 ctx.lineWidth = 2 * dpr;
@@ -12489,6 +12695,63 @@
                 for (var sx = 0; sx < cW; sx += 3) {
                   ctx.lineTo(sx, cH * 0.65 + Math.sin(sx * 0.02 + tick * 0.01) * 3 * dpr);
                 }
+                ctx.stroke();
+                // Surface terrain: grass tufts
+                for (var gti = 0; gti < 30; gti++) {
+                  var gtx = gti * cW / 30;
+                  var gtBase = cH * 0.65 + Math.sin(gtx * 0.02 + tick * 0.01) * 3 * dpr;
+                  var gtSway = Math.sin(tick * 0.012 + gti * 0.9) * 2 * dpr;
+                  ctx.strokeStyle = 'rgba(74,222,128,' + (0.25 + gti % 3 * 0.05) + ')'; ctx.lineWidth = 1 * dpr;
+                  ctx.beginPath(); ctx.moveTo(gtx, gtBase);
+                  ctx.lineTo(gtx + gtSway, gtBase - (3 + gti % 3) * dpr); ctx.stroke();
+                  // Second blade
+                  ctx.beginPath(); ctx.moveTo(gtx + 2 * dpr, gtBase);
+                  ctx.lineTo(gtx + 2 * dpr - gtSway * 0.8, gtBase - (2.5 + gti % 2) * dpr); ctx.stroke();
+                }
+                // Surface terrain: small mountain silhouettes
+                ctx.fillStyle = 'rgba(100,80,70,0.15)';
+                ctx.beginPath(); ctx.moveTo(cW * 0.02, cH * 0.65); ctx.lineTo(cW * 0.08, cH * 0.59); ctx.lineTo(cW * 0.14, cH * 0.65); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(cW * 0.88, cH * 0.65); ctx.lineTo(cW * 0.94, cH * 0.60); ctx.lineTo(cW * 0.99, cH * 0.65); ctx.fill();
+                // Scattered rock fragments on surface
+                ctx.fillStyle = 'rgba(168,162,158,0.25)';
+                for (var rfi = 0; rfi < 8; rfi++) {
+                  var rfx = cW * (0.05 + rfi * 0.12);
+                  var rfy = cH * 0.65 + 2 * dpr;
+                  ctx.beginPath(); ctx.ellipse(rfx, rfy, (1.5 + rfi % 3) * dpr, 1 * dpr, rfi * 0.4, 0, Math.PI * 2); ctx.fill();
+                }
+
+                // ── Volcano silhouette near igneous node ──
+                var volX = cW * 0.5, volBaseY = cH * 0.65, volTopY = cH * 0.28;
+                // Volcano body
+                ctx.fillStyle = 'rgba(55,48,42,0.5)';
+                ctx.beginPath(); ctx.moveTo(volX - 50 * dpr, volBaseY); ctx.lineTo(volX - 10 * dpr, volTopY);
+                ctx.lineTo(volX + 10 * dpr, volTopY); ctx.lineTo(volX + 50 * dpr, volBaseY); ctx.closePath(); ctx.fill();
+                // Crater rim
+                ctx.fillStyle = 'rgba(80,60,50,0.6)';
+                ctx.beginPath(); ctx.ellipse(volX, volTopY, 12 * dpr, 4 * dpr, 0, 0, Math.PI * 2); ctx.fill();
+                // Inner crater glow
+                var craterGlow = ctx.createRadialGradient(volX, volTopY + 2 * dpr, 2 * dpr, volX, volTopY + 2 * dpr, 10 * dpr);
+                craterGlow.addColorStop(0, 'rgba(255,100,0,0.6)'); craterGlow.addColorStop(1, 'rgba(255,50,0,0)');
+                ctx.fillStyle = craterGlow;
+                ctx.beginPath(); ctx.ellipse(volX, volTopY + 2 * dpr, 8 * dpr, 3 * dpr, 0, 0, Math.PI * 2); ctx.fill();
+                // Smoke/ash particles from crater
+                for (var vsi = 0; vsi < 6; vsi++) {
+                  var vsPhase = tick * 0.01 + vsi * 1.1;
+                  var vsAge = ((tick * 0.5 + vsi * 40) % 120) / 120;
+                  var vsx = volX + Math.sin(vsPhase) * (5 + vsAge * 15) * dpr;
+                  var vsy = volTopY - vsAge * 40 * dpr;
+                  var vsAlpha = (1 - vsAge) * 0.25;
+                  var vsSize = (2 + vsAge * 4) * dpr;
+                  ctx.fillStyle = 'rgba(120,110,100,' + vsAlpha + ')';
+                  ctx.beginPath(); ctx.arc(vsx, vsy, vsSize, 0, Math.PI * 2); ctx.fill();
+                }
+                // Lava flow streak down one side
+                ctx.strokeStyle = 'rgba(255,100,0,0.3)'; ctx.lineWidth = 2.5 * dpr;
+                ctx.beginPath(); ctx.moveTo(volX + 5 * dpr, volTopY + 3 * dpr);
+                ctx.quadraticCurveTo(volX + 20 * dpr, volTopY + (volBaseY - volTopY) * 0.3, volX + 35 * dpr, volTopY + (volBaseY - volTopY) * 0.6);
+                ctx.stroke();
+                // Lava glow on flow
+                ctx.strokeStyle = 'rgba(255,200,50,0.15)'; ctx.lineWidth = 4 * dpr;
                 ctx.stroke();
 
                 // ── Erosion particles ──
@@ -12549,7 +12812,7 @@
                   ctx.fillText(proc.label, labelX * dpr, labelY * dpr);
                 });
 
-                // ── Rock nodes (glowing circles) ──
+                // ── Rock nodes (with unique textures per type) ──
                 ROCKS.forEach(function (rock) {
                   var n = nodes[rock.id];
                   var isSel = selRockId === rock.id;
@@ -12573,14 +12836,68 @@
                   ctx.strokeStyle = isSel ? '#ffffff' : rock.glow;
                   ctx.lineWidth = (isSel ? 3 : 1.5) * dpr;
                   ctx.stroke();
-                  for (var si = 0; si < 12; si++) {
-                    var sa = si * Math.PI * 2 / 12 + tick * 0.002;
-                    var sr = (8 + si * 1.3 % 15) * dpr;
+                  // Rock-type-specific internal textures
+                  ctx.save();
+                  ctx.beginPath(); ctx.arc(n.x * dpr, n.y * dpr, radius * dpr, 0, Math.PI * 2); ctx.clip();
+                  if (rock.id === 'igneous') {
+                    // Crystal facets / angular shards
+                    ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 0.8 * dpr;
+                    for (var ci = 0; ci < 8; ci++) {
+                      var ca = ci * Math.PI * 2 / 8 + tick * 0.001;
+                      var cr1 = (6 + ci * 2) * dpr;
+                      var cr2 = (12 + ci * 1.5) * dpr;
+                      ctx.beginPath();
+                      ctx.moveTo(n.x * dpr + Math.cos(ca) * cr1, n.y * dpr + Math.sin(ca) * cr1);
+                      ctx.lineTo(n.x * dpr + Math.cos(ca + 0.3) * cr2, n.y * dpr + Math.sin(ca + 0.3) * cr2);
+                      ctx.lineTo(n.x * dpr + Math.cos(ca + 0.6) * cr1 * 1.3, n.y * dpr + Math.sin(ca + 0.6) * cr1 * 1.3);
+                      ctx.stroke();
+                    }
+                    // Sparkle dots on crystals
+                    ctx.fillStyle = 'rgba(255,255,255,' + (0.15 + 0.1 * Math.sin(tick * 0.05)) + ')';
+                    for (var spi2 = 0; spi2 < 5; spi2++) {
+                      var spa = spi2 * 1.3 + tick * 0.003;
+                      ctx.beginPath(); ctx.arc(n.x * dpr + Math.cos(spa) * 10 * dpr, n.y * dpr + Math.sin(spa) * 8 * dpr, 1.2 * dpr, 0, Math.PI * 2); ctx.fill();
+                    }
+                  } else if (rock.id === 'sedimentary') {
+                    // Horizontal strata / layers
+                    ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 1 * dpr;
+                    for (var li = -3; li <= 3; li++) {
+                      var ly = n.y * dpr + li * 6 * dpr;
+                      ctx.beginPath(); ctx.moveTo((n.x - radius) * dpr, ly + Math.sin(li + 1) * 2 * dpr);
+                      ctx.lineTo((n.x + radius) * dpr, ly + Math.sin(li + 2) * 2 * dpr); ctx.stroke();
+                    }
+                    // Tiny fossil shapes
+                    ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 0.7 * dpr;
+                    // Shell spiral
                     ctx.beginPath();
-                    ctx.arc(n.x * dpr + Math.cos(sa) * sr, n.y * dpr + Math.sin(sa) * sr, 1.5 * dpr, 0, Math.PI * 2);
-                    ctx.fillStyle = 'rgba(255,255,255,0.15)';
-                    ctx.fill();
+                    for (var fsa = 0; fsa < Math.PI * 3; fsa += 0.3) {
+                      var fsr = 2 + fsa * 1.2;
+                      ctx.lineTo(n.x * dpr + 8 * dpr + Math.cos(fsa) * fsr, n.y * dpr - 5 * dpr + Math.sin(fsa) * fsr);
+                    }
+                    ctx.stroke();
+                    // Leaf imprint
+                    ctx.beginPath(); ctx.ellipse(n.x * dpr - 8 * dpr, n.y * dpr + 5 * dpr, 5 * dpr, 2.5 * dpr, 0.3, 0, Math.PI * 2); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo((n.x - 11) * dpr, (n.y + 5) * dpr); ctx.lineTo((n.x - 5) * dpr, (n.y + 5) * dpr); ctx.stroke();
+                  } else if (rock.id === 'metamorphic') {
+                    // Wavy foliation bands
+                    ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 1.2 * dpr;
+                    for (var fi = -2; fi <= 2; fi++) {
+                      ctx.beginPath();
+                      for (var fx = -radius; fx <= radius; fx += 3) {
+                        var fy = fi * 7 + Math.sin(fx * 0.15 + fi * 0.8) * 4;
+                        ctx.lineTo((n.x + fx) * dpr, (n.y + fy) * dpr);
+                      }
+                      ctx.stroke();
+                    }
+                    // Garnet/mineral dots
+                    ctx.fillStyle = 'rgba(200,130,255,0.2)';
+                    for (var gdi = 0; gdi < 4; gdi++) {
+                      var gda = gdi * Math.PI / 2 + 0.5;
+                      ctx.beginPath(); ctx.arc(n.x * dpr + Math.cos(gda) * 12 * dpr, n.y * dpr + Math.sin(gda) * 9 * dpr, 2 * dpr, 0, Math.PI * 2); ctx.fill();
+                    }
                   }
+                  ctx.restore();
+                  // Emoji + label
                   ctx.font = (18 * dpr) + 'px sans-serif';
                   ctx.textAlign = 'center';
                   ctx.fillText(rock.emoji, n.x * dpr, n.y * dpr + 7 * dpr);
