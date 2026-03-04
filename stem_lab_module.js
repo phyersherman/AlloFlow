@@ -17060,7 +17060,17 @@
                           var nIdx = (ri + intv) % 12; var nOct = oct + 3 + Math.floor((ri + intv) / 12);
                           strings.push({ note: NOTE_NAMES[nIdx], oct: nOct, freq: noteFreq(NOTE_NAMES[nIdx], nOct) });
                         });
-                        return strings.slice(0, 16).map(function (s, si) {
+                        // Octave +4
+                        chordData.intervals.forEach(function (intv) {
+                          var nIdx = (ri + intv) % 12; var nOct = oct + 4 + Math.floor((ri + intv) / 12);
+                          strings.push({ note: NOTE_NAMES[nIdx], oct: nOct, freq: noteFreq(NOTE_NAMES[nIdx], nOct) });
+                        });
+                        // Octave +5
+                        chordData.intervals.forEach(function (intv) {
+                          var nIdx = (ri + intv) % 12; var nOct = oct + 5 + Math.floor((ri + intv) / 12);
+                          strings.push({ note: NOTE_NAMES[nIdx], oct: nOct, freq: noteFreq(NOTE_NAMES[nIdx], nOct) });
+                        });
+                        return strings.slice(0, 24).map(function (s, si) {
                           var isPlaying = (d.omniStrumActive || []).indexOf(si) !== -1;
                           return React.createElement("div", {
                             key: si,
@@ -17077,7 +17087,7 @@
                               }
                             },
                             className: "flex-1 rounded-lg cursor-pointer transition-all select-none " + (isPlaying ? 'bg-amber-500 shadow-lg scale-y-105' : 'bg-gradient-to-b from-amber-300 to-amber-400 hover:from-amber-400 hover:to-amber-500'),
-                            style: { height: '72px', minWidth: '20px' }
+                            style: { height: '80px', minWidth: '14px' }
                           },
                             React.createElement("div", { className: "text-center pt-1 text-[8px] font-bold " + (isPlaying ? 'text-white' : 'text-amber-800') }, s.note + s.oct),
                             React.createElement("div", { className: "w-px mx-auto h-10 " + (isPlaying ? 'bg-white' : 'bg-amber-600 opacity-40') })
