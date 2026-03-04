@@ -2528,7 +2528,7 @@
                   const snap = {
                     id: 'snap-' + Date.now(),
                     tool: 'volume',
-                    label: t('stem.volume.volume') + (cubeBuilderMode === 'slider' ? cubeDims.l + '\u00d7' + cubeDims.w + '\u00d7' + cubeDims.h : cubePositions.size + ' cubes'),
+                    label: 'Volume: ' + (cubeBuilderMode === 'slider' ? cubeDims.l + '\u00d7' + cubeDims.w + '\u00d7' + cubeDims.h : cubePositions.size + ' cubes'),
                     mode: cubeBuilderMode,
                     data: cubeBuilderMode === 'slider' ? {
                       dims: {
@@ -3375,7 +3375,7 @@
                   const snap = {
                     id: 'snap-' + Date.now(),
                     tool: 'coordinate',
-                    label: t('stem.coordinate.grid') + gridPoints.length + ' points',
+                    label: 'Grid: ' + gridPoints.length + ' points',
                     data: {
                       points: [...gridPoints]
                     },
@@ -3612,7 +3612,7 @@
                   const snap = {
                     id: 'snap-' + Date.now(),
                     tool: 'protractor',
-                    label: t('stem.angle.angle') + angleValue + '\u00b0',
+                    label: 'Angle: ' + angleValue + '\u00b0',
                     data: {
                       angle: angleValue
                     },

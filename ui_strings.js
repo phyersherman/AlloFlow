@@ -5415,18 +5415,6 @@
         "stem_assessment_saved_to_resources": "STEM Assessment saved to resources (",
           "stem_assessment": "STEM Assessment: "
     },
-    "volume": {
-        "volume": "Volume: "
-    },
-    "place_value": {
-        "base10": "Base-10: "
-    },
-    "coordinate": {
-        "grid": "Grid: "
-    },
-    "angle": {
-        "angle": "Angle: "
-    },
     "calculus": {
         "left": "Left",
           "midpoint": "Midpoint",
