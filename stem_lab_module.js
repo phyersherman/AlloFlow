@@ -1634,7 +1634,7 @@
                   'Generate EXACTLY ' + block.quantity + ' ' + blockLabel + ' math problems for grade ' + gradeLevel + '.\n' +
                   (block.directive && block.directive !== 'general' ? 'Focus area: ' + block.directive + '.\n' : '') +
                   'Subject: ' + (mathSubject || 'General Math') + '.\n\n' +
-                  'Return a JSON object: {"title":"<section title>","problems":[{"question":"...","expression":"...","answer":<number or string>,"steps":[{"explanation":"...","latex":"..."}],"realWorld":"..."}]}\n' +
+                  'Return a JSON object: {"title":"<section title>","problems":[{"question":"...","expression":"...","answer":<number or string>,"steps":[{"explanation":"...","latex":"..."}],"realWorld":"1-2 sentence real-life connection naming a specific career or situation where this skill is used — NOT a word problem restatement"}]}\n' +
                   'IMPORTANT: Return ONLY valid JSON. Every problem MUST have question, answer, and steps.';
                 try {
                   const result = await callGemini(blockPrompt, true);
