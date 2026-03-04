@@ -357,6 +357,7 @@
         if (!labToolData._persisted) return;
         try {
           var _toSave = {};
+          // @tool waterCycle
           ['calculus', 'wave', 'physics', 'punnett', 'chemBalance', 'galaxy', 'rockCycle', 'waterCycle', '_tutorialSeen'].forEach(function (k) {
             if (labToolData[k]) _toSave[k] = labToolData[k];
           });
@@ -830,9 +831,37 @@
         // Shape geometry factory
         var mkGeo = function (shape) {
           if (_styleMode === 'bricks') {
-            // Brick mode: all shapes become rounded boxes (beveled)
+            // Brick mode: shapes keep their form but get brick-scale sizing (gap for stud seams)
             switch (shape) {
               case 'slab': return new THREE.BoxGeometry(0.95, 0.45, 0.95, 2, 1, 2);
+              case 'ramp': {
+                var rS = new THREE.Shape();
+                rS.moveTo(-0.475, -0.475);
+                rS.lineTo(0.475, -0.475);
+                rS.lineTo(0.475, 0.475);
+                rS.closePath();
+                var rG = new THREE.ExtrudeGeometry(rS, { depth: 0.95, bevelEnabled: false });
+                rG.center();
+                return rG;
+              }
+              case 'column': return new THREE.CylinderGeometry(0.33, 0.33, 0.95, 16);
+              case 'arch': {
+                var aG = new THREE.TorusGeometry(0.42, 0.12, 8, 16, Math.PI);
+                aG.rotateX(Math.PI / 2);
+                return aG;
+              }
+              case 'roof': {
+                var rfS = new THREE.Shape();
+                rfS.moveTo(-0.475, -0.33);
+                rfS.lineTo(0.475, -0.33);
+                rfS.lineTo(0, 0.33);
+                rfS.closePath();
+                var rfG = new THREE.ExtrudeGeometry(rfS, { depth: 0.95, bevelEnabled: false });
+                rfG.center();
+                return rfG;
+              }
+              case 'pyramid': return new THREE.ConeGeometry(0.475, 0.95, 4);
+              case 'dome': return new THREE.SphereGeometry(0.475, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2);
               default: return new THREE.BoxGeometry(0.95, 0.95, 0.95, 2, 2, 2);
             }
           }
@@ -1444,6 +1473,7 @@
         }, /*#__PURE__*/React.createElement("span", {
           className: "text-[10px] text-slate-500 font-bold uppercase"
         }, "Tools:"), [{
+          // @tool volume
           id: 'volume',
           icon: '📦',
           label: t('stem.assessment.volume_explorer')
@@ -1452,6 +1482,7 @@
           icon: '📏',
           label: t('stem.assessment.number_line')
         }, {
+          // @tool areamodel
           id: 'areamodel',
           icon: '🟧',
           label: t('stem.assessment.area_model')
@@ -1584,15 +1615,94 @@
               addToast(t('stem.fluency.fluency_drill_started') + fluencyBlocks.reduce((s, b) => s + b.quantity, 0) + ' problems', 'info');
               return;
             }
-            const prompt = assessmentBlocks.map((b, i) => i + 1 + '. ' + b.type.replace('_', ' ') + ' (' + b.quantity + '): ' + (b.directive || 'general')).join('\n');
-            setMathInput('Create an assessment with these sections:\n' + prompt);
-            setMathMode('Problem Set Generator');
-            setMathQuantity(assessmentBlocks.reduce((s, b) => s + b.quantity, 0));
+            const nonFluencyBlocks = assessmentBlocks.filter(b => b.type !== 'fluency');
+            setMathInput('Building assessment: ' + nonFluencyBlocks.length + ' sections...');
+            setMathMode('Freeform Builder');
             setActiveView('math');
             setShowStemLab(false);
-            setTimeout(() => {
-              if (typeof handleGenerateMath === 'function') handleGenerateMath('Create an assessment with these sections:\n' + prompt);
-            }, 300);
+            setIsProcessing(true);
+            setGeneratedContent(null);
+
+            // Chunked generation: one callGemini per block, merge results, set state once
+            (async () => {
+              const allProblems = [];
+              let blockErrors = 0;
+              for (let bi = 0; bi < nonFluencyBlocks.length; bi++) {
+                const block = nonFluencyBlocks[bi];
+                const blockLabel = block.type.replace(/_/g, ' ');
+                setGenerationStep('Generating section ' + (bi + 1) + '/' + nonFluencyBlocks.length + ': ' + blockLabel + ' (' + block.quantity + ')...');
+                const blockPrompt = 'You are an Expert Math Curriculum Designer.\n' +
+                  'Generate EXACTLY ' + block.quantity + ' ' + blockLabel + ' math problems for grade ' + gradeLevel + '.\n' +
+                  (block.directive && block.directive !== 'general' ? 'Focus area: ' + block.directive + '.\n' : '') +
+                  'Subject: ' + (mathSubject || 'General Math') + '.\n\n' +
+                  'Return a JSON object: {"title":"<section title>","problems":[{"question":"...","expression":"...","answer":<number or string>,"steps":[{"explanation":"...","latex":"..."}],"realWorld":"..."}]}\n' +
+                  'IMPORTANT: Return ONLY valid JSON. Every problem MUST have question, answer, and steps.';
+                try {
+                  const result = await callGemini(blockPrompt, true);
+                  if (!result) throw new Error('Empty response');
+                  // Parse the response — inline cleanJson logic
+                  let cleaned = result.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+                  const startBrace = cleaned.indexOf('{');
+                  if (startBrace > 0) cleaned = cleaned.substring(startBrace);
+                  const endBrace = cleaned.lastIndexOf('}');
+                  if (endBrace > 0) cleaned = cleaned.substring(0, endBrace + 1);
+                  // Try jsonrepair first if available, then raw parse
+                  let parsed = null;
+                  if (typeof window !== 'undefined' && window.jsonrepair) {
+                    try { parsed = JSON.parse(window.jsonrepair(cleaned)); } catch (e) { /* fall through */ }
+                  }
+                  if (!parsed) parsed = JSON.parse(cleaned);
+                  const problems = Array.isArray(parsed.problems) ? parsed.problems : (parsed.question ? [parsed] : []);
+                  if (problems.length > 0) {
+                    // Tag each problem with its block type
+                    problems.forEach(p => { p._blockType = blockLabel; });
+                    allProblems.push(...problems);
+                    console.error('[ASSESS] Block ' + (bi + 1) + ' (' + blockLabel + '): ' + problems.length + ' problems parsed');
+                  } else {
+                    throw new Error('No problems in parsed response');
+                  }
+                } catch (e) {
+                  console.error('[ASSESS] Block ' + (bi + 1) + ' (' + blockLabel + ') failed:', e.message);
+                  blockErrors++;
+                }
+                // Delay between chunks to avoid rate limiting
+                if (bi < nonFluencyBlocks.length - 1) {
+                  await new Promise(r => setTimeout(r, 500));
+                }
+              }
+              setIsProcessing(false);
+              setGenerationStep(null);
+              if (allProblems.length === 0) {
+                addToast('Assessment generation failed — no problems could be generated. Try fewer sections.', 'error');
+              } else {
+                // Normalize steps
+                allProblems.forEach(p => {
+                  if (!Array.isArray(p.steps)) p.steps = [];
+                  p.steps = p.steps.map(s => typeof s === 'string' ? { explanation: s, latex: '' } : s);
+                });
+                const normalizedContent = {
+                  title: 'Assessment: ' + (mathSubject || 'General Math') + ' (Grade ' + gradeLevel + ')',
+                  problems: allProblems,
+                  graphData: null
+                };
+                const newItem = {
+                  id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                  type: 'math',
+                  data: normalizedContent,
+                  meta: (mathSubject || 'General Math') + ' - Assessment',
+                  title: normalizedContent.title,
+                  timestamp: new Date(),
+                  config: {}
+                };
+                setGeneratedContent({ type: 'math', data: normalizedContent, id: newItem.id });
+                setHistory(prev => [...prev, newItem]);
+                if (blockErrors > 0) {
+                  addToast('Assessment partially generated — ' + allProblems.length + ' problems (' + blockErrors + ' section(s) failed)', 'warning');
+                } else {
+                  addToast('✅ Assessment complete! ' + allProblems.length + ' problems across ' + nonFluencyBlocks.length + ' sections', 'success');
+                }
+              }
+            })();
           },
           className: "flex-1 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-bold rounded-xl text-sm hover:from-indigo-700 hover:to-blue-700 transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-2"
         }, /*#__PURE__*/React.createElement(Sparkles, {
@@ -1733,6 +1843,7 @@
               ready: true
             },
             {
+              // @tool base10
               id: 'base10',
               icon: '🧮',
               label: 'Math Manipulatives',
@@ -1741,6 +1852,7 @@
               ready: true
             },
             {
+              // @tool coordinate
               id: 'coordinate',
               icon: '📍',
               label: t('stem.tools_menu.coordinate_grid'),
@@ -1749,6 +1861,7 @@
               ready: true
             },
             {
+              // @tool protractor
               id: 'protractor',
               icon: '📐',
               label: t('stem.tools_menu.angle_explorer'),
@@ -1767,6 +1880,7 @@
               color: 'amber', ready: true
             },
             {
+              // @tool multtable
               id: 'multtable',
               icon: '🔢',
               label: t('stem.tools_menu.multiplication_table'),
@@ -1776,6 +1890,7 @@
             },
             { id: '_cat_AdvancedMath', icon: '', label: t('stem.tools_menu.advanced_math'), desc: '', color: 'slate', category: true },
             {
+              // @tool funcGrapher
               id: 'funcGrapher', icon: '📈', label: t('stem.tools_menu.function_grapher'),
               desc: 'Plot linear, quadratic, and trig functions. Adjust coefficients in real-time.',
               color: 'indigo', ready: true
@@ -1813,16 +1928,19 @@
             },
             { id: '_cat_Life&EarthScience', icon: '', label: t('stem.tools_menu.life_earth_science'), desc: '', color: 'slate', category: true },
             {
+              // @tool cell
               id: 'cell', icon: '🔬', label: t('stem.tools_menu.cell_simulator'),
               desc: 'Microscope mode: observe, control, and quiz on living organisms. Earn XP!',
               color: 'green', ready: true
             },
             {
+              // @tool solarSystem
               id: 'solarSystem', icon: '\uD83C\uDF0D', label: 'Solar System',
               desc: '3D interactive solar system with orbit, zoom, planet facts and quiz.',
               color: 'blue', ready: true
             },
             {
+              // @tool galaxy
               id: 'galaxy', icon: '\uD83C\uDF0C', label: t('stem.tools_menu.galaxy_explorer'),
               desc: 'Fly through a 3D Milky Way. Discover star types, nebulae, and black holes.',
               color: 'indigo', ready: true
@@ -1832,6 +1950,7 @@
               desc: 'Experience 13.8 billion years of cosmic history, from the Big Bang to the far future.',
               color: 'violet', ready: true
             },
+            // @tool rocks
             { id: 'rocks', icon: '🪨', label: t('stem.tools_menu.rocks_minerals'), desc: t('stem.tools_menu.interactive_rock_cycle_mineral_properties'), color: 'amber', ready: true },
             {
               id: 'waterCycle', icon: '\uD83C\uDF0A', label: t('stem.tools_menu.water_cycle'),
@@ -1844,6 +1963,7 @@
               color: 'stone', ready: true
             },
             {
+              // @tool ecosystem
               id: 'ecosystem', icon: '\uD83D\uDC3A', label: 'Ecosystem',
               desc: 'Predator-prey dynamics with Lotka-Volterra simulation. Adjust birth and death rates.',
               color: 'emerald', ready: true
@@ -1874,16 +1994,19 @@
             },
             { id: '_cat_Physics&Chemistry', icon: '', label: t('stem.tools_menu.physics_chemistry'), desc: '', color: 'slate', category: true },
             {
+              // @tool wave
               id: 'wave', icon: '🌊', label: t('stem.tools_menu.wave_simulator'),
               desc: 'Adjust frequency, amplitude, wavelength. Explore interference patterns.',
               color: 'cyan', ready: true
             },
             {
+              // @tool circuit
               id: 'circuit', icon: '🔌', label: t('stem.tools_menu.circuit_builder'),
               desc: 'Build circuits with resistors and batteries. Calculate voltage and current.',
               color: 'yellow', ready: true
             },
             {
+              // @tool chemBalance
               id: 'chemBalance', icon: '⚗️', label: t('stem.tools_menu.equation_balancer'),
               desc: t('stem.tools_menu.balance_chemical_equations_with_visual'),
               color: 'lime', ready: true
@@ -1894,11 +2017,13 @@
               color: 'violet', ready: true
             },
             {
+              // @tool physics
               id: 'physics', icon: '⚡', label: t('stem.tools_menu.physics_simulator'),
               desc: 'Projectile motion, velocity vectors, and trajectory visualization.',
               color: 'sky', ready: true
             },
             {
+              // @tool dataPlot
               id: 'dataPlot', icon: '📊', label: t('stem.tools_menu.data_plotter'),
               desc: t('stem.tools_menu.plot_data_points_fit_trend'),
               color: 'teal', ready: true
@@ -1920,6 +2045,7 @@
 
             {
 
+              // @tool musicSynth
               id: 'musicSynth', icon: '🎹', label: t('stem.tools_menu.music_synthesizer'),
 
               desc: 'Play a piano, build beats, and learn the science of sound with real-time waveform visualization.',
