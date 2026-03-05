@@ -940,6 +940,8 @@
       }, [blendingOptions]);
       const [orthographyOptions, setOrthographyOptions] = React.useState([]);
       const [isolationState, setIsolationState] = React.useState(null);
+      const isolationStateRef = React.useRef(null);
+      React.useEffect(() => { isolationStateRef.current = isolationState; }, [isolationState]);
       const [ttsSpeed, setTtsSpeed] = React.useState(wordSoundsTtsSpeed || 1.0);
       const modalRef = React.useRef(null);
       const submissionLockRef = React.useRef(false);
@@ -1524,10 +1526,10 @@
             const phoneme = wordSoundsPhonemes?.phonemes?.[i];
             setBlendingProgress(i + 1);
             await handleAudio(phoneme);
-            await new Promise((r) => setTimeout(r, 900));
+            await new Promise((r) => setTimeout(r, 500));
           }
           setBlendingProgress((wordSoundsPhonemes.phonemes?.length || 0) + 1);
-          await new Promise((r) => setTimeout(r, 400));
+          await new Promise((r) => setTimeout(r, 200));
           const whichWordAudio =
             window.__ALLO_INSTRUCTION_AUDIO["which_word_did_you_hear"];
           if (whichWordAudio) {
@@ -1926,7 +1928,7 @@
                     for (let i = 0; i < opts.length; i++) {
                       setPlayingIndex(i);
                       const audioPromise = onPlayAudio(opts[i], true);
-                      const minDelay = new Promise((r) => setTimeout(r, 800));
+                      const minDelay = new Promise((r) => setTimeout(r, 550));
                       await Promise.all([audioPromise, minDelay]);
                     }
                     setPlayingIndex(null);
@@ -2307,7 +2309,7 @@
                   setFoundWords([]);
                   setIsComplete(false);
                   const playAllOptions = async () => {
-                    await new Promise((r) => setTimeout(r, 500));
+                    await new Promise((r) => setTimeout(r, 250));
                     for (let i = 0; i < mixed_shuffled.length; i++) {
                       if (!isMountedRef.current) break;
                       setActiveIndex(i);
@@ -2315,7 +2317,7 @@
                         await onPlayAudio(mixed_shuffled[i].text);
                       } catch (e) { }
                       setActiveIndex(null);
-                      await new Promise((r) => setTimeout(r, 300));
+                      await new Promise((r) => setTimeout(r, 200));
                     }
                   };
                   playAllOptions();
@@ -3965,7 +3967,7 @@
           };
           if (retryCount === 0) setPhonemeError(null);
           const cached = wordDataCache.current.get(word.toLowerCase());
-          if (cached) {
+          if (cached && !forceRefresh) {
             applyWordDataToState(cached);
             resolveRequest(cached);
             cleanupRequest();
@@ -4451,8 +4453,8 @@
           return [`${word}s`, `${word}ed`, `un${word}`];
         const distractors = [];
         const lowerWord = word.toLowerCase();
-        if (/(.)/.test(lowerWord)) {
-          distractors.push(lowerWord.replace(/(.)/, "$1"));
+        if (/(.)\1/.test(lowerWord)) {
+          distractors.push(lowerWord.replace(/(.)\1/, "$1"));
         } else if (lowerWord.length > 2) {
           distractors.push(
             lowerWord.slice(0, 2) + lowerWord[1] + lowerWord.slice(2),
@@ -4560,6 +4562,34 @@
                         handleAudio(d, false).catch(() => { }),
                       ),
                     );
+                  }
+                  // Pre-fetch Word Families rime members + distractors
+                  const _tw = (targetWord || "").toLowerCase();
+                  let _rimeMembers = [];
+                  const _aiRime = wordEntry.rimeFamilyMembers || (phonemeData && phonemeData.rimeFamilyMembers);
+                  if (_aiRime && _aiRime.words && _aiRime.words.length >= 3) {
+                    _rimeMembers = _aiRime.words.filter((w) => w.toLowerCase() !== _tw);
+                  }
+                  if (_rimeMembers.length < 2 && typeof RIME_FAMILIES !== "undefined") {
+                    for (const [rime, members] of Object.entries(RIME_FAMILIES)) {
+                      if (_tw.endsWith(rime) && _tw.length > rime.length) {
+                        _rimeMembers = members.filter((w) => w !== _tw);
+                        const _rk = Object.keys(RIME_FAMILIES);
+                        const _ri = _rk.indexOf(rime);
+                        const _adj = _rk.filter((r) => r !== rime && (r[0] === rime[0] || Math.abs(_rk.indexOf(r) - _ri) <= 3));
+                        for (const ar of _adj.slice(0, 4)) {
+                          _rimeMembers.push(...(RIME_FAMILIES[ar] || []).slice(0, 3));
+                        }
+                        break;
+                      }
+                    }
+                  }
+                  if (_rimeMembers.length > 0) {
+                    const _uniqueRime = [...new Set(_rimeMembers)].slice(0, 12);
+                    await Promise.all(
+                      _uniqueRime.map((w) => handleAudio(w, false).catch(() => { })),
+                    );
+                    debugLog("🏠 [Prefetch] Pre-fetched", _uniqueRime.length, "word family audio for:", _tw);
                   }
                   const keys = [
                     wordEntry.firstSound,
@@ -4785,6 +4815,25 @@ EXAMPLES:
                   await Promise.all(
                     uniqueKeysToFetch.map((k) => handleAudio(k, false).catch(() => { })),
                   );
+                  // Pre-fetch Word Families options from AI rime data + RIME_FAMILIES
+                  const _tw2 = (targetWord || "").toLowerCase();
+                  let _rimeWords2 = [];
+                  if (phonemeData?.rimeFamilyMembers?.words?.length >= 3) {
+                    _rimeWords2 = phonemeData.rimeFamilyMembers.words.filter((w) => w.toLowerCase() !== _tw2);
+                  }
+                  if (_rimeWords2.length < 2 && typeof RIME_FAMILIES !== "undefined") {
+                    for (const [rime, members] of Object.entries(RIME_FAMILIES)) {
+                      if (_tw2.endsWith(rime) && _tw2.length > rime.length) {
+                        _rimeWords2 = members.filter((w) => w !== _tw2);
+                        break;
+                      }
+                    }
+                  }
+                  if (_rimeWords2.length > 0) {
+                    await Promise.all(
+                      [...new Set(_rimeWords2)].slice(0, 8).map((w) => handleAudio(w, false).catch(() => { })),
+                    );
+                  }
                 } catch (e) {
                   warnLog("Caught error:", e?.message || e);
                 }
@@ -5223,6 +5272,9 @@ Use digraphs (sh,ch,th) as single sounds. Use ā,ē,ī,ō,ū for long vowels.`;
           }
           if (preloadedWordCache.current) {
             preloadedWordCache.current.delete(targetWord.toLowerCase());
+          }
+          if (wordDataCache.current) {
+            wordDataCache.current.delete(targetWord.toLowerCase());
           }
           if (typeof removeAudioFromStorage === "function") {
             removeAudioFromStorage(targetWord);
@@ -5827,6 +5879,9 @@ Use digraphs (sh,ch,th) as single sounds. Use ā,ē,ī,ō,ū for long vowels.`;
           lastWordForIsolation.current = currentWord;
           return;
         }
+        if (!isNewWord && isolationState?.isoOptions?.length > 0) {
+          return;
+        }
         if (isNewWord) {
           debugLog(
             "⚠️ Generating new isolation options (fallback - not pre-generated)",
@@ -6007,6 +6062,7 @@ Use digraphs (sh,ch,th) as single sounds. Use ā,ē,ī,ō,ū for long vowels.`;
             word: currentWordSoundsWord,
             currentPosition,
             correctSound: effectiveCorrect,
+            correctAnswer: effectiveCorrect,
             isoOptions,
           });
           isoOptions.forEach((phoneme) => {
@@ -6021,6 +6077,7 @@ Use digraphs (sh,ch,th) as single sounds. Use ā,ē,ī,ō,ū for long vowels.`;
       React.useEffect(() => {
         if (wordSoundsActivity !== "isolation") return;
         if (!currentWordSoundsWord) return;
+        if (!isolationState) return; // Don't fire recovery on initial load — only recover stale state
         if (
           isolationState?.word?.toLowerCase() ===
           currentWordSoundsWord?.toLowerCase()
@@ -6038,28 +6095,19 @@ Use digraphs (sh,ch,th) as single sounds. Use ā,ē,ī,ō,ū for long vowels.`;
           const pos = Math.floor(Math.random() * phonemes.length);
           const correct = phonemes[pos] || currentWordSoundsWord[0] || "a";
           const dists = phonemes.filter((p) => p !== correct).slice(0, 5);
-          while (dists.length < 5)
-            dists.push(
-              [
-                "b",
-                "d",
-                "f",
-                "g",
-                "k",
-                "l",
-                "m",
-                "n",
-                "p",
-                "r",
-                "s",
-                "t",
-                "a",
-                "e",
-                "i",
-                "o",
-                "u",
-              ][Math.floor(Math.random() * 17)],
-            );
+          {
+            const _pool = ["b", "d", "f", "g", "k", "l", "m", "n", "p", "r", "s", "t", "a", "e", "i", "o", "u"];
+            const _used = new Set([correct, ...dists].map(x => x?.toLowerCase()));
+            const _shuffled = [..._pool].sort(() => Math.random() - 0.5);
+            for (const _p of _shuffled) {
+              if (dists.length >= 5) break;
+              if (!_used.has(_p)) { dists.push(_p); _used.add(_p); }
+            }
+            while (dists.length < 5) {
+              const _fallback = _pool[Math.floor(Math.random() * _pool.length)];
+              if (!_used.has(_fallback)) { dists.push(_fallback); _used.add(_fallback); }
+            }
+          }
           setIsolationState({
             word: currentWordSoundsWord,
             currentPosition: pos,
@@ -6079,25 +6127,25 @@ Use digraphs (sh,ch,th) as single sounds. Use ā,ē,ī,ō,ū for long vowels.`;
           const timer = setTimeout(async () => {
             try {
               if (!isMountedRef.current) return;
-              if (!isMountedRef.current) return;
               lastPlayedWord.current = playKey;
               if (wordSoundsActivity === "blending") {
                 await playBlending();
               } else {
                 await handleAudio(currentWordSoundsWord);
+                const isoSnap = isolationStateRef.current;
                 if (
                   wordSoundsActivity === "isolation" &&
-                  isolationState?.isoOptions?.length > 0
+                  isoSnap?.isoOptions?.length > 0
                 ) {
-                  await new Promise((r) => setTimeout(r, 600));
+                  await new Promise((r) => setTimeout(r, 350));
                   for (
                     let i = 0;
-                    i < (isolationState?.isoOptions?.length || 0);
+                    i < (isoSnap?.isoOptions?.length || 0);
                     i++
                   ) {
                     setHighlightedIsoIndex(i);
-                    await handleAudio(isolationState.isoOptions[i]);
-                    await new Promise((r) => setTimeout(r, 450));
+                    await handleAudio(isoSnap.isoOptions[i]);
+                    await new Promise((r) => setTimeout(r, 300));
                   }
                   setHighlightedIsoIndex(null);
                 }
@@ -6107,13 +6155,13 @@ Use digraphs (sh,ch,th) as single sounds. Use ā,ē,ī,ō,ū for long vowels.`;
                 rhymeOptionsRef.current &&
                 rhymeOptionsRef.current.length > 0
               ) {
-                await new Promise((r) => setTimeout(r, 300));
+                await new Promise((r) => setTimeout(r, 150));
                 for (let i = 0; i < rhymeOptionsRef.current.length; i++) {
                   setHighlightedRhymeIndex(i);
                   const opt = rhymeOptionsRef.current[i];
                   const text = typeof opt === "string" ? opt : opt.text;
                   await handleAudio(text);
-                  await new Promise((r) => setTimeout(r, 400));
+                  await new Promise((r) => setTimeout(r, 250));
                 }
                 setHighlightedRhymeIndex(null);
               }
@@ -6141,10 +6189,6 @@ Use digraphs (sh,ch,th) as single sounds. Use ā,ē,ī,ō,ū for long vowels.`;
           setWordSoundsFeedback?.(null);
           setUserAnswer("");
           setAttempts(0);
-          if (isProbeMode) {
-            probeStartTimeRef.current = null;
-            setProbeElapsed(0);
-          }
           if (isProbeMode) {
             probeStartTimeRef.current = null;
             setProbeElapsed(0);
@@ -6485,7 +6529,7 @@ Use digraphs (sh,ch,th) as single sounds. Use ā,ē,ī,ō,ū for long vowels.`;
       React.useEffect(() => {
         if (!playInstructions || isMinimized || !currentWordSoundsWord) return;
         if (showReviewPanel) return;
-        if (wordSoundsActivity === "orthography") return;
+        // orthography now gets instructions like all other activities
         let cancelled = false;
         setIsPlayingAudio(true);
         const runInstructionSequence = async () => {
@@ -6583,7 +6627,13 @@ Use digraphs (sh,ch,th) as single sounds. Use ā,ē,ī,ō,ū for long vowels.`;
                 );
                 if (cancelled) return;
                 await new Promise((r) => setTimeout(r, 200));
+                const letterNameKey = "letter_" + lowLet;
                 if (
+                  typeof window.__ALLO_INSTRUCTION_AUDIO !== "undefined" &&
+                  window.__ALLO_INSTRUCTION_AUDIO[letterNameKey]
+                ) {
+                  await handleAudio(window.__ALLO_INSTRUCTION_AUDIO[letterNameKey]);
+                } else if (
                   typeof LETTER_NAME_AUDIO !== "undefined" &&
                   LETTER_NAME_AUDIO[lowLet]
                 ) {
@@ -6598,6 +6648,11 @@ Use digraphs (sh,ch,th) as single sounds. Use ā,ē,ī,ō,ū for long vowels.`;
                   await new Promise((r) => setTimeout(r, 200));
                 }
                 await handleAudio(currentWordSoundsWord);
+              } else if (
+                typeof window.__ALLO_INSTRUCTION_AUDIO !== "undefined" &&
+                window.__ALLO_INSTRUCTION_AUDIO["letter_" + lowLet]
+              ) {
+                instructionAudioSrc = window.__ALLO_INSTRUCTION_AUDIO["letter_" + lowLet];
               } else if (
                 typeof LETTER_NAME_AUDIO !== "undefined" &&
                 LETTER_NAME_AUDIO[lowLet]
@@ -6657,8 +6712,18 @@ Use digraphs (sh,ch,th) as single sounds. Use ā,ē,ī,ō,ū for long vowels.`;
                   await handleAudio(
                     window.__ALLO_INSTRUCTION_AUDIO["sound_match_start"],
                   );
-                  await new Promise((r) => setTimeout(r, 300));
+                  await new Promise((r) => setTimeout(r, 200));
                   await handleAudio(targetSound);
+                  if (currentWordSoundsWord) {
+                    await new Promise((r) => setTimeout(r, 150));
+                    if (window.__ALLO_INSTRUCTION_AUDIO["as_in"]) {
+                      await handleAudio(window.__ALLO_INSTRUCTION_AUDIO["as_in"]);
+                    } else {
+                      await handleAudio("as in");
+                    }
+                    await new Promise((r) => setTimeout(r, 100));
+                    await handleAudio(currentWordSoundsWord);
+                  }
                 } else {
                   instructionText = `Find words that start with the ${targetSound} sound`;
                 }
@@ -6670,8 +6735,18 @@ Use digraphs (sh,ch,th) as single sounds. Use ā,ē,ī,ō,ū for long vowels.`;
                   await handleAudio(
                     window.__ALLO_INSTRUCTION_AUDIO["sound_match_end"],
                   );
-                  await new Promise((r) => setTimeout(r, 300));
+                  await new Promise((r) => setTimeout(r, 200));
                   await handleAudio(targetSound);
+                  if (currentWordSoundsWord) {
+                    await new Promise((r) => setTimeout(r, 150));
+                    if (window.__ALLO_INSTRUCTION_AUDIO["as_in"]) {
+                      await handleAudio(window.__ALLO_INSTRUCTION_AUDIO["as_in"]);
+                    } else {
+                      await handleAudio("as in");
+                    }
+                    await new Promise((r) => setTimeout(r, 100));
+                    await handleAudio(currentWordSoundsWord);
+                  }
                 } else {
                   instructionText = `Find words that end with the ${targetSound} sound`;
                 }
@@ -6744,7 +6819,7 @@ Use digraphs (sh,ch,th) as single sounds. Use ā,ē,ī,ō,ū for long vowels.`;
               wordSoundsActivity === "blending" &&
               wordSoundsPhonemes?.phonemes
             ) {
-              await new Promise((r) => setTimeout(r, 400));
+              await new Promise((r) => setTimeout(r, 200));
               if (cancelled) return;
               await playBlending();
               let effectiveBlendingOptions = blendingOptionsRef.current;
@@ -6776,13 +6851,13 @@ Use digraphs (sh,ch,th) as single sounds. Use ā,ē,ī,ō,ū for long vowels.`;
                     ).catch(() => { }),
                   ),
                 );
-                await new Promise((r) => setTimeout(r, 600));
+                await new Promise((r) => setTimeout(r, 350));
                 for (let i = 0; i < effectiveBlendingOptions.length; i++) {
                   if (cancelled) break;
                   setHighlightedBlendIndex(i);
                   await handleAudio(effectiveBlendingOptions[i]);
                   if (cancelled) return;
-                  await new Promise((r) => setTimeout(r, 500));
+                  await new Promise((r) => setTimeout(r, 300));
                 }
                 setHighlightedBlendIndex(null);
               }
@@ -6800,13 +6875,13 @@ Use digraphs (sh,ch,th) as single sounds. Use ā,ē,ī,ō,ū for long vowels.`;
               rhymeOptionsRef.current &&
               rhymeOptionsRef.current.length > 0
             ) {
-              await new Promise((r) => setTimeout(r, 300));
+              await new Promise((r) => setTimeout(r, 200));
               for (let i = 0; i < rhymeOptionsRef.current.length; i++) {
                 if (cancelled) break;
                 setHighlightedRhymeIndex(i);
                 await handleAudio(rhymeOptionsRef.current[i]);
                 if (cancelled) return;
-                await new Promise((r) => setTimeout(r, 600));
+                await new Promise((r) => setTimeout(r, 350));
               }
               setHighlightedRhymeIndex(null);
             }
@@ -6815,7 +6890,7 @@ Use digraphs (sh,ch,th) as single sounds. Use ā,ē,ī,ō,ū for long vowels.`;
               if (cancelled) return;
               await handleAudio(currentWordSoundsWord);
               if (isolationState?.isoOptions?.length > 0) {
-                await new Promise((r) => setTimeout(r, 600));
+                await new Promise((r) => setTimeout(r, 300));
                 await Promise.all(
                   isolationState.isoOptions.map((o) =>
                     handleAudio(o, false).catch(() => { }),
@@ -6858,7 +6933,6 @@ Use digraphs (sh,ch,th) as single sounds. Use ā,ē,ī,ō,ū for long vowels.`;
         currentWordSoundsWord,
         playInstructions,
         isMinimized,
-        isolationState?.currentPosition,
       ]);
       const playSynthesizedSound = (type, intensity = 0) => {
         try {
@@ -7490,10 +7564,11 @@ Use digraphs (sh,ch,th) as single sounds. Use ā,ē,ī,ō,ū for long vowels.`;
                         );
                       } else {
                         const pool =
-                          wordSoundsPhonemes?.orthographyDistractors?.length > 0
-                            ? wordSoundsPhonemes.orthographyDistractors
-                            : phonemeData?.orthographyDistractors ||
-                            generateOrthographyDistractors(targetWord);
+                          phonemeData?.orthographyDistractors?.length > 0
+                            ? phonemeData.orthographyDistractors
+                            : wordSoundsPhonemes?.orthographyDistractors?.length > 0
+                              ? wordSoundsPhonemes.orthographyDistractors
+                              : generateOrthographyDistractors(targetWord);
                         const distractors = fisherYatesShuffle(pool).slice(
                           0,
                           5,
@@ -7678,6 +7753,7 @@ Use digraphs (sh,ch,th) as single sounds. Use ā,ē,ī,ō,ū for long vowels.`;
                       );
                       const generatedState = {
                         correctAnswer: correctPhoneme,
+                        correctSound: correctPhoneme,
                         currentPosition: position,
                         isoOptions: isoOptions,
                         prompt:
@@ -8075,20 +8151,10 @@ Use digraphs (sh,ch,th) as single sounds. Use ā,ē,ī,ō,ū for long vowels.`;
         ],
       );
       React.useEffect(() => {
+        // Guard: onresult handler already calls checkAnswer, so this
+        // effect only fires for non-mic userAnswer changes (typing).
         if (useMicInput && !isListening && userAnswer) {
-          debugLog("🎤 Mic input received:", userAnswer);
-          let expected = currentWordSoundsWord;
-          if (wordSoundsActivity === "rhyming") {
-            expected = wordSoundsPhonemes?.rhymeWord;
-            const isCorrect =
-              expected &&
-              userAnswer.toLowerCase().trim() === expected.toLowerCase().trim();
-            checkAnswer(isCorrect ? "correct" : "incorrect", "correct");
-            return;
-          }
-          if (expected) {
-            checkAnswer(userAnswer, expected);
-          }
+          debugLog("🎤 Mic input received (useEffect) — skipping, handled by onresult");
         }
       }, [
         useMicInput,
@@ -9808,16 +9874,16 @@ Use digraphs (sh,ch,th) as single sounds. Use ā,ē,ī,ō,ū for long vowels.`;
             };
             const letterFeedback = getLetterFeedback();
             const correctCount = letterFeedback.filter((l) => l.correct).length;
-            const currentStreak = wordSoundsScore?.streak || 0;
             const checkSpellingBee = () => {
               const correct =
                 userAnswer?.toLowerCase().trim() ===
                 currentWordSoundsWord?.toLowerCase();
+              const liveStreak = wordSoundsScore?.streak || 0;
               if (correct) {
                 const streakBonus =
-                  currentStreak >= 5
+                  liveStreak >= 5
                     ? " 🔥x2 BONUS!"
-                    : currentStreak >= 3
+                    : liveStreak >= 3
                       ? " ⭐ Streak!"
                       : "";
                 setWordSoundsFeedback({
@@ -10003,10 +10069,20 @@ Use digraphs (sh,ch,th) as single sounds. Use ā,ē,ī,ō,ū for long vowels.`;
                           )
                           .join("");
                         if (
-                          current.length >= vowelHint.replace(/_/g, "").length &&
-                          current.length > 0
+                          current === vowelHint.toLowerCase() ||
+                          (current.length > 0 && !current.includes("_"))
                         ) {
-                          setUserAnswer(word);
+                          // Already have vowels or typed answer — fill consonants one at a time
+                          const base = vowelHint.split("");
+                          const filled = word.split("").map((ch, i) => {
+                            if (base[i] !== "_") return base[i];
+                            if (current[i] && current[i] !== "_") return current[i];
+                            return "_";
+                          });
+                          // Reveal ONE more consonant
+                          const nextBlank = filled.indexOf("_");
+                          if (nextBlank >= 0) filled[nextBlank] = word[nextBlank];
+                          setUserAnswer(filled.join(""));
                         } else {
                           setUserAnswer(vowelHint);
                         }
@@ -11556,12 +11632,12 @@ Use digraphs (sh,ch,th) as single sounds. Use ā,ē,ī,ō,ū for long vowels.`;
                   /*#__PURE__*/ React.createElement(
                     "h2",
                     { className: "text-xl font-bold" },
-                    ts("word_sounds.title"),
+                    "\uD83D\uDD24 Word Sounds Studio",
                   ),
                   /*#__PURE__*/ React.createElement(
                     "p",
                     { className: "text-violet-200 text-sm" },
-                    ts("word_sounds.subtitle"),
+                    "Choose an activity below to get started!",
                   ),
                 ),
               ),
@@ -12112,55 +12188,6 @@ Use digraphs (sh,ch,th) as single sounds. Use ā,ē,ī,ō,ū for long vowels.`;
               ),
             ),
           ),
-          isProbeMode &&
-            /*#__PURE__*/ React.createElement(
-            "div",
-            {
-              className:
-                "bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-4 py-2 flex items-center justify-between text-sm font-bold shadow-inner",
-            },
-              /*#__PURE__*/ React.createElement(
-              "div",
-              { className: "flex items-center gap-3" },
-                /*#__PURE__*/ React.createElement(
-                "span",
-                { className: "bg-white/20 px-2 py-0.5 rounded-full text-xs" },
-                "\uD83D\uDCCA PROBE MODE",
-              ),
-                /*#__PURE__*/ React.createElement(
-                "span",
-                null,
-                "Word ",
-                wordSoundsScore.total + 1,
-                " of ",
-                wordSoundsSessionGoal,
-              ),
-            ),
-              /*#__PURE__*/ React.createElement(
-              "div",
-              { className: "flex items-center gap-3" },
-                /*#__PURE__*/ React.createElement(
-                "span",
-                null,
-                wordSoundsScore.correct,
-                " correct / ",
-                wordSoundsScore.total,
-                " total",
-              ),
-              probeStartTimeRef.current &&
-                  /*#__PURE__*/ React.createElement(
-                "span",
-                {
-                  className:
-                    "bg-white/20 px-2 py-0.5 rounded-full tabular-nums",
-                },
-                "\u23F1 ",
-                Math.floor(probeElapsed / 60),
-                ":",
-                String(probeElapsed % 60).padStart(2, "0"),
-              ),
-            ),
-          ),
           /*#__PURE__*/ React.createElement(
             "div",
             { className: "flex-1 overflow-y-auto p-6" },
@@ -12304,11 +12331,7 @@ Use digraphs (sh,ch,th) as single sounds. Use ā,ē,ī,ō,ū for long vowels.`;
             loadPsychometricProbes();
           }
         }, []);
-        React.useEffect(() => {
-          if (typeof loadPsychometricProbes === "function") {
-            loadPsychometricProbes();
-          }
-        }, []);
+
         const [importProgress, setImportProgress] = React.useState({
           current: 0,
           total: 0,
@@ -12349,27 +12372,7 @@ Use digraphs (sh,ch,th) as single sounds. Use ā,ē,ī,ō,ū for long vowels.`;
             setMnProbeActive(false);
           }
         }, [mnProbeTimer, mnProbeActive, mnProbeProblems, mnProbeResults]);
-        React.useEffect(() => {
-          if (
-            mnProbeActive &&
-            mnProbeTimer === 0 &&
-            mnProbeTimerRef.current === null &&
-            mnProbeProblems.length > 0 &&
-            !mnProbeResults
-          ) {
-            const answered = mnProbeProblems.filter(
-              (p) => p.studentAnswer !== null,
-            );
-            const correct = answered.filter((p) => p.correct).length;
-            setMnProbeResults({
-              correct,
-              total: answered.length,
-              problems: mnProbeProblems,
-              type: "missing_number",
-            });
-            setMnProbeActive(false);
-          }
-        }, [mnProbeTimer, mnProbeActive, mnProbeProblems, mnProbeResults]);
+
         const [qdProbeActive, setQdProbeActive] = React.useState(false);
         const [qdProbeProblems, setQdProbeProblems] = React.useState([]);
         const [qdProbeIndex, setQdProbeIndex] = React.useState(0);
@@ -12397,27 +12400,7 @@ Use digraphs (sh,ch,th) as single sounds. Use ā,ē,ī,ō,ū for long vowels.`;
             setQdProbeActive(false);
           }
         }, [qdProbeTimer, qdProbeActive, qdProbeProblems, qdProbeResults]);
-        React.useEffect(() => {
-          if (
-            qdProbeActive &&
-            qdProbeTimer === 0 &&
-            qdProbeTimerRef.current === null &&
-            qdProbeProblems.length > 0 &&
-            !qdProbeResults
-          ) {
-            const answered = qdProbeProblems.filter(
-              (p) => p.studentAnswer !== null,
-            );
-            const correct = answered.filter((p) => p.correct).length;
-            setQdProbeResults({
-              correct,
-              total: answered.length,
-              problems: qdProbeProblems,
-              type: "quantity_discrimination",
-            });
-            setQdProbeActive(false);
-          }
-        }, [qdProbeTimer, qdProbeActive, qdProbeProblems, qdProbeResults]);
+
         const [reportStartDate, setReportStartDate] = React.useState("");
         const [reportEndDate, setReportEndDate] = React.useState("");
         const [safetyFlaggingVisible, setSafetyFlaggingVisible] =

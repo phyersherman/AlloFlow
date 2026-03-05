@@ -357,6 +357,7 @@
         if (!labToolData._persisted) return;
         try {
           var _toSave = {};
+          // @tool waterCycle
           ['calculus', 'wave', 'physics', 'punnett', 'chemBalance', 'galaxy', 'rockCycle', 'waterCycle', '_tutorialSeen'].forEach(function (k) {
             if (labToolData[k]) _toSave[k] = labToolData[k];
           });
@@ -410,6 +411,577 @@
           cv.setAttribute('data-health', String(Math.round(typeof _cpd.plantHealth === 'number' ? _cpd.plantHealth : 100)));
         }
       }, [stemLabTab, stemLabTool, labToolData]);
+      // ── Graphing Calculator: Load math.js on demand (MUST be at top level) ──
+      React.useEffect(function () {
+        if (stemLabTab !== 'explore' || stemLabTool !== 'graphCalc') return;
+        if (window.math) return;
+        var s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/mathjs@13.2.2/lib/browser/math.min.js';
+        s.async = true;
+        s.onload = function () { if (typeof addToast === 'function') addToast('\uD83E\uDDEE Math engine loaded', 'info'); };
+        document.head.appendChild(s);
+      }, [stemLabTab, stemLabTool]);
+      // ── Graphing Calculator: Render graph on Canvas (MUST be at top level) ──
+      React.useEffect(function () {
+        if (stemLabTab !== 'explore' || stemLabTool !== 'graphCalc') return;
+        var _gcd = (labToolData && labToolData.graphCalc) || {};
+        var _funcs = _gcd.funcs || [{ expr: '', color: '#38bdf8' }, { expr: '', color: '#f472b6' }, { expr: '', color: '#34d399' }, { expr: '', color: '#fbbf24' }, { expr: '', color: '#a78bfa' }, { expr: '', color: '#fb923c' }];
+        var _win = _gcd.window || { xmin: -10, xmax: 10, ymin: -10, ymax: 10 };
+        var cv = document.getElementById('graph-calc-canvas');
+        if (!cv || !window.math) return;
+        var ctx = cv.getContext('2d');
+        var W = cv.width, H = cv.height;
+        var xr = _win.xmax - _win.xmin, yr = _win.ymax - _win.ymin;
+        var toScreenX = function (x) { return ((x - _win.xmin) / xr) * W; };
+        var toScreenY = function (y) { return H - ((y - _win.ymin) / yr) * H; };
+        // Clear
+        ctx.fillStyle = '#0f172a'; ctx.fillRect(0, 0, W, H);
+        // Grid
+        ctx.strokeStyle = 'rgba(56,189,248,0.08)'; ctx.lineWidth = 1;
+        var gridStep = Math.pow(10, Math.floor(Math.log10(xr / 5)));
+        var gx, gy;
+        for (gx = Math.ceil(_win.xmin / gridStep) * gridStep; gx <= _win.xmax; gx += gridStep) {
+          var sx = toScreenX(gx); ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx, H); ctx.stroke();
+        }
+        for (gy = Math.ceil(_win.ymin / gridStep) * gridStep; gy <= _win.ymax; gy += gridStep) {
+          var sy = toScreenY(gy); ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(W, sy); ctx.stroke();
+        }
+        // Axes
+        ctx.strokeStyle = 'rgba(148,163,184,0.5)'; ctx.lineWidth = 1.5;
+        if (_win.ymin <= 0 && _win.ymax >= 0) { var ay = toScreenY(0); ctx.beginPath(); ctx.moveTo(0, ay); ctx.lineTo(W, ay); ctx.stroke(); }
+        if (_win.xmin <= 0 && _win.xmax >= 0) { var ax = toScreenX(0); ctx.beginPath(); ctx.moveTo(ax, 0); ctx.lineTo(ax, H); ctx.stroke(); }
+        // Axis labels
+        ctx.font = '10px monospace'; ctx.fillStyle = '#64748b';
+        for (gx = Math.ceil(_win.xmin / gridStep) * gridStep; gx <= _win.xmax; gx += gridStep) {
+          if (Math.abs(gx) > 0.001) { var _sx = toScreenX(gx); var _ay = _win.ymin <= 0 && _win.ymax >= 0 ? toScreenY(0) : H - 10; ctx.fillText(Number(gx.toPrecision(4)).toString(), _sx + 2, _ay - 3); }
+        }
+        for (gy = Math.ceil(_win.ymin / gridStep) * gridStep; gy <= _win.ymax; gy += gridStep) {
+          if (Math.abs(gy) > 0.001) { var _sy = toScreenY(gy); var _ax = _win.xmin <= 0 && _win.xmax >= 0 ? toScreenX(0) : 10; ctx.fillText(Number(gy.toPrecision(4)).toString(), _ax + 4, _sy - 3); }
+        }
+        // Plot functions
+        _funcs.forEach(function (fn) {
+          if (!fn.expr || !fn.expr.trim()) return;
+          try {
+            var exprStr = fn.expr.replace(/^y\s*=\s*/i, '').replace(/^f\s*\(x\)\s*=\s*/i, '');
+            exprStr = exprStr.replace(/(\d)([x])/gi, '$1*$2').replace(/([x])(\d)/gi, '$1*$2');
+            var compiled = math.compile(exprStr);
+            ctx.strokeStyle = fn.color; ctx.lineWidth = 2.5; ctx.beginPath();
+            var started = false;
+            for (var px = 0; px <= W; px++) {
+              var x = _win.xmin + (px / W) * xr;
+              try {
+                var y = compiled.evaluate({ x: x });
+                if (typeof y === 'number' && isFinite(y)) {
+                  var py = toScreenY(y);
+                  if (!started) { ctx.moveTo(px, py); started = true; }
+                  else if (py > -500 && py < H + 500) ctx.lineTo(px, py);
+                  else { ctx.stroke(); ctx.beginPath(); started = false; }
+                } else { ctx.stroke(); ctx.beginPath(); started = false; }
+              } catch (e) { ctx.stroke(); ctx.beginPath(); started = false; }
+            }
+            ctx.stroke();
+          } catch (e) { /* invalid expression */ }
+        });
+        // Axis x/y labels
+        ctx.fillStyle = '#94a3b8'; ctx.font = 'bold 11px sans-serif';
+        ctx.fillText('x', W - 14, (_win.ymin <= 0 && _win.ymax >= 0 ? toScreenY(0) : H / 2) - 6);
+        ctx.fillText('y', (_win.xmin <= 0 && _win.xmax >= 0 ? toScreenX(0) : W / 2) + 6, 14);
+      }, [stemLabTab, stemLabTool, labToolData]);
+      // ── 3D Tools: Load Three.js on demand (Geometry Sandbox + Architecture Studio) ──
+      React.useEffect(function () {
+        if (stemLabTab !== 'explore' || (stemLabTool !== 'geoSandbox' && stemLabTool !== 'archStudio')) return;
+        if (window.THREE) { setLabToolData(function (p) { return Object.assign({}, p, { _threeLoaded: true }); }); return; }
+        var s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.min.js';
+        s.async = true;
+        s.onload = function () {
+          // Load OrbitControls after Three.js is ready
+          var s2 = document.createElement('script');
+          s2.src = 'https://cdn.jsdelivr.net/npm/three@0.155.0/examples/js/controls/OrbitControls.js';
+          s2.async = true;
+          s2.onload = function () {
+            if (typeof addToast === 'function') addToast('\uD83D\uDD37 3D engine loaded', 'info');
+            setLabToolData(function (p) { return Object.assign({}, p, { _threeLoaded: true }); });
+          };
+          document.head.appendChild(s2);
+        };
+        document.head.appendChild(s);
+      }, [stemLabTab, stemLabTool]);
+      // ── Geometry Sandbox: Scene init, render loop, shape updates (MUST be at top level) ──
+      React.useEffect(function () {
+        if (stemLabTab !== 'explore' || stemLabTool !== 'geoSandbox') return;
+        if (!window.THREE) return;
+        var cnv = document.getElementById('geo-sandbox-canvas');
+        if (!cnv) return;
+        var gd = (labToolData && labToolData.geoSandbox) || {};
+        var shapeType = gd.shape || 'box';
+        var dims = gd.dims || { w: 3, h: 3, d: 3, r: 1.5, rTop: 1.5, rBot: 1.5, tube: 0.5, segs: 32 };
+        var shapeColor = gd.color || '#60a5fa';
+        var wireframe = gd.wireframe || false;
+        var opacity = gd.opacity != null ? gd.opacity : 1;
+        var THREE = window.THREE;
+
+        // Init scene if not already
+        if (!window._geoScene) {
+          var scene = new THREE.Scene();
+          scene.background = new THREE.Color('#0f172a');
+          var camera = new THREE.PerspectiveCamera(50, cnv.clientWidth / cnv.clientHeight, 0.1, 1000);
+          camera.position.set(6, 5, 8);
+          camera.lookAt(0, 0, 0);
+          var renderer = new THREE.WebGLRenderer({ canvas: cnv, antialias: true });
+          renderer.setSize(cnv.clientWidth, cnv.clientHeight);
+          renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+          // Lights
+          var ambient = new THREE.AmbientLight(0xffffff, 0.5);
+          scene.add(ambient);
+          var directional = new THREE.DirectionalLight(0xffffff, 0.8);
+          directional.position.set(5, 10, 7.5);
+          scene.add(directional);
+          var fillLight = new THREE.DirectionalLight(0xc7d2fe, 0.3);
+          fillLight.position.set(-5, 3, -5);
+          scene.add(fillLight);
+          // Ground grid
+          var gridHelper = new THREE.GridHelper(20, 20, 0x334155, 0x1e293b);
+          scene.add(gridHelper);
+          // Orbit controls
+          var controls;
+          if (THREE.OrbitControls) {
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.08;
+            controls.minDistance = 2;
+            controls.maxDistance = 30;
+          }
+          // Animation loop
+          var animId;
+          var animate = function () {
+            animId = requestAnimationFrame(animate);
+            if (controls) controls.update();
+            renderer.render(scene, camera);
+          };
+          animate();
+          window._geoScene = { scene: scene, camera: camera, renderer: renderer, controls: controls, animId: animId, mesh: null };
+        }
+
+        var gs = window._geoScene;
+        // Remove old mesh
+        if (gs.mesh) { gs.scene.remove(gs.mesh); gs.mesh.geometry.dispose(); if (gs.mesh.material) gs.mesh.material.dispose(); gs.mesh = null; }
+        // Create geometry based on shape type
+        var geometry;
+        switch (shapeType) {
+          case 'sphere': geometry = new THREE.SphereGeometry(dims.r || 1.5, dims.segs || 32, dims.segs || 32); break;
+          case 'cylinder': geometry = new THREE.CylinderGeometry(dims.rTop || 1.5, dims.rBot || 1.5, dims.h || 3, dims.segs || 32); break;
+          case 'cone': geometry = new THREE.ConeGeometry(dims.r || 1.5, dims.h || 3, dims.segs || 32); break;
+          case 'pyramid': geometry = new THREE.ConeGeometry(dims.r || 1.5, dims.h || 3, 4); break;
+          case 'torus': geometry = new THREE.TorusGeometry(dims.r || 1.5, dims.tube || 0.5, 16, dims.segs || 32); break;
+          case 'prism': {
+            var triShape = new THREE.Shape();
+            var bw = dims.w || 3;
+            triShape.moveTo(-bw / 2, 0);
+            triShape.lineTo(bw / 2, 0);
+            triShape.lineTo(0, dims.h || 3);
+            triShape.closePath();
+            geometry = new THREE.ExtrudeGeometry(triShape, { depth: dims.d || 3, bevelEnabled: false });
+            geometry.center();
+            break;
+          }
+          default: geometry = new THREE.BoxGeometry(dims.w || 3, dims.h || 3, dims.d || 3); break;
+        }
+        // Material
+        var material = new THREE.MeshPhongMaterial({
+          color: new THREE.Color(shapeColor),
+          wireframe: wireframe,
+          transparent: opacity < 1,
+          opacity: opacity,
+          shininess: 60,
+          flatShading: false
+        });
+        var mesh = new THREE.Mesh(geometry, material);
+        // Position shape above ground
+        var bbox = new THREE.Box3().setFromObject(mesh);
+        mesh.position.y = -bbox.min.y;
+        gs.scene.add(mesh);
+        gs.mesh = mesh;
+
+        // Resize handler
+        var handleResize = function () {
+          if (!cnv || !gs.renderer) return;
+          gs.renderer.setSize(cnv.clientWidth, cnv.clientHeight);
+          gs.camera.aspect = cnv.clientWidth / cnv.clientHeight;
+          gs.camera.updateProjectionMatrix();
+        };
+        window.addEventListener('resize', handleResize);
+
+        return function () {
+          window.removeEventListener('resize', handleResize);
+        };
+      }, [stemLabTab, stemLabTool, labToolData]);
+      // ── Geometry Sandbox cleanup on exit ──
+      React.useEffect(function () {
+        return function () {
+          if (window._geoScene) {
+            cancelAnimationFrame(window._geoScene.animId);
+            if (window._geoScene.renderer) window._geoScene.renderer.dispose();
+            if (window._geoScene.controls) window._geoScene.controls.dispose();
+            window._geoScene = null;
+          }
+        };
+      }, [stemLabTool]);
+      // ── Architecture Studio: Scene init, render loop, block placement (MUST be at top level) ──
+      React.useEffect(function () {
+        if (stemLabTab !== 'explore' || stemLabTool !== 'archStudio') return;
+        if (!window.THREE) return;
+        var cnv = document.getElementById('arch-studio-canvas');
+        if (!cnv) return;
+        var gd = (labToolData && labToolData.archStudio) || {};
+        var blocks = gd.blocks || [];
+        var THREE = window.THREE;
+
+        // ── Init scene if not already ──
+        if (!window._archScene) {
+          var scene = new THREE.Scene();
+          scene.background = new THREE.Color('#131a2b');
+          scene.fog = new THREE.Fog('#131a2b', 30, 60);
+          var camera = new THREE.PerspectiveCamera(50, cnv.clientWidth / cnv.clientHeight, 0.1, 1000);
+          camera.position.set(14, 12, 18);
+          camera.lookAt(10, 0, 10);
+          var renderer = new THREE.WebGLRenderer({ canvas: cnv, antialias: true });
+          renderer.setSize(cnv.clientWidth, cnv.clientHeight);
+          renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+          renderer.shadowMap.enabled = true;
+          renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+          // Lights
+          var ambient = new THREE.AmbientLight(0xffffff, 0.45);
+          scene.add(ambient);
+          var sun = new THREE.DirectionalLight(0xfff4e0, 0.9);
+          sun.position.set(15, 20, 10);
+          sun.castShadow = true;
+          sun.shadow.mapSize.width = 1024;
+          sun.shadow.mapSize.height = 1024;
+          sun.shadow.camera.near = 0.5;
+          sun.shadow.camera.far = 50;
+          sun.shadow.camera.left = -25;
+          sun.shadow.camera.right = 25;
+          sun.shadow.camera.top = 25;
+          sun.shadow.camera.bottom = -25;
+          scene.add(sun);
+          var fill = new THREE.DirectionalLight(0xc7d2fe, 0.25);
+          fill.position.set(-10, 8, -5);
+          scene.add(fill);
+          // Ground plane
+          var groundGeo = new THREE.PlaneGeometry(20, 20);
+          var groundMat = new THREE.MeshPhongMaterial({ color: 0x1e293b, side: THREE.DoubleSide });
+          var ground = new THREE.Mesh(groundGeo, groundMat);
+          ground.rotation.x = -Math.PI / 2;
+          ground.position.set(10, 0, 10);
+          ground.receiveShadow = true;
+          ground.name = 'ground';
+          scene.add(ground);
+          // Grid overlay
+          var gridHelper = new THREE.GridHelper(20, 20, 0x475569, 0x334155);
+          gridHelper.position.set(10, 0.01, 10);
+          scene.add(gridHelper);
+          // Orbit controls
+          var controls;
+          if (THREE.OrbitControls) {
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.08;
+            controls.minDistance = 3;
+            controls.maxDistance = 40;
+            controls.target.set(10, 2, 10);
+          }
+          // Raycaster + mouse
+          var raycaster = new THREE.Raycaster();
+          var mouse = new THREE.Vector2();
+          // Ghost preview mesh
+          var ghostMat = new THREE.MeshPhongMaterial({ color: 0x60a5fa, transparent: true, opacity: 0.35, depthWrite: false });
+          var ghostMesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), ghostMat);
+          ghostMesh.visible = false;
+          ghostMesh.name = '_ghost';
+          scene.add(ghostMesh);
+          // Animation loop
+          var animId;
+          var animate = function () {
+            animId = requestAnimationFrame(animate);
+            if (controls) controls.update();
+            renderer.render(scene, camera);
+          };
+          animate();
+          // ── Pointer events for placement ──
+          var _getGridPos = function (evt) {
+            var rect = cnv.getBoundingClientRect();
+            mouse.x = ((evt.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((evt.clientY - rect.top) / rect.height) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            // Collect all clickable objects (ground + placed block meshes)
+            var targets = [];
+            scene.traverse(function (obj) {
+              if (obj.isMesh && obj.name !== '_ghost') targets.push(obj);
+            });
+            var hits = raycaster.intersectObjects(targets, false);
+            if (hits.length === 0) return null;
+            var hit = hits[0];
+            var n = hit.face.normal.clone();
+            // If we hit ground, place at that grid cell at y=0
+            if (hit.object.name === 'ground') {
+              var gx = Math.floor(hit.point.x);
+              var gz = Math.floor(hit.point.z);
+              if (gx < 0 || gx >= 20 || gz < 0 || gz >= 20) return null;
+              return { x: gx, y: 0, z: gz };
+            }
+            // If we hit a block, place adjacent to it along the face normal
+            var center = new THREE.Vector3();
+            hit.object.getWorldPosition(center);
+            var nx = Math.round(center.x + n.x);
+            var ny = Math.round(center.y + n.y);
+            var nz = Math.round(center.z + n.z);
+            if (nx < 0 || nx >= 20 || ny < 0 || ny >= 10 || nz < 0 || nz >= 20) return null;
+            return { x: nx, y: ny, z: nz };
+          };
+          var _getClickedBlock = function (evt) {
+            var rect = cnv.getBoundingClientRect();
+            mouse.x = ((evt.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((evt.clientY - rect.top) / rect.height) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            var targets = [];
+            scene.traverse(function (obj) {
+              if (obj.isMesh && obj.name !== '_ghost' && obj.name !== 'ground') targets.push(obj);
+            });
+            var hits = raycaster.intersectObjects(targets, false);
+            if (hits.length === 0) return null;
+            var obj = hits[0].object;
+            // obj.userData holds { bx, by, bz }
+            return obj.userData;
+          };
+          // Mouse move → update ghost position (only in place mode)
+          cnv.addEventListener('mousemove', function (evt) {
+            var _as = window._archScene;
+            var _act = (_as && _as._active) || {};
+            if ((_act.mode || 'place') !== 'place') { ghostMesh.visible = false; return; }
+            var pos = _getGridPos(evt);
+            if (!pos) { ghostMesh.visible = false; return; }
+            ghostMesh.visible = true;
+            ghostMesh.position.set(pos.x + 0.5, pos.y + 0.5, pos.z + 0.5);
+          });
+          // Click → place/erase/paint  (reads from window._archScene._active to avoid stale closure)
+          cnv.addEventListener('click', function (evt) {
+            var _as = window._archScene; if (!_as) return;
+            var _act = _as._active || {};
+            var mode = _act.mode || 'place';
+            if (mode === 'place') {
+              var pos = _getGridPos(evt);
+              if (!pos) return;
+              var _shape = _act.activeShape || 'block';
+              var _material = _act.activeMaterial || 'stone';
+              var _color = _act.activeColor || '#94a3b8';
+              setLabToolData(function (p) {
+                var a = Object.assign({}, p.archStudio || {});
+                var curBlocks = a.blocks || [];
+                var exists = curBlocks.some(function (b) { return b.x === pos.x && b.y === pos.y && b.z === pos.z; });
+                if (exists) return p;
+                var newBlock = { x: pos.x, y: pos.y, z: pos.z, shape: _shape, material: _material, color: _color };
+                return Object.assign({}, p, { archStudio: Object.assign({}, a, { blocks: curBlocks.concat([newBlock]) }) });
+              });
+            } else if (mode === 'erase') {
+              var bd = _getClickedBlock(evt);
+              if (!bd) return;
+              setLabToolData(function (p) {
+                var a = Object.assign({}, p.archStudio || {});
+                var nb = (a.blocks || []).filter(function (b) { return !(b.x === bd.bx && b.y === bd.by && b.z === bd.bz); });
+                return Object.assign({}, p, { archStudio: Object.assign({}, a, { blocks: nb }) });
+              });
+            } else if (mode === 'paint') {
+              var bd2 = _getClickedBlock(evt);
+              if (!bd2) return;
+              var _pMat = _act.activeMaterial || 'stone';
+              var _pCol = _act.activeColor || '#94a3b8';
+              setLabToolData(function (p) {
+                var a = Object.assign({}, p.archStudio || {});
+                var nb = (a.blocks || []).map(function (b) {
+                  if (b.x === bd2.bx && b.y === bd2.by && b.z === bd2.bz) {
+                    return Object.assign({}, b, { material: _pMat, color: _pCol });
+                  }
+                  return b;
+                });
+                return Object.assign({}, p, { archStudio: Object.assign({}, a, { blocks: nb }) });
+              });
+            }
+          });
+          window._archScene = { scene: scene, camera: camera, renderer: renderer, controls: controls, animId: animId, ghostMesh: ghostMesh, blockMeshes: [], _active: {} };
+        }
+
+        // ── Update active state on every re-render (avoids stale closure in click handler) ──
+        window._archScene._active = { activeShape: gd.activeShape || 'block', activeMaterial: gd.activeMaterial || 'stone', activeColor: gd.activeColor || '#94a3b8', mode: gd.mode || 'place', styleMode: gd.styleMode || 'architect', blueprintView: gd.blueprintView || false };
+
+        // ── Rebuild all block meshes ──
+        var as = window._archScene;
+        var _styleMode = gd.styleMode || 'architect';
+        var _blueprintView = gd.blueprintView || false;
+        // Remove old block meshes (including stud children)
+        as.blockMeshes.forEach(function (m) {
+          while (m.children.length > 0) { var c = m.children[0]; m.remove(c); if (c.geometry) c.geometry.dispose(); if (c.material) c.material.dispose(); }
+          as.scene.remove(m); m.geometry.dispose(); if (m.material) m.material.dispose();
+        });
+        as.blockMeshes = [];
+        // Material colors (architect vs brick mode)
+        var matColors = _styleMode === 'bricks'
+          ? { stone: '#ef4444', brick: '#f59e0b', wood: '#22c55e', glass: '#3b82f6', marble: '#f8fafc', metal: '#1e293b' }
+          : { stone: '#94a3b8', brick: '#b45309', wood: '#92400e', glass: '#38bdf8', marble: '#f1f5f9', metal: '#cbd5e1' };
+        // Shape geometry factory
+        var mkGeo = function (shape) {
+          if (_styleMode === 'bricks') {
+            // Brick mode: shapes keep their form but get brick-scale sizing (gap for stud seams)
+            switch (shape) {
+              case 'slab': return new THREE.BoxGeometry(0.95, 0.45, 0.95, 2, 1, 2);
+              case 'ramp': {
+                var rS = new THREE.Shape();
+                rS.moveTo(-0.475, -0.475);
+                rS.lineTo(0.475, -0.475);
+                rS.lineTo(0.475, 0.475);
+                rS.closePath();
+                var rG = new THREE.ExtrudeGeometry(rS, { depth: 0.95, bevelEnabled: false });
+                rG.center();
+                return rG;
+              }
+              case 'column': return new THREE.CylinderGeometry(0.33, 0.33, 0.95, 16);
+              case 'arch': {
+                var aG = new THREE.TorusGeometry(0.42, 0.12, 8, 16, Math.PI);
+                aG.rotateX(Math.PI / 2);
+                return aG;
+              }
+              case 'roof': {
+                var rfS = new THREE.Shape();
+                rfS.moveTo(-0.475, -0.33);
+                rfS.lineTo(0.475, -0.33);
+                rfS.lineTo(0, 0.33);
+                rfS.closePath();
+                var rfG = new THREE.ExtrudeGeometry(rfS, { depth: 0.95, bevelEnabled: false });
+                rfG.center();
+                return rfG;
+              }
+              case 'pyramid': return new THREE.ConeGeometry(0.475, 0.95, 4);
+              case 'dome': return new THREE.SphereGeometry(0.475, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+              default: return new THREE.BoxGeometry(0.95, 0.95, 0.95, 2, 2, 2);
+            }
+          }
+          switch (shape) {
+            case 'slab': return new THREE.BoxGeometry(1, 0.5, 1);
+            case 'ramp': {
+              var rampShape = new THREE.Shape();
+              rampShape.moveTo(-0.5, -0.5);
+              rampShape.lineTo(0.5, -0.5);
+              rampShape.lineTo(0.5, 0.5);
+              rampShape.closePath();
+              var geo = new THREE.ExtrudeGeometry(rampShape, { depth: 1, bevelEnabled: false });
+              geo.center();
+              return geo;
+            }
+            case 'column': return new THREE.CylinderGeometry(0.35, 0.35, 1, 16);
+            case 'arch': {
+              var archGeo = new THREE.TorusGeometry(0.45, 0.12, 8, 16, Math.PI);
+              archGeo.rotateX(Math.PI / 2);
+              return archGeo;
+            }
+            case 'roof': {
+              var roofShape = new THREE.Shape();
+              roofShape.moveTo(-0.5, -0.35);
+              roofShape.lineTo(0.5, -0.35);
+              roofShape.lineTo(0, 0.35);
+              roofShape.closePath();
+              var roofGeo = new THREE.ExtrudeGeometry(roofShape, { depth: 1, bevelEnabled: false });
+              roofGeo.center();
+              return roofGeo;
+            }
+            case 'pyramid': return new THREE.ConeGeometry(0.5, 1, 4);
+            case 'dome': {
+              var domeGeo = new THREE.SphereGeometry(0.5, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+              return domeGeo;
+            }
+            default: return new THREE.BoxGeometry(1, 1, 1);
+          }
+        };
+        // Stud geometry (reusable, only created once in brick mode)
+        var studGeo = _styleMode === 'bricks' ? new THREE.CylinderGeometry(0.15, 0.15, 0.12, 12) : null;
+        // Create mesh for each placed block
+        blocks.forEach(function (b) {
+          var geo = mkGeo(b.shape || 'block');
+          var col = _styleMode === 'bricks' ? (matColors[b.material] || b.color || '#ef4444') : (b.color || matColors[b.material] || '#94a3b8');
+          var isGlass = (b.material === 'glass') && _styleMode !== 'bricks';
+          var mat = new THREE.MeshPhongMaterial({
+            color: new THREE.Color(col),
+            transparent: isGlass,
+            opacity: isGlass ? 0.4 : 1,
+            shininess: _styleMode === 'bricks' ? 60 : ((b.material === 'metal') ? 100 : (b.material === 'marble' ? 80 : 40)),
+            flatShading: _styleMode === 'bricks' ? false : (b.material === 'stone' || b.material === 'brick')
+          });
+          var mesh = new THREE.Mesh(geo, mat);
+          mesh.position.set(b.x + 0.5, (b.shape === 'slab' ? 0.25 : (b.shape === 'dome' ? 0 : 0.5)) + b.y, b.z + 0.5);
+          mesh.castShadow = true;
+          mesh.receiveShadow = true;
+          mesh.userData = { bx: b.x, by: b.y, bz: b.z };
+          // In brick mode, add stud bumps on top
+          if (_styleMode === 'bricks' && studGeo && (b.shape || 'block') !== 'slab') {
+            var studMat = new THREE.MeshPhongMaterial({ color: new THREE.Color(col), shininess: 80 });
+            var offsets = [[-0.2, 0.2], [0.2, 0.2], [-0.2, -0.2], [0.2, -0.2]];
+            offsets.forEach(function (off) {
+              var stud = new THREE.Mesh(studGeo, studMat);
+              stud.position.set(off[0], 0.535, off[1]);
+              stud.castShadow = true;
+              mesh.add(stud);
+            });
+          }
+          as.scene.add(mesh);
+          as.blockMeshes.push(mesh);
+        });
+        // ── Blueprint view: switch camera ──
+        if (_blueprintView) {
+          // Move camera to top-down orthographic-like position
+          as.camera.position.set(10, 25, 10);
+          as.camera.lookAt(10, 0, 10);
+          as.camera.fov = 30;
+          as.camera.updateProjectionMatrix();
+          if (as.controls) as.controls.target.set(10, 0, 10);
+          as.scene.background = new THREE.Color('#0c1524');
+        } else {
+          as.camera.fov = 50;
+          as.camera.updateProjectionMatrix();
+          as.scene.background = new THREE.Color('#131a2b');
+        }
+        // Update ghost color
+        var gd3 = gd;
+        if (as.ghostMesh) {
+          as.ghostMesh.material.color.set(gd3.activeColor || matColors[gd3.activeMaterial] || '#60a5fa');
+          // Update ghost geometry for selected shape
+          var ghostGeo = mkGeo(gd3.activeShape || 'block');
+          as.ghostMesh.geometry.dispose();
+          as.ghostMesh.geometry = ghostGeo;
+          // Hide ghost in erase/paint mode
+          if ((gd3.mode || 'place') !== 'place') as.ghostMesh.visible = false;
+        }
+
+        // Resize handler
+        var handleResize = function () {
+          if (!cnv || !as.renderer) return;
+          as.renderer.setSize(cnv.clientWidth, cnv.clientHeight);
+          as.camera.aspect = cnv.clientWidth / cnv.clientHeight;
+          as.camera.updateProjectionMatrix();
+        };
+        window.addEventListener('resize', handleResize);
+        return function () { window.removeEventListener('resize', handleResize); };
+      }, [stemLabTab, stemLabTool, labToolData]);
+      // ── Architecture Studio cleanup on exit ──
+      React.useEffect(function () {
+        return function () {
+          if (window._archScene) {
+            cancelAnimationFrame(window._archScene.animId);
+            if (window._archScene.renderer) window._archScene.renderer.dispose();
+            if (window._archScene.controls) window._archScene.controls.dispose();
+            window._archScene.blockMeshes.forEach(function (m) { m.geometry.dispose(); if (m.material) m.material.dispose(); });
+            window._archScene = null;
+          }
+        };
+      }, [stemLabTool]);
       // ── Companion Planting: Day ticker loop (MUST be at top level) ──
       React.useEffect(function () {
         if (stemLabTab !== 'explore' || stemLabTool !== 'companionPlanting') return;
@@ -599,6 +1171,7 @@
         var _cpgd = (labToolData && labToolData._codingPlayground) || {};
         var _turtleState = _cpgd.turtle || { x: 250, y: 250, angle: -90, penDown: true, color: '#6366f1', width: 2 };
         var _drawnLines = _cpgd.lines || [];
+        var _showTurtle = _cpgd.showTurtle !== false;
         var cvs = _codingCanvasRef.current;
         if (!cvs) return;
         var ctx = cvs.getContext('2d');
@@ -617,38 +1190,47 @@
           ctx.beginPath(); ctx.moveTo(ln.x1, ln.y1); ctx.lineTo(ln.x2, ln.y2); ctx.stroke();
         });
         var tx = _turtleState.x, ty = _turtleState.y, ta = _turtleState.angle * Math.PI / 180;
-        // Glow under turtle
-        ctx.save(); ctx.translate(tx, ty);
-        var _glowGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, 28);
-        _glowGrad.addColorStop(0, 'rgba(74,222,128,0.35)'); _glowGrad.addColorStop(1, 'rgba(74,222,128,0)');
-        ctx.fillStyle = _glowGrad; ctx.beginPath(); ctx.arc(0, 0, 28, 0, Math.PI * 2); ctx.fill();
-        ctx.restore();
-        ctx.save(); ctx.translate(tx, ty); ctx.rotate(ta + Math.PI / 2);
-        var _ts = 1.5; ctx.scale(_ts, _ts);
-        // Legs (four stubby green legs)
-        ctx.fillStyle = '#4ade80';
-        [[-8, -4], [8, -4], [-8, 6], [8, 6]].forEach(function (p) { ctx.beginPath(); ctx.ellipse(p[0], p[1], 3.5, 5.5, 0, 0, Math.PI * 2); ctx.fill(); });
-        // Shell (oval body with pattern)
-        ctx.fillStyle = '#15803d'; ctx.beginPath(); ctx.ellipse(0, 1, 11, 13, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#22c55e'; ctx.beginPath(); ctx.ellipse(0, 1, 9, 11, 0, 0, Math.PI * 2); ctx.fill();
-        // Shell hexagonal pattern
-        ctx.strokeStyle = '#15803d'; ctx.lineWidth = 0.8;
-        ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(0, 12); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(-9, 1); ctx.lineTo(9, 1); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(-7, -5); ctx.lineTo(7, 7); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(7, -5); ctx.lineTo(-7, 7); ctx.stroke();
-        // Shell highlight
-        ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.beginPath(); ctx.ellipse(-2, -3, 4, 5, -0.3, 0, Math.PI * 2); ctx.fill();
-        // Head
-        ctx.fillStyle = '#4ade80'; ctx.beginPath(); ctx.ellipse(0, -15, 6, 6, 0, 0, Math.PI * 2); ctx.fill();
-        // Eyes (bigger, friendlier)
-        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(-3, -16, 2.5, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(3, -16, 2.5, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#0f172a'; ctx.beginPath(); ctx.arc(-3, -16.5, 1.2, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(3, -16.5, 1.2, 0, Math.PI * 2); ctx.fill();
-        // Smile
-        ctx.strokeStyle = '#15803d'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.arc(0, -13.5, 3, 0.2, Math.PI - 0.2); ctx.stroke();
-        // Tail
-        ctx.strokeStyle = '#4ade80'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 13); ctx.quadraticCurveTo(4, 19, 1, 22); ctx.stroke();
-        ctx.restore();
+        if (_showTurtle) {
+          // Glow under turtle
+          ctx.save(); ctx.translate(tx, ty);
+          var _glowGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, 28);
+          _glowGrad.addColorStop(0, 'rgba(74,222,128,0.35)'); _glowGrad.addColorStop(1, 'rgba(74,222,128,0)');
+          ctx.fillStyle = _glowGrad; ctx.beginPath(); ctx.arc(0, 0, 28, 0, Math.PI * 2); ctx.fill();
+          ctx.restore();
+          ctx.save(); ctx.translate(tx, ty); ctx.rotate(ta + Math.PI / 2);
+          var _ts = 1.5; ctx.scale(_ts, _ts);
+          // Legs (four stubby green legs)
+          ctx.fillStyle = '#4ade80';
+          [[-8, -4], [8, -4], [-8, 6], [8, 6]].forEach(function (p) { ctx.beginPath(); ctx.ellipse(p[0], p[1], 3.5, 5.5, 0, 0, Math.PI * 2); ctx.fill(); });
+          // Shell (oval body with pattern)
+          ctx.fillStyle = '#15803d'; ctx.beginPath(); ctx.ellipse(0, 1, 11, 13, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#22c55e'; ctx.beginPath(); ctx.ellipse(0, 1, 9, 11, 0, 0, Math.PI * 2); ctx.fill();
+          // Shell hexagonal pattern
+          ctx.strokeStyle = '#15803d'; ctx.lineWidth = 0.8;
+          ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(0, 12); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(-9, 1); ctx.lineTo(9, 1); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(-7, -5); ctx.lineTo(7, 7); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(7, -5); ctx.lineTo(-7, 7); ctx.stroke();
+          // Shell highlight
+          ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.beginPath(); ctx.ellipse(-2, -3, 4, 5, -0.3, 0, Math.PI * 2); ctx.fill();
+          // Head
+          ctx.fillStyle = '#4ade80'; ctx.beginPath(); ctx.ellipse(0, -15, 6, 6, 0, 0, Math.PI * 2); ctx.fill();
+          // Eyes (bigger, friendlier)
+          ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(-3, -16, 2.5, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(3, -16, 2.5, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#0f172a'; ctx.beginPath(); ctx.arc(-3, -16.5, 1.2, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(3, -16.5, 1.2, 0, Math.PI * 2); ctx.fill();
+          // Smile
+          ctx.strokeStyle = '#15803d'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.arc(0, -13.5, 3, 0.2, Math.PI - 0.2); ctx.stroke();
+          // Tail
+          ctx.strokeStyle = '#4ade80'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 13); ctx.quadraticCurveTo(4, 19, 1, 22); ctx.stroke();
+          ctx.restore();
+        } else {
+          // Simple arrow cursor
+          ctx.save(); ctx.translate(tx, ty); ctx.rotate(ta + Math.PI / 2);
+          ctx.fillStyle = '#4ade80'; ctx.strokeStyle = '#15803d'; ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.moveTo(0, -14); ctx.lineTo(-8, 10); ctx.lineTo(0, 5); ctx.lineTo(8, 10); ctx.closePath();
+          ctx.fill(); ctx.stroke();
+          ctx.restore();
+        }
         if (_turtleState.penDown) { ctx.fillStyle = _turtleState.color; ctx.beginPath(); ctx.arc(tx, ty, 3, 0, Math.PI * 2); ctx.fill(); }
         // Coordinates badge
         ctx.fillStyle = 'rgba(15,23,42,0.7)'; ctx.fillRect(4, H - 24, 180, 20); ctx.fillStyle = '#e2e8f0'; ctx.font = 'bold 12px monospace';
@@ -734,7 +1316,7 @@
           backdropFilter: 'blur(6px)'
         }
       }, /*#__PURE__*/React.createElement("div", {
-        className: "w-full max-w-5xl m-4 bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden" + (_reduceMotion ? "" : " animate-in zoom-in-95 duration-300")
+        className: "w-full max-w-[98vw] m-2 bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden" + (_reduceMotion ? "" : " animate-in zoom-in-95 duration-300")
       }, /*#__PURE__*/React.createElement("div", {
         className: "flex items-center justify-between px-6 py-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 text-white", role: "banner"
       }, /*#__PURE__*/React.createElement("div", {
@@ -891,6 +1473,7 @@
         }, /*#__PURE__*/React.createElement("span", {
           className: "text-[10px] text-slate-500 font-bold uppercase"
         }, "Tools:"), [{
+          // @tool volume
           id: 'volume',
           icon: '📦',
           label: t('stem.assessment.volume_explorer')
@@ -899,6 +1482,7 @@
           icon: '📏',
           label: t('stem.assessment.number_line')
         }, {
+          // @tool areamodel
           id: 'areamodel',
           icon: '🟧',
           label: t('stem.assessment.area_model')
@@ -1031,15 +1615,87 @@
               addToast(t('stem.fluency.fluency_drill_started') + fluencyBlocks.reduce((s, b) => s + b.quantity, 0) + ' problems', 'info');
               return;
             }
-            const prompt = assessmentBlocks.map((b, i) => i + 1 + '. ' + b.type.replace('_', ' ') + ' (' + b.quantity + '): ' + (b.directive || 'general')).join('\n');
-            setMathInput('Create an assessment with these sections:\n' + prompt);
-            setMathMode('Problem Set Generator');
-            setMathQuantity(assessmentBlocks.reduce((s, b) => s + b.quantity, 0));
+            const nonFluencyBlocks = assessmentBlocks.filter(b => b.type !== 'fluency');
+            setMathInput('Building assessment: ' + nonFluencyBlocks.length + ' sections...');
+            setMathMode('Freeform Builder');
             setActiveView('math');
             setShowStemLab(false);
-            setTimeout(() => {
-              if (typeof handleGenerateMath === 'function') handleGenerateMath('Create an assessment with these sections:\n' + prompt);
-            }, 300);
+            addToast('⏳ Generating assessment... ' + nonFluencyBlocks.length + ' sections', 'info');
+
+            // Chunked generation: one callGemini per block, merge results, push to history once
+            (async () => {
+              const allProblems = [];
+              let blockErrors = 0;
+              for (let bi = 0; bi < nonFluencyBlocks.length; bi++) {
+                const block = nonFluencyBlocks[bi];
+                const blockLabel = block.type.replace(/_/g, ' ');
+                addToast('🔄 Section ' + (bi + 1) + '/' + nonFluencyBlocks.length + ': ' + blockLabel + ' (' + block.quantity + ')...', 'info');
+                const blockPrompt = 'You are an Expert Math Curriculum Designer.\n' +
+                  'Generate EXACTLY ' + block.quantity + ' ' + blockLabel + ' math problems for grade ' + gradeLevel + '.\n' +
+                  (block.directive && block.directive !== 'general' ? 'Focus area: ' + block.directive + '.\n' : '') +
+                  'Subject: ' + (mathSubject || 'General Math') + '.\n\n' +
+                  'Return a JSON object: {"title":"<section title>","problems":[{"question":"...","expression":"...","answer":<number or string>,"steps":[{"explanation":"...","latex":"..."}],"realWorld":"1-2 sentence real-life connection naming a specific career or situation where this skill is used — NOT a word problem restatement"}]}\n' +
+                  'IMPORTANT: Return ONLY valid JSON. Every problem MUST have question, answer, and steps.';
+                try {
+                  const result = await callGemini(blockPrompt, true);
+                  if (!result) throw new Error('Empty response');
+                  let cleaned = result.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+                  const startBrace = cleaned.indexOf('{');
+                  if (startBrace > 0) cleaned = cleaned.substring(startBrace);
+                  const endBrace = cleaned.lastIndexOf('}');
+                  if (endBrace > 0) cleaned = cleaned.substring(0, endBrace + 1);
+                  let parsed = null;
+                  if (typeof window !== 'undefined' && window.jsonrepair) {
+                    try { parsed = JSON.parse(window.jsonrepair(cleaned)); } catch (e) { /* fall through */ }
+                  }
+                  if (!parsed) parsed = JSON.parse(cleaned);
+                  const problems = Array.isArray(parsed.problems) ? parsed.problems : (parsed.question ? [parsed] : []);
+                  if (problems.length > 0) {
+                    problems.forEach(p => { p._blockType = blockLabel; });
+                    allProblems.push(...problems);
+                    console.error('[ASSESS] Block ' + (bi + 1) + ' (' + blockLabel + '): ' + problems.length + ' problems parsed');
+                  } else {
+                    throw new Error('No problems in parsed response');
+                  }
+                } catch (e) {
+                  console.error('[ASSESS] Block ' + (bi + 1) + ' (' + blockLabel + ') failed:', e.message);
+                  blockErrors++;
+                }
+                if (bi < nonFluencyBlocks.length - 1) {
+                  await new Promise(r => setTimeout(r, 500));
+                }
+              }
+              if (allProblems.length === 0) {
+                addToast('Assessment generation failed — no problems could be generated. Try fewer sections.', 'error');
+              } else {
+                allProblems.forEach(p => {
+                  if (!Array.isArray(p.steps)) p.steps = [];
+                  p.steps = p.steps.map(s => typeof s === 'string' ? { explanation: s, latex: '' } : s);
+                });
+                const normalizedContent = {
+                  title: 'Assessment: ' + (mathSubject || 'General Math') + ' (Grade ' + gradeLevel + ')',
+                  problems: allProblems,
+                  graphData: null
+                };
+                const newItem = {
+                  id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                  type: 'math',
+                  data: normalizedContent,
+                  meta: (mathSubject || 'General Math') + ' - Assessment',
+                  title: normalizedContent.title,
+                  timestamp: new Date(),
+                  config: {}
+                };
+                setHistory(prev => [...prev, newItem]);
+                // Trigger display by calling handleGenerateMath with a tiny prompt to show the last result
+                // The problems are already in history, so user can access them from Resources
+                if (blockErrors > 0) {
+                  addToast('Assessment partially generated — ' + allProblems.length + ' problems (' + blockErrors + ' section(s) failed). Check Resources.', 'warning');
+                } else {
+                  addToast('✅ Assessment complete! ' + allProblems.length + ' problems across ' + nonFluencyBlocks.length + ' sections. Check Resources panel.', 'success');
+                }
+              }
+            })();
           },
           className: "flex-1 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-bold rounded-xl text-sm hover:from-indigo-700 hover:to-blue-700 transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-2"
         }, /*#__PURE__*/React.createElement(Sparkles, {
@@ -1180,6 +1836,7 @@
               ready: true
             },
             {
+              // @tool base10
               id: 'base10',
               icon: '🧮',
               label: 'Math Manipulatives',
@@ -1188,6 +1845,7 @@
               ready: true
             },
             {
+              // @tool coordinate
               id: 'coordinate',
               icon: '📍',
               label: t('stem.tools_menu.coordinate_grid'),
@@ -1196,6 +1854,7 @@
               ready: true
             },
             {
+              // @tool protractor
               id: 'protractor',
               icon: '📐',
               label: t('stem.tools_menu.angle_explorer'),
@@ -1204,6 +1863,17 @@
               ready: true
             },
             {
+              id: 'geoSandbox', icon: '\uD83D\uDD37', label: 'Geometry Sandbox',
+              desc: 'Build 3D shapes, measure properties, and export STL files for 3D printing.',
+              color: 'sky', ready: true
+            },
+            {
+              id: 'archStudio', icon: '\uD83C\uDFD7\uFE0F', label: 'Architecture Studio',
+              desc: 'Minecraft-style 3D building with blocks, columns, arches, and ramps. Snap to grid, measure, and export STL.',
+              color: 'amber', ready: true
+            },
+            {
+              // @tool multtable
               id: 'multtable',
               icon: '🔢',
               label: t('stem.tools_menu.multiplication_table'),
@@ -1213,6 +1883,7 @@
             },
             { id: '_cat_AdvancedMath', icon: '', label: t('stem.tools_menu.advanced_math'), desc: '', color: 'slate', category: true },
             {
+              // @tool funcGrapher
               id: 'funcGrapher', icon: '📈', label: t('stem.tools_menu.function_grapher'),
               desc: 'Plot linear, quadratic, and trig functions. Adjust coefficients in real-time.',
               color: 'indigo', ready: true
@@ -1233,6 +1904,11 @@
               color: 'amber', ready: true
             },
             {
+              id: 'graphCalc', icon: '📈', label: 'Graphing Calculator',
+              desc: 'Type equations, plot functions, explore data. Learn what every button really does.',
+              color: 'indigo', ready: true
+            },
+            {
               id: 'probability', icon: '\uD83C\uDFB2', label: t('stem.tools_menu.probability'),
               desc: 'Coin flips, dice rolls, and spinners. Visualize outcomes and explore chance.',
               color: 'sky', ready: true
@@ -1245,16 +1921,19 @@
             },
             { id: '_cat_Life&EarthScience', icon: '', label: t('stem.tools_menu.life_earth_science'), desc: '', color: 'slate', category: true },
             {
+              // @tool cell
               id: 'cell', icon: '🔬', label: t('stem.tools_menu.cell_simulator'),
               desc: 'Microscope mode: observe, control, and quiz on living organisms. Earn XP!',
               color: 'green', ready: true
             },
             {
+              // @tool solarSystem
               id: 'solarSystem', icon: '\uD83C\uDF0D', label: 'Solar System',
               desc: '3D interactive solar system with orbit, zoom, planet facts and quiz.',
               color: 'blue', ready: true
             },
             {
+              // @tool galaxy
               id: 'galaxy', icon: '\uD83C\uDF0C', label: t('stem.tools_menu.galaxy_explorer'),
               desc: 'Fly through a 3D Milky Way. Discover star types, nebulae, and black holes.',
               color: 'indigo', ready: true
@@ -1264,6 +1943,7 @@
               desc: 'Experience 13.8 billion years of cosmic history, from the Big Bang to the far future.',
               color: 'violet', ready: true
             },
+            // @tool rocks
             { id: 'rocks', icon: '🪨', label: t('stem.tools_menu.rocks_minerals'), desc: t('stem.tools_menu.interactive_rock_cycle_mineral_properties'), color: 'amber', ready: true },
             {
               id: 'waterCycle', icon: '\uD83C\uDF0A', label: t('stem.tools_menu.water_cycle'),
@@ -1276,6 +1956,7 @@
               color: 'stone', ready: true
             },
             {
+              // @tool ecosystem
               id: 'ecosystem', icon: '\uD83D\uDC3A', label: 'Ecosystem',
               desc: 'Predator-prey dynamics with Lotka-Volterra simulation. Adjust birth and death rates.',
               color: 'emerald', ready: true
@@ -1284,6 +1965,11 @@
               id: 'companionPlanting', icon: '🌱', label: 'Companion Planting Lab',
               desc: 'Explore the ancient milpa / Three Sisters system — corn, beans, and squash growing in symbiosis. Soil chemistry, nitrogen cycles, and 7,000 years of agricultural science.',
               color: 'emerald', ready: true
+            },
+            {
+              id: 'aquarium', icon: '🐠', label: 'Aquaculture & Ocean Lab',
+              desc: 'Manage aquarium tanks, simulate sustainable fishing, and explore marine ecosystems. Water chemistry, population dynamics and species studies.',
+              color: 'cyan', ready: true
             },
             {
               id: 'decomposer', icon: '⚗️', label: t('stem.tools_menu.decomposer'), desc: t('stem.tools_menu.break_materials_into_elements'),
@@ -1306,16 +1992,19 @@
             },
             { id: '_cat_Physics&Chemistry', icon: '', label: t('stem.tools_menu.physics_chemistry'), desc: '', color: 'slate', category: true },
             {
+              // @tool wave
               id: 'wave', icon: '🌊', label: t('stem.tools_menu.wave_simulator'),
               desc: 'Adjust frequency, amplitude, wavelength. Explore interference patterns.',
               color: 'cyan', ready: true
             },
             {
+              // @tool circuit
               id: 'circuit', icon: '🔌', label: t('stem.tools_menu.circuit_builder'),
               desc: 'Build circuits with resistors and batteries. Calculate voltage and current.',
               color: 'yellow', ready: true
             },
             {
+              // @tool chemBalance
               id: 'chemBalance', icon: '⚗️', label: t('stem.tools_menu.equation_balancer'),
               desc: t('stem.tools_menu.balance_chemical_equations_with_visual'),
               color: 'lime', ready: true
@@ -1326,11 +2015,13 @@
               color: 'violet', ready: true
             },
             {
+              // @tool physics
               id: 'physics', icon: '⚡', label: t('stem.tools_menu.physics_simulator'),
               desc: 'Projectile motion, velocity vectors, and trajectory visualization.',
               color: 'sky', ready: true
             },
             {
+              // @tool dataPlot
               id: 'dataPlot', icon: '📊', label: t('stem.tools_menu.data_plotter'),
               desc: t('stem.tools_menu.plot_data_points_fit_trend'),
               color: 'teal', ready: true
@@ -1352,6 +2043,7 @@
 
             {
 
+              // @tool musicSynth
               id: 'musicSynth', icon: '🎹', label: t('stem.tools_menu.music_synthesizer'),
 
               desc: 'Play a piano, build beats, and learn the science of sound with real-time waveform visualization.',
@@ -1841,7 +2533,7 @@
                   const snap = {
                     id: 'snap-' + Date.now(),
                     tool: 'volume',
-                    label: t('stem.volume.volume') + (cubeBuilderMode === 'slider' ? cubeDims.l + '\u00d7' + cubeDims.w + '\u00d7' + cubeDims.h : cubePositions.size + ' cubes'),
+                    label: 'Volume: ' + (cubeBuilderMode === 'slider' ? cubeDims.l + '\u00d7' + cubeDims.w + '\u00d7' + cubeDims.h : cubePositions.size + ' cubes'),
                     mode: cubeBuilderMode,
                     data: cubeBuilderMode === 'slider' ? {
                       dims: {
@@ -1856,7 +2548,7 @@
                     timestamp: Date.now()
                   };
                   setToolSnapshots(prev => [...prev, snap]);
-                  addToast(t('stem.volume.u0001f4f8_snapshot_saved'), 'success');
+                  addToast('\uD83D\uDCF8 Snapshot saved!', 'success');
                 },
                 className: "text-[10px] font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-full px-2 py-0.5 transition-all"
               }, "\uD83D\uDCF8 Snapshot")), /*#__PURE__*/React.createElement("div", {
@@ -2688,14 +3380,14 @@
                   const snap = {
                     id: 'snap-' + Date.now(),
                     tool: 'coordinate',
-                    label: t('stem.coordinate.grid') + gridPoints.length + ' points',
+                    label: 'Grid: ' + gridPoints.length + ' points',
                     data: {
                       points: [...gridPoints]
                     },
                     timestamp: Date.now()
                   };
                   setToolSnapshots(prev => [...prev, snap]);
-                  addToast(t('stem.coordinate.u0001f4f8_snapshot_saved'), 'success');
+                  addToast('\uD83D\uDCF8 Snapshot saved!', 'success');
                 },
                 className: "text-[10px] font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-full px-2 py-0.5 transition-all"
               }, "\uD83D\uDCF8 Snapshot"))), /*#__PURE__*/React.createElement("div", {
@@ -2925,14 +3617,14 @@
                   const snap = {
                     id: 'snap-' + Date.now(),
                     tool: 'protractor',
-                    label: t('stem.angle.angle') + angleValue + '\u00b0',
+                    label: 'Angle: ' + angleValue + '\u00b0',
                     data: {
                       angle: angleValue
                     },
                     timestamp: Date.now()
                   };
                   setToolSnapshots(prev => [...prev, snap]);
-                  addToast(t('stem.angle.u0001f4f8_snapshot_saved'), 'success');
+                  addToast('\uD83D\uDCF8 Snapshot saved!', 'success');
                 },
                 className: "text-[10px] font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-full px-2 py-0.5 transition-all"
               }, "\uD83D\uDCF8 Snapshot"))), /*#__PURE__*/React.createElement("div", {
@@ -3916,7 +4608,7 @@
                   }, p.label);
                 })
               ),
-              React.createElement("button", { onClick: () => { setToolSnapshots(prev => [...prev, { id: 'calc-' + Date.now(), tool: 'calculus', label: '\u222B[' + d.xMin + ',' + d.xMax + '] n=' + d.n, data: { ...d }, timestamp: Date.now() }]); addToast(t('stem.calculus.ud83dudcf8_calculus_snapshot_saved'), 'success'); }, className: "mt-3 ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
+              React.createElement("button", { onClick: () => { setToolSnapshots(prev => [...prev, { id: 'calc-' + Date.now(), tool: 'calculus', label: '\u222B[' + d.xMin + ',' + d.xMax + '] n=' + d.n, data: { ...d }, timestamp: Date.now() }]); addToast('\uD83D\uDCF8 Snapshot saved!', 'success'); }, className: "mt-3 ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
             )
           })(),
 
@@ -3945,18 +4637,198 @@
               var ctx = canvasEl.getContext('2d');
               var dpr = 2;
               var tick = 0;
+
+              // ── Underwater scene persistent elements ──
+              var _bubbles = [];
+              for (var bi = 0; bi < 25; bi++) {
+                _bubbles.push({ x: Math.random() * cW, y: cH * 0.3 + Math.random() * cH * 0.65, r: 1.5 + Math.random() * 3, speed: 0.3 + Math.random() * 0.7, wobble: Math.random() * Math.PI * 2, wobbleAmp: 0.5 + Math.random() * 1.5 });
+              }
+              var _plankton = [];
+              for (var pi = 0; pi < 15; pi++) {
+                _plankton.push({ x: Math.random() * cW, y: cH * 0.15 + Math.random() * cH * 0.65, size: 0.8 + Math.random() * 1.5, vx: (Math.random() - 0.5) * 0.3, vy: (Math.random() - 0.5) * 0.15, phase: Math.random() * Math.PI * 2 });
+              }
+              var _seaGrass = [];
+              for (var sgi = 0; sgi < 18; sgi++) {
+                _seaGrass.push({ x: sgi * (cW / 18) + Math.random() * (cW / 22), h: 20 + Math.random() * 35, w: 2 + Math.random() * 2.5, phase: Math.random() * Math.PI * 2, hue: 100 + Math.random() * 40 });
+              }
+              var _pebbles = [];
+              for (var pb = 0; pb < 20; pb++) {
+                _pebbles.push({ x: Math.random() * cW, w: 4 + Math.random() * 8, h: 2 + Math.random() * 4, shade: 0.3 + Math.random() * 0.3 });
+              }
+              var _mediumParticles = [];
+              for (var mp = 0; mp < 24; mp++) {
+                _mediumParticles.push({ x: (mp + 0.5) * (cW / 24), baseY: cH * 0.3 + Math.random() * cH * 0.35, phase: Math.random() * Math.PI * 2 });
+              }
+              var _causticPts = [];
+              for (var cp = 0; cp < 6; cp++) {
+                _causticPts.push({ x: cW * 0.1 + cp * cW * 0.16, w: 15 + Math.random() * 25, speed: 0.005 + Math.random() * 0.008, phase: Math.random() * Math.PI * 2 });
+              }
+
               function draw() {
                 tick++;
                 ctx.clearRect(0, 0, cW, cH);
-                // Background gradient
-                var grad = ctx.createLinearGradient(0, 0, 0, cH);
-                grad.addColorStop(0, '#0c4a6e');
-                grad.addColorStop(1, '#0ea5e9');
-                ctx.fillStyle = grad;
+
+                // ── Underwater ocean gradient ──
+                var oceanGrad = ctx.createLinearGradient(0, 0, 0, cH);
+                oceanGrad.addColorStop(0, '#064e6e');
+                oceanGrad.addColorStop(0.08, '#0a6a8a');
+                oceanGrad.addColorStop(0.3, '#0c7d9e');
+                oceanGrad.addColorStop(0.65, '#0a5f7d');
+                oceanGrad.addColorStop(0.85, '#083f58');
+                oceanGrad.addColorStop(1, '#052e42');
+                ctx.fillStyle = oceanGrad;
                 ctx.fillRect(0, 0, cW, cH);
-                // Grid
-                ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-                ctx.lineWidth = 1;
+
+                // ── Surface shimmer line ──
+                ctx.save();
+                var surfaceY = cH * 0.04;
+                var surfGrad = ctx.createLinearGradient(0, 0, 0, surfaceY + 20);
+                surfGrad.addColorStop(0, 'rgba(180,230,255,0.25)');
+                surfGrad.addColorStop(0.5, 'rgba(120,210,255,0.12)');
+                surfGrad.addColorStop(1, 'rgba(80,180,240,0)');
+                ctx.fillStyle = surfGrad;
+                ctx.fillRect(0, 0, cW, surfaceY + 20);
+                ctx.beginPath();
+                for (var sx = 0; sx < cW; sx += 2) {
+                  var sy = surfaceY + Math.sin(sx * 0.02 + tick * 0.04) * 3 + Math.sin(sx * 0.007 + tick * 0.02) * 2;
+                  if (sx === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+                }
+                ctx.strokeStyle = 'rgba(200,240,255,0.4)';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+                ctx.restore();
+
+                // ── Caustic light rays ──
+                ctx.save();
+                for (var ci = 0; ci < _causticPts.length; ci++) {
+                  var cr = _causticPts[ci];
+                  var crx = cr.x + Math.sin(tick * cr.speed + cr.phase) * 40;
+                  var crW = cr.w + Math.sin(tick * cr.speed * 1.3 + cr.phase) * 8;
+                  var rayGrad = ctx.createLinearGradient(crx, 0, crx, cH * 0.85);
+                  rayGrad.addColorStop(0, 'rgba(180,230,255,0.06)');
+                  rayGrad.addColorStop(0.3, 'rgba(140,210,245,0.04)');
+                  rayGrad.addColorStop(0.7, 'rgba(100,190,230,0.02)');
+                  rayGrad.addColorStop(1, 'rgba(80,170,220,0)');
+                  ctx.beginPath();
+                  ctx.moveTo(crx - crW * 0.3, 0);
+                  ctx.lineTo(crx + crW * 0.3, 0);
+                  ctx.lineTo(crx + crW * 0.8, cH * 0.85);
+                  ctx.lineTo(crx - crW * 0.8, cH * 0.85);
+                  ctx.closePath();
+                  ctx.fillStyle = rayGrad;
+                  ctx.fill();
+                }
+                ctx.restore();
+
+                // ── Sandy ocean floor ──
+                var floorY = cH * 0.88;
+                ctx.save();
+                var sandGrad = ctx.createLinearGradient(0, floorY, 0, cH);
+                sandGrad.addColorStop(0, '#5d7a5e');
+                sandGrad.addColorStop(0.3, '#8a9a6e');
+                sandGrad.addColorStop(0.7, '#a8a882');
+                sandGrad.addColorStop(1, '#b5ac8a');
+                ctx.beginPath();
+                ctx.moveTo(0, floorY);
+                for (var fx = 0; fx < cW; fx += 8) {
+                  ctx.lineTo(fx, floorY + Math.sin(fx * 0.015) * 6 + Math.sin(fx * 0.04) * 2);
+                }
+                ctx.lineTo(cW, cH); ctx.lineTo(0, cH); ctx.closePath();
+                ctx.fillStyle = sandGrad; ctx.fill();
+                ctx.restore();
+
+                // ── Pebbles on ocean floor ──
+                ctx.save();
+                for (var pbi = 0; pbi < _pebbles.length; pbi++) {
+                  var pbl = _pebbles[pbi];
+                  var pbY = floorY + Math.sin(pbl.x * 0.015) * 6 + 4;
+                  ctx.beginPath();
+                  ctx.ellipse(pbl.x, pbY, pbl.w, pbl.h, 0, 0, Math.PI * 2);
+                  ctx.fillStyle = 'rgba(90,100,80,' + pbl.shade + ')';
+                  ctx.fill();
+                }
+                ctx.restore();
+
+                // ── Sea grass blades swaying ──
+                ctx.save();
+                for (var sj = 0; sj < _seaGrass.length; sj++) {
+                  var sg = _seaGrass[sj];
+                  var sgBaseY = floorY + Math.sin(sg.x * 0.015) * 6;
+                  var sway = Math.sin(tick * 0.025 + sg.phase) * 8;
+                  ctx.beginPath();
+                  ctx.moveTo(sg.x, sgBaseY);
+                  ctx.quadraticCurveTo(sg.x + sway * 0.5, sgBaseY - sg.h * 0.5, sg.x + sway, sgBaseY - sg.h);
+                  ctx.strokeStyle = 'hsla(' + sg.hue + ', 50%, 35%, 0.55)';
+                  ctx.lineWidth = sg.w;
+                  ctx.lineCap = 'round';
+                  ctx.stroke();
+                }
+                ctx.restore();
+
+                // ── Plankton drifting ──
+                ctx.save();
+                for (var pk = 0; pk < _plankton.length; pk++) {
+                  var pl = _plankton[pk];
+                  pl.x += pl.vx + Math.sin(tick * 0.01 + pl.phase) * 0.1;
+                  pl.y += pl.vy;
+                  if (pl.x < 0) pl.x = cW; if (pl.x > cW) pl.x = 0;
+                  if (pl.y < cH * 0.1) pl.y = cH * 0.8; if (pl.y > cH * 0.85) pl.y = cH * 0.1;
+                  ctx.globalAlpha = 0.3 + Math.sin(tick * 0.03 + pk) * 0.15;
+                  ctx.beginPath(); ctx.arc(pl.x, pl.y, pl.size * dpr, 0, Math.PI * 2);
+                  ctx.fillStyle = '#a0e8c0'; ctx.fill();
+                }
+                ctx.globalAlpha = 1;
+                ctx.restore();
+
+                // ── Medium particles (water molecules oscillating with wave) ──
+                ctx.save();
+                var mAmp = parseFloat(canvasEl.dataset.amp || '50');
+                var mFreq = parseFloat(canvasEl.dataset.freq || '2');
+                var mSpeed = parseFloat(canvasEl.dataset.speed || '1');
+                for (var mi = 0; mi < _mediumParticles.length; mi++) {
+                  var mPart = _mediumParticles[mi];
+                  var mWaveT = mPart.x / cW * Math.PI * 2 * mFreq - tick * 0.03 * mSpeed;
+                  var mDisp = Math.sin(mWaveT) * mAmp * dpr * 0.3;
+                  var mpy = mPart.baseY - mDisp;
+                  // Glow
+                  ctx.globalAlpha = 0.15;
+                  ctx.beginPath(); ctx.arc(mPart.x, mpy, 7 * dpr, 0, Math.PI * 2);
+                  var mpGlow = ctx.createRadialGradient(mPart.x, mpy, 0, mPart.x, mpy, 7 * dpr);
+                  mpGlow.addColorStop(0, '#80d8ff');
+                  mpGlow.addColorStop(1, '#80d8ff00');
+                  ctx.fillStyle = mpGlow; ctx.fill();
+                  // Core
+                  ctx.globalAlpha = 0.35;
+                  ctx.beginPath(); ctx.arc(mPart.x, mpy, 2.5 * dpr, 0, Math.PI * 2);
+                  ctx.fillStyle = '#b0e8ff'; ctx.fill();
+                  ctx.strokeStyle = 'rgba(130,210,255,0.3)'; ctx.lineWidth = 0.5;
+                  ctx.stroke();
+                }
+                ctx.globalAlpha = 1;
+                ctx.restore();
+
+                // ── Rising bubbles ──
+                ctx.save();
+                for (var bj = 0; bj < _bubbles.length; bj++) {
+                  var bub = _bubbles[bj];
+                  bub.y -= bub.speed;
+                  bub.x += Math.sin(tick * 0.02 + bub.wobble) * bub.wobbleAmp;
+                  if (bub.y < cH * 0.03) { bub.y = cH * 0.9 + Math.random() * cH * 0.1; bub.x = Math.random() * cW; }
+                  var bubR = bub.r * dpr;
+                  ctx.globalAlpha = 0.25;
+                  ctx.beginPath(); ctx.arc(bub.x, bub.y, bubR, 0, Math.PI * 2);
+                  ctx.strokeStyle = 'rgba(200,240,255,0.6)'; ctx.lineWidth = 0.8;
+                  ctx.stroke();
+                  // Highlight
+                  ctx.beginPath(); ctx.arc(bub.x - bubR * 0.3, bub.y - bubR * 0.3, bubR * 0.3, 0, Math.PI * 2);
+                  ctx.fillStyle = 'rgba(230,250,255,0.5)'; ctx.fill();
+                }
+                ctx.globalAlpha = 1;
+                ctx.restore();
+
+                // ── Measurement grid (subtle overlay) ──
+                ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+                ctx.lineWidth = 0.5;
                 for (var gx = 0; gx < cW; gx += 30 * dpr) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, cH); ctx.stroke(); }
                 for (var gy = 0; gy < cH; gy += 30 * dpr) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(cW, gy); ctx.stroke(); }
                 // Center line
@@ -4366,7 +5238,7 @@
                   })
                 )
               ),
-              React.createElement("button", { onClick: () => { setToolSnapshots(prev => [...prev, { id: 'wv-' + Date.now(), tool: 'wave', label: 'A=' + d.amplitude + ' f=' + d.frequency, data: Object.assign({}, d), timestamp: Date.now() }]); addToast(t('stem.wave.ud83dudcf8_wave_snapshot_saved'), 'success'); }, className: "mt-3 ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
+              React.createElement("button", { onClick: () => { setToolSnapshots(prev => [...prev, { id: 'wv-' + Date.now(), tool: 'wave', label: 'A=' + d.amplitude + ' f=' + d.frequency, data: Object.assign({}, d), timestamp: Date.now() }]); addToast('\uD83D\uDCF8 Snapshot saved!', 'success'); }, className: "mt-3 ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
             )
           })(),
 
@@ -4489,48 +5361,108 @@
                     a === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
                   }
                   ctx.closePath();
-                  ctx.fillStyle = def.bodyColor; ctx.fill();
+                  // Gradient body fill
+                  var aGrad = ctx.createRadialGradient(-sz * 0.3, -sz * 0.3, 0, 0, 0, sz * 1.2);
+                  aGrad.addColorStop(0, 'rgba(196,181,253,0.65)');
+                  aGrad.addColorStop(0.5, def.bodyColor);
+                  aGrad.addColorStop(1, 'rgba(124,58,237,0.25)');
+                  ctx.fillStyle = aGrad; ctx.fill();
                   ctx.strokeStyle = def.color; ctx.lineWidth = 1.5 * dpr; ctx.stroke();
-                  // Nucleus
+                  // Food vacuoles
+                  [[-0.4, 0.3, 0.12], [0.35, -0.25, 0.1], [-0.15, -0.45, 0.08]].forEach(function (v) {
+                    ctx.beginPath(); ctx.arc(sz * v[0], sz * v[1], sz * v[2], 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(34,197,94,0.2)'; ctx.fill();
+                    ctx.strokeStyle = 'rgba(34,197,94,0.3)'; ctx.lineWidth = 0.5 * dpr; ctx.stroke();
+                  });
+                  // Nucleus with nucleolus
                   ctx.beginPath(); ctx.arc(0, 0, sz * 0.3, 0, Math.PI * 2);
-                  ctx.fillStyle = 'rgba(139,92,246,0.5)'; ctx.fill();
+                  var nGrad = ctx.createRadialGradient(-sz * 0.05, -sz * 0.05, 0, 0, 0, sz * 0.3);
+                  nGrad.addColorStop(0, 'rgba(167,139,250,0.7)');
+                  nGrad.addColorStop(1, 'rgba(124,58,237,0.4)');
+                  ctx.fillStyle = nGrad; ctx.fill();
+                  ctx.strokeStyle = 'rgba(124,58,237,0.5)'; ctx.lineWidth = 0.8 * dpr; ctx.stroke();
+                  // Nucleolus
+                  ctx.beginPath(); ctx.arc(sz * 0.05, -sz * 0.05, sz * 0.1, 0, Math.PI * 2);
+                  ctx.fillStyle = 'rgba(91,33,182,0.6)'; ctx.fill();
                 } else if (def.id === 'paramecium') {
-                  // Oval with cilia
+                  // Oval body with gradient
                   ctx.beginPath(); ctx.ellipse(0, 0, sz * 1.4, sz * 0.7, 0, 0, Math.PI * 2);
-                  ctx.fillStyle = def.bodyColor; ctx.fill();
+                  var pGrad = ctx.createRadialGradient(-sz * 0.3, -sz * 0.15, 0, 0, 0, sz * 1.4);
+                  pGrad.addColorStop(0, 'rgba(165,243,252,0.7)');
+                  pGrad.addColorStop(0.5, def.bodyColor);
+                  pGrad.addColorStop(1, 'rgba(6,182,212,0.2)');
+                  ctx.fillStyle = pGrad; ctx.fill();
                   ctx.strokeStyle = def.color; ctx.lineWidth = 1.5 * dpr; ctx.stroke();
-                  // Cilia
-                  for (var ci = 0; ci < 16; ci++) {
-                    var ca = (ci / 16) * Math.PI * 2;
-                    var cx2 = Math.cos(ca) * sz * 1.5, cy2 = Math.sin(ca) * sz * 0.8;
-                    var wave = Math.sin(world.tick * 0.15 + ci) * 3 * dpr;
-                    ctx.beginPath(); ctx.moveTo(cx2, cy2);
-                    ctx.lineTo(cx2 + wave, cy2 + Math.sign(cy2) * 4 * dpr);
-                    ctx.strokeStyle = 'rgba(6,182,212,0.5)'; ctx.lineWidth = 0.8 * dpr; ctx.stroke();
+                  // Pellicle ridges
+                  for (var pri = 0; pri < 5; pri++) {
+                    var ry = sz * (-0.4 + pri * 0.2);
+                    ctx.beginPath(); ctx.moveTo(-sz * 1.2, ry); ctx.quadraticCurveTo(0, ry + sz * 0.05, sz * 1.2, ry);
+                    ctx.strokeStyle = 'rgba(6,182,212,0.12)'; ctx.lineWidth = 0.5 * dpr; ctx.stroke();
                   }
-                  // Oral groove
+                  // Cilia (more, with metachronal wave)
+                  for (var ci = 0; ci < 24; ci++) {
+                    var ca = (ci / 24) * Math.PI * 2;
+                    var cx2 = Math.cos(ca) * sz * 1.5, cy2 = Math.sin(ca) * sz * 0.78;
+                    var wave = Math.sin(world.tick * 0.18 + ci * 0.5) * 4 * dpr;
+                    var wave2 = Math.cos(world.tick * 0.12 + ci * 0.3) * 2 * dpr;
+                    ctx.beginPath(); ctx.moveTo(cx2, cy2);
+                    ctx.quadraticCurveTo(cx2 + wave, cy2 + Math.sign(cy2) * 3 * dpr, cx2 + wave2, cy2 + Math.sign(cy2) * 6 * dpr);
+                    ctx.strokeStyle = 'rgba(6,182,212,0.4)'; ctx.lineWidth = 0.7 * dpr; ctx.stroke();
+                  }
+                  // Oral groove with food vacuole path
                   ctx.beginPath(); ctx.ellipse(sz * 0.4, 0, sz * 0.3, sz * 0.15, 0.3, 0, Math.PI * 2);
                   ctx.strokeStyle = 'rgba(6,182,212,0.7)'; ctx.lineWidth = 1 * dpr; ctx.stroke();
+                  // Contractile vacuoles (pulsing)
+                  var cvPulse = 0.08 + 0.04 * Math.sin(world.tick * 0.06);
+                  ctx.beginPath(); ctx.arc(-sz * 0.8, 0, sz * cvPulse, 0, Math.PI * 2);
+                  ctx.fillStyle = 'rgba(165,243,252,0.5)'; ctx.fill();
+                  ctx.strokeStyle = 'rgba(6,182,212,0.5)'; ctx.lineWidth = 0.5 * dpr; ctx.stroke();
+                  ctx.beginPath(); ctx.arc(sz * 0.8, 0, sz * cvPulse * 0.8, 0, Math.PI * 2);
+                  ctx.fillStyle = 'rgba(165,243,252,0.4)'; ctx.fill();
+                  ctx.strokeStyle = 'rgba(6,182,212,0.4)'; ctx.lineWidth = 0.5 * dpr; ctx.stroke();
+                  // Macronucleus
+                  ctx.beginPath(); ctx.ellipse(-sz * 0.1, 0, sz * 0.35, sz * 0.18, 0.2, 0, Math.PI * 2);
+                  ctx.fillStyle = 'rgba(124,58,237,0.35)'; ctx.fill();
+                  ctx.strokeStyle = 'rgba(124,58,237,0.4)'; ctx.lineWidth = 0.6 * dpr; ctx.stroke();
                 } else if (def.id === 'euglena') {
-                  // Teardrop
+                  // Teardrop body
                   ctx.beginPath();
                   ctx.moveTo(sz * 1.5, 0);
                   ctx.quadraticCurveTo(sz * 0.5, -sz * 0.6, -sz, -sz * 0.3);
                   ctx.quadraticCurveTo(-sz * 1.3, 0, -sz, sz * 0.3);
                   ctx.quadraticCurveTo(sz * 0.5, sz * 0.6, sz * 1.5, 0);
                   ctx.closePath();
-                  ctx.fillStyle = def.bodyColor; ctx.fill();
+                  var eGrad = ctx.createRadialGradient(-sz * 0.2, -sz * 0.15, 0, 0, 0, sz * 1.5);
+                  eGrad.addColorStop(0, 'rgba(187,247,208,0.8)');
+                  eGrad.addColorStop(0.5, def.bodyColor);
+                  eGrad.addColorStop(1, 'rgba(22,163,74,0.2)');
+                  ctx.fillStyle = eGrad; ctx.fill();
                   ctx.strokeStyle = def.color; ctx.lineWidth = 1.5 * dpr; ctx.stroke();
-                  // Eyespot
-                  ctx.beginPath(); ctx.arc(sz * 0.8, -sz * 0.15, sz * 0.15, 0, Math.PI * 2);
-                  ctx.fillStyle = '#ef4444'; ctx.fill();
-                  // Flagellum
+                  // Pellicle stripes
+                  for (var epi = 0; epi < 4; epi++) {
+                    var epy = sz * (-0.3 + epi * 0.2);
+                    ctx.beginPath();
+                    ctx.moveTo(-sz * 0.8, epy); ctx.quadraticCurveTo(sz * 0.3, epy + sz * 0.03, sz * 1.2, epy * 0.5);
+                    ctx.strokeStyle = 'rgba(22,163,74,0.12)'; ctx.lineWidth = 0.4 * dpr; ctx.stroke();
+                  }
+                  // Chloroplasts
+                  [[-0.2, -0.15, 0.14], [0.3, 0.1, 0.12], [-0.5, 0.05, 0.1], [0.1, -0.3, 0.09]].forEach(function (cp) {
+                    ctx.beginPath(); ctx.ellipse(sz * cp[0], sz * cp[1], sz * cp[2], sz * cp[2] * 0.6, Math.random() * 0.5, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(34,197,94,0.35)'; ctx.fill();
+                  });
+                  // Eyespot (stigma) with iris detail
+                  ctx.beginPath(); ctx.arc(sz * 0.8, -sz * 0.15, sz * 0.17, 0, Math.PI * 2);
+                  var eyeGrad = ctx.createRadialGradient(sz * 0.78, -sz * 0.17, 0, sz * 0.8, -sz * 0.15, sz * 0.17);
+                  eyeGrad.addColorStop(0, '#fca5a5'); eyeGrad.addColorStop(0.5, '#ef4444'); eyeGrad.addColorStop(1, '#b91c1c');
+                  ctx.fillStyle = eyeGrad; ctx.fill();
+                  // Flagellum (undulating)
                   ctx.beginPath(); ctx.moveTo(sz * 1.5, 0);
                   var fl = Math.sin(world.tick * 0.2 + o.phase) * 8 * dpr;
-                  ctx.quadraticCurveTo(sz * 2 + fl, -4 * dpr, sz * 2.5, fl);
-                  ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 1 * dpr; ctx.stroke();
+                  var fl2 = Math.sin(world.tick * 0.25 + o.phase + 1) * 5 * dpr;
+                  ctx.bezierCurveTo(sz * 1.8, -3 * dpr + fl, sz * 2.2 + fl2, 3 * dpr - fl, sz * 2.8, fl);
+                  ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 1.2 * dpr; ctx.lineCap = 'round'; ctx.stroke();
                 } else if (def.id === 'wbc') {
-                  // Irregular shape
+                  // Irregular shape with gradient
                   ctx.beginPath();
                   for (var a = 0; a < Math.PI * 2; a += 0.2) {
                     var wobble = sz * (1 + 0.15 * Math.sin(a * 4 + world.tick * 0.04));
@@ -4538,45 +5470,108 @@
                     a === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
                   }
                   ctx.closePath();
-                  ctx.fillStyle = def.bodyColor; ctx.fill();
+                  var wGrad = ctx.createRadialGradient(-sz * 0.25, -sz * 0.2, 0, 0, 0, sz * 1.15);
+                  wGrad.addColorStop(0, 'rgba(254,202,202,0.6)');
+                  wGrad.addColorStop(0.5, def.bodyColor);
+                  wGrad.addColorStop(1, 'rgba(239,68,68,0.15)');
+                  ctx.fillStyle = wGrad; ctx.fill();
                   ctx.strokeStyle = def.color; ctx.lineWidth = 1.5 * dpr; ctx.stroke();
-                  // Lobular nucleus
+                  // Cytoplasmic granules
+                  [[-0.5, 0.4], [0.55, -0.35], [-0.3, -0.55], [0.45, 0.5], [-0.6, -0.1]].forEach(function (g) {
+                    ctx.beginPath(); ctx.arc(sz * g[0], sz * g[1], sz * 0.04, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(239,68,68,0.2)'; ctx.fill();
+                  });
+                  // Multi-lobed nucleus
                   ctx.beginPath(); ctx.ellipse(-sz * 0.2, -sz * 0.1, sz * 0.35, sz * 0.2, 0.5, 0, Math.PI * 2);
-                  ctx.fillStyle = 'rgba(239,68,68,0.4)'; ctx.fill();
+                  var wn1Grad = ctx.createRadialGradient(-sz * 0.25, -sz * 0.15, 0, -sz * 0.2, -sz * 0.1, sz * 0.35);
+                  wn1Grad.addColorStop(0, 'rgba(252,165,165,0.55)'); wn1Grad.addColorStop(1, 'rgba(239,68,68,0.25)');
+                  ctx.fillStyle = wn1Grad; ctx.fill();
+                  ctx.strokeStyle = 'rgba(239,68,68,0.3)'; ctx.lineWidth = 0.5 * dpr; ctx.stroke();
                   ctx.beginPath(); ctx.ellipse(sz * 0.15, sz * 0.1, sz * 0.25, sz * 0.2, -0.3, 0, Math.PI * 2);
-                  ctx.fillStyle = 'rgba(239,68,68,0.4)'; ctx.fill();
+                  ctx.fillStyle = 'rgba(239,68,68,0.35)'; ctx.fill();
+                  ctx.strokeStyle = 'rgba(239,68,68,0.25)'; ctx.lineWidth = 0.5 * dpr; ctx.stroke();
                 } else if (def.id === 'bacterium') {
-                  // Rod shape
+                  // Rod shape with gradient
                   var rw = sz * 1.8, rh = sz * 0.8;
                   ctx.beginPath();
                   ctx.ellipse(0, 0, rw, rh, 0, 0, Math.PI * 2);
-                  ctx.fillStyle = def.bodyColor; ctx.fill();
+                  var bGrad = ctx.createRadialGradient(-rw * 0.2, -rh * 0.3, 0, 0, 0, rw);
+                  bGrad.addColorStop(0, 'rgba(253,230,138,0.7)');
+                  bGrad.addColorStop(0.5, def.bodyColor);
+                  bGrad.addColorStop(1, 'rgba(245,158,11,0.15)');
+                  ctx.fillStyle = bGrad; ctx.fill();
                   ctx.strokeStyle = def.color; ctx.lineWidth = 1.2 * dpr; ctx.stroke();
-                  // Flagella
+                  // DNA nucleoid region
+                  ctx.beginPath(); ctx.ellipse(0, 0, rw * 0.4, rh * 0.5, 0.3, 0, Math.PI * 2);
+                  ctx.fillStyle = 'rgba(245,158,11,0.15)'; ctx.fill();
+                  ctx.strokeStyle = 'rgba(245,158,11,0.2)'; ctx.lineWidth = 0.5 * dpr;
+                  ctx.setLineDash([2 * dpr, 2 * dpr]); ctx.stroke(); ctx.setLineDash([]);
+                  // Pili (short hair-like)
+                  for (var pili = 0; pili < 6; pili++) {
+                    var pa = (pili / 6) * Math.PI * 2;
+                    var ppx = Math.cos(pa) * rw * 0.95, ppy = Math.sin(pa) * rh * 0.95;
+                    ctx.beginPath(); ctx.moveTo(ppx, ppy);
+                    ctx.lineTo(ppx + Math.cos(pa) * sz * 0.2, ppy + Math.sin(pa) * sz * 0.2);
+                    ctx.strokeStyle = 'rgba(245,158,11,0.25)'; ctx.lineWidth = 0.4 * dpr; ctx.stroke();
+                  }
+                  // Flagella (undulating)
                   ctx.beginPath(); ctx.moveTo(-rw, 0);
                   var fl2 = Math.sin(world.tick * 0.25 + o.phase) * 5 * dpr;
-                  ctx.bezierCurveTo(-rw - 8 * dpr, fl2, -rw - 14 * dpr, -fl2, -rw - 20 * dpr, fl2);
-                  ctx.strokeStyle = 'rgba(245,158,11,0.6)'; ctx.lineWidth = 0.8 * dpr; ctx.stroke();
+                  var fl3 = Math.cos(world.tick * 0.2 + o.phase) * 3 * dpr;
+                  ctx.bezierCurveTo(-rw - 8 * dpr, fl2, -rw - 14 * dpr, -fl2, -rw - 20 * dpr, fl3);
+                  ctx.strokeStyle = 'rgba(245,158,11,0.6)'; ctx.lineWidth = 0.8 * dpr; ctx.lineCap = 'round'; ctx.stroke();
                 } else if (def.id === 'plantcell') {
-                  // Rectangular
+                  // Rectangular with gradient fill
                   var hw = sz * 1.6, hh = sz * 1.2;
-                  ctx.strokeStyle = '#65a30d'; ctx.lineWidth = 3 * dpr;
-                  ctx.strokeRect(-hw, -hh, hw * 2, hh * 2);
-                  ctx.fillStyle = 'rgba(209,250,229,0.4)'; ctx.fillRect(-hw, -hh, hw * 2, hh * 2);
-                  // Central vacuole
+                  // Cell wall (thicker double line)
+                  ctx.strokeStyle = '#65a30d'; ctx.lineWidth = 4 * dpr;
+                  ctx.strokeRect(-hw - 1, -hh - 1, (hw + 1) * 2, (hh + 1) * 2);
+                  ctx.strokeStyle = '#86efac'; ctx.lineWidth = 1 * dpr;
+                  ctx.strokeRect(-hw + 2, -hh + 2, (hw - 2) * 2, (hh - 2) * 2);
+                  // Gradient cytoplasm
+                  var pcGrad = ctx.createRadialGradient(-hw * 0.2, -hh * 0.2, 0, 0, 0, Math.max(hw, hh) * 1.1);
+                  pcGrad.addColorStop(0, 'rgba(220,252,231,0.6)');
+                  pcGrad.addColorStop(0.5, 'rgba(209,250,229,0.4)');
+                  pcGrad.addColorStop(1, 'rgba(187,247,208,0.2)');
+                  ctx.fillStyle = pcGrad; ctx.fillRect(-hw, -hh, hw * 2, hh * 2);
+                  // ER strands
+                  ctx.beginPath();
+                  ctx.moveTo(-hw * 0.6, -hh * 0.7); ctx.quadraticCurveTo(-hw * 0.2, -hh * 0.3, hw * 0.1, -hh * 0.5);
+                  ctx.moveTo(-hw * 0.4, hh * 0.3); ctx.quadraticCurveTo(hw * 0.1, hh * 0.5, hw * 0.6, hh * 0.2);
+                  ctx.strokeStyle = 'rgba(101,163,13,0.12)'; ctx.lineWidth = 0.8 * dpr; ctx.stroke();
+                  // Central vacuole with gradient
                   ctx.beginPath(); ctx.ellipse(0, 0, hw * 0.6, hh * 0.5, 0, 0, Math.PI * 2);
-                  ctx.fillStyle = 'rgba(167,139,250,0.25)'; ctx.fill();
+                  var cvGrad = ctx.createRadialGradient(-hw * 0.1, -hh * 0.08, 0, 0, 0, hw * 0.6);
+                  cvGrad.addColorStop(0, 'rgba(196,181,253,0.3)');
+                  cvGrad.addColorStop(1, 'rgba(167,139,250,0.12)');
+                  ctx.fillStyle = cvGrad; ctx.fill();
                   ctx.strokeStyle = '#a78bfa'; ctx.lineWidth = 1 * dpr; ctx.stroke();
-                  // Chloroplasts
-                  [-0.5, 0.3, -0.2].forEach(function (off, i) {
-                    ctx.beginPath(); ctx.ellipse(hw * off, hh * (i * 0.4 - 0.4), sz * 0.25, sz * 0.15, 0.3 * i, 0, Math.PI * 2);
-                    ctx.fillStyle = 'rgba(34,197,94,0.5)'; ctx.fill();
+                  // Chloroplasts (with thylakoid detail)
+                  [[-0.5, -0.4, 0.25], [0.3, 0, 0.22], [-0.2, 0.4, 0.2], [0.5, -0.5, 0.18], [-0.55, 0.25, 0.15]].forEach(function (cp, i) {
+                    ctx.beginPath(); ctx.ellipse(hw * cp[0], hh * cp[1], sz * cp[2], sz * cp[2] * 0.6, 0.3 * i, 0, Math.PI * 2);
+                    var cpGrad = ctx.createRadialGradient(hw * cp[0] - sz * 0.05, hh * cp[1] - sz * 0.05, 0, hw * cp[0], hh * cp[1], sz * cp[2]);
+                    cpGrad.addColorStop(0, 'rgba(74,222,128,0.6)'); cpGrad.addColorStop(1, 'rgba(34,197,94,0.3)');
+                    ctx.fillStyle = cpGrad; ctx.fill();
+                    // Thylakoid line
+                    ctx.beginPath(); ctx.moveTo(hw * cp[0] - sz * cp[2] * 0.5, hh * cp[1]);
+                    ctx.lineTo(hw * cp[0] + sz * cp[2] * 0.5, hh * cp[1]);
+                    ctx.strokeStyle = 'rgba(22,163,74,0.25)'; ctx.lineWidth = 0.4 * dpr; ctx.stroke();
                   });
-                  // Nucleus
+                  // Mitochondria
+                  ctx.beginPath(); ctx.ellipse(hw * 0.55, hh * 0.45, sz * 0.12, sz * 0.06, 0.5, 0, Math.PI * 2);
+                  ctx.fillStyle = 'rgba(251,146,60,0.35)'; ctx.fill();
+                  ctx.strokeStyle = 'rgba(249,115,22,0.3)'; ctx.lineWidth = 0.4 * dpr; ctx.stroke();
+                  // Nucleus with envelope
                   ctx.beginPath(); ctx.arc(hw * 0.3, -hh * 0.3, sz * 0.22, 0, Math.PI * 2);
-                  ctx.fillStyle = 'rgba(124,58,237,0.4)'; ctx.fill();
+                  var pnGrad = ctx.createRadialGradient(hw * 0.28, -hh * 0.32, 0, hw * 0.3, -hh * 0.3, sz * 0.22);
+                  pnGrad.addColorStop(0, 'rgba(167,139,250,0.55)'); pnGrad.addColorStop(1, 'rgba(124,58,237,0.25)');
+                  ctx.fillStyle = pnGrad; ctx.fill();
+                  ctx.strokeStyle = 'rgba(124,58,237,0.4)'; ctx.lineWidth = 0.8 * dpr; ctx.stroke();
+                  // Nucleolus
+                  ctx.beginPath(); ctx.arc(hw * 0.32, -hh * 0.28, sz * 0.07, 0, Math.PI * 2);
+                  ctx.fillStyle = 'rgba(91,33,182,0.5)'; ctx.fill();
                 } else if (def.id === 'diatom') {
-                  // Hexagonal silica shell
+                  // Hexagonal silica shell with gradient
                   ctx.beginPath();
                   for (var hi = 0; hi < 6; hi++) {
                     var ha = (hi / 6) * Math.PI * 2 - Math.PI / 6;
@@ -4584,83 +5579,175 @@
                     hi === 0 ? ctx.moveTo(hx, hy) : ctx.lineTo(hx, hy);
                   }
                   ctx.closePath();
-                  ctx.fillStyle = def.bodyColor; ctx.fill();
+                  var dGrad = ctx.createRadialGradient(-sz * 0.2, -sz * 0.2, 0, 0, 0, sz * 1.2);
+                  dGrad.addColorStop(0, 'rgba(186,230,253,0.5)');
+                  dGrad.addColorStop(0.4, def.bodyColor);
+                  dGrad.addColorStop(1, 'rgba(14,165,233,0.1)');
+                  ctx.fillStyle = dGrad; ctx.fill();
                   ctx.strokeStyle = def.color; ctx.lineWidth = 2 * dpr; ctx.stroke();
-                  // Internal radial pattern (raphe)
+                  // Silica frustule ornate pattern (concentric hex)
+                  for (var ch = 0; ch < 2; ch++) {
+                    ctx.beginPath();
+                    var cscale = 0.6 - ch * 0.2;
+                    for (var hi2 = 0; hi2 < 6; hi2++) {
+                      var ha2 = (hi2 / 6) * Math.PI * 2 - Math.PI / 6;
+                      var hx2 = Math.cos(ha2) * sz * 1.2 * cscale, hy2 = Math.sin(ha2) * sz * 1.2 * cscale;
+                      hi2 === 0 ? ctx.moveTo(hx2, hy2) : ctx.lineTo(hx2, hy2);
+                    }
+                    ctx.closePath();
+                    ctx.strokeStyle = 'rgba(14,165,233,' + (0.15 - ch * 0.05) + ')'; ctx.lineWidth = 0.6 * dpr; ctx.stroke();
+                  }
+                  // Ornate radial raphe
                   for (var ri2 = 0; ri2 < 6; ri2++) {
                     var ra = (ri2 / 6) * Math.PI * 2;
-                    ctx.beginPath(); ctx.moveTo(0, 0);
-                    ctx.lineTo(Math.cos(ra) * sz * 0.8, Math.sin(ra) * sz * 0.8);
-                    ctx.strokeStyle = 'rgba(14,165,233,0.3)'; ctx.lineWidth = 0.8 * dpr; ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(Math.cos(ra) * sz * 0.25, Math.sin(ra) * sz * 0.25);
+                    ctx.lineTo(Math.cos(ra) * sz * 1.0, Math.sin(ra) * sz * 1.0);
+                    ctx.strokeStyle = 'rgba(14,165,233,0.2)'; ctx.lineWidth = 0.6 * dpr; ctx.stroke();
                   }
-                  // Central node
+                  // Areolae (tiny pores along raphe lines)
+                  for (var ri3 = 0; ri3 < 6; ri3++) {
+                    var ra3 = (ri3 / 6) * Math.PI * 2;
+                    for (var ar = 0.4; ar < 0.9; ar += 0.2) {
+                      ctx.beginPath(); ctx.arc(Math.cos(ra3) * sz * 1.2 * ar, Math.sin(ra3) * sz * 1.2 * ar, sz * 0.03, 0, Math.PI * 2);
+                      ctx.fillStyle = 'rgba(14,165,233,0.2)'; ctx.fill();
+                    }
+                  }
+                  // Central node (glowing)
                   ctx.beginPath(); ctx.arc(0, 0, sz * 0.2, 0, Math.PI * 2);
-                  ctx.fillStyle = 'rgba(14,165,233,0.5)'; ctx.fill();
+                  var dnGrad = ctx.createRadialGradient(-sz * 0.03, -sz * 0.03, 0, 0, 0, sz * 0.2);
+                  dnGrad.addColorStop(0, 'rgba(125,211,252,0.7)'); dnGrad.addColorStop(1, 'rgba(14,165,233,0.35)');
+                  ctx.fillStyle = dnGrad; ctx.fill();
+                  ctx.strokeStyle = 'rgba(14,165,233,0.4)'; ctx.lineWidth = 0.5 * dpr; ctx.stroke();
                 } else if (def.id === 'volvox') {
-                  // Hollow sphere colony
+                  // Hollow sphere colony with gradient
                   ctx.beginPath(); ctx.arc(0, 0, sz, 0, Math.PI * 2);
-                  ctx.fillStyle = def.bodyColor; ctx.fill();
+                  var vGrad = ctx.createRadialGradient(-sz * 0.25, -sz * 0.25, 0, 0, 0, sz);
+                  vGrad.addColorStop(0, 'rgba(187,247,208,0.5)');
+                  vGrad.addColorStop(0.5, def.bodyColor);
+                  vGrad.addColorStop(1, 'rgba(16,185,129,0.2)');
+                  ctx.fillStyle = vGrad; ctx.fill();
                   ctx.strokeStyle = def.color; ctx.lineWidth = 2 * dpr; ctx.stroke();
-                  // Surface cells (rotating dots)
-                  for (var vi = 0; vi < 12; vi++) {
-                    var va = (vi / 12) * Math.PI * 2 + world.tick * 0.02;
+                  // Surface cells (more, with flagella)
+                  for (var vi = 0; vi < 18; vi++) {
+                    var va = (vi / 18) * Math.PI * 2 + world.tick * 0.02;
                     var vcx = Math.cos(va) * sz * 0.85, vcy = Math.sin(va) * sz * 0.85;
-                    ctx.beginPath(); ctx.arc(vcx, vcy, sz * 0.08, 0, Math.PI * 2);
+                    ctx.beginPath(); ctx.arc(vcx, vcy, sz * 0.07, 0, Math.PI * 2);
                     ctx.fillStyle = '#22c55e'; ctx.fill();
+                    // Tiny flagella
+                    var vfl = Math.sin(world.tick * 0.2 + vi) * 2 * dpr;
+                    ctx.beginPath(); ctx.moveTo(vcx, vcy);
+                    ctx.lineTo(vcx + Math.cos(va) * sz * 0.15, vcy + Math.sin(va) * sz * 0.15 + vfl);
+                    ctx.strokeStyle = 'rgba(34,197,94,0.4)'; ctx.lineWidth = 0.5 * dpr; ctx.stroke();
                   }
-                  // Daughter colony inside
-                  ctx.beginPath(); ctx.arc(sz * 0.2, -sz * 0.15, sz * 0.25, 0, Math.PI * 2);
-                  ctx.fillStyle = 'rgba(16,185,129,0.35)'; ctx.fill();
+                  // Inner ring of cells
+                  for (var vi2 = 0; vi2 < 8; vi2++) {
+                    var va2 = (vi2 / 8) * Math.PI * 2 + world.tick * 0.015 + 0.3;
+                    ctx.beginPath(); ctx.arc(Math.cos(va2) * sz * 0.55, Math.sin(va2) * sz * 0.55, sz * 0.05, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(34,197,94,0.5)'; ctx.fill();
+                  }
+                  // Daughter colony inside (glowing)
+                  ctx.beginPath(); ctx.arc(sz * 0.15, -sz * 0.1, sz * 0.22, 0, Math.PI * 2);
+                  var dcGrad = ctx.createRadialGradient(sz * 0.13, -sz * 0.12, 0, sz * 0.15, -sz * 0.1, sz * 0.22);
+                  dcGrad.addColorStop(0, 'rgba(74,222,128,0.5)');
+                  dcGrad.addColorStop(1, 'rgba(16,185,129,0.15)');
+                  ctx.fillStyle = dcGrad; ctx.fill();
                   ctx.strokeStyle = 'rgba(16,185,129,0.5)'; ctx.lineWidth = 1 * dpr; ctx.stroke();
                 } else if (def.id === 'stentor') {
-                  // Trumpet / cone shape
+                  // Trumpet / cone shape with gradient
                   ctx.beginPath();
                   ctx.moveTo(-sz * 0.3, sz * 1.2);
                   ctx.quadraticCurveTo(-sz * 0.1, 0, -sz * 1.0, -sz * 0.8);
                   ctx.lineTo(sz * 1.0, -sz * 0.8);
                   ctx.quadraticCurveTo(sz * 0.1, 0, sz * 0.3, sz * 1.2);
                   ctx.closePath();
-                  ctx.fillStyle = def.bodyColor; ctx.fill();
+                  var stGrad = ctx.createRadialGradient(-sz * 0.15, -sz * 0.2, 0, 0, 0, sz * 1.2);
+                  stGrad.addColorStop(0, 'rgba(216,180,254,0.55)');
+                  stGrad.addColorStop(0.5, def.bodyColor);
+                  stGrad.addColorStop(1, 'rgba(168,85,247,0.1)');
+                  ctx.fillStyle = stGrad; ctx.fill();
                   ctx.strokeStyle = def.color; ctx.lineWidth = 1.5 * dpr; ctx.stroke();
-                  // Cilia crown at wide end
-                  for (var sci = 0; sci < 8; sci++) {
-                    var scx = -sz * 0.9 + (sci / 7) * sz * 1.8;
-                    var scWave = Math.sin(world.tick * 0.15 + sci * 0.8) * 4 * dpr;
+                  // Myonemes (contractile fibers running length of body)
+                  for (var mi = 0; mi < 4; mi++) {
+                    var mx = sz * (-0.15 + mi * 0.1);
+                    ctx.beginPath(); ctx.moveTo(mx, sz * 1.1);
+                    ctx.quadraticCurveTo(mx - sz * 0.3 * (mi - 1.5), sz * 0.3, mx * 2.5, -sz * 0.75);
+                    ctx.strokeStyle = 'rgba(168,85,247,0.1)'; ctx.lineWidth = 0.4 * dpr; ctx.stroke();
+                  }
+                  // Membranellar band (elaborate cilia crown)
+                  for (var sci = 0; sci < 14; sci++) {
+                    var scx = -sz * 0.9 + (sci / 13) * sz * 1.8;
+                    var scWave = Math.sin(world.tick * 0.18 + sci * 0.6) * 5 * dpr;
+                    var scWave2 = Math.cos(world.tick * 0.12 + sci * 0.4) * 3 * dpr;
                     ctx.beginPath(); ctx.moveTo(scx, -sz * 0.8);
-                    ctx.lineTo(scx + scWave, -sz * 1.1);
-                    ctx.strokeStyle = 'rgba(168,85,247,0.5)'; ctx.lineWidth = 0.8 * dpr; ctx.stroke();
+                    ctx.quadraticCurveTo(scx + scWave, -sz * 0.95, scx + scWave2, -sz * 1.15);
+                    ctx.strokeStyle = 'rgba(168,85,247,0.45)'; ctx.lineWidth = 0.7 * dpr; ctx.lineCap = 'round'; ctx.stroke();
                   }
-                  // Bead-like macronucleus
+                  // Bead-like macronucleus (with gradient)
                   for (var ni = 0; ni < 3; ni++) {
-                    ctx.beginPath(); ctx.arc(0, sz * (0.3 - ni * 0.35), sz * 0.12, 0, Math.PI * 2);
-                    ctx.fillStyle = 'rgba(168,85,247,0.5)'; ctx.fill();
+                    var ny = sz * (0.3 - ni * 0.35);
+                    ctx.beginPath(); ctx.arc(0, ny, sz * 0.12, 0, Math.PI * 2);
+                    var snGrad = ctx.createRadialGradient(-sz * 0.02, ny - sz * 0.02, 0, 0, ny, sz * 0.12);
+                    snGrad.addColorStop(0, 'rgba(192,132,252,0.65)'); snGrad.addColorStop(1, 'rgba(168,85,247,0.3)');
+                    ctx.fillStyle = snGrad; ctx.fill();
+                    ctx.strokeStyle = 'rgba(168,85,247,0.3)'; ctx.lineWidth = 0.4 * dpr; ctx.stroke();
                   }
+                  // Food vacuoles inside
+                  ctx.beginPath(); ctx.arc(sz * 0.2, -sz * 0.3, sz * 0.08, 0, Math.PI * 2);
+                  ctx.fillStyle = 'rgba(34,197,94,0.2)'; ctx.fill();
                 } else if (def.id === 'tardigrade') {
-                  // Plump body
+                  // Plump segmented body with gradient
                   ctx.beginPath(); ctx.ellipse(0, 0, sz * 1.3, sz * 0.9, 0, 0, Math.PI * 2);
-                  ctx.fillStyle = def.bodyColor; ctx.fill();
+                  var tGrad = ctx.createRadialGradient(-sz * 0.3, -sz * 0.2, 0, 0, 0, sz * 1.3);
+                  tGrad.addColorStop(0, 'rgba(245,208,254,0.5)');
+                  tGrad.addColorStop(0.5, def.bodyColor);
+                  tGrad.addColorStop(1, 'rgba(217,70,239,0.1)');
+                  ctx.fillStyle = tGrad; ctx.fill();
                   ctx.strokeStyle = def.color; ctx.lineWidth = 1.5 * dpr; ctx.stroke();
-                  // Head bump
+                  // Body segment lines
+                  [-0.5, -0.1, 0.3, 0.65].forEach(function (sx) {
+                    ctx.beginPath(); ctx.moveTo(sz * sx, -sz * 0.85); ctx.lineTo(sz * sx, sz * 0.85);
+                    ctx.strokeStyle = 'rgba(217,70,239,0.12)'; ctx.lineWidth = 0.5 * dpr; ctx.stroke();
+                  });
+                  // Head bump with gradient
                   ctx.beginPath(); ctx.arc(sz * 1.1, 0, sz * 0.4, 0, Math.PI * 2);
-                  ctx.fillStyle = def.bodyColor; ctx.fill();
+                  var thGrad = ctx.createRadialGradient(sz * 1.05, -sz * 0.05, 0, sz * 1.1, 0, sz * 0.4);
+                  thGrad.addColorStop(0, 'rgba(245,208,254,0.5)'); thGrad.addColorStop(1, 'rgba(217,70,239,0.15)');
+                  ctx.fillStyle = thGrad; ctx.fill();
                   ctx.strokeStyle = def.color; ctx.lineWidth = 1.2 * dpr; ctx.stroke();
-                  // 8 legs (4 per side) with tiny claws
+                  // Mouth stylets
+                  ctx.beginPath(); ctx.moveTo(sz * 1.45, -sz * 0.05); ctx.lineTo(sz * 1.6, -sz * 0.08);
+                  ctx.moveTo(sz * 1.45, sz * 0.05); ctx.lineTo(sz * 1.6, sz * 0.08);
+                  ctx.strokeStyle = 'rgba(217,70,239,0.4)'; ctx.lineWidth = 0.6 * dpr; ctx.stroke();
+                  // 8 legs (4 per side) with claws
                   [[-0.8, 0.7], [-0.2, 0.8], [0.3, 0.75], [0.8, 0.6]].forEach(function (leg, li) {
                     var phase2 = Math.sin(world.tick * 0.08 + li * 1.5) * 3 * dpr;
-                    // Top leg
+                    // Top leg with claw detail
                     ctx.beginPath(); ctx.moveTo(sz * leg[0], -sz * leg[1]);
-                    ctx.lineTo(sz * leg[0] + phase2, -sz * (leg[1] + 0.35));
-                    ctx.strokeStyle = def.color; ctx.lineWidth = 1.2 * dpr; ctx.stroke();
-                    // Bottom leg
+                    ctx.quadraticCurveTo(sz * leg[0] + phase2 * 0.5, -sz * (leg[1] + 0.15), sz * leg[0] + phase2, -sz * (leg[1] + 0.35));
+                    ctx.strokeStyle = def.color; ctx.lineWidth = 1.5 * dpr; ctx.lineCap = 'round'; ctx.stroke();
+                    // Tiny claw hooks
+                    var clawX = sz * leg[0] + phase2, clawY = -sz * (leg[1] + 0.35);
+                    ctx.beginPath(); ctx.moveTo(clawX - 1 * dpr, clawY); ctx.lineTo(clawX - 2 * dpr, clawY - 2 * dpr);
+                    ctx.moveTo(clawX + 1 * dpr, clawY); ctx.lineTo(clawX + 2 * dpr, clawY - 2 * dpr);
+                    ctx.strokeStyle = 'rgba(217,70,239,0.5)'; ctx.lineWidth = 0.5 * dpr; ctx.stroke();
+                    // Bottom leg with claw detail
                     ctx.beginPath(); ctx.moveTo(sz * leg[0], sz * leg[1]);
-                    ctx.lineTo(sz * leg[0] - phase2, sz * (leg[1] + 0.35));
-                    ctx.strokeStyle = def.color; ctx.lineWidth = 1.2 * dpr; ctx.stroke();
+                    ctx.quadraticCurveTo(sz * leg[0] - phase2 * 0.5, sz * (leg[1] + 0.15), sz * leg[0] - phase2, sz * (leg[1] + 0.35));
+                    ctx.strokeStyle = def.color; ctx.lineWidth = 1.5 * dpr; ctx.lineCap = 'round'; ctx.stroke();
+                    var clawX2 = sz * leg[0] - phase2, clawY2 = sz * (leg[1] + 0.35);
+                    ctx.beginPath(); ctx.moveTo(clawX2 - 1 * dpr, clawY2); ctx.lineTo(clawX2 - 2 * dpr, clawY2 + 2 * dpr);
+                    ctx.moveTo(clawX2 + 1 * dpr, clawY2); ctx.lineTo(clawX2 + 2 * dpr, clawY2 + 2 * dpr);
+                    ctx.strokeStyle = 'rgba(217,70,239,0.5)'; ctx.lineWidth = 0.5 * dpr; ctx.stroke();
                   });
-                  // Eyes
-                  ctx.beginPath(); ctx.arc(sz * 1.2, -sz * 0.12, sz * 0.08, 0, Math.PI * 2);
-                  ctx.fillStyle = '#000'; ctx.fill();
-                  ctx.beginPath(); ctx.arc(sz * 1.2, sz * 0.12, sz * 0.08, 0, Math.PI * 2);
-                  ctx.fillStyle = '#000'; ctx.fill();
+                  // Eyes with specular highlight
+                  ctx.beginPath(); ctx.arc(sz * 1.2, -sz * 0.12, sz * 0.09, 0, Math.PI * 2);
+                  ctx.fillStyle = '#1e1b4b'; ctx.fill();
+                  ctx.beginPath(); ctx.arc(sz * 1.18, -sz * 0.14, sz * 0.03, 0, Math.PI * 2);
+                  ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fill();
+                  ctx.beginPath(); ctx.arc(sz * 1.2, sz * 0.12, sz * 0.09, 0, Math.PI * 2);
+                  ctx.fillStyle = '#1e1b4b'; ctx.fill();
+                  ctx.beginPath(); ctx.arc(sz * 1.18, sz * 0.1, sz * 0.03, 0, Math.PI * 2);
+                  ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fill();
                 } else if (def.id === 'spirillum') {
                   // Corkscrew spiral
                   ctx.beginPath();
@@ -4670,7 +5757,7 @@
                     sp === -sz * 2 ? ctx.moveTo(spx, spy) : ctx.lineTo(spx, spy);
                   }
                   ctx.strokeStyle = def.color; ctx.lineWidth = sz * 0.4 * dpr / 5; ctx.lineCap = 'round'; ctx.stroke();
-                  // Body fill along the spiral
+                  // Body fill along the spiral with gradient
                   ctx.beginPath();
                   for (var sp = -sz * 2; sp < sz * 2; sp += 1) {
                     var spx = sp;
@@ -4683,16 +5770,26 @@
                     ctx.lineTo(spx, spy + sz * 0.15);
                   }
                   ctx.closePath();
-                  ctx.fillStyle = def.bodyColor; ctx.fill();
-                  // Flagella tufts at both ends
-                  var ftip1 = Math.sin(world.tick * 0.3) * 4 * dpr;
-                  ctx.beginPath(); ctx.moveTo(-sz * 2, 0);
-                  ctx.bezierCurveTo(-sz * 2.5, ftip1, -sz * 3, -ftip1, -sz * 3.2, ftip1);
-                  ctx.strokeStyle = 'rgba(249,115,22,0.5)'; ctx.lineWidth = 0.7 * dpr; ctx.stroke();
-                  var ftip2 = Math.sin(world.tick * 0.3 + Math.PI) * 4 * dpr;
-                  ctx.beginPath(); ctx.moveTo(sz * 2, 0);
-                  ctx.bezierCurveTo(sz * 2.5, ftip2, sz * 3, -ftip2, sz * 3.2, ftip2);
-                  ctx.strokeStyle = 'rgba(249,115,22,0.5)'; ctx.lineWidth = 0.7 * dpr; ctx.stroke();
+                  var spGrad = ctx.createLinearGradient(-sz * 2, -sz * 0.5, sz * 2, sz * 0.5);
+                  spGrad.addColorStop(0, 'rgba(254,215,170,0.5)');
+                  spGrad.addColorStop(0.5, def.bodyColor);
+                  spGrad.addColorStop(1, 'rgba(249,115,22,0.15)');
+                  ctx.fillStyle = spGrad; ctx.fill();
+                  // Flagella tufts at both ends (multiple strands)
+                  for (var fti = 0; fti < 3; fti++) {
+                    var ftip1 = Math.sin(world.tick * 0.3 + fti * 0.8) * 4 * dpr;
+                    var ftOff = (fti - 1) * 2 * dpr;
+                    ctx.beginPath(); ctx.moveTo(-sz * 2, ftOff);
+                    ctx.bezierCurveTo(-sz * 2.5, ftip1 + ftOff, -sz * 3, -ftip1 + ftOff, -sz * 3.2, ftip1 + ftOff);
+                    ctx.strokeStyle = 'rgba(249,115,22,' + (0.4 - fti * 0.1) + ')'; ctx.lineWidth = (0.7 - fti * 0.1) * dpr; ctx.lineCap = 'round'; ctx.stroke();
+                  }
+                  for (var fti2 = 0; fti2 < 3; fti2++) {
+                    var ftip2 = Math.sin(world.tick * 0.3 + Math.PI + fti2 * 0.8) * 4 * dpr;
+                    var ftOff2 = (fti2 - 1) * 2 * dpr;
+                    ctx.beginPath(); ctx.moveTo(sz * 2, ftOff2);
+                    ctx.bezierCurveTo(sz * 2.5, ftip2 + ftOff2, sz * 3, -ftip2 + ftOff2, sz * 3.2, ftip2 + ftOff2);
+                    ctx.strokeStyle = 'rgba(249,115,22,' + (0.4 - fti2 * 0.1) + ')'; ctx.lineWidth = (0.7 - fti2 * 0.1) * dpr; ctx.lineCap = 'round'; ctx.stroke();
+                  }
                 }
                 ctx.restore();
               }
@@ -4814,17 +5911,32 @@
 
               function render() {
                 ctx.clearRect(0, 0, W, H);
-                // Background - petri dish
-                ctx.fillStyle = '#f0fdf4'; ctx.fillRect(0, 0, W, H);
-                // Dish circle
                 var center = toScreen(WORLD_W / 2, WORLD_H / 2);
                 var dishR = Math.max(WORLD_W, WORLD_H) * 0.55 * cam.zoom * dpr;
-                ctx.beginPath(); ctx.arc(center.x, center.y, dishR, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(209,250,229,0.15)'; ctx.fill();
-                ctx.strokeStyle = 'rgba(16,185,129,0.3)'; ctx.lineWidth = 2 * dpr; ctx.stroke();
 
-                // Grid lines (microscope crosshair)
-                ctx.strokeStyle = 'rgba(148,163,184,0.15)'; ctx.lineWidth = 0.5 * dpr;
+                // ── Microscope slide background ──
+                var bgGrad = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * 0.7);
+                bgGrad.addColorStop(0, '#f0fdf4');
+                bgGrad.addColorStop(0.6, '#ecfdf5');
+                bgGrad.addColorStop(1, '#d1fae5');
+                ctx.fillStyle = bgGrad; ctx.fillRect(0, 0, W, H);
+
+                // Petri dish with subtle depth ring
+                ctx.save();
+                ctx.beginPath(); ctx.arc(center.x, center.y, dishR, 0, Math.PI * 2);
+                var dishGrad = ctx.createRadialGradient(center.x, center.y, dishR * 0.85, center.x, center.y, dishR);
+                dishGrad.addColorStop(0, 'rgba(209,250,229,0)');
+                dishGrad.addColorStop(0.7, 'rgba(16,185,129,0.06)');
+                dishGrad.addColorStop(1, 'rgba(16,185,129,0.18)');
+                ctx.fillStyle = dishGrad; ctx.fill();
+                ctx.strokeStyle = 'rgba(16,185,129,0.25)'; ctx.lineWidth = 2 * dpr; ctx.stroke();
+                // Inner rim highlight
+                ctx.beginPath(); ctx.arc(center.x - dishR * 0.08, center.y - dishR * 0.08, dishR * 0.96, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 3 * dpr; ctx.stroke();
+                ctx.restore();
+
+                // ── Fine grid lines ──
+                ctx.strokeStyle = 'rgba(148,163,184,0.1)'; ctx.lineWidth = 0.5 * dpr;
                 for (var gx = 0; gx < WORLD_W; gx += 50) {
                   var p1 = toScreen(gx, 0), p2 = toScreen(gx, WORLD_H);
                   ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
@@ -4833,46 +5945,242 @@
                   var p1 = toScreen(0, gy), p2 = toScreen(WORLD_W, gy);
                   ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
                 }
+                // Center crosshair
+                ctx.strokeStyle = 'rgba(148,163,184,0.2)'; ctx.lineWidth = 1 * dpr;
+                ctx.beginPath(); ctx.moveTo(center.x - 12 * dpr, center.y); ctx.lineTo(center.x + 12 * dpr, center.y); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(center.x, center.y - 12 * dpr); ctx.lineTo(center.x, center.y + 12 * dpr); ctx.stroke();
 
-                // Light zones
+                // ── Floating out-of-focus debris (depth-of-field) ──
+                if (!world._debris) {
+                  world._debris = [];
+                  for (var di = 0; di < 20; di++) {
+                    world._debris.push({ x: Math.random() * WORLD_W, y: Math.random() * WORLD_H, r: 1.5 + Math.random() * 3, dx: (Math.random() - 0.5) * 0.15, dy: (Math.random() - 0.5) * 0.1, alpha: 0.06 + Math.random() * 0.1 });
+                  }
+                }
+                world._debris.forEach(function (db) {
+                  db.x += db.dx; db.y += db.dy;
+                  if (db.x < 0) db.x += WORLD_W; if (db.x > WORLD_W) db.x -= WORLD_W;
+                  if (db.y < 0) db.y += WORLD_H; if (db.y > WORLD_H) db.y -= WORLD_H;
+                  var dp = toScreen(db.x, db.y);
+                  var dr = db.r * cam.zoom * dpr;
+                  ctx.beginPath(); ctx.arc(dp.x, dp.y, dr, 0, Math.PI * 2);
+                  ctx.fillStyle = 'rgba(120,160,130,' + db.alpha + ')'; ctx.fill();
+                });
+
+                // ── Light zones (warm glow) ──
                 world.lightZones.forEach(function (lz) {
                   var p = toScreen(lz.x, lz.y);
                   var r = lz.r * cam.zoom * dpr;
                   var grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
-                  grad.addColorStop(0, 'rgba(250,240,137,0.35)');
+                  grad.addColorStop(0, 'rgba(250,240,137,0.4)');
+                  grad.addColorStop(0.5, 'rgba(250,240,137,0.15)');
                   grad.addColorStop(1, 'rgba(250,240,137,0)');
                   ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
                   ctx.fillStyle = grad; ctx.fill();
-                  ctx.strokeStyle = 'rgba(234,179,8,0.2)'; ctx.lineWidth = 1 * dpr; ctx.stroke();
+                  // Soft pulsing ring
+                  ctx.strokeStyle = 'rgba(234,179,8,' + (0.15 + 0.1 * Math.sin(world.tick * 0.02)) + ')';
+                  ctx.lineWidth = 1.5 * dpr; ctx.stroke();
                 });
 
-                // Food particles
+                // ── Food particles (organic gradient) ──
                 world.food.forEach(function (f) {
                   if (f.eaten) return;
                   var p = toScreen(f.x, f.y);
                   var sz = f.size * cam.zoom * dpr;
+                  var fGrad = ctx.createRadialGradient(p.x - sz * 0.2, p.y - sz * 0.2, 0, p.x, p.y, sz);
+                  fGrad.addColorStop(0, 'rgba(74,222,128,0.85)');
+                  fGrad.addColorStop(0.6, 'rgba(34,197,94,0.6)');
+                  fGrad.addColorStop(1, 'rgba(22,163,74,0.3)');
                   ctx.beginPath(); ctx.arc(p.x, p.y, sz, 0, Math.PI * 2);
-                  ctx.fillStyle = 'rgba(34,197,94,0.6)'; ctx.fill();
+                  ctx.fillStyle = fGrad; ctx.fill();
+                  // Tiny specular dot
+                  ctx.beginPath(); ctx.arc(p.x - sz * 0.25, p.y - sz * 0.25, sz * 0.2, 0, Math.PI * 2);
+                  ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fill();
                 });
+
+                // ── Extracellular Matrix Fibers (collagen-like strands in culture medium) ──
+                if (!world._ecmFibers) {
+                  world._ecmFibers = [];
+                  for (var efi = 0; efi < 15; efi++) {
+                    var efx1 = Math.random() * WORLD_W, efy1 = Math.random() * WORLD_H;
+                    var efAngle = Math.random() * Math.PI;
+                    var efLen = 40 + Math.random() * 80;
+                    world._ecmFibers.push({
+                      x1: efx1, y1: efy1,
+                      x2: efx1 + Math.cos(efAngle) * efLen,
+                      y2: efy1 + Math.sin(efAngle) * efLen,
+                      cx: efx1 + Math.cos(efAngle + 0.3) * efLen * 0.5,
+                      cy: efy1 + Math.sin(efAngle - 0.2) * efLen * 0.5,
+                      width: 0.5 + Math.random() * 1.5,
+                      alpha: 0.04 + Math.random() * 0.06,
+                      phase: Math.random() * Math.PI * 2
+                    });
+                  }
+                }
+                ctx.save();
+                world._ecmFibers.forEach(function (ef) {
+                  var p1 = toScreen(ef.x1, ef.y1);
+                  var p2 = toScreen(ef.x2, ef.y2);
+                  var pc = toScreen(ef.cx, ef.cy);
+                  var efPulse = ef.alpha + 0.02 * Math.sin(world.tick * 0.015 + ef.phase);
+                  ctx.beginPath();
+                  ctx.moveTo(p1.x, p1.y);
+                  ctx.quadraticCurveTo(pc.x, pc.y, p2.x, p2.y);
+                  ctx.strokeStyle = 'rgba(180,200,170,' + efPulse + ')';
+                  ctx.lineWidth = ef.width * cam.zoom * dpr;
+                  ctx.stroke();
+                });
+                ctx.restore();
+
+                // ── Vesicle Transport (tiny membrane vesicles drifting between organisms) ──
+                if (!world._vesicles) {
+                  world._vesicles = [];
+                  for (var vi = 0; vi < 12; vi++) {
+                    world._vesicles.push({
+                      x: Math.random() * WORLD_W,
+                      y: Math.random() * WORLD_H,
+                      vx: (Math.random() - 0.5) * 0.3,
+                      vy: (Math.random() - 0.5) * 0.3,
+                      size: 1 + Math.random() * 2,
+                      hue: vi % 3 === 0 ? '160,220,180' : vi % 3 === 1 ? '180,160,220' : '220,180,160',
+                      alpha: 0.15 + Math.random() * 0.2,
+                      trail: []
+                    });
+                  }
+                }
+                ctx.save();
+                world._vesicles.forEach(function (v) {
+                  v.x += v.vx; v.y += v.vy;
+                  // Gentle wandering
+                  v.vx += (Math.random() - 0.5) * 0.02;
+                  v.vy += (Math.random() - 0.5) * 0.02;
+                  v.vx = Math.max(-0.4, Math.min(0.4, v.vx));
+                  v.vy = Math.max(-0.4, Math.min(0.4, v.vy));
+                  if (v.x < 0) v.x += WORLD_W; if (v.x > WORLD_W) v.x -= WORLD_W;
+                  if (v.y < 0) v.y += WORLD_H; if (v.y > WORLD_H) v.y -= WORLD_H;
+                  // Trail
+                  v.trail.push({ x: v.x, y: v.y });
+                  if (v.trail.length > 8) v.trail.shift();
+                  // Draw trail
+                  if (v.trail.length > 1) {
+                    for (var ti = 1; ti < v.trail.length; ti++) {
+                      var tp1 = toScreen(v.trail[ti - 1].x, v.trail[ti - 1].y);
+                      var tp2 = toScreen(v.trail[ti].x, v.trail[ti].y);
+                      ctx.beginPath(); ctx.moveTo(tp1.x, tp1.y); ctx.lineTo(tp2.x, tp2.y);
+                      ctx.strokeStyle = 'rgba(' + v.hue + ',' + (v.alpha * ti / v.trail.length * 0.3) + ')';
+                      ctx.lineWidth = 0.5 * dpr; ctx.stroke();
+                    }
+                  }
+                  // Draw vesicle
+                  var vp = toScreen(v.x, v.y);
+                  var vs = v.size * cam.zoom * dpr;
+                  var vGrad = ctx.createRadialGradient(vp.x - vs * 0.2, vp.y - vs * 0.2, 0, vp.x, vp.y, vs);
+                  vGrad.addColorStop(0, 'rgba(' + v.hue + ',' + (v.alpha * 0.8) + ')');
+                  vGrad.addColorStop(0.6, 'rgba(' + v.hue + ',' + (v.alpha * 0.4) + ')');
+                  vGrad.addColorStop(1, 'rgba(' + v.hue + ',0)');
+                  ctx.beginPath(); ctx.arc(vp.x, vp.y, vs, 0, Math.PI * 2);
+                  ctx.fillStyle = vGrad; ctx.fill();
+                  // Membrane ring
+                  ctx.beginPath(); ctx.arc(vp.x, vp.y, vs * 0.8, 0, Math.PI * 2);
+                  ctx.strokeStyle = 'rgba(' + v.hue + ',' + (v.alpha * 0.5) + ')';
+                  ctx.lineWidth = 0.4 * dpr; ctx.stroke();
+                });
+                ctx.restore();
 
                 // Organisms
                 world.organisms.forEach(function (o) { drawOrganism(o); });
 
-                // Magnification label
-                ctx.font = (10 * dpr) + 'px monospace';
-                ctx.fillStyle = 'rgba(100,116,139,0.7)';
-                var mag = Math.round(40 * cam.zoom);
-                ctx.fillText(mag + 'x', 8 * dpr, H - 8 * dpr);
+                // ── Enhanced Microscope Vignette Overlay ──
+                // Circular vignette
+                var vigGrad = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.2, W / 2, H / 2, Math.max(W, H) * 0.6);
+                vigGrad.addColorStop(0, 'rgba(0,0,0,0)');
+                vigGrad.addColorStop(0.6, 'rgba(0,0,0,0)');
+                vigGrad.addColorStop(0.85, 'rgba(0,0,0,0.08)');
+                vigGrad.addColorStop(1, 'rgba(0,0,0,0.2)');
+                ctx.fillStyle = vigGrad; ctx.fillRect(0, 0, W, H);
+                // Subtle lens flare (top-right)
+                ctx.save();
+                var lfx = W * 0.72, lfy = H * 0.18;
+                var lfGrad = ctx.createRadialGradient(lfx, lfy, 0, lfx, lfy, 40 * dpr);
+                lfGrad.addColorStop(0, 'rgba(200,230,255,0.06)');
+                lfGrad.addColorStop(0.5, 'rgba(180,210,240,0.02)');
+                lfGrad.addColorStop(1, 'rgba(180,210,240,0)');
+                ctx.beginPath(); ctx.arc(lfx, lfy, 40 * dpr, 0, Math.PI * 2);
+                ctx.fillStyle = lfGrad; ctx.fill();
+                ctx.restore();
+                // Aperture ring marks (subtle tick marks around vignette edge)
+                ctx.save();
+                ctx.globalAlpha = 0.04;
+                var apR = Math.min(W, H) * 0.48;
+                for (var api = 0; api < 8; api++) {
+                  var apAngle = api * Math.PI / 4;
+                  var apx1 = W / 2 + Math.cos(apAngle) * apR;
+                  var apy1 = H / 2 + Math.sin(apAngle) * apR;
+                  var apx2 = W / 2 + Math.cos(apAngle) * (apR + 8 * dpr);
+                  var apy2 = H / 2 + Math.sin(apAngle) * (apR + 8 * dpr);
+                  ctx.beginPath(); ctx.moveTo(apx1, apy1); ctx.lineTo(apx2, apy2);
+                  ctx.strokeStyle = '#334155'; ctx.lineWidth = 1 * dpr; ctx.stroke();
+                }
+                ctx.restore();
 
-                // Player energy bar
+                // ── Magnification label (glassmorphic) ──
+                var mag = Math.round(40 * cam.zoom);
+                ctx.save();
+                var mlx = 6 * dpr, mly = H - 22 * dpr, mlw = 48 * dpr, mlh = 16 * dpr;
+                ctx.fillStyle = 'rgba(15,23,42,0.45)';
+                ctx.beginPath();
+                ctx.moveTo(mlx + 4 * dpr, mly); ctx.lineTo(mlx + mlw - 4 * dpr, mly);
+                ctx.arcTo(mlx + mlw, mly, mlx + mlw, mly + 4 * dpr, 4 * dpr);
+                ctx.lineTo(mlx + mlw, mly + mlh - 4 * dpr);
+                ctx.arcTo(mlx + mlw, mly + mlh, mlx + mlw - 4 * dpr, mly + mlh, 4 * dpr);
+                ctx.lineTo(mlx + 4 * dpr, mly + mlh);
+                ctx.arcTo(mlx, mly + mlh, mlx, mly + mlh - 4 * dpr, 4 * dpr);
+                ctx.lineTo(mlx, mly + 4 * dpr);
+                ctx.arcTo(mlx, mly, mlx + 4 * dpr, mly, 4 * dpr);
+                ctx.closePath(); ctx.fill();
+                ctx.font = 'bold ' + (8 * dpr) + 'px monospace';
+                ctx.fillStyle = '#a7f3d0'; ctx.textAlign = 'center';
+                ctx.fillText(mag + 'x', mlx + mlw / 2, mly + mlh - 4 * dpr);
+                ctx.restore();
+
+                // ── Player energy bar (enhanced) ──
                 if (playAsOrg) {
-                  var bx = 8 * dpr, by = 8 * dpr, bw = 80 * dpr, bh = 8 * dpr;
-                  ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(bx, by, bw, bh);
-                  ctx.fillStyle = playAsOrg.energy > 30 ? '#22c55e' : '#ef4444';
-                  ctx.fillRect(bx, by, bw * (playAsOrg.energy / 100), bh);
-                  ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1; ctx.strokeRect(bx, by, bw, bh);
-                  ctx.fillStyle = '#fff'; ctx.font = (7 * dpr) + 'px sans-serif';
-                  ctx.fillText('Energy: ' + Math.round(playAsOrg.energy), bx + 2 * dpr, by + 6.5 * dpr);
+                  ctx.save();
+                  var bx = 8 * dpr, by = 8 * dpr, bw = 90 * dpr, bh = 10 * dpr, br = 5 * dpr;
+                  // Background pill
+                  ctx.fillStyle = 'rgba(15,23,42,0.55)';
+                  ctx.beginPath();
+                  ctx.moveTo(bx + br, by); ctx.lineTo(bx + bw - br, by);
+                  ctx.arcTo(bx + bw, by, bx + bw, by + br, br);
+                  ctx.lineTo(bx + bw, by + bh - br);
+                  ctx.arcTo(bx + bw, by + bh, bx + bw - br, by + bh, br);
+                  ctx.lineTo(bx + br, by + bh);
+                  ctx.arcTo(bx, by + bh, bx, by + bh - br, br);
+                  ctx.lineTo(bx, by + br);
+                  ctx.arcTo(bx, by, bx + br, by, br);
+                  ctx.closePath(); ctx.fill();
+                  // Energy fill gradient
+                  var eFill = bw * (playAsOrg.energy / 100);
+                  if (eFill > br * 2) {
+                    var eGrad = ctx.createLinearGradient(bx, 0, bx + eFill, 0);
+                    var eOk = playAsOrg.energy > 30;
+                    eGrad.addColorStop(0, eOk ? '#22c55e' : '#ef4444');
+                    eGrad.addColorStop(1, eOk ? '#4ade80' : '#f87171');
+                    ctx.fillStyle = eGrad;
+                    ctx.beginPath();
+                    ctx.moveTo(bx + br, by + 1); ctx.lineTo(bx + eFill - br, by + 1);
+                    ctx.arcTo(bx + eFill, by + 1, bx + eFill, by + br, br - 1);
+                    ctx.lineTo(bx + eFill, by + bh - br);
+                    ctx.arcTo(bx + eFill, by + bh - 1, bx + eFill - br, by + bh - 1, br - 1);
+                    ctx.lineTo(bx + br, by + bh - 1);
+                    ctx.arcTo(bx + 1, by + bh - 1, bx + 1, by + bh - br, br - 1);
+                    ctx.lineTo(bx + 1, by + br);
+                    ctx.arcTo(bx + 1, by + 1, bx + br, by + 1, br - 1);
+                    ctx.closePath(); ctx.fill();
+                  }
+                  ctx.fillStyle = '#fff'; ctx.font = 'bold ' + (6 * dpr) + 'px sans-serif'; ctx.textAlign = 'left';
+                  ctx.fillText('\u26A1 ' + Math.round(playAsOrg.energy) + '%', bx + 4 * dpr, by + 7.5 * dpr);
+                  ctx.restore();
                 }
               }
 
@@ -5153,7 +6461,7 @@
 
               // Bottom controls
               React.createElement("div", { className: "flex gap-3 mt-3 items-center" },
-                React.createElement("button", { onClick: function () { setToolSnapshots(function (prev) { return prev.concat([{ id: 'ce-' + Date.now(), tool: 'cell', label: t('stem.func_graph.cell_sim') + (d.selectedOrganism ? ': ' + d.selectedOrganism : ''), data: Object.assign({}, d), timestamp: Date.now() }]); }); addToast(t('stem.func_graph.ud83dudcf8_cell_simulator_snapshot_saved'), 'success'); }, className: "ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
+                React.createElement("button", { onClick: function () { setToolSnapshots(function (prev) { return prev.concat([{ id: 'ce-' + Date.now(), tool: 'cell', label: t('stem.func_graph.cell_sim') + (d.selectedOrganism ? ': ' + d.selectedOrganism : ''), data: Object.assign({}, d), timestamp: Date.now() }]); }); addToast('\uD83D\uDCF8 Snapshot saved!', 'success'); }, className: "ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
               )
             )
           })(),
@@ -5376,7 +6684,7 @@
                   fgQuiz && fgQuiz.answered && React.createElement("div", { className: "p-3 rounded-xl text-sm font-bold " + (fgQuiz.chosen === fgQuiz.answer ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200') }, fgQuiz.chosen === fgQuiz.answer ? '✅ Correct!' : '❌ Answer: ' + fgQuiz.answer)
                 );
               })(),
-              React.createElement("button", { onClick: () => { setToolSnapshots(prev => [...prev, { id: 'fg-' + Date.now(), tool: 'funcGrapher', label: d.type + ': a=' + d.a + ' b=' + d.b, data: { ...d }, timestamp: Date.now() }]); addToast(t('stem.func_grapher.ud83dudcf8_function_snapshot_saved'), 'success'); }, className: "mt-3 ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
+              React.createElement("button", { onClick: () => { setToolSnapshots(prev => [...prev, { id: 'fg-' + Date.now(), tool: 'funcGrapher', label: d.type + ': a=' + d.a + ' b=' + d.b, data: { ...d }, timestamp: Date.now() }]); addToast('\uD83D\uDCF8 Snapshot saved!', 'success'); }, className: "mt-3 ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
             )
           })(),
 
@@ -5449,6 +6757,51 @@
                 ctx.fillStyle = skyGrad;
                 ctx.fillRect(0, 0, cW, cH);
 
+                // ── Twinkling stars ──
+                if (!canvasEl._stars) {
+                  canvasEl._stars = [];
+                  for (var si = 0; si < 60; si++) {
+                    canvasEl._stars.push({
+                      x: Math.random() * cW, y: Math.random() * cH * 0.35,
+                      r: 0.4 + Math.random() * 1.2, phase: Math.random() * Math.PI * 2
+                    });
+                  }
+                }
+                canvasEl._stars.forEach(function (s) {
+                  var twinkle = 0.3 + 0.7 * Math.abs(Math.sin(tick * 0.02 + s.phase));
+                  ctx.globalAlpha = twinkle * (1 - s.y / (cH * 0.35));
+                  ctx.fillStyle = '#fff';
+                  ctx.beginPath(); ctx.arc(s.x, s.y, s.r * dpr, 0, Math.PI * 2); ctx.fill();
+                });
+                ctx.globalAlpha = 1;
+
+                // ── Sun glow ──
+                var sunX = cW * 0.82, sunY = cH * 0.28;
+                var sunG = ctx.createRadialGradient(sunX, sunY, 6 * dpr, sunX, sunY, 60 * dpr);
+                sunG.addColorStop(0, 'rgba(255,250,200,0.9)');
+                sunG.addColorStop(0.3, 'rgba(255,220,100,0.4)');
+                sunG.addColorStop(0.7, 'rgba(255,180,60,0.1)');
+                sunG.addColorStop(1, 'rgba(255,140,0,0)');
+                ctx.fillStyle = sunG;
+                ctx.beginPath(); ctx.arc(sunX, sunY, 60 * dpr, 0, Math.PI * 2); ctx.fill();
+                // Sun core
+                ctx.fillStyle = '#fffbe6';
+                ctx.beginPath(); ctx.arc(sunX, sunY, 8 * dpr, 0, Math.PI * 2); ctx.fill();
+
+                // ── Drifting clouds ──
+                var cloudDrift = tick * 0.15;
+                function drawCloud(cx, cy, sz) {
+                  ctx.save(); ctx.globalAlpha = 0.35;
+                  ctx.fillStyle = '#fff';
+                  [[0, 0, sz], [-sz * 0.7, sz * 0.15, sz * 0.7], [sz * 0.6, sz * 0.1, sz * 0.65], [-sz * 0.3, -sz * 0.3, sz * 0.5], [sz * 0.25, -sz * 0.25, sz * 0.55]].forEach(function (b) {
+                    ctx.beginPath(); ctx.arc(cx + b[0], cy + b[1], b[2], 0, Math.PI * 2); ctx.fill();
+                  });
+                  ctx.restore();
+                }
+                drawCloud(((cloudDrift + cW * 0.25) % (cW + 100)) - 50, cH * 0.38, 18 * dpr);
+                drawCloud(((cloudDrift * 0.7 + cW * 0.6) % (cW + 120)) - 60, cH * 0.42, 14 * dpr);
+                drawCloud(((cloudDrift * 0.5 + cW * 0.1) % (cW + 80)) - 40, cH * 0.33, 12 * dpr);
+
                 // Distant mountains silhouette
                 ctx.fillStyle = 'rgba(30,58,95,0.3)';
                 ctx.beginPath(); ctx.moveTo(0, cH * 0.72);
@@ -5515,16 +6868,30 @@
                   ctx.fillText(tgt.label, tx, groundY - 30 * dpr);
                 });
 
-                // ── Trails with speed-based color ──
+                // ── Trails with glow & speed-based color ──
                 trails.forEach(function (trail, idx) {
                   if (trail.length < 2) return;
                   var isActive = idx === trails.length - 1;
-                  var alpha = isActive ? 1 : 0.2;
+                  var alpha = isActive ? 1 : 0.18;
+                  // Glow layer for active trail
+                  if (isActive) {
+                    ctx.save();
+                    ctx.lineWidth = 6 * dpr;
+                    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+                    ctx.globalAlpha = 0.25;
+                    ctx.strokeStyle = '#fbbf24';
+                    ctx.beginPath(); ctx.moveTo(trail[0].x * dpr, trail[0].y * dpr);
+                    for (var tg = 1; tg < trail.length; tg++) {
+                      ctx.lineTo(trail[tg].x * dpr, trail[tg].y * dpr);
+                    }
+                    ctx.stroke(); ctx.restore();
+                  }
+                  // Main speed-colored segments
                   ctx.lineWidth = (isActive ? 2.5 : 1.5) * dpr;
+                  ctx.lineCap = 'round';
                   ctx.setLineDash(isActive ? [] : [4, 3]);
                   for (var ti = 1; ti < trail.length; ti++) {
                     var p0 = trail[ti - 1], p1 = trail[ti];
-                    // Speed-based color
                     var speed = Math.sqrt(Math.pow(p1.vx || 0, 2) + Math.pow(p1.vy || 0, 2));
                     var speedNorm = Math.min(1, speed / 60);
                     var r, g, b;
@@ -5534,6 +6901,20 @@
                     ctx.beginPath(); ctx.moveTo(p0.x * dpr, p0.y * dpr); ctx.lineTo(p1.x * dpr, p1.y * dpr); ctx.stroke();
                   }
                   ctx.setLineDash([]);
+                  // Draw dotted apex marker for completed trails
+                  if (!isActive && trail.length > 2) {
+                    var apexPt = trail[0], apexIdx = 0;
+                    trail.forEach(function (pt, pti) { if (pt.y < apexPt.y) { apexPt = pt; apexIdx = pti; } });
+                    ctx.save(); ctx.globalAlpha = 0.35;
+                    ctx.setLineDash([2, 4]);
+                    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath(); ctx.moveTo(apexPt.x * dpr, apexPt.y * dpr); ctx.lineTo(apexPt.x * dpr, groundY); ctx.stroke();
+                    ctx.setLineDash([]);
+                    ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.font = (4 * dpr) + 'px sans-serif'; ctx.textAlign = 'center';
+                    ctx.fillText('apex', apexPt.x * dpr, (apexPt.y - 6) * dpr);
+                    ctx.restore();
+                  }
                 });
 
                 // ── Animate ball ──
@@ -5550,11 +6931,25 @@
                   ball.speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
                   if (trails.length > 0) trails[trails.length - 1].push({ x: ball.x, y: ball.y, vx: ball.vx, vy: ball.vy });
 
-                  // Ball with motion blur
+                  // ── Metallic cannonball ──
                   ctx.save();
-                  ctx.beginPath(); ctx.arc(ball.x * dpr, ball.y * dpr, 7 * dpr, 0, Math.PI * 2);
-                  ctx.fillStyle = '#fbbf24'; ctx.shadowColor = '#fbbf24'; ctx.shadowBlur = 15 * dpr; ctx.fill(); ctx.shadowBlur = 0;
-                  ctx.strokeStyle = '#92400e'; ctx.lineWidth = 1.5 * dpr; ctx.stroke();
+                  var bx = ball.x * dpr, by = ball.y * dpr, br = 7 * dpr;
+                  // Outer glow
+                  ctx.shadowColor = '#fbbf24'; ctx.shadowBlur = 18 * dpr;
+                  ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2);
+                  var ballGrad = ctx.createRadialGradient(bx - br * 0.3, by - br * 0.3, br * 0.1, bx, by, br);
+                  ballGrad.addColorStop(0, '#e2e8f0');
+                  ballGrad.addColorStop(0.35, '#94a3b8');
+                  ballGrad.addColorStop(0.7, '#475569');
+                  ballGrad.addColorStop(1, '#1e293b');
+                  ctx.fillStyle = ballGrad; ctx.fill();
+                  ctx.shadowBlur = 0;
+                  // Specular highlight
+                  ctx.beginPath(); ctx.arc(bx - br * 0.25, by - br * 0.25, br * 0.35, 0, Math.PI * 2);
+                  ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fill();
+                  // Rim stroke
+                  ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2);
+                  ctx.strokeStyle = 'rgba(30,41,59,0.6)'; ctx.lineWidth = 1.2 * dpr; ctx.stroke();
                   ctx.restore();
 
                   // Velocity vector arrow
@@ -5597,98 +6992,228 @@
                       var maxY = Math.min.apply(null, trails[trails.length - 1].map(function (p) { return p.y; }));
                       canvasEl.dataset.lastMaxH = ((cH / dpr - 40 - maxY) / scale).toFixed(1);
                     }
-                    // Spawn explosion particles
-                    for (var ep = 0; ep < 20; ep++) {
+                    // Spawn enhanced explosion particles
+                    for (var ep = 0; ep < 35; ep++) {
                       var epAngle = Math.random() * Math.PI;
-                      var epSpeed = 1 + Math.random() * 4;
+                      var epSpeed = 1 + Math.random() * 5;
+                      var pType = Math.random();
                       impactParticles.push({
                         x: ball.x, y: ball.y,
                         vx: Math.cos(epAngle) * epSpeed * (Math.random() > 0.5 ? 1 : -1),
                         vy: -Math.sin(epAngle) * epSpeed,
-                        life: 0.8 + Math.random() * 0.5,
-                        size: 1 + Math.random() * 2.5,
-                        isDebris: Math.random() > 0.5
+                        life: 0.7 + Math.random() * 0.6,
+                        size: pType < 0.3 ? 0.5 + Math.random() * 1 : 1 + Math.random() * 2.5,
+                        type: pType < 0.3 ? 'spark' : pType < 0.65 ? 'debris' : 'smoke'
                       });
                     }
-                    // Landing marker
-                    landingMarkers.push({ x: ball.x, alpha: 1 });
+                    // Landing marker with distance
+                    var lmDist = ((ball.x - 40) / scale).toFixed(1);
+                    landingMarkers.push({ x: ball.x, alpha: 1, ring: 1, dist: lmDist });
                   }
                 }
 
-                // ── Impact particles ──
+                // ── Impact particles (multi-type) ──
                 for (var ipi = impactParticles.length - 1; ipi >= 0; ipi--) {
                   var ip = impactParticles[ipi];
-                  ip.x += ip.vx; ip.y += ip.vy; ip.vy += 0.15; ip.life -= 0.02;
+                  ip.x += ip.vx; ip.y += ip.vy;
+                  ip.vy += (ip.type === 'smoke' ? 0.02 : 0.15);
+                  if (ip.type === 'smoke') { ip.vy -= 0.08; ip.vx *= 0.97; }
+                  ip.life -= (ip.type === 'smoke' ? 0.012 : 0.02);
                   if (ip.life <= 0) { impactParticles.splice(ipi, 1); continue; }
-                  ctx.beginPath();
-                  ctx.arc(ip.x * dpr, ip.y * dpr, ip.size * dpr, 0, Math.PI * 2);
-                  if (ip.isDebris) {
-                    ctx.fillStyle = 'rgba(146,64,14,' + ip.life + ')';
+                  ctx.save();
+                  if (ip.type === 'spark') {
+                    // Bright spark with tail
+                    ctx.globalAlpha = ip.life;
+                    ctx.strokeStyle = 'hsla(' + Math.round(30 + ip.life * 30) + ',100%,70%,' + ip.life + ')';
+                    ctx.lineWidth = ip.size * dpr;
+                    ctx.lineCap = 'round';
+                    ctx.beginPath();
+                    ctx.moveTo((ip.x - ip.vx * 1.5) * dpr, (ip.y - ip.vy * 1.5) * dpr);
+                    ctx.lineTo(ip.x * dpr, ip.y * dpr);
+                    ctx.stroke();
+                  } else if (ip.type === 'debris') {
+                    ctx.globalAlpha = ip.life;
+                    ctx.beginPath(); ctx.arc(ip.x * dpr, ip.y * dpr, ip.size * dpr, 0, Math.PI * 2);
+                    var debrisGrad = ctx.createRadialGradient(ip.x * dpr, ip.y * dpr, 0, ip.x * dpr, ip.y * dpr, ip.size * dpr);
+                    debrisGrad.addColorStop(0, 'rgba(180,100,30,' + ip.life + ')');
+                    debrisGrad.addColorStop(1, 'rgba(80,40,10,' + (ip.life * 0.5) + ')');
+                    ctx.fillStyle = debrisGrad; ctx.fill();
                   } else {
-                    var ipHue = Math.round(ip.life * 60);
-                    ctx.fillStyle = 'hsla(' + ipHue + ',100%,60%,' + ip.life + ')';
+                    // Smoke puff
+                    ctx.globalAlpha = ip.life * 0.4;
+                    ctx.beginPath(); ctx.arc(ip.x * dpr, ip.y * dpr, (ip.size + (1 - ip.life) * 4) * dpr, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(120,120,120,' + (ip.life * 0.35) + ')'; ctx.fill();
                   }
-                  ctx.fill();
+                  ctx.restore();
                 }
 
-                // ── Landing markers ──
+                // ── Landing markers (crater + label) ──
                 landingMarkers.forEach(function (lm) {
                   lm.alpha *= 0.995;
-                  if (lm.alpha < 0.05) return;
-                  ctx.beginPath();
-                  ctx.arc(lm.x * dpr, (cH / dpr - 40) * dpr, 4 * dpr, 0, Math.PI * 2);
-                  ctx.fillStyle = 'rgba(251,191,36,' + lm.alpha + ')';
-                  ctx.fill();
+                  if (lm.ring > 0) lm.ring = Math.max(0, lm.ring - 0.015);
+                  if (lm.alpha < 0.03) return;
+                  var lmx = lm.x * dpr, lmy = groundY;
+                  // Shockwave ring
+                  if (lm.ring > 0.2) {
+                    ctx.save(); ctx.globalAlpha = lm.ring * 0.5;
+                    ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 1.5 * dpr;
+                    var ringR = (1 - lm.ring) * 30 * dpr;
+                    ctx.beginPath(); ctx.ellipse(lmx, lmy, ringR, ringR * 0.25, 0, 0, Math.PI * 2); ctx.stroke();
+                    ctx.restore();
+                  }
+                  // Crater scorch mark
+                  ctx.save(); ctx.globalAlpha = lm.alpha * 0.7;
+                  var crGrad = ctx.createRadialGradient(lmx, lmy, 0, lmx, lmy, 6 * dpr);
+                  crGrad.addColorStop(0, 'rgba(40,20,5,0.6)');
+                  crGrad.addColorStop(0.5, 'rgba(80,50,20,0.3)');
+                  crGrad.addColorStop(1, 'rgba(0,0,0,0)');
+                  ctx.fillStyle = crGrad;
+                  ctx.beginPath(); ctx.ellipse(lmx, lmy, 6 * dpr, 2.5 * dpr, 0, 0, Math.PI * 2); ctx.fill();
+                  ctx.restore();
+                  // Distance label
+                  if (lm.dist) {
+                    ctx.save(); ctx.globalAlpha = Math.min(lm.alpha, 0.7);
+                    ctx.font = 'bold ' + (4.5 * dpr) + 'px sans-serif';
+                    ctx.fillStyle = '#fbbf24'; ctx.textAlign = 'center';
+                    ctx.fillText(lm.dist + 'm', lmx, lmy + 10 * dpr);
+                    ctx.restore();
+                  }
                 });
 
-                // ── Launcher cannon ──
+                // ── Enhanced Launcher Cannon ──
                 var angle = parseFloat(canvasEl.dataset.angle || '45');
                 var rad = angle * Math.PI / 180;
-                // Base
+                var cxC = 40, cyC = cH / dpr - 40;
+
+                // Wheel / carriage
+                ctx.save();
+                ctx.strokeStyle = '#78350f'; ctx.lineWidth = 3 * dpr;
+                ctx.beginPath(); ctx.arc(cxC * dpr, cyC * dpr, 10 * dpr, 0, Math.PI * 2); ctx.stroke();
+                // Wheel spokes
+                for (var ws = 0; ws < 6; ws++) {
+                  var wa = ws * Math.PI / 3 + tick * 0.005;
+                  ctx.strokeStyle = '#92400e'; ctx.lineWidth = 1.5 * dpr;
+                  ctx.beginPath();
+                  ctx.moveTo(cxC * dpr, cyC * dpr);
+                  ctx.lineTo((cxC + Math.cos(wa) * 9) * dpr, (cyC + Math.sin(wa) * 9) * dpr);
+                  ctx.stroke();
+                }
+                // Wheel hub
                 ctx.fillStyle = '#475569';
-                ctx.beginPath(); ctx.arc(40 * dpr, (cH / dpr - 40) * dpr, 8 * dpr, Math.PI, 0); ctx.fill();
-                // Barrel
-                ctx.strokeStyle = '#64748b';
-                ctx.lineWidth = 6 * dpr;
-                ctx.lineCap = 'round';
-                ctx.beginPath(); ctx.moveTo(40 * dpr, (cH / dpr - 40) * dpr);
-                ctx.lineTo((40 + Math.cos(rad) * 35) * dpr, (cH / dpr - 40 - Math.sin(rad) * 35) * dpr); ctx.stroke();
-                ctx.lineCap = 'butt';
+                ctx.beginPath(); ctx.arc(cxC * dpr, cyC * dpr, 3 * dpr, 0, Math.PI * 2); ctx.fill();
+
+                // Barrel with metallic gradient
+                ctx.save();
+                ctx.translate(cxC * dpr, cyC * dpr);
+                ctx.rotate(-rad);
+                var barrelLen = 38 * dpr;
+                var barrelW = 5 * dpr;
+                var mbGrad = ctx.createLinearGradient(0, -barrelW, 0, barrelW);
+                mbGrad.addColorStop(0, '#94a3b8');
+                mbGrad.addColorStop(0.3, '#cbd5e1');
+                mbGrad.addColorStop(0.5, '#f1f5f9');
+                mbGrad.addColorStop(0.7, '#cbd5e1');
+                mbGrad.addColorStop(1, '#64748b');
+                ctx.fillStyle = mbGrad;
+                ctx.beginPath();
+                ctx.moveTo(4 * dpr, -barrelW);
+                ctx.lineTo(barrelLen, -barrelW * 0.8);
+                ctx.lineTo(barrelLen, barrelW * 0.8);
+                ctx.lineTo(4 * dpr, barrelW);
+                ctx.closePath(); ctx.fill();
+                // Muzzle ring
+                ctx.strokeStyle = '#475569'; ctx.lineWidth = 2 * dpr;
+                ctx.beginPath(); ctx.moveTo(barrelLen, -barrelW * 0.9); ctx.lineTo(barrelLen, barrelW * 0.9); ctx.stroke();
+                // Barrel bands (decorative)
+                ctx.strokeStyle = 'rgba(71,85,105,0.5)'; ctx.lineWidth = 1 * dpr;
+                ctx.beginPath(); ctx.moveTo(barrelLen * 0.35, -barrelW * 0.9); ctx.lineTo(barrelLen * 0.35, barrelW * 0.9); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(barrelLen * 0.65, -barrelW * 0.85); ctx.lineTo(barrelLen * 0.65, barrelW * 0.85); ctx.stroke();
+                ctx.restore();
+
+                // Cannon base / housing
+                ctx.fillStyle = '#334155';
+                ctx.beginPath();
+                ctx.moveTo((cxC - 14) * dpr, cyC * dpr);
+                ctx.quadraticCurveTo(cxC * dpr, (cyC - 16) * dpr, (cxC + 14) * dpr, cyC * dpr);
+                ctx.closePath(); ctx.fill();
+                ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 1.5 * dpr; ctx.stroke();
+                // Rivet dots
+                ctx.fillStyle = '#94a3b8';
+                [[-8, -3], [8, -3], [0, -10]].forEach(function (rv) {
+                  ctx.beginPath(); ctx.arc((cxC + rv[0]) * dpr, (cyC + rv[1]) * dpr, 1.5 * dpr, 0, Math.PI * 2); ctx.fill();
+                });
+
+                // Fuse spark
+                var sparkX = (cxC - 6) * dpr, sparkY = (cyC - 14) * dpr;
+                ctx.fillStyle = 'rgba(251,191,36,' + (0.5 + 0.5 * Math.sin(tick * 0.3)) + ')';
+                ctx.beginPath(); ctx.arc(sparkX, sparkY, (2 + Math.sin(tick * 0.4)) * dpr, 0, Math.PI * 2); ctx.fill();
+
+                ctx.restore();
+
                 // Angle arc
                 ctx.strokeStyle = 'rgba(251,191,36,0.4)';
                 ctx.lineWidth = 1.5 * dpr;
-                ctx.beginPath(); ctx.arc(40 * dpr, (cH / dpr - 40) * dpr, 20 * dpr, -rad, 0); ctx.stroke();
+                ctx.beginPath(); ctx.arc(cxC * dpr, cyC * dpr, 20 * dpr, -rad, 0); ctx.stroke();
                 ctx.font = (5 * dpr) + 'px sans-serif';
                 ctx.fillStyle = '#fbbf24';
                 ctx.textAlign = 'left';
-                ctx.fillText(angle + '\u00B0', (40 + 22) * dpr, (cH / dpr - 40 - 5) * dpr);
+                ctx.fillText(angle + '\u00B0', (cxC + 22) * dpr, (cyC - 5) * dpr);
 
-                // ── HUD ──
-                ctx.fillStyle = 'rgba(0,0,0,0.6)';
-                ctx.fillRect(4 * dpr, 4 * dpr, 140 * dpr, 44 * dpr);
+                // ── Glassmorphic HUD ──
+                ctx.save();
+                var hudX = 4 * dpr, hudY = 4 * dpr, hudW = 150 * dpr, hudH = 50 * dpr, hudR = 8 * dpr;
+                ctx.fillStyle = 'rgba(15,23,42,0.7)';
+                ctx.beginPath();
+                ctx.moveTo(hudX + hudR, hudY); ctx.lineTo(hudX + hudW - hudR, hudY);
+                ctx.arcTo(hudX + hudW, hudY, hudX + hudW, hudY + hudR, hudR);
+                ctx.lineTo(hudX + hudW, hudY + hudH - hudR);
+                ctx.arcTo(hudX + hudW, hudY + hudH, hudX + hudW - hudR, hudY + hudH, hudR);
+                ctx.lineTo(hudX + hudR, hudY + hudH);
+                ctx.arcTo(hudX, hudY + hudH, hudX, hudY + hudH - hudR, hudR);
+                ctx.lineTo(hudX, hudY + hudR);
+                ctx.arcTo(hudX, hudY, hudX + hudR, hudY, hudR);
+                ctx.closePath(); ctx.fill();
+                // Border glow
+                ctx.strokeStyle = 'rgba(251,191,36,0.3)'; ctx.lineWidth = 1; ctx.stroke();
                 ctx.font = 'bold ' + (7 * dpr) + 'px sans-serif';
                 ctx.textAlign = 'left';
                 ctx.fillStyle = '#fbbf24';
-                ctx.fillText('\u26A1 ' + angle + '\u00B0  v=' + (canvasEl.dataset.velocity || '25') + 'm/s', 8 * dpr, 16 * dpr);
-                ctx.fillStyle = '#94a3b8';
-                ctx.fillText('g=' + (canvasEl.dataset.gravity || '9.8') + 'm/s\u00B2', 8 * dpr, 28 * dpr);
+                ctx.fillText('\u26A1 ' + angle + '\u00B0  v=' + (canvasEl.dataset.velocity || '25') + 'm/s', 10 * dpr, 18 * dpr);
+                ctx.fillStyle = '#94a3b8'; ctx.font = (6 * dpr) + 'px sans-serif';
+                ctx.fillText('g=' + (canvasEl.dataset.gravity || '9.8') + 'm/s\u00B2', 10 * dpr, 30 * dpr);
                 if (canvasEl.dataset.airResist === 'true') {
-                  ctx.fillStyle = '#f97316';
-                  ctx.fillText('\uD83C\uDF2C\uFE0F Air Drag ON', 8 * dpr, 40 * dpr);
+                  ctx.fillStyle = '#f97316'; ctx.font = 'bold ' + (5.5 * dpr) + 'px sans-serif';
+                  ctx.fillText('\uD83C\uDF2C\uFE0F Drag ON', 10 * dpr, 42 * dpr);
                 }
-                // Trail color legend
-                ctx.fillStyle = 'rgba(0,0,0,0.5)';
-                ctx.fillRect((cW / dpr - 90) * dpr, 4 * dpr, 86 * dpr, 18 * dpr);
+                // Shot counter
+                ctx.fillStyle = 'rgba(148,163,184,0.6)'; ctx.font = (5 * dpr) + 'px sans-serif'; ctx.textAlign = 'right';
+                ctx.fillText('Shots: ' + trails.length, (hudX + hudW - 6 * dpr) / dpr * dpr, 42 * dpr);
+                ctx.restore();
+
+                // ── Trail color legend (glassmorphic) ──
+                ctx.save();
+                var legX = (cW / dpr - 94) * dpr, legY = 4 * dpr, legW = 90 * dpr, legH = 20 * dpr;
+                ctx.fillStyle = 'rgba(15,23,42,0.6)';
+                ctx.beginPath();
+                ctx.moveTo(legX + 6 * dpr, legY); ctx.lineTo(legX + legW - 6 * dpr, legY);
+                ctx.arcTo(legX + legW, legY, legX + legW, legY + 6 * dpr, 6 * dpr);
+                ctx.lineTo(legX + legW, legY + legH - 6 * dpr);
+                ctx.arcTo(legX + legW, legY + legH, legX + legW - 6 * dpr, legY + legH, 6 * dpr);
+                ctx.lineTo(legX + 6 * dpr, legY + legH);
+                ctx.arcTo(legX, legY + legH, legX, legY + legH - 6 * dpr, 6 * dpr);
+                ctx.lineTo(legX, legY + 6 * dpr);
+                ctx.arcTo(legX, legY, legX + 6 * dpr, legY, 6 * dpr);
+                ctx.closePath(); ctx.fill();
                 ctx.font = (5 * dpr) + 'px sans-serif';
-                ctx.fillStyle = '#22c55e'; ctx.fillText('SLOW', (cW / dpr - 86) * dpr, 15 * dpr);
-                // Gradient bar
-                var lgw = 40 * dpr;
-                var lgx = (cW / dpr - 60) * dpr;
+                ctx.fillStyle = '#22c55e'; ctx.textAlign = 'left'; ctx.fillText('SLOW', legX + 4 * dpr, legY + 14 * dpr);
+                var lgw = 36 * dpr;
+                var lgx = legX + 28 * dpr;
                 var lg = ctx.createLinearGradient(lgx, 0, lgx + lgw, 0);
                 lg.addColorStop(0, '#22c55e'); lg.addColorStop(0.5, '#eab308'); lg.addColorStop(1, '#ef4444');
                 ctx.fillStyle = lg;
-                ctx.fillRect(lgx, 9 * dpr, lgw, 4 * dpr);
-                ctx.fillStyle = '#ef4444'; ctx.textAlign = 'right'; ctx.fillText('FAST', (cW / dpr - 8) * dpr, 15 * dpr);
+                ctx.fillRect(lgx, legY + 9 * dpr, lgw, 4 * dpr);
+                ctx.fillStyle = '#ef4444'; ctx.textAlign = 'right'; ctx.fillText('FAST', legX + legW - 4 * dpr, legY + 14 * dpr);
+                ctx.restore();
 
                 canvasEl._physAnim = requestAnimationFrame(draw);
               }
@@ -5853,7 +7378,7 @@
                   d.quizStreak > 1 && React.createElement("p", { className: "text-xs font-bold text-amber-600" }, "\uD83D\uDD25 Streak: " + d.quizStreak + "!")
                 )
               ),
-              React.createElement("button", { onClick: () => { setToolSnapshots(prev => [...prev, { id: 'ph-' + Date.now(), tool: 'physics', label: d.angle + '\u00B0 ' + d.velocity + 'm/s', data: { ...d }, timestamp: Date.now() }]); addToast(t('stem.physics.ud83dudcf8_physics_snapshot_saved'), 'success'); }, className: "mt-3 ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
+              React.createElement("button", { onClick: () => { setToolSnapshots(prev => [...prev, { id: 'ph-' + Date.now(), tool: 'physics', label: d.angle + '\u00B0 ' + d.velocity + 'm/s', data: { ...d }, timestamp: Date.now() }]); addToast('\uD83D\uDCF8 Snapshot saved!', 'success'); }, className: "mt-3 ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
             )
           })(),
 
@@ -6054,7 +7579,7 @@
                 d.timerActive && d.timerStart && React.createElement("span", { className: "text-xs font-mono font-bold text-amber-600" }, '\u23F1 ' + ((Date.now() - d.timerStart) / 1000).toFixed(0) + 's'),
                 d.feedback && d.feedback.correct && d.timerActive && d.timerStart && React.createElement("span", { className: "text-xs font-bold text-emerald-600" }, '\u26A1 Solved in ' + ((Date.now() - d.timerStart) / 1000).toFixed(1) + 's!')
               ),
-              React.createElement("button", { onClick: () => { setToolSnapshots(prev => [...prev, { id: 'cb-' + Date.now(), tool: 'chemBalance', label: preset.name + ' ' + coeffs.join(':'), data: Object.assign({}, d), timestamp: Date.now() }]); addToast(t('stem.chem_balance.ud83dudcf8_snapshot_saved'), 'success'); }, className: "mt-3 ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
+              React.createElement("button", { onClick: () => { setToolSnapshots(prev => [...prev, { id: 'cb-' + Date.now(), tool: 'chemBalance', label: preset.name + ' ' + coeffs.join(':'), data: Object.assign({}, d), timestamp: Date.now() }]); addToast('\uD83D\uDCF8 Snapshot saved!', 'success'); }, className: "mt-3 ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
             )
           })(),
 
@@ -6380,7 +7905,7 @@
                   return '\uD83D\uDCA1 100% recessive. Both parents must be homozygous recessive (bb).';
                 })()
               ),
-              React.createElement("button", { onClick: function () { setToolSnapshots(function (prev) { return prev.concat([{ id: 'pn-' + Date.now(), tool: 'punnett', label: d.parent1.join('') + ' \u00D7 ' + d.parent2.join(''), data: Object.assign({}, d), timestamp: Date.now() }]); }); addToast(t('stem.punnett.ud83dudcf8_punnett_snapshot_saved'), 'success'); }, className: "mt-3 ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
+              React.createElement("button", { onClick: function () { setToolSnapshots(function (prev) { return prev.concat([{ id: 'pn-' + Date.now(), tool: 'punnett', label: d.parent1.join('') + ' \u00D7 ' + d.parent2.join(''), data: Object.assign({}, d), timestamp: Date.now() }]); }); addToast('\uD83D\uDCF8 Snapshot saved!', 'success'); }, className: "mt-3 ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
             )
           })(),
 
@@ -6613,7 +8138,7 @@
                   })
                 )
               ),
-              React.createElement("button", { onClick: () => { setToolSnapshots(prev => [...prev, { id: 'ci-' + Date.now(), tool: 'circuit', label: d.components.length + ' parts ' + d.voltage + 'V ' + mode, data: Object.assign({}, d, { mode: mode }), timestamp: Date.now() }]); addToast(t('stem.circuit.ud83dudcf8_circuit_snapshot_saved'), 'success'); }, className: "mt-3 ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
+              React.createElement("button", { onClick: () => { setToolSnapshots(prev => [...prev, { id: 'ci-' + Date.now(), tool: 'circuit', label: d.components.length + ' parts ' + d.voltage + 'V ' + mode, data: Object.assign({}, d, { mode: mode }), timestamp: Date.now() }]); addToast('\uD83D\uDCF8 Snapshot saved!', 'success'); }, className: "mt-3 ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
             )
           })(),
 
@@ -6760,7 +8285,7 @@
                   dpQuiz && dpQuiz.answered && React.createElement("div", { className: "p-3 rounded-xl text-sm font-bold " + (dpQuiz.chosen === dpQuiz.answer ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200') }, dpQuiz.chosen === dpQuiz.answer ? '✅ Correct! ' + dpQuiz.answer + ' correlation.' : '❌ Answer: ' + dpQuiz.answer + ' correlation.')
                 );
               })(),
-              React.createElement("button", { onClick: () => { setToolSnapshots(prev => [...prev, { id: 'dp-' + Date.now(), tool: 'dataPlot', label: d.points.length + ' pts r²=' + r2.toFixed(2), data: { points: [...d.points] }, timestamp: Date.now() }]); addToast(t('stem.data_plot.data_snapshot_saved'), 'success'); }, className: "mt-3 ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "📸 Snapshot")
+              React.createElement("button", { onClick: () => { setToolSnapshots(prev => [...prev, { id: 'dp-' + Date.now(), tool: 'dataPlot', label: d.points.length + ' pts r²=' + r2.toFixed(2), data: { points: [...d.points] }, timestamp: Date.now() }]); addToast('\uD83D\uDCF8 Snapshot saved!', 'success'); }, className: "mt-3 ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "📸 Snapshot")
             )
           })(),
 
@@ -6963,7 +8488,7 @@
                     )
                 )
               ),
-              React.createElement("button", { onClick: () => { setToolSnapshots(prev => [...prev, { id: 'iq-' + Date.now(), tool: 'inequality', label: d.expr, data: { ...d }, timestamp: Date.now() }]); addToast(t('stem.inequality.ud83dudcf8_inequality_snapshot_saved'), 'success'); }, className: "mt-3 ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
+              React.createElement("button", { onClick: () => { setToolSnapshots(prev => [...prev, { id: 'iq-' + Date.now(), tool: 'inequality', label: d.expr, data: { ...d }, timestamp: Date.now() }]); addToast('\uD83D\uDCF8 Snapshot saved!', 'success'); }, className: "mt-3 ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
             )
           })(),
 
@@ -7358,8 +8883,9 @@
 
             // ── Three.js 3D Canvas ──
             const canvasRef = function (canvas) {
-              if (!canvas) { // cleanup on unmount
+              if (!canvas) { // cleanup on unmount — but skip if canvas is still alive (just a ref swap from re-render)
                 const prev = document.querySelector('.solar3d-canvas');
+                if (prev && prev._solarInit) return; // Still mounted, skip cleanup (React ref swap)
                 if (prev && prev._solarCleanup) { prev._solarCleanup(); prev._solarInit = false; }
                 return;
               }
@@ -7590,6 +9116,16 @@
                     mesh.rotation.y += 0.02 * speed * (isPaused ? 0 : 1);
                   });
 
+                  // ── Handle camera reset signal from Reset View button ──
+                  if (canvas.dataset.resetCamera === 'true') {
+                    canvas.dataset.resetCamera = '';
+                    focusedPlanetIdx = -1;
+                    targetLookAt.set(0, 0, 0);
+                    targetDist = 55;
+                    camPhi = 1.0;
+                    camTheta = 0.5;
+                  }
+
                   // ── Smooth camera tracking ──
                   // If focused on a planet, update targetLookAt to follow it as it orbits
                   if (focusedPlanetIdx >= 0 && focusedPlanetIdx < planetMeshes.length) {
@@ -7705,7 +9241,7 @@
                     React.createElement("span", { className: "text-[10px] text-indigo-300 font-bold min-w-[28px] text-right" }, simSpeed.toFixed(1) + "x")
                   ),
                   React.createElement("button", {
-                    onClick: () => { upd('selectedPlanet', null); const c = document.querySelector('.solar3d-canvas'); if (c && c._solarInit) { /* reset camera via reinit — crude but works */ c._solarCleanup && c._solarCleanup(); c._solarInit = false; setTimeout(function () { canvasRef(c); }, 50); } },
+                    onClick: () => { upd('selectedPlanet', null); const c = document.querySelector('.solar3d-canvas'); if (c) { c.dataset.resetCamera = 'true'; } },
                     className: "px-2 py-1 rounded-lg text-[10px] font-bold bg-white/10 text-white/70 hover:bg-white/20 border border-white/10 backdrop-blur-sm transition-all"
                   }, "\uD83C\uDFE0 Reset View"),
                   React.createElement("span", { className: "text-[9px] text-white/40 ml-auto hidden sm:inline" }, "Drag to orbit \u2022 Scroll to zoom \u2022 Click a planet")
@@ -8436,9 +9972,9 @@
                               plotterVisible = !plotterVisible;
                               if (plotterPanel) { plotterPanel.style.display = plotterVisible ? 'block' : 'none'; setTimeout(function () { plotterPanel.style.opacity = plotterVisible ? '1' : '0'; }, 10); }
                             }
-                            });
+                          });
 
-                                                    // ── Trail Line (path history) ──
+                          // ── Trail Line (path history) ──
                           var trailPositions = []; var trailLine = null; var trailMaxPoints = 500;
                           function updateTrail() {
                             trailPositions.push(new THREE.Vector3(playerPos.x, isGas ? playerPos.y - 0.3 : 0.15, playerPos.z));
@@ -8570,7 +10106,7 @@
                             // Calculate total distance
                             var total = 0;
                             for (var wi = 1; wi < plotterWaypoints.length; wi++) {
-                              var ddx = plotterWaypoints[wi].x - plotterWaypoints[wi-1].x, ddz = plotterWaypoints[wi].z - plotterWaypoints[wi-1].z;
+                              var ddx = plotterWaypoints[wi].x - plotterWaypoints[wi - 1].x, ddz = plotterWaypoints[wi].z - plotterWaypoints[wi - 1].z;
                               total += Math.sqrt(ddx * ddx + ddz * ddz) * scaleFactor;
                             }
                             var statsDiv = plotterPanel.querySelector('#plotter-stats');
@@ -8898,7 +10434,7 @@
                     ),
                   ),
                 ),
-                React.createElement("button", { onClick: () => { setToolSnapshots(prev => [...prev, { id: 'ss-' + Date.now(), tool: 'solarSystem', label: sel ? sel.name : 'Solar System', data: { ...d }, timestamp: Date.now() }]); addToast(t('stem.planet_quiz.ud83dudcf8_snapshot_saved'), 'success'); }, className: "mt-3 ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
+                React.createElement("button", { onClick: () => { setToolSnapshots(prev => [...prev, { id: 'ss-' + Date.now(), tool: 'solarSystem', label: sel ? sel.name : 'Solar System', data: { ...d }, timestamp: Date.now() }]); addToast('\uD83D\uDCF8 Snapshot saved!', 'success'); }, className: "mt-3 ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
               )
             );
           })(),
@@ -9776,7 +11312,7 @@
 
               // ── Snapshot button ──
               React.createElement("div", { className: "flex gap-3 mt-3 items-center" },
-                React.createElement("button", { onClick: function () { setToolSnapshots(function (prev) { return prev.concat([{ id: 'gx-' + Date.now(), tool: 'galaxy', label: t('stem.galaxy.galaxy') + (d.selectedStar ? ': ' + d.selectedStar : '') + ' (' + gType.label + ')', data: Object.assign({}, d), timestamp: Date.now() }]); }); addToast(t('stem.galaxy.ud83dudcf8_galaxy_snapshot_saved'), 'success'); }, className: "ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
+                React.createElement("button", { onClick: function () { setToolSnapshots(function (prev) { return prev.concat([{ id: 'gx-' + Date.now(), tool: 'galaxy', label: t('stem.galaxy.galaxy') + (d.selectedStar ? ': ' + d.selectedStar : '') + ' (' + gType.label + ')', data: Object.assign({}, d), timestamp: Date.now() }]); }); addToast('\uD83D\uDCF8 Snapshot saved!', 'success'); }, className: "ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
               )
             )
           })(),
@@ -9868,9 +11404,32 @@
               if (!canvasEl || canvasEl._universeInit) return;
               canvasEl._universeInit = true;
               var dpr = window.devicePixelRatio || 1;
-              var W = canvasEl.width = canvasEl.offsetWidth * dpr;
-              var H = canvasEl.height = canvasEl.offsetHeight * dpr;
+              var ow = canvasEl.offsetWidth, oh = canvasEl.offsetHeight;
+              // Guard: if canvas has no layout yet, defer init
+              if (!ow || !oh) {
+                canvasEl._universeInit = false;
+                requestAnimationFrame(function () { canvasRefCb(canvasEl); });
+                return;
+              }
+              var W = canvasEl.width = ow * dpr;
+              var H = canvasEl.height = oh * dpr;
               var ctx = canvasEl.getContext('2d');
+              // roundRect polyfill for older browsers
+              if (!ctx.roundRect) {
+                ctx.roundRect = function (x, y, w, h, r) {
+                  if (typeof r === 'number') r = [r, r, r, r];
+                  ctx.moveTo(x + r[0], y);
+                  ctx.lineTo(x + w - r[1], y);
+                  ctx.arcTo(x + w, y, x + w, y + r[1], r[1]);
+                  ctx.lineTo(x + w, y + h - r[2]);
+                  ctx.arcTo(x + w, y + h, x + w - r[2], y + h, r[2]);
+                  ctx.lineTo(x + r[3], y + h);
+                  ctx.arcTo(x, y + h, x, y + h - r[3], r[3]);
+                  ctx.lineTo(x, y + r[0]);
+                  ctx.arcTo(x, y, x + r[0], y, r[0]);
+                  ctx.closePath();
+                };
+              }
               var tick = 0;
               var particles = [];
               for (var i = 0; i < 400; i++) {
@@ -9889,203 +11448,345 @@
                 nebulae.push({ x: Math.random(), y: Math.random(), size: 0.05 + Math.random() * 0.08, hue: ni % 4 === 0 ? '200,100,255' : ni % 4 === 1 ? '100,180,255' : ni % 4 === 2 ? '255,150,100' : '150,255,200', phase: Math.random() * Math.PI * 2 });
               }
               function draw() {
-                tick++;
-                var t = parseFloat(canvasEl.dataset.time || '0');
-                var ep = getCurrentEpoch(t);
-                ctx.clearRect(0, 0, W, H);
-                var cx = W / 2, cy = H / 2;
+                try {
+                  tick++;
+                  var t = parseFloat(canvasEl.dataset.time || '0');
+                  var ep = getCurrentEpoch(t);
+                  ctx.clearRect(0, 0, W, H);
+                  var cx = W / 2, cy = H / 2;
 
-                // ── Sky gradient (era-specific) ──
-                var skyGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, W * 0.7);
-                if (t < 0.05) {
-                  // Singularity: blinding white core
-                  var intensity = Math.max(0, 1 - t / 0.05);
-                  skyGrad.addColorStop(0, 'rgba(255,255,255,' + intensity + ')');
-                  skyGrad.addColorStop(0.15, 'rgba(255,240,180,' + (intensity * 0.9) + ')');
-                  skyGrad.addColorStop(0.4, 'rgba(255,160,50,' + (intensity * 0.6) + ')');
-                  skyGrad.addColorStop(0.7, 'rgba(200,50,0,' + (intensity * 0.3) + ')');
-                  skyGrad.addColorStop(1, 'rgba(10,5,20,1)');
-                } else if (t < 0.2) {
-                  // Post-bang: fiery orange fading
-                  var cool = (t - 0.05) / 0.15;
-                  skyGrad.addColorStop(0, 'rgba(255,' + Math.round(200 - cool * 150) + ',' + Math.round(100 - cool * 80) + ',' + (0.8 - cool * 0.6) + ')');
-                  skyGrad.addColorStop(0.3, 'rgba(180,' + Math.round(80 - cool * 60) + ',20,' + (0.4 - cool * 0.3) + ')');
-                  skyGrad.addColorStop(1, 'rgba(10,8,25,1)');
-                } else if (t < 0.4) {
-                  // Dark Ages: deep indigo-black
-                  skyGrad.addColorStop(0, '#0c0a18'); skyGrad.addColorStop(0.5, '#060414'); skyGrad.addColorStop(1, '#020210');
-                } else if (t < 1.0) {
-                  // First stars: hints of blue
-                  var starGlow = (t - 0.4) / 0.6;
-                  skyGrad.addColorStop(0, 'rgba(15,15,' + Math.round(40 + starGlow * 15) + ',1)');
-                  skyGrad.addColorStop(1, 'rgba(5,5,' + Math.round(15 + starGlow * 5) + ',1)');
-                } else {
-                  // Galaxy era onward: deep cosmic blue-black
-                  skyGrad.addColorStop(0, '#0d0d28'); skyGrad.addColorStop(0.6, '#080818'); skyGrad.addColorStop(1, '#040410');
-                }
-                ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, W, H);
-
-                // ── Big Bang: expanding shockwave rings ──
-                if (t < 0.3) {
-                  var bangPhase = t / 0.3;
-                  // Multiple expanding rings
-                  for (var ri = 0; ri < 5; ri++) {
-                    var ringT = bangPhase - ri * 0.15;
-                    if (ringT > 0 && ringT < 1) {
-                      var ringR = ringT * W * 0.55;
-                      var ringAlpha = (1 - ringT) * 0.6;
-                      ctx.beginPath(); ctx.arc(cx, cy, ringR, 0, Math.PI * 2);
-                      ctx.strokeStyle = 'rgba(255,' + Math.round(200 - ri * 30) + ',' + Math.round(100 - ri * 20) + ',' + ringAlpha + ')';
-                      ctx.lineWidth = (3 - ri * 0.4) * dpr;
-                      ctx.stroke();
-                    }
+                  // ── Sky gradient (era-specific) ──
+                  var skyGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, W * 0.7);
+                  if (t < 0.05) {
+                    // Singularity: blinding white core
+                    var intensity = Math.max(0, 1 - t / 0.05);
+                    skyGrad.addColorStop(0, 'rgba(255,255,255,' + intensity + ')');
+                    skyGrad.addColorStop(0.15, 'rgba(255,240,180,' + (intensity * 0.9) + ')');
+                    skyGrad.addColorStop(0.4, 'rgba(255,160,50,' + (intensity * 0.6) + ')');
+                    skyGrad.addColorStop(0.7, 'rgba(200,50,0,' + (intensity * 0.3) + ')');
+                    skyGrad.addColorStop(1, 'rgba(10,5,20,1)');
+                  } else if (t < 0.2) {
+                    // Post-bang: fiery orange fading
+                    var cool = (t - 0.05) / 0.15;
+                    skyGrad.addColorStop(0, 'rgba(255,' + Math.round(200 - cool * 150) + ',' + Math.round(100 - cool * 80) + ',' + (0.8 - cool * 0.6) + ')');
+                    skyGrad.addColorStop(0.3, 'rgba(180,' + Math.round(80 - cool * 60) + ',20,' + (0.4 - cool * 0.3) + ')');
+                    skyGrad.addColorStop(1, 'rgba(10,8,25,1)');
+                  } else if (t < 0.4) {
+                    // Dark Ages: deep indigo-black
+                    skyGrad.addColorStop(0, '#0c0a18'); skyGrad.addColorStop(0.5, '#060414'); skyGrad.addColorStop(1, '#020210');
+                  } else if (t < 1.0) {
+                    // First stars: hints of blue
+                    var starGlow = (t - 0.4) / 0.6;
+                    skyGrad.addColorStop(0, 'rgba(15,15,' + Math.round(40 + starGlow * 15) + ',1)');
+                    skyGrad.addColorStop(1, 'rgba(5,5,' + Math.round(15 + starGlow * 5) + ',1)');
+                  } else {
+                    // Galaxy era onward: deep cosmic blue-black
+                    skyGrad.addColorStop(0, '#0d0d28'); skyGrad.addColorStop(0.6, '#080818'); skyGrad.addColorStop(1, '#040410');
                   }
-                  // Central plasma fireball
-                  var fireR = Math.min(bangPhase * 0.4, 0.35) * W;
-                  var fireGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, fireR);
-                  var coreAlpha = Math.max(0, 1 - bangPhase * 1.5);
-                  fireGrad.addColorStop(0, 'rgba(255,255,255,' + Math.min(1, coreAlpha + 0.3) + ')');
-                  fireGrad.addColorStop(0.2, 'rgba(255,255,200,' + coreAlpha + ')');
-                  fireGrad.addColorStop(0.4, 'rgba(255,200,80,' + (coreAlpha * 0.7) + ')');
-                  fireGrad.addColorStop(0.7, 'rgba(255,100,20,' + (coreAlpha * 0.4) + ')');
-                  fireGrad.addColorStop(1, 'rgba(200,30,0,0)');
-                  ctx.beginPath(); ctx.arc(cx, cy, fireR, 0, Math.PI * 2);
-                  ctx.fillStyle = fireGrad; ctx.fill();
+                  ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, W, H);
 
-                  // Expanding plasma particles flying outward
-                  for (var ppi = 0; ppi < plasmaParticles.length; ppi++) {
-                    var pp2 = plasmaParticles[ppi];
-                    var ppDist = bangPhase * pp2.speed * W * 0.3;
-                    if (ppDist > W * 0.7) continue;
-                    var ppAlpha = Math.max(0, (1 - bangPhase) * pp2.life);
-                    var ppx = cx + Math.cos(pp2.angle) * ppDist;
-                    var ppy = cy + Math.sin(pp2.angle) * ppDist;
-                    var ppSize = pp2.size * dpr * (1 - bangPhase * 0.5);
-                    ctx.beginPath(); ctx.arc(ppx, ppy, ppSize, 0, Math.PI * 2);
-                    ctx.fillStyle = 'rgba(255,' + Math.round(200 + pp2.hue) + ',' + Math.round(100 + pp2.hue * 0.5) + ',' + ppAlpha + ')';
-                    ctx.fill();
-                  }
-                }
-
-                // ── CMB glow (recombination era: 0.2-1.0) ──
-                if (t > 0.15 && t < 1.0) {
-                  var cmbPhase = (t - 0.15) / 0.85;
-                  var cmbAlpha = Math.max(0, 0.35 * (1 - cmbPhase));
-                  // Mottled CMB pattern (simulated)
-                  for (var cmi = 0; cmi < 20; cmi++) {
-                    var cmx = ((cmi * 173 + 37) % (W / dpr)) * dpr;
-                    var cmy = ((cmi * 131 + 19) % (H / dpr)) * dpr;
-                    var cms = (15 + cmi * 7 % 20) * dpr;
-                    var cmGrad = ctx.createRadialGradient(cmx, cmy, 0, cmx, cmy, cms);
-                    var warmth = cmi % 2 === 0 ? '255,200,120' : '255,160,80';
-                    cmGrad.addColorStop(0, 'rgba(' + warmth + ',' + (cmbAlpha * 0.5) + ')');
-                    cmGrad.addColorStop(1, 'rgba(' + warmth + ',0)');
-                    ctx.beginPath(); ctx.arc(cmx, cmy, cms, 0, Math.PI * 2);
-                    ctx.fillStyle = cmGrad; ctx.fill();
-                  }
-                }
-
-                // ── Stars (appear after Dark Ages) ──
-                var starBrightness = t < 0.4 ? 0 : Math.min(1, (t - 0.4) / 0.8);
-                var starCount = Math.min(particles.length, Math.floor(starBrightness * particles.length));
-                for (var pi = 0; pi < starCount; pi++) {
-                  var p = particles[pi];
-                  p.x += p.vx; p.y += p.vy;
-                  if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
-                  if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
-                  var twinkle = 0.5 + 0.5 * Math.sin(tick * 0.03 + pi * 1.7);
-                  // Star color varies by era
-                  var hue;
-                  if (t < 1) hue = '180,200,255'; // early: blue-white Population III
-                  else if (p.c < 0.3) hue = '255,200,150'; // warm yellow
-                  else if (p.c < 0.6) hue = '200,210,255'; // cool blue
-                  else if (p.c < 0.85) hue = '255,240,220'; // white
-                  else hue = '255,160,120'; // red giant
-                  ctx.beginPath(); ctx.arc(p.x, p.y, p.s * dpr * twinkle, 0, Math.PI * 2);
-                  ctx.fillStyle = 'rgba(' + hue + ',' + (starBrightness * twinkle * 0.85) + ')';
-                  ctx.fill();
-                  // Glow around bright stars
-                  if (p.s > 1.8 && twinkle > 0.7) {
-                    var glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.s * dpr * 3);
-                    glow.addColorStop(0, 'rgba(' + hue + ',' + (twinkle * 0.15) + ')');
-                    glow.addColorStop(1, 'rgba(' + hue + ',0)');
-                    ctx.beginPath(); ctx.arc(p.x, p.y, p.s * dpr * 3, 0, Math.PI * 2);
-                    ctx.fillStyle = glow; ctx.fill();
-                  }
-                }
-
-                // ── Nebulae (after t > 2 Gyr, star-forming regions) ──
-                if (t > 2) {
-                  var nebAlpha = Math.min(0.3, (t - 2) * 0.03);
-                  for (var nbi = 0; nbi < nebulae.length; nbi++) {
-                    var nb = nebulae[nbi];
-                    var nbx = nb.x * W, nby = nb.y * H;
-                    var nbSize = nb.size * W * (1 + 0.1 * Math.sin(tick * 0.01 + nb.phase));
-                    var nbGrad = ctx.createRadialGradient(nbx, nby, 0, nbx, nby, nbSize);
-                    nbGrad.addColorStop(0, 'rgba(' + nb.hue + ',' + (nebAlpha * 0.6) + ')');
-                    nbGrad.addColorStop(0.4, 'rgba(' + nb.hue + ',' + (nebAlpha * 0.3) + ')');
-                    nbGrad.addColorStop(1, 'rgba(' + nb.hue + ',0)');
-                    ctx.beginPath(); ctx.arc(nbx, nby, nbSize, 0, Math.PI * 2);
-                    ctx.fillStyle = nbGrad; ctx.fill();
-                  }
-                }
-
-                // ── Galaxies (after t > 1 Gyr) with spiral hints ──
-                if (t > 1) {
-                  var galaxyCount = Math.min(16, Math.floor((t - 1) * 2.5));
-                  for (var gi = 0; gi < galaxyCount; gi++) {
-                    var gx = ((gi * 137 + 50) % (W / dpr)) * dpr;
-                    var gy = ((gi * 97 + 30) % (H / dpr)) * dpr;
-                    var gs = (10 + gi % 6 * 5) * dpr;
-                    // Core glow
-                    var galGrad = ctx.createRadialGradient(gx, gy, 0, gx, gy, gs);
-                    var galHue = gi % 4 === 0 ? '180,160,255' : gi % 4 === 1 ? '255,200,150' : gi % 4 === 2 ? '150,200,255' : '255,220,180';
-                    galGrad.addColorStop(0, 'rgba(' + galHue + ',0.5)');
-                    galGrad.addColorStop(0.3, 'rgba(' + galHue + ',0.2)');
-                    galGrad.addColorStop(0.7, 'rgba(' + galHue + ',0.05)');
-                    galGrad.addColorStop(1, 'rgba(' + galHue + ',0)');
-                    ctx.beginPath(); ctx.arc(gx, gy, gs, 0, Math.PI * 2);
-                    ctx.fillStyle = galGrad; ctx.fill();
-                    // Spiral arm hints for larger galaxies
-                    if (gs > 12 * dpr && t > 3) {
-                      ctx.save();
-                      ctx.translate(gx, gy);
-                      ctx.rotate(gi * 1.3 + tick * 0.001);
-                      ctx.globalAlpha = 0.15;
-                      ctx.beginPath();
-                      for (var sa = 0; sa < Math.PI * 4; sa += 0.1) {
-                        var sr = sa * gs * 0.08;
-                        ctx.lineTo(Math.cos(sa) * sr, Math.sin(sa) * sr);
+                  // ── Big Bang: expanding shockwave rings ──
+                  if (t < 0.3) {
+                    var bangPhase = t / 0.3;
+                    // Multiple expanding rings
+                    for (var ri = 0; ri < 5; ri++) {
+                      var ringT = bangPhase - ri * 0.15;
+                      if (ringT > 0 && ringT < 1) {
+                        var ringR = ringT * W * 0.55;
+                        var ringAlpha = (1 - ringT) * 0.6;
+                        ctx.beginPath(); ctx.arc(cx, cy, ringR, 0, Math.PI * 2);
+                        ctx.strokeStyle = 'rgba(255,' + Math.round(200 - ri * 30) + ',' + Math.round(100 - ri * 20) + ',' + ringAlpha + ')';
+                        ctx.lineWidth = (3 - ri * 0.4) * dpr;
+                        ctx.stroke();
                       }
-                      ctx.strokeStyle = 'rgba(' + galHue + ',0.3)';
-                      ctx.lineWidth = 1.5 * dpr;
-                      ctx.stroke();
-                      ctx.globalAlpha = 1;
-                      ctx.restore();
+                    }
+                    // Central plasma fireball
+                    var fireR = Math.min(bangPhase * 0.4, 0.35) * W;
+                    var fireGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, fireR);
+                    var coreAlpha = Math.max(0, 1 - bangPhase * 1.5);
+                    fireGrad.addColorStop(0, 'rgba(255,255,255,' + Math.min(1, coreAlpha + 0.3) + ')');
+                    fireGrad.addColorStop(0.2, 'rgba(255,255,200,' + coreAlpha + ')');
+                    fireGrad.addColorStop(0.4, 'rgba(255,200,80,' + (coreAlpha * 0.7) + ')');
+                    fireGrad.addColorStop(0.7, 'rgba(255,100,20,' + (coreAlpha * 0.4) + ')');
+                    fireGrad.addColorStop(1, 'rgba(200,30,0,0)');
+                    ctx.beginPath(); ctx.arc(cx, cy, fireR, 0, Math.PI * 2);
+                    ctx.fillStyle = fireGrad; ctx.fill();
+
+                    // Expanding plasma particles flying outward
+                    for (var ppi = 0; ppi < plasmaParticles.length; ppi++) {
+                      var pp2 = plasmaParticles[ppi];
+                      var ppDist = bangPhase * pp2.speed * W * 0.3;
+                      if (ppDist > W * 0.7) continue;
+                      var ppAlpha = Math.max(0, (1 - bangPhase) * pp2.life);
+                      var ppx = cx + Math.cos(pp2.angle) * ppDist;
+                      var ppy = cy + Math.sin(pp2.angle) * ppDist;
+                      var ppSize = pp2.size * dpr * (1 - bangPhase * 0.5);
+                      ctx.beginPath(); ctx.arc(ppx, ppy, ppSize, 0, Math.PI * 2);
+                      ctx.fillStyle = 'rgba(255,' + Math.round(200 + pp2.hue) + ',' + Math.round(100 + pp2.hue * 0.5) + ',' + ppAlpha + ')';
+                      ctx.fill();
                     }
                   }
-                }
 
-                // ── Epoch label overlay (bottom-left HUD) ──
-                // Dark backdrop for readability
-                ctx.fillStyle = 'rgba(0,0,0,0.5)';
-                var labelW = 220 * dpr, labelH = 48 * dpr;
-                ctx.beginPath();
-                ctx.roundRect(6 * dpr, H - (54 * dpr), labelW, labelH, 8 * dpr);
-                ctx.fill();
-                // Epoch name
-                ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.font = 'bold ' + (12 * dpr) + 'px sans-serif';
-                ctx.fillText(ep.emoji + ' ' + ep.name, 14 * dpr, H - (20 * dpr));
-                // Time
-                ctx.fillStyle = 'rgba(160,200,255,0.8)'; ctx.font = (9 * dpr) + 'px sans-serif';
-                var timeStr = t < 0.001 ? 'T = 0 (Singularity)' : t < 1 ? (t * 1000).toFixed(0) + ' million years' : t.toFixed(1) + ' billion years';
-                ctx.fillText(timeStr, 14 * dpr, H - (34 * dpr));
+                  // ── CMB glow (recombination era: 0.2-1.0) ──
+                  if (t > 0.15 && t < 1.0) {
+                    var cmbPhase = (t - 0.15) / 0.85;
+                    var cmbAlpha = Math.max(0, 0.35 * (1 - cmbPhase));
+                    // Mottled CMB pattern (simulated)
+                    for (var cmi = 0; cmi < 20; cmi++) {
+                      var cmx = ((cmi * 173 + 37) % (W / dpr)) * dpr;
+                      var cmy = ((cmi * 131 + 19) % (H / dpr)) * dpr;
+                      var cms = (15 + cmi * 7 % 20) * dpr;
+                      var cmGrad = ctx.createRadialGradient(cmx, cmy, 0, cmx, cmy, cms);
+                      var warmth = cmi % 2 === 0 ? '255,200,120' : '255,160,80';
+                      cmGrad.addColorStop(0, 'rgba(' + warmth + ',' + (cmbAlpha * 0.5) + ')');
+                      cmGrad.addColorStop(1, 'rgba(' + warmth + ',0)');
+                      ctx.beginPath(); ctx.arc(cmx, cmy, cms, 0, Math.PI * 2);
+                      ctx.fillStyle = cmGrad; ctx.fill();
+                    }
+                  }
 
-                canvasEl._animId = requestAnimationFrame(draw);
+                  // ── Stars (appear after Dark Ages) ──
+                  var starBrightness = t < 0.4 ? 0 : Math.min(1, (t - 0.4) / 0.8);
+                  var starCount = Math.min(particles.length, Math.floor(starBrightness * particles.length));
+                  for (var pi = 0; pi < starCount; pi++) {
+                    var p = particles[pi];
+                    p.x += p.vx; p.y += p.vy;
+                    if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+                    if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+                    var twinkle = 0.5 + 0.5 * Math.sin(tick * 0.03 + pi * 1.7);
+                    // Star color varies by era
+                    var hue;
+                    if (t < 1) hue = '180,200,255'; // early: blue-white Population III
+                    else if (p.c < 0.3) hue = '255,200,150'; // warm yellow
+                    else if (p.c < 0.6) hue = '200,210,255'; // cool blue
+                    else if (p.c < 0.85) hue = '255,240,220'; // white
+                    else hue = '255,160,120'; // red giant
+                    ctx.beginPath(); ctx.arc(p.x, p.y, p.s * dpr * twinkle, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(' + hue + ',' + (starBrightness * twinkle * 0.85) + ')';
+                    ctx.fill();
+                    // Glow around bright stars
+                    if (p.s > 1.8 && twinkle > 0.7) {
+                      var glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.s * dpr * 3);
+                      glow.addColorStop(0, 'rgba(' + hue + ',' + (twinkle * 0.15) + ')');
+                      glow.addColorStop(1, 'rgba(' + hue + ',0)');
+                      ctx.beginPath(); ctx.arc(p.x, p.y, p.s * dpr * 3, 0, Math.PI * 2);
+                      ctx.fillStyle = glow; ctx.fill();
+                    }
+                  }
+
+                  // ── Nebulae (after t > 2 Gyr, star-forming regions) ──
+                  if (t > 2) {
+                    var nebAlpha = Math.min(0.3, (t - 2) * 0.03);
+                    for (var nbi = 0; nbi < nebulae.length; nbi++) {
+                      var nb = nebulae[nbi];
+                      var nbx = nb.x * W, nby = nb.y * H;
+                      var nbSize = nb.size * W * (1 + 0.1 * Math.sin(tick * 0.01 + nb.phase));
+                      var nbGrad = ctx.createRadialGradient(nbx, nby, 0, nbx, nby, nbSize);
+                      nbGrad.addColorStop(0, 'rgba(' + nb.hue + ',' + (nebAlpha * 0.6) + ')');
+                      nbGrad.addColorStop(0.4, 'rgba(' + nb.hue + ',' + (nebAlpha * 0.3) + ')');
+                      nbGrad.addColorStop(1, 'rgba(' + nb.hue + ',0)');
+                      ctx.beginPath(); ctx.arc(nbx, nby, nbSize, 0, Math.PI * 2);
+                      ctx.fillStyle = nbGrad; ctx.fill();
+                    }
+                  }
+
+                  // ── Galaxies (after t > 1 Gyr) with spiral hints ──
+                  if (t > 1) {
+                    var galaxyCount = Math.min(16, Math.floor((t - 1) * 2.5));
+                    for (var gi = 0; gi < galaxyCount; gi++) {
+                      var gx = ((gi * 137 + 50) % (W / dpr)) * dpr;
+                      var gy = ((gi * 97 + 30) % (H / dpr)) * dpr;
+                      var gs = (10 + gi % 6 * 5) * dpr;
+                      // Core glow
+                      var galGrad = ctx.createRadialGradient(gx, gy, 0, gx, gy, gs);
+                      var galHue = gi % 4 === 0 ? '180,160,255' : gi % 4 === 1 ? '255,200,150' : gi % 4 === 2 ? '150,200,255' : '255,220,180';
+                      galGrad.addColorStop(0, 'rgba(' + galHue + ',0.5)');
+                      galGrad.addColorStop(0.3, 'rgba(' + galHue + ',0.2)');
+                      galGrad.addColorStop(0.7, 'rgba(' + galHue + ',0.05)');
+                      galGrad.addColorStop(1, 'rgba(' + galHue + ',0)');
+                      ctx.beginPath(); ctx.arc(gx, gy, gs, 0, Math.PI * 2);
+                      ctx.fillStyle = galGrad; ctx.fill();
+                      // Spiral arm hints for larger galaxies
+                      if (gs > 12 * dpr && t > 3) {
+                        ctx.save();
+                        ctx.translate(gx, gy);
+                        ctx.rotate(gi * 1.3 + tick * 0.001);
+                        ctx.globalAlpha = 0.15;
+                        ctx.beginPath();
+                        for (var sa = 0; sa < Math.PI * 4; sa += 0.1) {
+                          var sr = sa * gs * 0.08;
+                          ctx.lineTo(Math.cos(sa) * sr, Math.sin(sa) * sr);
+                        }
+                        ctx.strokeStyle = 'rgba(' + galHue + ',0.3)';
+                        ctx.lineWidth = 1.5 * dpr;
+                        ctx.stroke();
+                        ctx.globalAlpha = 1;
+                        ctx.restore();
+                      }
+                    }
+                  }
+
+                  // ── Cosmic Web Filaments (dark matter structure connecting galaxies, t > 2) ──
+                  if (t > 2) {
+                    var filAlpha = Math.min(0.12, (t - 2) * 0.01);
+                    var filGalCount = Math.min(16, Math.floor((t - 1) * 2.5));
+                    ctx.save();
+                    ctx.globalAlpha = filAlpha;
+                    ctx.lineWidth = 1.2 * dpr;
+                    for (var fi = 0; fi < filGalCount; fi++) {
+                      var fx1 = ((fi * 137 + 50) % (W / dpr)) * dpr;
+                      var fy1 = ((fi * 97 + 30) % (H / dpr)) * dpr;
+                      // Connect to 2 nearest neighbors
+                      for (var fj = fi + 1; fj < Math.min(fi + 3, filGalCount); fj++) {
+                        var fx2 = ((fj * 137 + 50) % (W / dpr)) * dpr;
+                        var fy2 = ((fj * 97 + 30) % (H / dpr)) * dpr;
+                        var fDist = Math.sqrt((fx2 - fx1) * (fx2 - fx1) + (fy2 - fy1) * (fy2 - fy1));
+                        if (fDist > W * 0.6) continue;
+                        // Curved filament with glow
+                        var fmx = (fx1 + fx2) / 2 + Math.sin(fi * 2.3 + tick * 0.002) * 20;
+                        var fmy = (fy1 + fy2) / 2 + Math.cos(fj * 1.7 + tick * 0.002) * 20;
+                        var filGrad = ctx.createLinearGradient(fx1, fy1, fx2, fy2);
+                        filGrad.addColorStop(0, 'rgba(100,120,200,0)');
+                        filGrad.addColorStop(0.3, 'rgba(120,140,220,' + (filAlpha * 2) + ')');
+                        filGrad.addColorStop(0.7, 'rgba(120,140,220,' + (filAlpha * 2) + ')');
+                        filGrad.addColorStop(1, 'rgba(100,120,200,0)');
+                        ctx.beginPath();
+                        ctx.moveTo(fx1, fy1);
+                        ctx.quadraticCurveTo(fmx, fmy, fx2, fy2);
+                        ctx.strokeStyle = filGrad;
+                        ctx.stroke();
+                      }
+                    }
+                    ctx.restore();
+                  }
+
+                  // ── Dark Matter Halos (subtle glow behind galaxies) ──
+                  if (t > 1.5) {
+                    var dmGalCount = Math.min(16, Math.floor((t - 1) * 2.5));
+                    ctx.save();
+                    for (var dmi = 0; dmi < dmGalCount; dmi++) {
+                      var dmx = ((dmi * 137 + 50) % (W / dpr)) * dpr;
+                      var dmy = ((dmi * 97 + 30) % (H / dpr)) * dpr;
+                      var dms = (10 + dmi % 6 * 5) * dpr;
+                      var dmHaloR = dms * 2.2;
+                      var dmAlpha = Math.min(0.06, (t - 1.5) * 0.01);
+                      var dmGrad = ctx.createRadialGradient(dmx, dmy, dms * 0.3, dmx, dmy, dmHaloR);
+                      dmGrad.addColorStop(0, 'rgba(80,60,180,' + dmAlpha + ')');
+                      dmGrad.addColorStop(0.5, 'rgba(60,40,160,' + (dmAlpha * 0.5) + ')');
+                      dmGrad.addColorStop(1, 'rgba(40,20,140,0)');
+                      ctx.beginPath(); ctx.arc(dmx, dmy, dmHaloR, 0, Math.PI * 2);
+                      ctx.fillStyle = dmGrad; ctx.fill();
+                    }
+                    ctx.restore();
+                  }
+
+                  // ── Shooting Stars / Meteor Streaks (after t > 9, Solar System era) ──
+                  if (t > 9) {
+                    ctx.save();
+                    var meteorSeed = Math.floor(tick / 80);
+                    var meteorPhase = (tick % 80) / 80;
+                    for (var mti = 0; mti < 2; mti++) {
+                      var mtHash = (meteorSeed * 73 + mti * 41) % 1000;
+                      if (mtHash > 300) continue; // Only ~30% chance per slot
+                      var mtx1 = (mtHash * 7 % (W / dpr)) * dpr;
+                      var mty1 = (mtHash * 3 % Math.floor(H * 0.5 / dpr)) * dpr;
+                      var mtAngle = 0.3 + (mtHash % 5) * 0.15;
+                      var mtLen = (40 + mtHash % 60) * dpr;
+                      var mtx2 = mtx1 + Math.cos(mtAngle) * mtLen * meteorPhase;
+                      var mty2 = mty1 + Math.sin(mtAngle) * mtLen * meteorPhase;
+                      var mtAlpha = meteorPhase < 0.3 ? meteorPhase / 0.3 : (1 - meteorPhase) / 0.7;
+                      mtAlpha *= 0.7;
+                      ctx.globalAlpha = mtAlpha;
+                      var mtGrad = ctx.createLinearGradient(mtx1, mty1, mtx2, mty2);
+                      mtGrad.addColorStop(0, 'rgba(255,255,255,0)');
+                      mtGrad.addColorStop(0.6, 'rgba(255,240,200,' + mtAlpha + ')');
+                      mtGrad.addColorStop(1, 'rgba(255,255,255,' + mtAlpha + ')');
+                      ctx.beginPath(); ctx.moveTo(mtx1, mty1); ctx.lineTo(mtx2, mty2);
+                      ctx.strokeStyle = mtGrad; ctx.lineWidth = 1.5 * dpr; ctx.stroke();
+                      // Bright head
+                      ctx.beginPath(); ctx.arc(mtx2, mty2, 2 * dpr, 0, Math.PI * 2);
+                      ctx.fillStyle = 'rgba(255,255,240,' + (mtAlpha * 0.8) + ')'; ctx.fill();
+                    }
+                    ctx.globalAlpha = 1;
+                    ctx.restore();
+                  }
+
+                  // ── Protoplanetary Disk (near Sun formation, t ≈ 9.0–9.5) ──
+                  if (t > 8.5 && t < 10) {
+                    var ppAlpha = t < 9.0 ? (t - 8.5) / 0.5 : t > 9.5 ? Math.max(0, 1 - (t - 9.5) / 0.5) : 1;
+                    ppAlpha *= 0.6;
+                    var ppx = W * 0.78, ppy = H * 0.25;
+                    ctx.save();
+                    ctx.translate(ppx, ppy);
+                    ctx.rotate(tick * 0.003);
+                    ctx.globalAlpha = ppAlpha;
+                    // Concentric dust rings
+                    var ppRings = [
+                      { r: 18, w: 4, color: '255,200,100' },
+                      { r: 26, w: 3, color: '220,170,80' },
+                      { r: 34, w: 5, color: '180,140,70' },
+                      { r: 44, w: 3, color: '140,120,80' }
+                    ];
+                    for (var pri = 0; pri < ppRings.length; pri++) {
+                      var ppr = ppRings[pri];
+                      var rr = ppr.r * dpr;
+                      ctx.beginPath();
+                      ctx.ellipse(0, 0, rr, rr * 0.3, 0, 0, Math.PI * 2);
+                      ctx.strokeStyle = 'rgba(' + ppr.color + ',' + (ppAlpha * 0.5) + ')';
+                      ctx.lineWidth = ppr.w * dpr;
+                      ctx.stroke();
+                    }
+                    // Central protostar glow
+                    var psGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, 12 * dpr);
+                    psGrad.addColorStop(0, 'rgba(255,230,150,' + ppAlpha + ')');
+                    psGrad.addColorStop(0.4, 'rgba(255,180,60,' + (ppAlpha * 0.6) + ')');
+                    psGrad.addColorStop(1, 'rgba(255,120,20,0)');
+                    ctx.beginPath(); ctx.arc(0, 0, 12 * dpr, 0, Math.PI * 2);
+                    ctx.fillStyle = psGrad; ctx.fill();
+                    // Planetesimal dots orbiting
+                    for (var pli = 0; pli < 5; pli++) {
+                      var plAngle = pli * Math.PI * 2 / 5 + tick * 0.008 * (1 + pli * 0.3);
+                      var plR = (22 + pli * 6) * dpr;
+                      var plpx = Math.cos(plAngle) * plR;
+                      var plpy = Math.sin(plAngle) * plR * 0.3;
+                      ctx.beginPath(); ctx.arc(plpx, plpy, (1.5 + pli * 0.3) * dpr, 0, Math.PI * 2);
+                      ctx.fillStyle = 'rgba(200,180,140,' + (ppAlpha * 0.8) + ')'; ctx.fill();
+                    }
+                    ctx.restore();
+                    // Label
+                    ctx.save();
+                    ctx.globalAlpha = ppAlpha * 0.8;
+                    ctx.font = (7 * dpr) + 'px sans-serif';
+                    ctx.fillStyle = 'rgba(255,200,100,' + ppAlpha + ')';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Protoplanetary Disk', ppx, ppy + 55 * dpr);
+                    ctx.restore();
+                  }
+
+                  // ── Epoch label overlay (bottom-left HUD) ──
+                  // Dark backdrop for readability
+                  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                  var labelW = 220 * dpr, labelH = 48 * dpr;
+                  ctx.beginPath();
+                  ctx.roundRect(6 * dpr, H - (54 * dpr), labelW, labelH, 8 * dpr);
+                  ctx.fill();
+                  // Epoch name
+                  ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.font = 'bold ' + (12 * dpr) + 'px sans-serif';
+                  ctx.fillText(ep.emoji + ' ' + ep.name, 14 * dpr, H - (20 * dpr));
+                  // Time
+                  ctx.fillStyle = 'rgba(160,200,255,0.8)'; ctx.font = (9 * dpr) + 'px sans-serif';
+                  var timeStr = t < 0.001 ? 'T = 0 (Singularity)' : t < 1 ? (t * 1000).toFixed(0) + ' million years' : t.toFixed(1) + ' billion years';
+                  ctx.fillText(timeStr, 14 * dpr, H - (34 * dpr));
+
+                  canvasEl._animId = requestAnimationFrame(draw);
+                } catch (e) { console.error('Universe draw error:', e); canvasEl._animId = requestAnimationFrame(draw); }
               }
               canvasEl._animId = requestAnimationFrame(draw);
               canvasEl._universeCleanup = function () { cancelAnimationFrame(canvasEl._animId); canvasEl._universeInit = false; };
-              var ro = new ResizeObserver(function () { W = canvasEl.width = canvasEl.offsetWidth * dpr; H = canvasEl.height = canvasEl.offsetHeight * dpr; });
+              var ro = new ResizeObserver(function () {
+                var newW = canvasEl.offsetWidth, newH = canvasEl.offsetHeight;
+                if (newW && newH) { W = canvasEl.width = newW * dpr; H = canvasEl.height = newH * dpr; }
+              });
               ro.observe(canvasEl); canvasEl._ro = ro;
             };
 
@@ -10188,7 +11889,7 @@
               ),
               // Snapshot button
               React.createElement("div", { className: "flex mt-3" },
-                React.createElement("button", { onClick: function () { setToolSnapshots(function (prev) { return prev.concat([{ id: 'uni-' + Date.now(), tool: 'universe', label: t('stem.universe.universe') + epoch.name, data: Object.assign({}, d), timestamp: Date.now() }]); }); addToast(t('stem.universe.ud83dudcf8_universe_snapshot_saved'), 'success'); }, className: "ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-violet-500 to-indigo-500 rounded-full hover:from-violet-600 hover:to-indigo-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
+                React.createElement("button", { onClick: function () { setToolSnapshots(function (prev) { return prev.concat([{ id: 'uni-' + Date.now(), tool: 'universe', label: t('stem.universe.universe') + epoch.name, data: Object.assign({}, d), timestamp: Date.now() }]); }); addToast('\uD83D\uDCF8 Snapshot saved!', 'success'); }, className: "ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-violet-500 to-indigo-500 rounded-full hover:from-violet-600 hover:to-indigo-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
               )
             );
           })(),
@@ -10901,7 +12602,7 @@
                 React.createElement("button", {
                   onClick: function () {
                     setToolSnapshots(function (prev) { return prev.concat([{ id: 'rk-' + Date.now(), tool: 'rocks', label: t('stem.rocks.rocks') + (selRock ? ': ' + selRock.label : selMineral ? ': ' + selMineral.label : ''), data: Object.assign({}, d), timestamp: Date.now() }]); });
-                    addToast(t('stem.rocks.ud83dudcf8_rocks_snapshot_saved'), 'success');
+                    addToast('\uD83D\uDCF8 Snapshot saved!', 'success');
                   }, className: "ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-amber-500 to-orange-500 rounded-full hover:from-amber-600 hover:to-orange-600 shadow-md hover:shadow-lg transition-all"
                 }, "\uD83D\uDCF8 Snapshot")
               )
@@ -11009,17 +12710,46 @@
                   ctx.lineWidth = 2 * dpr; ctx.stroke();
                 }
 
-                // ── Mountains ──
+                // ── Mountains (enhanced with rock texture, cracks, snow patches) ──
                 // Back mountain
                 ctx.fillStyle = '#475569';
                 ctx.beginPath(); ctx.moveTo(cW * 0.55, cH * 0.65); ctx.lineTo(cW * 0.72, cH * 0.3); ctx.lineTo(cW * 0.9, cH * 0.65); ctx.fill();
-                // Snow cap
+                // Back mountain rock cracks
+                ctx.strokeStyle = 'rgba(30,41,59,0.3)'; ctx.lineWidth = 1 * dpr;
+                for (var mci = 0; mci < 5; mci++) {
+                  var mcx = cW * 0.62 + mci * cW * 0.055;
+                  var mcy = cH * 0.4 + mci * cH * 0.04;
+                  ctx.beginPath(); ctx.moveTo(mcx, mcy); ctx.lineTo(mcx + 8 * dpr, mcy + 15 * dpr); ctx.stroke();
+                }
+                // Snow cap (larger, more detailed)
                 ctx.fillStyle = '#e2e8f0';
-                ctx.beginPath(); ctx.moveTo(cW * 0.69, cH * 0.33); ctx.lineTo(cW * 0.72, cH * 0.3); ctx.lineTo(cW * 0.75, cH * 0.33);
-                ctx.lineTo(cW * 0.735, cH * 0.36); ctx.lineTo(cW * 0.71, cH * 0.35); ctx.closePath(); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(cW * 0.685, cH * 0.34); ctx.lineTo(cW * 0.72, cH * 0.3); ctx.lineTo(cW * 0.755, cH * 0.34);
+                ctx.lineTo(cW * 0.74, cH * 0.37); ctx.lineTo(cW * 0.725, cH * 0.36); ctx.lineTo(cW * 0.71, cH * 0.375); ctx.lineTo(cW * 0.695, cH * 0.355); ctx.closePath(); ctx.fill();
+                // Snow highlights
+                ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                ctx.beginPath(); ctx.arc(cW * 0.72, cH * 0.32, 4 * dpr, 0, Math.PI * 2); ctx.fill();
+                // Snow melt stream
+                ctx.strokeStyle = 'rgba(147,197,253,0.4)'; ctx.lineWidth = 1.5 * dpr;
+                ctx.beginPath(); ctx.moveTo(cW * 0.725, cH * 0.36);
+                ctx.quadraticCurveTo(cW * 0.73, cH * 0.42, cW * 0.735, cH * 0.48);
+                ctx.quadraticCurveTo(cW * 0.728, cH * 0.54, cW * 0.74, cH * 0.6);
+                ctx.stroke();
                 // Front mountain
                 ctx.fillStyle = '#374151';
                 ctx.beginPath(); ctx.moveTo(cW * 0.65, cH * 0.65); ctx.lineTo(cW * 0.82, cH * 0.38); ctx.lineTo(cW * 0.98, cH * 0.65); ctx.fill();
+                // Front mountain rock textures
+                ctx.strokeStyle = 'rgba(55,65,81,0.4)'; ctx.lineWidth = 0.8 * dpr;
+                for (var mti = 0; mti < 6; mti++) {
+                  var mtx = cW * 0.72 + mti * cW * 0.04;
+                  var mty = cH * 0.45 + mti * cH * 0.02;
+                  ctx.beginPath(); ctx.moveTo(mtx, mty);
+                  ctx.lineTo(mtx + (mti % 2 === 0 ? 6 : -5) * dpr, mty + 12 * dpr);
+                  ctx.lineTo(mtx + 3 * dpr, mty + 20 * dpr); ctx.stroke();
+                }
+                // Front mountain snow patch
+                ctx.fillStyle = '#e2e8f0';
+                ctx.beginPath(); ctx.moveTo(cW * 0.8, cH * 0.40); ctx.lineTo(cW * 0.82, cH * 0.38); ctx.lineTo(cW * 0.84, cH * 0.41);
+                ctx.lineTo(cW * 0.83, cH * 0.43); ctx.lineTo(cW * 0.81, cH * 0.42); ctx.closePath(); ctx.fill();
 
                 // ── Ground ──
                 var groundGrad = ctx.createLinearGradient(0, cH * 0.62, 0, cH * 0.72);
@@ -11028,6 +12758,24 @@
                 groundGrad.addColorStop(1, '#166534');
                 ctx.fillStyle = groundGrad;
                 ctx.fillRect(0, cH * 0.62, cW, cH * 0.1);
+                // Grass blades along ground surface
+                for (var gbi = 0; gbi < 80; gbi++) {
+                  var gbx = (gbi / 80) * cW;
+                  // Skip water area
+                  if (gbx < cW * 0.55) continue;
+                  var gby = cH * 0.62;
+                  var gbSway = Math.sin(tick * 0.015 + gbi * 0.7) * 3 * dpr;
+                  var gbHeight = (4 + Math.random() * 5) * dpr;
+                  ctx.strokeStyle = gbi % 3 === 0 ? 'rgba(74,222,128,0.6)' : 'rgba(34,197,94,0.5)';
+                  ctx.lineWidth = 1 * dpr;
+                  ctx.beginPath(); ctx.moveTo(gbx, gby);
+                  ctx.lineTo(gbx + gbSway, gby - gbHeight); ctx.stroke();
+                  // Some grass with seed heads
+                  if (gbi % 8 === 0) {
+                    ctx.fillStyle = 'rgba(250,204,21,0.4)';
+                    ctx.beginPath(); ctx.arc(gbx + gbSway, gby - gbHeight, 1.5 * dpr, 0, Math.PI * 2); ctx.fill();
+                  }
+                }
 
                 // ── Underground / Aquifer layer ──
                 var underGrad = ctx.createLinearGradient(0, cH * 0.72, 0, cH);
@@ -11045,6 +12793,13 @@
                   ctx.lineTo(ax, cH * 0.82 + Math.sin(ax * 0.01 + tick * 0.01) * 4 * dpr);
                 }
                 ctx.lineTo(cW, cH); ctx.lineTo(0, cH); ctx.closePath(); ctx.fill();
+                // Aquifer shimmer highlights
+                ctx.fillStyle = 'rgba(56,189,248,0.08)';
+                for (var ashi = 0; ashi < 8; ashi++) {
+                  var ashx = ((tick * 0.3 + ashi * cW * 0.13) % cW);
+                  var ashy = cH * 0.84 + Math.sin(ashi * 2.3) * cH * 0.04;
+                  ctx.beginPath(); ctx.ellipse(ashx, ashy, 12 * dpr, 3 * dpr, 0, 0, Math.PI * 2); ctx.fill();
+                }
                 // Rock layer lines
                 ctx.strokeStyle = 'rgba(120,53,15,0.3)';
                 ctx.lineWidth = 1 * dpr;
@@ -11053,6 +12808,26 @@
                   var rly = cH * (0.76 + rl * 0.06);
                   for (var rx = 0; rx <= cW; rx += 8) {
                     ctx.lineTo(rx, rly + Math.sin(rx * 0.015 + rl * 2) * 3 * dpr);
+                  }
+                  ctx.stroke();
+                }
+                // Rock pebbles / gravel in underground layers
+                ctx.fillStyle = 'rgba(168,130,100,0.25)';
+                for (var rpi2 = 0; rpi2 < 15; rpi2++) {
+                  var rpx2 = (rpi2 * cW * 0.07 + cW * 0.03) % cW;
+                  var rpy2 = cH * (0.74 + (rpi2 % 4) * 0.05);
+                  ctx.beginPath(); ctx.ellipse(rpx2, rpy2, (2 + rpi2 % 3) * dpr, (1.5 + rpi2 % 2) * dpr, rpi2 * 0.5, 0, Math.PI * 2); ctx.fill();
+                }
+                // Underground tiny aquifer organisms
+                for (var aqi = 0; aqi < 5; aqi++) {
+                  var aqx = ((tick * 0.2 + aqi * cW * 0.21) % cW);
+                  var aqy = cH * 0.85 + Math.sin(tick * 0.02 + aqi * 1.7) * 4 * dpr;
+                  var aqAlpha = 0.2 + 0.15 * Math.sin(tick * 0.03 + aqi);
+                  // Tiny worm-like organism
+                  ctx.strokeStyle = 'rgba(14,165,233,' + aqAlpha + ')'; ctx.lineWidth = 1 * dpr; ctx.lineCap = 'round';
+                  ctx.beginPath(); ctx.moveTo(aqx, aqy);
+                  for (var aqw = 1; aqw <= 4; aqw++) {
+                    ctx.lineTo(aqx + aqw * 3 * dpr, aqy + Math.sin(tick * 0.05 + aqw + aqi) * 2 * dpr);
                   }
                   ctx.stroke();
                 }
@@ -11080,7 +12855,7 @@
                   ctx.stroke();
                 }
 
-                // ── River from mountain ──
+                // ── River from mountain (enhanced with rapids) ──
                 ctx.strokeStyle = 'rgba(59,130,246,0.5)';
                 ctx.lineWidth = 4 * dpr;
                 ctx.beginPath();
@@ -11090,13 +12865,21 @@
                 ctx.strokeStyle = 'rgba(186,230,253,0.3)';
                 ctx.lineWidth = 2 * dpr;
                 ctx.stroke();
+                // River ripple highlights
+                ctx.strokeStyle = 'rgba(186,230,253,0.2)'; ctx.lineWidth = 1 * dpr;
+                for (var rhi = 0; rhi < 5; rhi++) {
+                  var rhT = ((tick * 0.005 + rhi * 0.2) % 1);
+                  var rhx = (1 - rhT) * (1 - rhT) * cW * 0.78 + 2 * (1 - rhT) * rhT * cW * 0.7 + rhT * rhT * cW * 0.55;
+                  var rhy = (1 - rhT) * (1 - rhT) * cH * 0.42 + 2 * (1 - rhT) * rhT * cH * 0.52 + rhT * rhT * cH * 0.65;
+                  ctx.beginPath();
+                  ctx.ellipse(rhx, rhy, 4 * dpr, 1.5 * dpr, 0.3, 0, Math.PI * 2); ctx.stroke();
+                }
                 // River flow particles
                 for (var rfp = 0; rfp < riverPs.length; rfp++) {
                   var rp = riverPs[rfp];
                   rp.t += rp.speed;
                   if (rp.t > 1) rp.t -= 1;
                   var t2 = rp.t;
-                  // Bezier along river path
                   var rpx = (1 - t2) * (1 - t2) * cW * 0.78 + 2 * (1 - t2) * t2 * cW * 0.7 + t2 * t2 * cW * 0.55;
                   var rpy = (1 - t2) * (1 - t2) * cH * 0.42 + 2 * (1 - t2) * t2 * cH * 0.52 + t2 * t2 * cH * 0.65;
                   ctx.beginPath();
@@ -11104,19 +12887,83 @@
                   ctx.fillStyle = 'rgba(147,197,253,' + (0.4 + Math.sin(t2 * Math.PI) * 0.3) + ')';
                   ctx.fill();
                 }
+                // ── Waterfall where river meets ocean ──
+                var wfX = cW * 0.55, wfY = cH * 0.65;
+                // Falling water streaks
+                ctx.strokeStyle = 'rgba(147,197,253,0.5)'; ctx.lineWidth = 1.5 * dpr;
+                for (var wfi = 0; wfi < 5; wfi++) {
+                  var wfOffset = (wfi - 2) * 3 * dpr;
+                  var wfDrop = ((tick * 2 + wfi * 17) % 30) * dpr / 10;
+                  ctx.beginPath(); ctx.moveTo(wfX + wfOffset, wfY);
+                  ctx.lineTo(wfX + wfOffset - 1 * dpr, wfY + (4 + wfDrop) * dpr); ctx.stroke();
+                }
+                // Splash spray particles at base
+                ctx.fillStyle = 'rgba(186,230,253,0.4)';
+                for (var spi = 0; spi < 6; spi++) {
+                  var spPhase = tick * 0.06 + spi * 1.1;
+                  var spx = wfX + Math.sin(spPhase) * 6 * dpr;
+                  var spy = wfY + 3 * dpr - Math.abs(Math.sin(spPhase * 0.7)) * 5 * dpr;
+                  ctx.beginPath(); ctx.arc(spx, spy, (1 + Math.sin(spPhase) * 0.5) * dpr, 0, Math.PI * 2); ctx.fill();
+                }
+                // Mist above waterfall
+                ctx.fillStyle = 'rgba(186,230,253,0.1)';
+                ctx.beginPath(); ctx.arc(wfX, wfY - 3 * dpr, 10 * dpr, 0, Math.PI * 2); ctx.fill();
 
-                // ── Trees ──
+                // ── Trees (enhanced with bark texture, roots, fruit, leaf veins) ──
                 function drawTree(tx, ty, sz) {
-                  // Trunk
-                  ctx.fillStyle = '#92400e';
-                  ctx.fillRect((tx - 2 * sz) * dpr, (ty - 10 * sz) * dpr, 4 * sz * dpr, 12 * sz * dpr);
-                  // Canopy layers
                   var sway = Math.sin(tick * 0.01 + tx * 0.1) * 1.5;
+                  // Roots (visible underground)
+                  ctx.strokeStyle = 'rgba(120,53,15,0.5)'; ctx.lineWidth = 1.5 * sz * dpr;
+                  for (var ri = 0; ri < 4; ri++) {
+                    var rootDir = (ri - 1.5) * 8 * sz;
+                    ctx.beginPath(); ctx.moveTo(tx * dpr, (ty + 2 * sz) * dpr);
+                    ctx.quadraticCurveTo((tx + rootDir * 0.5) * dpr, (ty + 8 * sz) * dpr, (tx + rootDir) * dpr, (ty + 12 * sz + ri * 2 * sz) * dpr);
+                    ctx.stroke();
+                    // Root tips
+                    ctx.fillStyle = 'rgba(120,53,15,0.3)';
+                    ctx.beginPath(); ctx.arc((tx + rootDir) * dpr, (ty + 12 * sz + ri * 2 * sz) * dpr, 1.5 * dpr, 0, Math.PI * 2); ctx.fill();
+                  }
+                  // Trunk with bark texture
+                  var trunkGrad = ctx.createLinearGradient((tx - 2 * sz) * dpr, ty * dpr, (tx + 2 * sz) * dpr, ty * dpr);
+                  trunkGrad.addColorStop(0, '#78350f'); trunkGrad.addColorStop(0.4, '#92400e'); trunkGrad.addColorStop(0.7, '#a16207'); trunkGrad.addColorStop(1, '#78350f');
+                  ctx.fillStyle = trunkGrad;
+                  ctx.fillRect((tx - 2 * sz) * dpr, (ty - 10 * sz) * dpr, 4 * sz * dpr, 12 * sz * dpr);
+                  // Bark texture lines
+                  ctx.strokeStyle = 'rgba(60,30,10,0.3)'; ctx.lineWidth = 0.5 * dpr;
+                  for (var bi = 0; bi < 4; bi++) {
+                    var by = (ty - 8 * sz + bi * 4 * sz);
+                    ctx.beginPath(); ctx.moveTo((tx - 1.5 * sz) * dpr, by * dpr);
+                    ctx.lineTo((tx + 1.5 * sz) * dpr, (by + 1 * sz) * dpr); ctx.stroke();
+                  }
+                  // Canopy layers
                   ctx.fillStyle = '#22c55e';
                   ctx.beginPath(); ctx.arc((tx + sway) * dpr, (ty - 16 * sz) * dpr, 9 * sz * dpr, 0, Math.PI * 2); ctx.fill();
                   ctx.fillStyle = '#16a34a';
                   ctx.beginPath(); ctx.arc((tx - 4 * sz + sway * 0.7) * dpr, (ty - 12 * sz) * dpr, 7 * sz * dpr, 0, Math.PI * 2); ctx.fill();
                   ctx.beginPath(); ctx.arc((tx + 5 * sz + sway * 0.7) * dpr, (ty - 13 * sz) * dpr, 6 * sz * dpr, 0, Math.PI * 2); ctx.fill();
+                  // Dark canopy shadow
+                  ctx.fillStyle = 'rgba(22,101,52,0.3)';
+                  ctx.beginPath(); ctx.arc((tx + sway * 0.5) * dpr, (ty - 11 * sz) * dpr, 5 * sz * dpr, 0, Math.PI * 2); ctx.fill();
+                  // Leaf vein lines
+                  ctx.strokeStyle = 'rgba(21,128,61,0.25)'; ctx.lineWidth = 0.5 * dpr;
+                  for (var lvi = 0; lvi < 3; lvi++) {
+                    var lvx = tx + (lvi - 1) * 4 * sz + sway * 0.6;
+                    var lvy = ty - 14 * sz + lvi * 2 * sz;
+                    ctx.beginPath(); ctx.moveTo(lvx * dpr, lvy * dpr);
+                    ctx.lineTo((lvx + 5 * sz) * dpr, (lvy + 3 * sz) * dpr); ctx.stroke();
+                  }
+                  // Small fruit/flower dots
+                  if (Math.sin(tx) > 0) {
+                    ctx.fillStyle = 'rgba(239,68,68,0.6)';
+                    for (var fdi = 0; fdi < 3; fdi++) {
+                      ctx.beginPath(); ctx.arc((tx + (fdi - 1) * 5 * sz + sway * 0.5) * dpr, (ty - 14 * sz + fdi * 3 * sz) * dpr, 1.5 * dpr, 0, Math.PI * 2); ctx.fill();
+                    }
+                  } else {
+                    ctx.fillStyle = 'rgba(251,191,36,0.5)';
+                    for (var fli = 0; fli < 2; fli++) {
+                      ctx.beginPath(); ctx.arc((tx + (fli - 0.5) * 6 * sz + sway * 0.4) * dpr, (ty - 15 * sz + fli * 4 * sz) * dpr, 2 * dpr, 0, Math.PI * 2); ctx.fill();
+                    }
+                  }
                 }
                 drawTree(cW * 0.6 / dpr, cH * 0.62 / dpr, 1.1);
                 drawTree(cW * 0.67 / dpr, cH * 0.61 / dpr, 0.8);
@@ -11226,6 +13073,20 @@
                   }
                 });
 
+                // ── Flying birds ──
+                for (var bdi = 0; bdi < 4; bdi++) {
+                  var bdx = ((tick * 0.4 + bdi * cW * 0.28) % (cW + 40 * dpr)) - 20 * dpr;
+                  var bdy = cH * (0.08 + bdi * 0.06) + Math.sin(tick * 0.015 + bdi * 2) * 8 * dpr;
+                  var bdWing = Math.sin(tick * 0.06 + bdi * 1.5) * 0.4;
+                  ctx.strokeStyle = 'rgba(30,41,59,' + (0.3 + bdi * 0.05) + ')'; ctx.lineWidth = 1.2 * dpr;
+                  // Left wing
+                  ctx.beginPath(); ctx.moveTo(bdx - 6 * dpr, bdy + bdWing * 4 * dpr);
+                  ctx.quadraticCurveTo(bdx - 3 * dpr, bdy - 3 * dpr, bdx, bdy); ctx.stroke();
+                  // Right wing
+                  ctx.beginPath(); ctx.moveTo(bdx + 6 * dpr, bdy + bdWing * 4 * dpr);
+                  ctx.quadraticCurveTo(bdx + 3 * dpr, bdy - 3 * dpr, bdx, bdy); ctx.stroke();
+                }
+
                 // ── HUD ──
                 ctx.fillStyle = 'rgba(0,0,0,0.5)';
                 ctx.fillRect(4 * dpr, cH - 22 * dpr, 130 * dpr, 18 * dpr);
@@ -11305,7 +13166,7 @@
                   )
                 )
               ),
-              React.createElement("button", { onClick: () => { setToolSnapshots(prev => [...prev, { id: 'wc-' + Date.now(), tool: 'waterCycle', label: sel ? sel.label : t('stem.tools_menu.water_cycle'), data: { ...d }, timestamp: Date.now() }]); addToast(t('stem.water_cycle.ud83dudcf8_snapshot_saved'), 'success'); }, className: "mt-3 ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
+              React.createElement("button", { onClick: () => { setToolSnapshots(prev => [...prev, { id: 'wc-' + Date.now(), tool: 'waterCycle', label: sel ? sel.label : t('stem.tools_menu.water_cycle'), data: { ...d }, timestamp: Date.now() }]); addToast('\uD83D\uDCF8 Snapshot saved!', 'success'); }, className: "mt-3 ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
             );
           })(),
 
@@ -11417,6 +13278,25 @@
                 magmaGrad.addColorStop(1, 'rgba(180,20,0,0)');
                 ctx.fillStyle = magmaGrad;
                 ctx.fillRect(0, magmaY, cW, cH - magmaY);
+                // Magma convection currents (animated flow lines)
+                ctx.strokeStyle = 'rgba(255,160,0,0.15)'; ctx.lineWidth = 2 * dpr;
+                for (var mci = 0; mci < 4; mci++) {
+                  var mcOff = ((tick * 0.3 + mci * 60) % 240) - 40;
+                  var mcXCenter = cW * (0.15 + mci * 0.22);
+                  ctx.beginPath();
+                  ctx.moveTo(mcXCenter - 20 * dpr, cH - 5 * dpr);
+                  ctx.quadraticCurveTo(mcXCenter - 15 * dpr, cH - (20 + mcOff * 0.2) * dpr, mcXCenter, cH - (30 + mcOff * 0.3) * dpr);
+                  ctx.quadraticCurveTo(mcXCenter + 15 * dpr, cH - (20 + mcOff * 0.2) * dpr, mcXCenter + 20 * dpr, cH - 5 * dpr);
+                  ctx.stroke();
+                }
+                // Heat shimmer effect near magma zone
+                for (var hsi = 0; hsi < 12; hsi++) {
+                  var hsX = (hsi / 12) * cW;
+                  var hsY = magmaY - 5 * dpr + Math.sin(tick * 0.04 + hsi * 1.3) * 4 * dpr;
+                  var hsAlpha = 0.04 + 0.03 * Math.sin(tick * 0.03 + hsi);
+                  ctx.fillStyle = 'rgba(255,150,50,' + hsAlpha + ')';
+                  ctx.beginPath(); ctx.ellipse(hsX, hsY, 10 * dpr, 3 * dpr, 0, 0, Math.PI * 2); ctx.fill();
+                }
 
                 // Lava bubbles
                 for (var lbi = 0; lbi < lavaPs.length; lbi++) {
@@ -11436,6 +13316,33 @@
                   ctx.fill();
                 }
 
+                // ── Sediment layer bands ──
+                var sedLayers = [
+                  { y: 0.68, h: 0.04, color: 'rgba(194,159,120,0.2)' },  // sandstone
+                  { y: 0.72, h: 0.03, color: 'rgba(120,100,80,0.15)' },  // clay
+                  { y: 0.75, h: 0.04, color: 'rgba(180,170,130,0.12)' }, // limestone
+                  { y: 0.79, h: 0.03, color: 'rgba(100,80,60,0.18)' },   // shale
+                  { y: 0.82, h: 0.03, color: 'rgba(140,110,90,0.1)' }    // deep sediment
+                ];
+                for (var sli = 0; sli < sedLayers.length; sli++) {
+                  var sl = sedLayers[sli];
+                  ctx.fillStyle = sl.color;
+                  ctx.beginPath(); ctx.moveTo(0, cH * sl.y);
+                  for (var slx = 0; slx < cW; slx += 6) {
+                    ctx.lineTo(slx, cH * sl.y + Math.sin(slx * 0.012 + sli * 1.5) * 2 * dpr);
+                  }
+                  ctx.lineTo(cW, cH * (sl.y + sl.h)); ctx.lineTo(0, cH * (sl.y + sl.h)); ctx.closePath(); ctx.fill();
+                  // Tiny fossil/grain marks in sedimentary layers
+                  if (sli < 3) {
+                    ctx.fillStyle = 'rgba(200,180,150,0.1)';
+                    for (var fmi = 0; fmi < 4; fmi++) {
+                      var fmx = cW * (0.15 + fmi * 0.22 + sli * 0.05);
+                      var fmy = cH * (sl.y + sl.h * 0.5);
+                      ctx.beginPath(); ctx.ellipse(fmx, fmy, 3 * dpr, 1.5 * dpr, fmi * 0.5, 0, Math.PI * 2); ctx.fill();
+                    }
+                  }
+                }
+
                 // ── Surface line ──
                 ctx.strokeStyle = '#a8a29e';
                 ctx.lineWidth = 2 * dpr;
@@ -11444,6 +13351,63 @@
                 for (var sx = 0; sx < cW; sx += 3) {
                   ctx.lineTo(sx, cH * 0.65 + Math.sin(sx * 0.02 + tick * 0.01) * 3 * dpr);
                 }
+                ctx.stroke();
+                // Surface terrain: grass tufts
+                for (var gti = 0; gti < 30; gti++) {
+                  var gtx = gti * cW / 30;
+                  var gtBase = cH * 0.65 + Math.sin(gtx * 0.02 + tick * 0.01) * 3 * dpr;
+                  var gtSway = Math.sin(tick * 0.012 + gti * 0.9) * 2 * dpr;
+                  ctx.strokeStyle = 'rgba(74,222,128,' + (0.25 + gti % 3 * 0.05) + ')'; ctx.lineWidth = 1 * dpr;
+                  ctx.beginPath(); ctx.moveTo(gtx, gtBase);
+                  ctx.lineTo(gtx + gtSway, gtBase - (3 + gti % 3) * dpr); ctx.stroke();
+                  // Second blade
+                  ctx.beginPath(); ctx.moveTo(gtx + 2 * dpr, gtBase);
+                  ctx.lineTo(gtx + 2 * dpr - gtSway * 0.8, gtBase - (2.5 + gti % 2) * dpr); ctx.stroke();
+                }
+                // Surface terrain: small mountain silhouettes
+                ctx.fillStyle = 'rgba(100,80,70,0.15)';
+                ctx.beginPath(); ctx.moveTo(cW * 0.02, cH * 0.65); ctx.lineTo(cW * 0.08, cH * 0.59); ctx.lineTo(cW * 0.14, cH * 0.65); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(cW * 0.88, cH * 0.65); ctx.lineTo(cW * 0.94, cH * 0.60); ctx.lineTo(cW * 0.99, cH * 0.65); ctx.fill();
+                // Scattered rock fragments on surface
+                ctx.fillStyle = 'rgba(168,162,158,0.25)';
+                for (var rfi = 0; rfi < 8; rfi++) {
+                  var rfx = cW * (0.05 + rfi * 0.12);
+                  var rfy = cH * 0.65 + 2 * dpr;
+                  ctx.beginPath(); ctx.ellipse(rfx, rfy, (1.5 + rfi % 3) * dpr, 1 * dpr, rfi * 0.4, 0, Math.PI * 2); ctx.fill();
+                }
+
+                // ── Volcano silhouette near igneous node ──
+                var volX = cW * 0.5, volBaseY = cH * 0.65, volTopY = cH * 0.28;
+                // Volcano body
+                ctx.fillStyle = 'rgba(55,48,42,0.5)';
+                ctx.beginPath(); ctx.moveTo(volX - 50 * dpr, volBaseY); ctx.lineTo(volX - 10 * dpr, volTopY);
+                ctx.lineTo(volX + 10 * dpr, volTopY); ctx.lineTo(volX + 50 * dpr, volBaseY); ctx.closePath(); ctx.fill();
+                // Crater rim
+                ctx.fillStyle = 'rgba(80,60,50,0.6)';
+                ctx.beginPath(); ctx.ellipse(volX, volTopY, 12 * dpr, 4 * dpr, 0, 0, Math.PI * 2); ctx.fill();
+                // Inner crater glow
+                var craterGlow = ctx.createRadialGradient(volX, volTopY + 2 * dpr, 2 * dpr, volX, volTopY + 2 * dpr, 10 * dpr);
+                craterGlow.addColorStop(0, 'rgba(255,100,0,0.6)'); craterGlow.addColorStop(1, 'rgba(255,50,0,0)');
+                ctx.fillStyle = craterGlow;
+                ctx.beginPath(); ctx.ellipse(volX, volTopY + 2 * dpr, 8 * dpr, 3 * dpr, 0, 0, Math.PI * 2); ctx.fill();
+                // Smoke/ash particles from crater
+                for (var vsi = 0; vsi < 6; vsi++) {
+                  var vsPhase = tick * 0.01 + vsi * 1.1;
+                  var vsAge = ((tick * 0.5 + vsi * 40) % 120) / 120;
+                  var vsx = volX + Math.sin(vsPhase) * (5 + vsAge * 15) * dpr;
+                  var vsy = volTopY - vsAge * 40 * dpr;
+                  var vsAlpha = (1 - vsAge) * 0.25;
+                  var vsSize = (2 + vsAge * 4) * dpr;
+                  ctx.fillStyle = 'rgba(120,110,100,' + vsAlpha + ')';
+                  ctx.beginPath(); ctx.arc(vsx, vsy, vsSize, 0, Math.PI * 2); ctx.fill();
+                }
+                // Lava flow streak down one side
+                ctx.strokeStyle = 'rgba(255,100,0,0.3)'; ctx.lineWidth = 2.5 * dpr;
+                ctx.beginPath(); ctx.moveTo(volX + 5 * dpr, volTopY + 3 * dpr);
+                ctx.quadraticCurveTo(volX + 20 * dpr, volTopY + (volBaseY - volTopY) * 0.3, volX + 35 * dpr, volTopY + (volBaseY - volTopY) * 0.6);
+                ctx.stroke();
+                // Lava glow on flow
+                ctx.strokeStyle = 'rgba(255,200,50,0.15)'; ctx.lineWidth = 4 * dpr;
                 ctx.stroke();
 
                 // ── Erosion particles ──
@@ -11504,7 +13468,7 @@
                   ctx.fillText(proc.label, labelX * dpr, labelY * dpr);
                 });
 
-                // ── Rock nodes (glowing circles) ──
+                // ── Rock nodes (with unique textures per type) ──
                 ROCKS.forEach(function (rock) {
                   var n = nodes[rock.id];
                   var isSel = selRockId === rock.id;
@@ -11528,14 +13492,68 @@
                   ctx.strokeStyle = isSel ? '#ffffff' : rock.glow;
                   ctx.lineWidth = (isSel ? 3 : 1.5) * dpr;
                   ctx.stroke();
-                  for (var si = 0; si < 12; si++) {
-                    var sa = si * Math.PI * 2 / 12 + tick * 0.002;
-                    var sr = (8 + si * 1.3 % 15) * dpr;
+                  // Rock-type-specific internal textures
+                  ctx.save();
+                  ctx.beginPath(); ctx.arc(n.x * dpr, n.y * dpr, radius * dpr, 0, Math.PI * 2); ctx.clip();
+                  if (rock.id === 'igneous') {
+                    // Crystal facets / angular shards
+                    ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 0.8 * dpr;
+                    for (var ci = 0; ci < 8; ci++) {
+                      var ca = ci * Math.PI * 2 / 8 + tick * 0.001;
+                      var cr1 = (6 + ci * 2) * dpr;
+                      var cr2 = (12 + ci * 1.5) * dpr;
+                      ctx.beginPath();
+                      ctx.moveTo(n.x * dpr + Math.cos(ca) * cr1, n.y * dpr + Math.sin(ca) * cr1);
+                      ctx.lineTo(n.x * dpr + Math.cos(ca + 0.3) * cr2, n.y * dpr + Math.sin(ca + 0.3) * cr2);
+                      ctx.lineTo(n.x * dpr + Math.cos(ca + 0.6) * cr1 * 1.3, n.y * dpr + Math.sin(ca + 0.6) * cr1 * 1.3);
+                      ctx.stroke();
+                    }
+                    // Sparkle dots on crystals
+                    ctx.fillStyle = 'rgba(255,255,255,' + (0.15 + 0.1 * Math.sin(tick * 0.05)) + ')';
+                    for (var spi2 = 0; spi2 < 5; spi2++) {
+                      var spa = spi2 * 1.3 + tick * 0.003;
+                      ctx.beginPath(); ctx.arc(n.x * dpr + Math.cos(spa) * 10 * dpr, n.y * dpr + Math.sin(spa) * 8 * dpr, 1.2 * dpr, 0, Math.PI * 2); ctx.fill();
+                    }
+                  } else if (rock.id === 'sedimentary') {
+                    // Horizontal strata / layers
+                    ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 1 * dpr;
+                    for (var li = -3; li <= 3; li++) {
+                      var ly = n.y * dpr + li * 6 * dpr;
+                      ctx.beginPath(); ctx.moveTo((n.x - radius) * dpr, ly + Math.sin(li + 1) * 2 * dpr);
+                      ctx.lineTo((n.x + radius) * dpr, ly + Math.sin(li + 2) * 2 * dpr); ctx.stroke();
+                    }
+                    // Tiny fossil shapes
+                    ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 0.7 * dpr;
+                    // Shell spiral
                     ctx.beginPath();
-                    ctx.arc(n.x * dpr + Math.cos(sa) * sr, n.y * dpr + Math.sin(sa) * sr, 1.5 * dpr, 0, Math.PI * 2);
-                    ctx.fillStyle = 'rgba(255,255,255,0.15)';
-                    ctx.fill();
+                    for (var fsa = 0; fsa < Math.PI * 3; fsa += 0.3) {
+                      var fsr = 2 + fsa * 1.2;
+                      ctx.lineTo(n.x * dpr + 8 * dpr + Math.cos(fsa) * fsr, n.y * dpr - 5 * dpr + Math.sin(fsa) * fsr);
+                    }
+                    ctx.stroke();
+                    // Leaf imprint
+                    ctx.beginPath(); ctx.ellipse(n.x * dpr - 8 * dpr, n.y * dpr + 5 * dpr, 5 * dpr, 2.5 * dpr, 0.3, 0, Math.PI * 2); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo((n.x - 11) * dpr, (n.y + 5) * dpr); ctx.lineTo((n.x - 5) * dpr, (n.y + 5) * dpr); ctx.stroke();
+                  } else if (rock.id === 'metamorphic') {
+                    // Wavy foliation bands
+                    ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 1.2 * dpr;
+                    for (var fi = -2; fi <= 2; fi++) {
+                      ctx.beginPath();
+                      for (var fx = -radius; fx <= radius; fx += 3) {
+                        var fy = fi * 7 + Math.sin(fx * 0.15 + fi * 0.8) * 4;
+                        ctx.lineTo((n.x + fx) * dpr, (n.y + fy) * dpr);
+                      }
+                      ctx.stroke();
+                    }
+                    // Garnet/mineral dots
+                    ctx.fillStyle = 'rgba(200,130,255,0.2)';
+                    for (var gdi = 0; gdi < 4; gdi++) {
+                      var gda = gdi * Math.PI / 2 + 0.5;
+                      ctx.beginPath(); ctx.arc(n.x * dpr + Math.cos(gda) * 12 * dpr, n.y * dpr + Math.sin(gda) * 9 * dpr, 2 * dpr, 0, Math.PI * 2); ctx.fill();
+                    }
                   }
+                  ctx.restore();
+                  // Emoji + label
                   ctx.font = (18 * dpr) + 'px sans-serif';
                   ctx.textAlign = 'center';
                   ctx.fillText(rock.emoji, n.x * dpr, n.y * dpr + 7 * dpr);
@@ -11673,7 +13691,7 @@
                   )
                 )
               ),
-              React.createElement("button", { onClick: () => { setToolSnapshots(prev => [...prev, { id: 'rc-' + Date.now(), tool: 'rockCycle', label: sel ? sel.label : t('stem.tools_menu.rock_cycle'), data: { ...d }, timestamp: Date.now() }]); addToast(t('stem.rock_quiz.ud83dudcf8_snapshot_saved'), 'success'); }, className: "mt-3 ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
+              React.createElement("button", { onClick: () => { setToolSnapshots(prev => [...prev, { id: 'rc-' + Date.now(), tool: 'rockCycle', label: sel ? sel.label : t('stem.tools_menu.rock_cycle'), data: { ...d }, timestamp: Date.now() }]); addToast('\uD83D\uDCF8 Snapshot saved!', 'success'); }, className: "mt-3 ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
             );
           })(),
 
@@ -11769,6 +13787,20 @@
               }
               // Catch particles on predation
               var catchParticles = [];
+              // Ambient creatures (butterflies + fireflies)
+              var ambientBugs = [];
+              for (var abi = 0; abi < 12; abi++) {
+                ambientBugs.push({
+                  x: Math.random() * cW / dpr,
+                  y: cH * 0.1 / dpr + Math.random() * cH * 0.5 / dpr,
+                  vx: (Math.random() - 0.5) * 0.6,
+                  vy: (Math.random() - 0.5) * 0.4,
+                  wing: Math.random() * Math.PI * 2,
+                  hue: Math.random() * 60 + 180, // blues/purples for butterflies
+                  size: 1.5 + Math.random() * 1.5,
+                  glow: Math.random() * Math.PI * 2 // for firefly pulse
+                });
+              }
 
               function draw() {
                 tick++;
@@ -11852,66 +13884,182 @@
                 }
                 ctx.lineTo(cW, cH); ctx.lineTo(0, cH); ctx.closePath(); ctx.fill();
 
-                // ── Vegetation ──
+                // ── Vegetation (enhanced with bark, multi-layer canopy, flowers, seeds) ──
                 var alivePreyCount = preyList.filter(function (p) { return p.alive; }).length;
                 for (var vvi = 0; vvi < vegetation.length; vvi++) {
                   var vg = vegetation[vvi];
                   vg.sway += 0.015;
-                  // Vegetation health based on prey (more prey = more eaten vegetation)
                   var vegHealth = Math.max(0.3, 1 - alivePreyCount / 80);
                   var swayAmt = Math.sin(vg.sway) * 2;
                   if (vg.type === 'tree') {
-                    // Trunk
-                    ctx.fillStyle = '#92400e';
-                    ctx.fillRect((vg.x - 2) * dpr, (vg.y - 12 * vg.size) * dpr, 4 * dpr, 14 * vg.size * dpr);
-                    // Canopy
+                    // Trunk with bark texture
+                    var trunkX = (vg.x - 2.5) * dpr;
+                    var trunkY = (vg.y - 12 * vg.size) * dpr;
+                    var trunkW = 5 * dpr;
+                    var trunkH = 14 * vg.size * dpr;
+                    var barkGrad = ctx.createLinearGradient(trunkX, trunkY, trunkX + trunkW, trunkY);
+                    barkGrad.addColorStop(0, '#6b3410');
+                    barkGrad.addColorStop(0.3, '#92400e');
+                    barkGrad.addColorStop(0.7, '#a0522d');
+                    barkGrad.addColorStop(1, '#7a3b12');
+                    ctx.fillStyle = barkGrad;
+                    ctx.fillRect(trunkX, trunkY, trunkW, trunkH);
+                    // Bark lines
+                    ctx.strokeStyle = 'rgba(59,28,6,0.25)';
+                    ctx.lineWidth = 0.5 * dpr;
+                    for (var bk = 0; bk < 4; bk++) {
+                      var bky = trunkY + bk * trunkH * 0.25 + 2 * dpr;
+                      ctx.beginPath(); ctx.moveTo(trunkX + 1 * dpr, bky);
+                      ctx.lineTo(trunkX + trunkW - 1 * dpr, bky + 1 * dpr); ctx.stroke();
+                    }
+                    // Multi-layer canopy (3 overlapping circles for depth)
+                    var canopyR = 10 * vg.size * vegHealth;
+                    var canopyCX = vg.x + swayAmt * 0.5;
+                    var canopyCY = vg.y - 16 * vg.size;
+                    // Back canopy (darker)
                     ctx.beginPath();
-                    ctx.arc((vg.x + swayAmt * 0.5) * dpr, (vg.y - 16 * vg.size) * dpr, (10 * vg.size * vegHealth) * dpr, 0, Math.PI * 2);
-                    ctx.fillStyle = isDay ? 'rgba(34,197,94,' + (0.5 + vegHealth * 0.4) + ')' : 'rgba(21,128,61,' + (0.4 + vegHealth * 0.3) + ')';
+                    ctx.arc((canopyCX - 3) * dpr, (canopyCY + 2) * dpr, (canopyR * 0.85) * dpr, 0, Math.PI * 2);
+                    ctx.fillStyle = isDay ? 'rgba(22,163,74,' + (0.6 + vegHealth * 0.3) + ')' : 'rgba(15,100,50,' + (0.5 + vegHealth * 0.2) + ')';
                     ctx.fill();
+                    // Main canopy
                     ctx.beginPath();
-                    ctx.arc((vg.x - 5 + swayAmt * 0.3) * dpr, (vg.y - 14 * vg.size) * dpr, (7 * vg.size * vegHealth) * dpr, 0, Math.PI * 2);
+                    ctx.arc(canopyCX * dpr, canopyCY * dpr, canopyR * dpr, 0, Math.PI * 2);
+                    ctx.fillStyle = isDay ? 'rgba(34,197,94,' + (0.55 + vegHealth * 0.4) + ')' : 'rgba(21,128,61,' + (0.45 + vegHealth * 0.3) + ')';
                     ctx.fill();
+                    // Front canopy highlight
+                    ctx.beginPath();
+                    ctx.arc((canopyCX + 3) * dpr, (canopyCY - 2) * dpr, (canopyR * 0.7) * dpr, 0, Math.PI * 2);
+                    ctx.fillStyle = isDay ? 'rgba(74,222,128,' + (0.35 + vegHealth * 0.25) + ')' : 'rgba(34,197,94,' + (0.25 + vegHealth * 0.2) + ')';
+                    ctx.fill();
+                    // Small fruit/flower dots in canopy
+                    if (vegHealth > 0.5 && isDay) {
+                      for (var fd = 0; fd < 3; fd++) {
+                        var fdAngle = vg.sway * 0.1 + fd * 2.1;
+                        var fdR = canopyR * 0.55;
+                        ctx.beginPath();
+                        ctx.arc((canopyCX + Math.cos(fdAngle) * fdR) * dpr, (canopyCY + Math.sin(fdAngle) * fdR) * dpr, 1.5 * dpr, 0, Math.PI * 2);
+                        ctx.fillStyle = fd % 2 === 0 ? 'rgba(251,191,36,0.7)' : 'rgba(244,114,182,0.6)';
+                        ctx.fill();
+                      }
+                    }
                   } else {
-                    // Grass blades
-                    for (var gb = 0; gb < 3; gb++) {
+                    // Grass blades with seed heads
+                    for (var gb = 0; gb < 4; gb++) {
+                      var bladeX = vg.x + gb * 2.5 - 3.5;
+                      var tipX = bladeX + swayAmt * (1 + gb * 0.2);
+                      var tipY = vg.y - (10 + gb * 1.5) * vg.size * vegHealth;
                       ctx.beginPath();
-                      ctx.moveTo((vg.x + gb * 3 - 3) * dpr, vg.y * dpr);
-                      ctx.quadraticCurveTo((vg.x + gb * 3 - 3 + swayAmt) * dpr, (vg.y - 8 * vg.size * vegHealth) * dpr, (vg.x + gb * 3 - 1 + swayAmt * 1.5) * dpr, (vg.y - 12 * vg.size * vegHealth) * dpr);
-                      ctx.strokeStyle = isDay ? 'rgba(74,222,128,' + (0.5 + vegHealth * 0.4) + ')' : 'rgba(34,197,94,' + (0.3 + vegHealth * 0.3) + ')';
-                      ctx.lineWidth = 2 * dpr;
+                      ctx.moveTo(bladeX * dpr, vg.y * dpr);
+                      ctx.quadraticCurveTo((bladeX + swayAmt * 0.5) * dpr, ((vg.y + tipY) / 2) * dpr, tipX * dpr, tipY * dpr);
+                      var bladeAlpha = 0.5 + vegHealth * 0.4 - gb * 0.05;
+                      ctx.strokeStyle = isDay ? 'rgba(74,222,128,' + bladeAlpha + ')' : 'rgba(34,197,94,' + (bladeAlpha * 0.65) + ')';
+                      ctx.lineWidth = (2.2 - gb * 0.2) * dpr;
                       ctx.stroke();
+                      // Seed head at tip
+                      if (vegHealth > 0.6 && gb < 2) {
+                        ctx.beginPath();
+                        ctx.arc(tipX * dpr, tipY * dpr, 1.2 * dpr, 0, Math.PI * 2);
+                        ctx.fillStyle = isDay ? 'rgba(217,180,120,0.7)' : 'rgba(160,130,80,0.5)';
+                        ctx.fill();
+                      }
                     }
                   }
                 }
 
-                // ── Prey (rabbits as emoji) ──
+                // ── Prey (rabbits — canvas-drawn) ──
                 var aliveCount = 0;
                 preyList.forEach(function (p) {
                   if (!p.alive) return;
                   aliveCount++;
                   p.hop += 0.08;
                   p.x += p.vx; p.y += p.vy;
-                  // Boundary check
                   if (p.x < 5 || p.x > cW / dpr - 5) p.vx *= -1;
                   if (p.y < cH * 0.4 / dpr || p.y > cH / dpr - 5) p.vy *= -1;
                   p.x = Math.max(5, Math.min(cW / dpr - 5, p.x));
                   p.y = Math.max(cH * 0.4 / dpr, Math.min(cH / dpr - 5, p.y));
-                  // Jitter
                   p.vx += (Math.random() - 0.5) * 0.12;
                   p.vy += (Math.random() - 0.5) * 0.12;
                   p.vx = Math.max(-1.8, Math.min(1.8, p.vx));
                   p.vy = Math.max(-1.8, Math.min(1.8, p.vy));
                   if (p.vx > 0) p.facing = 1; else if (p.vx < -0.2) p.facing = -1;
-                  // Hop animation offset
                   var hopY = Math.abs(Math.sin(p.hop)) * 3;
-                  // Draw rabbit emoji
+                  var squash = 1 + Math.abs(Math.sin(p.hop)) * 0.15; // squash-and-stretch
+                  var px = p.x * dpr;
+                  var py = (p.y - hopY) * dpr;
+                  var s = 4.5 * dpr; // base scale
                   ctx.save();
-                  ctx.translate(p.x * dpr, (p.y - hopY) * dpr);
-                  ctx.scale(p.facing * 0.9, 0.9);
-                  ctx.font = (9 * dpr) + 'px sans-serif';
-                  ctx.textAlign = 'center';
-                  ctx.fillText('\uD83D\uDC07', 0, 0);
+                  ctx.translate(px, py);
+                  ctx.scale(p.facing, 1);
+                  // Shadow
+                  ctx.beginPath();
+                  ctx.ellipse(0, hopY * dpr * 0.3 + s * 0.6, s * 0.55, s * 0.15, 0, 0, Math.PI * 2);
+                  ctx.fillStyle = 'rgba(0,0,0,0.12)';
+                  ctx.fill();
+                  // Body (oval with fur gradient)
+                  ctx.beginPath();
+                  ctx.ellipse(0, 0, s * 0.5 / squash, s * 0.4 * squash, 0, 0, Math.PI * 2);
+                  var furGrad = ctx.createRadialGradient(0, -s * 0.1, s * 0.05, 0, 0, s * 0.5);
+                  furGrad.addColorStop(0, '#e8d5b7');
+                  furGrad.addColorStop(0.6, '#c4a67a');
+                  furGrad.addColorStop(1, '#a6845a');
+                  ctx.fillStyle = furGrad;
+                  ctx.fill();
+                  // Belly highlight
+                  ctx.beginPath();
+                  ctx.ellipse(0, s * 0.08, s * 0.28, s * 0.2, 0, 0, Math.PI * 2);
+                  ctx.fillStyle = 'rgba(245,235,220,0.5)';
+                  ctx.fill();
+                  // Head
+                  ctx.beginPath();
+                  ctx.arc(s * 0.35, -s * 0.2, s * 0.25, 0, Math.PI * 2);
+                  ctx.fillStyle = '#d4b890';
+                  ctx.fill();
+                  // Ears (two upright ovals)
+                  // Left ear
+                  ctx.beginPath();
+                  ctx.ellipse(s * 0.25, -s * 0.58, s * 0.07, s * 0.2, -0.15, 0, Math.PI * 2);
+                  ctx.fillStyle = '#c4a67a';
+                  ctx.fill();
+                  ctx.beginPath();
+                  ctx.ellipse(s * 0.25, -s * 0.56, s * 0.04, s * 0.14, -0.15, 0, Math.PI * 2);
+                  ctx.fillStyle = 'rgba(244,163,166,0.6)';
+                  ctx.fill();
+                  // Right ear
+                  ctx.beginPath();
+                  ctx.ellipse(s * 0.42, -s * 0.55, s * 0.07, s * 0.2, 0.2, 0, Math.PI * 2);
+                  ctx.fillStyle = '#c4a67a';
+                  ctx.fill();
+                  ctx.beginPath();
+                  ctx.ellipse(s * 0.42, -s * 0.53, s * 0.04, s * 0.14, 0.2, 0, Math.PI * 2);
+                  ctx.fillStyle = 'rgba(244,163,166,0.6)';
+                  ctx.fill();
+                  // Eye
+                  ctx.beginPath();
+                  ctx.arc(s * 0.42, -s * 0.24, s * 0.06, 0, Math.PI * 2);
+                  ctx.fillStyle = '#1a1a2e';
+                  ctx.fill();
+                  // Eye specular
+                  ctx.beginPath();
+                  ctx.arc(s * 0.44, -s * 0.27, s * 0.02, 0, Math.PI * 2);
+                  ctx.fillStyle = 'rgba(255,255,255,0.8)';
+                  ctx.fill();
+                  // Nose
+                  ctx.beginPath();
+                  ctx.arc(s * 0.55, -s * 0.18, s * 0.03, 0, Math.PI * 2);
+                  ctx.fillStyle = '#e8a0a0';
+                  ctx.fill();
+                  // Tail (white tuft)
+                  ctx.beginPath();
+                  ctx.arc(-s * 0.45, -s * 0.05, s * 0.12, 0, Math.PI * 2);
+                  ctx.fillStyle = '#f5f0e8';
+                  ctx.fill();
+                  // Front paws (when hopping)
+                  if (hopY > 1) {
+                    ctx.beginPath();
+                    ctx.ellipse(s * 0.2, s * 0.32, s * 0.06, s * 0.04, 0, 0, Math.PI * 2);
+                    ctx.fillStyle = '#c4a67a';
+                    ctx.fill();
+                  }
                   ctx.restore();
                 });
 
@@ -11955,20 +14103,130 @@
                   pr.y = Math.max(cH * 0.4 / dpr, Math.min(cH / dpr - 5, pr.y));
                   pr.vx *= 0.98; pr.vy *= 0.98;
                   if (pr.vx > 0.1) pr.facing = 1; else if (pr.vx < -0.1) pr.facing = -1;
-                  // Draw fox emoji
+                  // Draw fox (canvas-drawn)
+                  var fx = pr.x * dpr;
+                  var fy = pr.y * dpr;
+                  var fs = 5.5 * dpr; // base scale
                   ctx.save();
-                  ctx.translate(pr.x * dpr, pr.y * dpr);
+                  ctx.translate(fx, fy);
                   ctx.scale(pr.facing, 1);
-                  ctx.font = (10 * dpr) + 'px sans-serif';
-                  ctx.textAlign = 'center';
-                  ctx.fillText('\uD83E\uDD8A', 0, 0);
+                  // Shadow
+                  ctx.beginPath();
+                  ctx.ellipse(0, fs * 0.5, fs * 0.6, fs * 0.12, 0, 0, Math.PI * 2);
+                  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+                  ctx.fill();
+                  // Crouching if hunting
+                  var huntCrouch = pr.hunting ? 0.85 : 1;
+                  ctx.scale(1, huntCrouch);
+                  // Tail (behind body) — bushy with white tip
+                  ctx.beginPath();
+                  ctx.moveTo(-fs * 0.5, -fs * 0.05);
+                  ctx.quadraticCurveTo(-fs * 0.9, -fs * 0.45, -fs * 0.7, -fs * 0.6);
+                  ctx.quadraticCurveTo(-fs * 0.4, -fs * 0.55, -fs * 0.35, -fs * 0.15);
+                  ctx.closePath();
+                  ctx.fillStyle = '#d97706';
+                  ctx.fill();
+                  // White tail tip
+                  ctx.beginPath();
+                  ctx.arc(-fs * 0.7, -fs * 0.55, fs * 0.1, 0, Math.PI * 2);
+                  ctx.fillStyle = '#fef3c7';
+                  ctx.fill();
+                  // Body (elongated oval)
+                  ctx.beginPath();
+                  ctx.ellipse(0, 0, fs * 0.55, fs * 0.35, 0, 0, Math.PI * 2);
+                  var foxFur = ctx.createRadialGradient(fs * 0.1, -fs * 0.1, fs * 0.05, 0, 0, fs * 0.55);
+                  foxFur.addColorStop(0, '#f59e0b');
+                  foxFur.addColorStop(0.5, '#d97706');
+                  foxFur.addColorStop(1, '#b45309');
+                  ctx.fillStyle = foxFur;
+                  ctx.fill();
+                  // Belly
+                  ctx.beginPath();
+                  ctx.ellipse(fs * 0.05, fs * 0.1, fs * 0.3, fs * 0.18, 0, 0, Math.PI * 2);
+                  ctx.fillStyle = 'rgba(254,243,199,0.45)';
+                  ctx.fill();
+                  // Head
+                  ctx.beginPath();
+                  ctx.arc(fs * 0.45, -fs * 0.15, fs * 0.25, 0, Math.PI * 2);
+                  ctx.fillStyle = '#ea580c';
+                  ctx.fill();
+                  // Snout
+                  ctx.beginPath();
+                  ctx.ellipse(fs * 0.7, -fs * 0.08, fs * 0.14, fs * 0.1, 0, 0, Math.PI * 2);
+                  ctx.fillStyle = '#fef3c7';
+                  ctx.fill();
+                  // Nose
+                  ctx.beginPath();
+                  ctx.arc(fs * 0.78, -fs * 0.1, fs * 0.04, 0, Math.PI * 2);
+                  ctx.fillStyle = '#1a1a2e';
+                  ctx.fill();
+                  // Ears (triangular)
+                  // Left ear
+                  ctx.beginPath();
+                  ctx.moveTo(fs * 0.3, -fs * 0.35);
+                  ctx.lineTo(fs * 0.25, -fs * 0.62);
+                  ctx.lineTo(fs * 0.42, -fs * 0.38);
+                  ctx.closePath();
+                  ctx.fillStyle = '#ea580c';
+                  ctx.fill();
+                  // Dark ear tip
+                  ctx.beginPath();
+                  ctx.moveTo(fs * 0.275, -fs * 0.48);
+                  ctx.lineTo(fs * 0.25, -fs * 0.62);
+                  ctx.lineTo(fs * 0.37, -fs * 0.44);
+                  ctx.closePath();
+                  ctx.fillStyle = '#7c2d12';
+                  ctx.fill();
+                  // Right ear
+                  ctx.beginPath();
+                  ctx.moveTo(fs * 0.48, -fs * 0.33);
+                  ctx.lineTo(fs * 0.5, -fs * 0.6);
+                  ctx.lineTo(fs * 0.58, -fs * 0.35);
+                  ctx.closePath();
+                  ctx.fillStyle = '#ea580c';
+                  ctx.fill();
+                  ctx.beginPath();
+                  ctx.moveTo(fs * 0.49, -fs * 0.46);
+                  ctx.lineTo(fs * 0.5, -fs * 0.6);
+                  ctx.lineTo(fs * 0.555, -fs * 0.42);
+                  ctx.closePath();
+                  ctx.fillStyle = '#7c2d12';
+                  ctx.fill();
+                  // Eyes
+                  ctx.beginPath();
+                  ctx.arc(fs * 0.5, -fs * 0.2, fs * 0.055, 0, Math.PI * 2);
+                  ctx.fillStyle = pr.hunting ? '#dc2626' : '#fbbf24';
+                  ctx.fill();
+                  // Pupil
+                  ctx.beginPath();
+                  ctx.ellipse(fs * 0.51, -fs * 0.2, fs * 0.025, fs * 0.04, 0, 0, Math.PI * 2);
+                  ctx.fillStyle = '#1a1a2e';
+                  ctx.fill();
+                  // Eye glint
+                  ctx.beginPath();
+                  ctx.arc(fs * 0.52, -fs * 0.22, fs * 0.015, 0, Math.PI * 2);
+                  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+                  ctx.fill();
+                  // Front legs
+                  ctx.fillStyle = '#b45309';
+                  ctx.fillRect(fs * 0.15, fs * 0.2, fs * 0.08, fs * 0.25);
+                  ctx.fillRect(fs * 0.35, fs * 0.2, fs * 0.08, fs * 0.25);
+                  // Paws
+                  ctx.fillStyle = '#1a1a2e';
+                  ctx.beginPath(); ctx.arc(fs * 0.19, fs * 0.44, fs * 0.045, 0, Math.PI * 2); ctx.fill();
+                  ctx.beginPath(); ctx.arc(fs * 0.39, fs * 0.44, fs * 0.045, 0, Math.PI * 2); ctx.fill();
                   ctx.restore();
-                  // Hunting indicator
+                  // Hunting indicator (above fox)
                   if (pr.hunting) {
                     ctx.beginPath();
-                    ctx.arc(pr.x * dpr, (pr.y - 8) * dpr, 2 * dpr, 0, Math.PI * 2);
-                    ctx.fillStyle = 'rgba(239,68,68,0.6)';
+                    ctx.arc(pr.x * dpr, (pr.y - 12) * dpr, 2.5 * dpr, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(239,68,68,0.7)';
                     ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(pr.x * dpr, (pr.y - 12) * dpr, 4 * dpr, 0, Math.PI * 2);
+                    ctx.strokeStyle = 'rgba(239,68,68,' + (0.3 + 0.3 * Math.sin(tick * 0.1)) + ')';
+                    ctx.lineWidth = 1 * dpr;
+                    ctx.stroke();
                   }
                 });
 
@@ -11981,6 +14239,75 @@
                   ctx.arc(cp2.x * dpr, cp2.y * dpr, 2.5 * dpr, 0, Math.PI * 2);
                   ctx.fillStyle = cp2.color + cp2.life + ')';
                   ctx.fill();
+                }
+
+                // ── Ambient creatures (butterflies/fireflies) ──
+                for (var abi2 = 0; abi2 < ambientBugs.length; abi2++) {
+                  var ab = ambientBugs[abi2];
+                  ab.wing += 0.15;
+                  ab.glow += 0.04;
+                  ab.x += ab.vx + Math.sin(tick * 0.02 + abi2) * 0.15;
+                  ab.y += ab.vy + Math.cos(tick * 0.015 + abi2 * 0.7) * 0.12;
+                  // Boundary wrap
+                  if (ab.x < -5) ab.x = cW / dpr + 5;
+                  if (ab.x > cW / dpr + 5) ab.x = -5;
+                  if (ab.y < cH * 0.05 / dpr) ab.y = cH * 0.5 / dpr;
+                  if (ab.y > cH * 0.6 / dpr) ab.y = cH * 0.1 / dpr;
+                  // Random direction changes
+                  if (Math.random() < 0.01) { ab.vx = (Math.random() - 0.5) * 0.6; ab.vy = (Math.random() - 0.5) * 0.4; }
+                  var abx = ab.x * dpr;
+                  var aby = ab.y * dpr;
+                  if (isDay) {
+                    // Butterfly
+                    var wingFlap = Math.abs(Math.sin(ab.wing)) * 0.8 + 0.2;
+                    var ws = ab.size * dpr;
+                    // Wings (two pairs)
+                    ctx.save();
+                    ctx.translate(abx, aby);
+                    // Left wing
+                    ctx.beginPath();
+                    ctx.ellipse(-ws * 0.6, -ws * 0.1, ws * 0.7 * wingFlap, ws * 0.5, -0.3, 0, Math.PI * 2);
+                    ctx.fillStyle = 'hsla(' + ab.hue + ',70%,65%,0.6)';
+                    ctx.fill();
+                    // Right wing
+                    ctx.beginPath();
+                    ctx.ellipse(ws * 0.6, -ws * 0.1, ws * 0.7 * wingFlap, ws * 0.5, 0.3, 0, Math.PI * 2);
+                    ctx.fillStyle = 'hsla(' + ab.hue + ',70%,65%,0.6)';
+                    ctx.fill();
+                    // Wing pattern dots
+                    ctx.beginPath();
+                    ctx.arc(-ws * 0.5, -ws * 0.05, ws * 0.15, 0, Math.PI * 2);
+                    ctx.fillStyle = 'hsla(' + (ab.hue + 40) + ',60%,45%,0.5)';
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(ws * 0.5, -ws * 0.05, ws * 0.15, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Body
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, ws * 0.08, ws * 0.3, 0, 0, Math.PI * 2);
+                    ctx.fillStyle = '#1a1a2e';
+                    ctx.fill();
+                    ctx.restore();
+                  } else {
+                    // Firefly
+                    var glowIntensity = (Math.sin(ab.glow) + 1) / 2;
+                    if (glowIntensity > 0.3) {
+                      // Outer glow
+                      var ffGlow = ctx.createRadialGradient(abx, aby, 0, abx, aby, ab.size * 4 * dpr);
+                      ffGlow.addColorStop(0, 'rgba(200,255,100,' + (glowIntensity * 0.5) + ')');
+                      ffGlow.addColorStop(0.5, 'rgba(180,255,50,' + (glowIntensity * 0.2) + ')');
+                      ffGlow.addColorStop(1, 'rgba(150,255,0,0)');
+                      ctx.fillStyle = ffGlow;
+                      ctx.beginPath();
+                      ctx.arc(abx, aby, ab.size * 4 * dpr, 0, Math.PI * 2);
+                      ctx.fill();
+                    }
+                    // Firefly body
+                    ctx.beginPath();
+                    ctx.ellipse(abx, aby, 1.2 * dpr, 0.8 * dpr, 0, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(200,255,80,' + (0.6 + glowIntensity * 0.4) + ')';
+                    ctx.fill();
+                  }
                 }
 
                 // ── Population dynamics ──
@@ -12141,7 +14468,7 @@
                 ),
                 React.createElement("p", { className: "mt-2 text-xs text-slate-400 italic text-center" }, "\uD83D\uDCA1 Closed loops = stable Lotka-Volterra oscillations. Spiraling inward = damped; outward = unstable.")
               ),
-              React.createElement("button", { onClick: () => { setToolSnapshots(prev => [...prev, { id: 'eco-' + Date.now(), tool: 'ecosystem', label: 'Ecosystem', data: { ...d }, timestamp: Date.now() }]); addToast(t('stem.ecosystem.ud83dudcf8_snapshot_saved'), 'success'); }, className: "mt-3 ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
+              React.createElement("button", { onClick: () => { setToolSnapshots(prev => [...prev, { id: 'eco-' + Date.now(), tool: 'ecosystem', label: 'Ecosystem', data: { ...d }, timestamp: Date.now() }]); addToast('\uD83D\uDCF8 Snapshot saved!', 'success'); }, className: "mt-3 ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
             );
           })(),
 
@@ -12394,22 +14721,141 @@
                   fqQuiz && fqQuiz.answered && React.createElement("div", { className: "p-3 rounded-xl text-sm font-bold text-center " + (fqQuiz.chosen === fqQuiz.answer ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200') }, fqQuiz.chosen === fqQuiz.answer ? '✅ Correct! ' + fqQuiz.answer + ' ≈ ' + (fqQuiz.chosen === fqQuiz.n1 + '/' + fqQuiz.d1 ? (fqQuiz.n1 / fqQuiz.d1).toFixed(3) : (fqQuiz.n2 / fqQuiz.d2).toFixed(3)) : '❌ ' + fqQuiz.answer + ' is larger')
                 );
               })(),
-              React.createElement("button", { onClick: () => { setToolSnapshots(prev => [...prev, { id: 'fv-' + Date.now(), tool: 'fractionViz', label: d.num1 + '/' + d.den1 + ' vs ' + d.num2 + '/' + d.den2, data: Object.assign({}, d), timestamp: Date.now() }]); addToast(t('stem.fractions.ud83dudcf8_snapshot_saved'), 'success'); }, className: "mt-3 ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
+              React.createElement("button", { onClick: () => { setToolSnapshots(prev => [...prev, { id: 'fv-' + Date.now(), tool: 'fractionViz', label: d.num1 + '/' + d.den1 + ' vs ' + d.num2 + '/' + d.den2, data: Object.assign({}, d), timestamp: Date.now() }]); addToast('\uD83D\uDCF8 Snapshot saved!', 'success'); }, className: "mt-3 ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
             );
           })(),
-              React.createElement("div", {
-                key: "graphCalc",
-                style: { background: "linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%)", borderRadius: "16px", padding: "20px", color: "white", display: "flex", flexDirection: "column", gap: "10px", minHeight: "170px", cursor: "pointer", transition: "transform 0.2s, box-shadow 0.2s", boxShadow: "0 4px 15px rgba(67,56,202,0.3)" },
-                onClick: function () { setStemLabTool("graphCalc"); },
-                onMouseEnter: function (e) { e.currentTarget.style.transform = "translateY(-4px) scale(1.02)"; e.currentTarget.style.boxShadow = "0 8px 25px rgba(67,56,202,0.5)"; },
-                onMouseLeave: function (e) { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "0 4px 15px rgba(67,56,202,0.3)"; },
-                role: "button", tabIndex: 0, "aria-label": "Graphing Calculator"
-              },
-                React.createElement("div", { style: { fontSize: "36px", marginBottom: "2px" } }, "\uD83D\uDCC8"),
-                React.createElement("div", { style: { fontWeight: "bold", fontSize: "14px", letterSpacing: "0.5px" } }, "Graphing Calculator"),
-                React.createElement("div", { style: { fontSize: "11px", opacity: 0.85, lineHeight: 1.4 } }, "Type equations, plot functions, explore data. Learn what every button really does."),
-                React.createElement("button", { onClick: function (e) { e.stopPropagation(); setStemLabTool("graphCalc"); }, className: "px-3 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 transition-colors mt-auto self-start", "aria-label": "Open Graphing Calculator" }, "\uD83D\uDD0D Explore")),
 
+          // ═══════════════════════════════════════════════════════
+          // FRACTION TILES + CHALLENGE MODE
+          // ═══════════════════════════════════════════════════════
+          stemLabTab === 'explore' && stemLabTool === 'fractions' && (() => {
+            // Difficulty-adaptive denominator pools (expanded for higher denominators)
+            var fdiff = exploreDifficulty || 'medium';
+            var dpool = fdiff === 'easy' ? [2, 3, 4] : fdiff === 'hard' ? [3, 4, 5, 6, 8, 10, 12, 15, 16, 20] : [2, 3, 4, 5, 6, 8, 10, 12];
+
+            return React.createElement("div", { className: "space-y-4 max-w-3xl mx-auto animate-in fade-in duration-200" },
+              // Header with back + navigation
+              React.createElement("div", { className: "flex items-center gap-3 mb-2" },
+                React.createElement("button", { onClick: () => setStemLabTool(null), className: "p-1.5 hover:bg-slate-100 rounded-lg" }, React.createElement(ArrowLeft, { size: 18, className: "text-slate-500" })),
+                React.createElement("h3", { className: "text-lg font-bold text-rose-800" }, "\uD83C\uDF55 Fraction Practice"),
+                React.createElement("div", { className: "flex gap-1 ml-auto" },
+                  React.createElement("button", { onClick: () => setStemLabTool('fractionViz'), className: "px-3 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-600 hover:bg-orange-50 hover:text-orange-600 transition-all" }, "\uD83D\uDD0D Compare"),
+                  React.createElement("button", { className: "px-3 py-1 rounded-lg text-xs font-bold bg-rose-600 text-white" }, "\uD83C\uDFC6 Practice")
+                )
+              ),
+              // Denominator control
+              React.createElement("div", { className: "grid grid-cols-2 gap-3" },
+                React.createElement("div", { className: "bg-rose-50 rounded-lg p-3 border border-rose-100" },
+                  React.createElement("label", { className: "block text-xs text-rose-700 mb-1 font-bold" }, "Denominator (parts)"),
+                  React.createElement("input", { type: "range", min: "2", max: "20", value: fractionPieces.denominator, onChange: function (e) { setFractionPieces(function (prev) { return { denominator: parseInt(e.target.value), numerator: Math.min(prev.numerator, parseInt(e.target.value)) }; }); }, className: "w-full accent-rose-600" }),
+                  React.createElement("div", { className: "text-center text-lg font-bold text-rose-700" }, fractionPieces.denominator)
+                ),
+                React.createElement("div", { className: "bg-rose-50 rounded-lg p-3 border border-rose-100" },
+                  React.createElement("label", { className: "block text-xs text-rose-700 mb-1 font-bold" }, "Numerator (selected)"),
+                  React.createElement("input", { type: "range", min: "0", max: fractionPieces.denominator, value: fractionPieces.numerator, onChange: function (e) { setFractionPieces(function (prev) { return { denominator: prev.denominator, numerator: parseInt(e.target.value) }; }); }, className: "w-full accent-rose-600" }),
+                  React.createElement("div", { className: "text-center text-lg font-bold text-rose-700" }, fractionPieces.numerator)
+                )
+              ),
+              // Pie chart visualization
+              React.createElement("div", { className: "bg-white rounded-xl border-2 border-rose-200 p-6 flex justify-center" },
+                React.createElement("svg", { width: "240", height: "240", viewBox: "-120 -120 240 240" },
+                  Array.from({ length: fractionPieces.denominator }, function (_, i) {
+                    var startAngle = i / fractionPieces.denominator * 2 * Math.PI - Math.PI / 2;
+                    var endAngle = (i + 1) / fractionPieces.denominator * 2 * Math.PI - Math.PI / 2;
+                    var x1 = 100 * Math.cos(startAngle), y1 = 100 * Math.sin(startAngle);
+                    var x2 = 100 * Math.cos(endAngle), y2 = 100 * Math.sin(endAngle);
+                    var largeArc = endAngle - startAngle > Math.PI ? 1 : 0;
+                    var filled = i < fractionPieces.numerator;
+                    return React.createElement('path', { key: i, d: 'M 0 0 L ' + x1 + ' ' + y1 + ' A 100 100 0 ' + largeArc + ' 1 ' + x2 + ' ' + y2 + ' Z', fill: filled ? 'hsl(' + (340 + i * 8) + ', 70%, ' + (60 + i * 2) + '%)' : '#fecdd3', stroke: '#e11d48', strokeWidth: '2', className: 'cursor-pointer hover:opacity-80 transition-opacity', onClick: function () { setFractionPieces(function (prev) { return { denominator: prev.denominator, numerator: (filled && prev.numerator === i + 1) ? i : i + 1 }; }); } });
+                  }),
+                  React.createElement("circle", { cx: "0", cy: "0", r: "3", fill: "#e11d48" })
+                )
+              ),
+              // Bar visualization
+              React.createElement("div", { className: "bg-white rounded-xl border-2 border-rose-200 p-4" },
+                React.createElement("div", { className: "flex gap-[2px] h-12 rounded-lg overflow-hidden" },
+                  Array.from({ length: fractionPieces.denominator }, function (_, i) {
+                    return React.createElement('div', { key: i, onClick: function () { setFractionPieces(function (prev) { return { denominator: prev.denominator, numerator: i < prev.numerator ? i : i + 1 }; }); }, className: 'flex-1 cursor-pointer transition-all ' + (i < fractionPieces.numerator ? 'bg-rose-500 hover:bg-rose-600' : 'bg-rose-100 hover:bg-rose-200') });
+                  })
+                )
+              ),
+              // Fraction value display
+              React.createElement("div", { className: "bg-white rounded-xl p-4 border border-rose-100 text-center" },
+                React.createElement("div", { className: "inline-flex flex-col items-center" },
+                  React.createElement("span", { className: "text-3xl font-bold text-rose-700 border-b-4 border-rose-400 px-4 pb-1" }, fractionPieces.numerator),
+                  React.createElement("span", { className: "text-3xl font-bold text-rose-700 px-4 pt-1" }, fractionPieces.denominator)
+                ),
+                React.createElement("div", { className: "text-sm text-rose-600 mt-2" }, "= " + (fractionPieces.numerator / fractionPieces.denominator * 100).toFixed(0) + "%",
+                  fractionPieces.numerator > 0 && React.createElement("span", { className: "text-slate-400 ml-2" }, "\u2248 " + (fractionPieces.numerator / fractionPieces.denominator).toFixed(3))
+                ),
+                fractionPieces.numerator === fractionPieces.denominator && React.createElement("div", { className: "text-sm font-bold text-green-600 mt-1" }, "= 1 whole! \uD83C\uDF89")
+              ),
+              // Preset buttons (including higher denominators)
+              React.createElement("div", { className: "flex flex-wrap gap-2" },
+                [{ n: 1, d: 2, l: '\u00BD' }, { n: 1, d: 3, l: '\u2153' }, { n: 1, d: 4, l: '\u00BC' }, { n: 2, d: 3, l: '\u2154' }, { n: 3, d: 4, l: '\u00BE' }, { n: 3, d: 8, l: '\u215C' }, { n: 5, d: 6, l: '\u215A' }, { n: 7, d: 12, l: '7/12' }, { n: 11, d: 16, l: '11/16' }, { n: 13, d: 20, l: '13/20' }].map(function (p) { return React.createElement("button", { key: p.l, onClick: function () { setFractionPieces({ numerator: p.n, denominator: p.d }); }, className: "px-3 py-1.5 text-sm font-bold bg-rose-50 text-rose-700 border border-rose-200 rounded-lg hover:bg-rose-100 transition-all" }, p.l); })
+              ),
+              // Challenge section
+              React.createElement("div", { className: "bg-rose-50 rounded-xl p-4 border border-rose-200 space-y-3" },
+                React.createElement("div", { className: "flex items-center justify-between" },
+                  React.createElement("div", { className: "flex items-center gap-2" },
+                    React.createElement("h4", { className: "text-sm font-bold text-rose-800" }, "\uD83C\uDFAF Fraction Practice"),
+                    React.createElement("div", { className: "flex gap-0.5 ml-2" },
+                      ['easy', 'medium', 'hard'].map(function (d) { return React.createElement("button", { key: d, onClick: function () { setExploreDifficulty(d); }, className: "text-[9px] font-bold px-1.5 py-0.5 rounded-full transition-all " + (exploreDifficulty === d ? (d === 'easy' ? 'bg-green-500 text-white' : d === 'hard' ? 'bg-red-500 text-white' : 'bg-rose-500 text-white') : 'bg-slate-100 text-slate-500 hover:bg-slate-200') }, d); })
+                    )
+                  ),
+                  React.createElement("div", { className: "flex items-center gap-2" },
+                    React.createElement("div", { className: "text-xs font-bold text-rose-600" }, exploreScore.correct + "/" + exploreScore.total),
+                    exploreScore.total > 0 && React.createElement("button", { onClick: submitExploreScore, className: "text-[10px] font-bold bg-rose-600 text-white px-2 py-0.5 rounded-full hover:bg-rose-700" }, "\uD83D\uDCBE Save")
+                  )
+                ),
+                !fracChallenge ? React.createElement("button", {
+                  onClick: function () {
+                    var types = ['identify', 'equivalent', 'compare'];
+                    var type = types[Math.floor(Math.random() * types.length)];
+                    var ch;
+                    if (type === 'identify') {
+                      var _d = dpool[Math.floor(Math.random() * dpool.length)];
+                      var _n = Math.floor(Math.random() * _d) + 1;
+                      setFractionPieces({ numerator: _n, denominator: _d });
+                      ch = { type: type, question: 'Look at the shaded pieces. How many pieces are filled?', answer: _n };
+                    } else if (type === 'equivalent') {
+                      var _d2 = [2, 3, 4, 5, 6][Math.floor(Math.random() * 5)];
+                      var _n2 = Math.floor(Math.random() * (_d2 - 1)) + 1;
+                      var mult = Math.floor(Math.random() * 3) + 2;
+                      ch = { type: type, question: _n2 + '/' + _d2 + ' = ?/' + (_d2 * mult) + '  \u2014 What is the missing numerator?', answer: _n2 * mult };
+                    } else {
+                      var da = [2, 3, 4, 6, 8][Math.floor(Math.random() * 5)];
+                      var na = Math.floor(Math.random() * da) + 1;
+                      var db = [2, 3, 4, 6, 8][Math.floor(Math.random() * 5)];
+                      var nb = Math.floor(Math.random() * db) + 1;
+                      var va = na / da, vb = nb / db;
+                      ch = { type: type, question: 'Which is larger: ' + na + '/' + da + ' or ' + nb + '/' + db + '? Enter the numerator of the larger fraction.', answer: va >= vb ? na : nb };
+                    }
+                    setFracChallenge(ch);
+                    setFracAnswer('');
+                    setFracFeedback(null);
+                  },
+                  className: "w-full py-2.5 bg-gradient-to-r from-rose-500 to-pink-500 text-white font-bold rounded-xl text-sm hover:from-rose-600 hover:to-pink-600 transition-all shadow-md"
+                }, "\uD83C\uDFB2 Generate Challenge") : React.createElement("div", { className: "space-y-2" },
+                  React.createElement("p", { className: "text-sm font-bold text-rose-800" }, fracChallenge.question),
+                  React.createElement("div", { className: "flex gap-2" },
+                    React.createElement("input", {
+                      type: "number", value: fracAnswer, onChange: function (e) { setFracAnswer(e.target.value); },
+                      onKeyDown: function (e) { if (e.key === 'Enter' && fracAnswer) { var ans = parseInt(fracAnswer); var ok = ans === fracChallenge.answer; setFracFeedback(ok ? { correct: true, msg: '\u2705 Correct!' } : { correct: false, msg: '\u274C The answer was ' + fracChallenge.answer }); setExploreScore(function (prev) { return { correct: prev.correct + (ok ? 1 : 0), total: prev.total + 1 }; }); if (ok) awardStemXP('fractionChallenge', 10, 'Correct fraction answer'); } },
+                      placeholder: "Your answer...", className: "flex-1 px-3 py-2 border border-rose-300 rounded-lg text-sm font-mono"
+                    }),
+                    React.createElement("button", {
+                      onClick: function () { var ans = parseInt(fracAnswer); var ok = ans === fracChallenge.answer; setFracFeedback(ok ? { correct: true, msg: '\u2705 Correct!' } : { correct: false, msg: '\u274C The answer was ' + fracChallenge.answer }); setExploreScore(function (prev) { return { correct: prev.correct + (ok ? 1 : 0), total: prev.total + 1 }; }); if (ok) awardStemXP('fractionChallenge', 10, 'Correct fraction answer'); },
+                      className: "px-4 py-2 bg-rose-600 text-white font-bold rounded-lg text-sm hover:bg-rose-700"
+                    }, "Check")
+                  ),
+                  fracFeedback && React.createElement("p", { className: "text-sm font-bold " + (fracFeedback.correct ? "text-green-600" : "text-red-600") }, fracFeedback.msg),
+                  fracFeedback && !fracFeedback.correct && StemAIHintButton && React.createElement(StemAIHintButton, 'fractions', fracChallenge.question, fracAnswer, String(fracChallenge.answer)),
+                  fracFeedback && React.createElement("button", { onClick: function () { setFracChallenge(null); setFracFeedback(null); setFracAnswer(''); }, className: "text-xs text-rose-600 font-bold hover:underline" }, "\u27A1\uFE0F Next Challenge")
+                )
+              )
+            );
+          })(),
 
           // ═══════════════════════════════════════════════════════
           // MATERIAL DECOMPOSER
@@ -12437,6 +14883,7 @@
             var decomposed = d.decomposed || false;
             var quizMode = d.quizMode || false;
             var quizQ = d.quizQ || null;
+
             var quizScore = d.quizScore || 0;
             var quizStreak = d.quizStreak || 0;
 
@@ -12578,7 +15025,7 @@
                   )
                 )
               ),
-              React.createElement("button", { onClick: () => { setToolSnapshots(prev => [...prev, { id: 'dc-' + Date.now(), tool: 'decomposer', label: sel.name + ' (' + sel.formula + ')', data: Object.assign({}, d), timestamp: Date.now() }]); addToast(t('stem.decomposer.snapshot_saved'), 'success'); }, className: "mt-1 ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "📸 Snapshot")
+              React.createElement("button", { onClick: () => { setToolSnapshots(prev => [...prev, { id: 'dc-' + Date.now(), tool: 'decomposer', label: sel.name + ' (' + sel.formula + ')', data: Object.assign({}, d), timestamp: Date.now() }]); addToast('\uD83D\uDCF8 Snapshot saved!', 'success'); }, className: "mt-1 ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "📸 Snapshot")
             );
           })(),
 
@@ -12785,7 +15232,7 @@
                     )
                 )
               ),
-              React.createElement("button", { onClick: () => { setToolSnapshots(prev => [...prev, { id: 'uc-' + Date.now(), tool: 'unitConvert', label: d.value + ' ' + d.fromUnit + ' to ' + d.toUnit, data: Object.assign({}, d), timestamp: Date.now() }]); addToast(t('stem.converter.ud83dudcf8_snapshot_saved'), 'success'); }, className: "mt-3 ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
+              React.createElement("button", { onClick: () => { setToolSnapshots(prev => [...prev, { id: 'uc-' + Date.now(), tool: 'unitConvert', label: d.value + ' ' + d.fromUnit + ' to ' + d.toUnit, data: Object.assign({}, d), timestamp: Date.now() }]); addToast('\uD83D\uDCF8 Snapshot saved!', 'success'); }, className: "mt-3 ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
             );
           })(),
 
@@ -13133,7 +15580,7 @@
                   return '\u25CF';
                 }).join(' '))
               ),
-              React.createElement("button", { onClick: () => { setToolSnapshots(prev => [...prev, { id: 'pr-' + Date.now(), tool: 'probability', label: d.mode + ' ' + d.trials + ' trials', data: Object.assign({}, d), timestamp: Date.now() }]); addToast(t('stem.probability.ud83dudcf8_snapshot_saved'), 'success'); }, className: "mt-3 ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
+              React.createElement("button", { onClick: () => { setToolSnapshots(prev => [...prev, { id: 'pr-' + Date.now(), tool: 'probability', label: d.mode + ' ' + d.trials + ' trials', data: Object.assign({}, d), timestamp: Date.now() }]); addToast('\uD83D\uDCF8 Snapshot saved!', 'success'); }, className: "mt-3 ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
             );
           })(),
 
@@ -14630,7 +17077,7 @@
                       },
                       className: "px-3 py-1.5 rounded-lg text-[11px] font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-sm"
                     }, "\uD83D\uDCBE Save"),
-                    React.createElement("button", { onClick: function () { setToolSnapshots(function (prev) { return prev.concat([{ id: 'sy-' + Date.now(), tool: 'synth', label: t('stem.synth.composition'), data: Object.assign({}, d), timestamp: Date.now() }]); }); addToast(t('stem.synth.ud83dudcf8_snapshot_saved'), 'success'); }, className: "px-3 py-1.5 rounded-lg text-[11px] font-bold bg-purple-100 text-purple-700 hover:bg-purple-200 transition-all" }, "\uD83D\uDCF8 Snapshot")
+                    React.createElement("button", { onClick: function () { setToolSnapshots(function (prev) { return prev.concat([{ id: 'sy-' + Date.now(), tool: 'synth', label: t('stem.synth.composition'), data: Object.assign({}, d), timestamp: Date.now() }]); }); addToast('\uD83D\uDCF8 Snapshot saved!', 'success'); }, className: "px-3 py-1.5 rounded-lg text-[11px] font-bold bg-purple-100 text-purple-700 hover:bg-purple-200 transition-all" }, "\uD83D\uDCF8 Snapshot")
                   ),
                   // Saved compositions list
                   (function () {
@@ -14955,12 +17402,32 @@
                           var nIdx = (ri + intv) % 12; var nOct = oct + Math.floor((ri + intv) / 12);
                           strings.push({ note: NOTE_NAMES[nIdx], oct: nOct, freq: noteFreq(NOTE_NAMES[nIdx], nOct) });
                         });
-                        // Add octave above for more strings
+                        // Octave +1
                         chordData.intervals.forEach(function (intv) {
                           var nIdx = (ri + intv) % 12; var nOct = oct + 1 + Math.floor((ri + intv) / 12);
                           strings.push({ note: NOTE_NAMES[nIdx], oct: nOct, freq: noteFreq(NOTE_NAMES[nIdx], nOct) });
                         });
-                        return strings.slice(0, 8).map(function (s, si) {
+                        // Octave +2
+                        chordData.intervals.forEach(function (intv) {
+                          var nIdx = (ri + intv) % 12; var nOct = oct + 2 + Math.floor((ri + intv) / 12);
+                          strings.push({ note: NOTE_NAMES[nIdx], oct: nOct, freq: noteFreq(NOTE_NAMES[nIdx], nOct) });
+                        });
+                        // Octave +3
+                        chordData.intervals.forEach(function (intv) {
+                          var nIdx = (ri + intv) % 12; var nOct = oct + 3 + Math.floor((ri + intv) / 12);
+                          strings.push({ note: NOTE_NAMES[nIdx], oct: nOct, freq: noteFreq(NOTE_NAMES[nIdx], nOct) });
+                        });
+                        // Octave +4
+                        chordData.intervals.forEach(function (intv) {
+                          var nIdx = (ri + intv) % 12; var nOct = oct + 4 + Math.floor((ri + intv) / 12);
+                          strings.push({ note: NOTE_NAMES[nIdx], oct: nOct, freq: noteFreq(NOTE_NAMES[nIdx], nOct) });
+                        });
+                        // Octave +5
+                        chordData.intervals.forEach(function (intv) {
+                          var nIdx = (ri + intv) % 12; var nOct = oct + 5 + Math.floor((ri + intv) / 12);
+                          strings.push({ note: NOTE_NAMES[nIdx], oct: nOct, freq: noteFreq(NOTE_NAMES[nIdx], nOct) });
+                        });
+                        return strings.slice(0, 24).map(function (s, si) {
                           var isPlaying = (d.omniStrumActive || []).indexOf(si) !== -1;
                           return React.createElement("div", {
                             key: si,
@@ -14977,10 +17444,10 @@
                               }
                             },
                             className: "flex-1 rounded-lg cursor-pointer transition-all select-none " + (isPlaying ? 'bg-amber-500 shadow-lg scale-y-105' : 'bg-gradient-to-b from-amber-300 to-amber-400 hover:from-amber-400 hover:to-amber-500'),
-                            style: { height: '80px', minWidth: '30px' }
+                            style: { height: '80px', minWidth: '14px' }
                           },
-                            React.createElement("div", { className: "text-center pt-1 text-[9px] font-bold " + (isPlaying ? 'text-white' : 'text-amber-800') }, s.note + s.oct),
-                            React.createElement("div", { className: "w-px mx-auto h-12 " + (isPlaying ? 'bg-white' : 'bg-amber-600 opacity-40') })
+                            React.createElement("div", { className: "text-center pt-1 text-[8px] font-bold " + (isPlaying ? 'text-white' : 'text-amber-800') }, s.note + s.oct),
+                            React.createElement("div", { className: "w-px mx-auto h-10 " + (isPlaying ? 'bg-white' : 'bg-amber-600 opacity-40') })
                           );
                         });
                       })()
@@ -15331,7 +17798,7 @@
 
               // ── Snapshot button (bottom) ──
               React.createElement("div", { className: "flex gap-3 mt-3 items-center" },
-                React.createElement("button", { onClick: function () { setToolSnapshots(function (prev) { return prev.concat([{ id: 'sy-' + Date.now(), tool: 'synth', label: t('stem.synth_ui.synth') + (d.waveType || 'sine'), data: Object.assign({}, d), timestamp: Date.now() }]); }); addToast(t('stem.synth_ui.ud83dudcf8_synthesizer_snapshot_saved'), 'success'); }, className: "ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
+                React.createElement("button", { onClick: function () { setToolSnapshots(function (prev) { return prev.concat([{ id: 'sy-' + Date.now(), tool: 'synth', label: t('stem.synth_ui.synth') + (d.waveType || 'sine'), data: Object.assign({}, d), timestamp: Date.now() }]); }); addToast('\uD83D\uDCF8 Snapshot saved!', 'success'); }, className: "ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
               )
             );
 
@@ -15568,94 +18035,434 @@
                 anatTick++;
                 ctx.clearRect(0, 0, W, H);
 
-                // Body silhouette
+                // ── Enhanced Anatomical Figure ──
                 ctx.save();
-                ctx.fillStyle = '#f5f0eb';
-                ctx.strokeStyle = '#cbd5e1';
-                ctx.lineWidth = 1.5;
                 ctx.lineJoin = 'round';
                 ctx.lineCap = 'round';
-                // Head
-                ctx.beginPath(); ctx.ellipse(W * 0.5, H * 0.065, W * 0.055, H * 0.045, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-                // Neck
-                ctx.beginPath(); ctx.rect(W * 0.47, H * 0.1, W * 0.06, H * 0.03); ctx.fill(); ctx.stroke();
-                // Torso
+
+                // Skin gradient for realistic shading
+                var skinGrad = ctx.createLinearGradient(W * 0.3, 0, W * 0.7, H);
+                skinGrad.addColorStop(0, '#f5e6d3');
+                skinGrad.addColorStop(0.3, '#f0ddd0');
+                skinGrad.addColorStop(0.6, '#ebd5c6');
+                skinGrad.addColorStop(1, '#e8cfc0');
+
+                // Ambient shadow gradient
+                var shadowGrad = ctx.createRadialGradient(W * 0.5, H * 0.4, W * 0.05, W * 0.5, H * 0.4, W * 0.4);
+                shadowGrad.addColorStop(0, 'rgba(180,160,140,0.08)');
+                shadowGrad.addColorStop(1, 'rgba(180,160,140,0)');
+
+                // Helper: draw body part with gradient/shadow
+                function drawBodyPart(pathFn, extraShadow) {
+                  // Shadow layer
+                  ctx.save();
+                  ctx.shadowColor = 'rgba(120,100,80,0.15)';
+                  ctx.shadowBlur = 6;
+                  ctx.shadowOffsetX = 2;
+                  ctx.shadowOffsetY = 3;
+                  ctx.beginPath(); pathFn(ctx);
+                  ctx.fillStyle = skinGrad;
+                  ctx.fill();
+                  ctx.restore();
+                  // Main fill
+                  ctx.beginPath(); pathFn(ctx);
+                  ctx.fillStyle = skinGrad;
+                  ctx.fill();
+                  // Outline
+                  ctx.beginPath(); pathFn(ctx);
+                  ctx.strokeStyle = '#c4aa94';
+                  ctx.lineWidth = 1.2;
+                  ctx.stroke();
+                }
+
+                // Head (oval with jaw definition)
+                drawBodyPart(function (c) {
+                  c.ellipse(W * 0.5, H * 0.06, W * 0.058, H * 0.046, 0, 0, Math.PI * 2);
+                });
+                // Jaw hint
                 ctx.beginPath();
-                ctx.moveTo(W * 0.32, H * 0.135); ctx.lineTo(W * 0.68, H * 0.135);
-                ctx.quadraticCurveTo(W * 0.70, H * 0.22, W * 0.64, H * 0.40);
-                ctx.lineTo(W * 0.57, H * 0.43); ctx.lineTo(W * 0.43, H * 0.43);
-                ctx.lineTo(W * 0.36, H * 0.40);
-                ctx.quadraticCurveTo(W * 0.30, H * 0.22, W * 0.32, H * 0.135);
-                ctx.fill(); ctx.stroke();
-                // Left arm
+                ctx.moveTo(W * 0.46, H * 0.085);
+                ctx.quadraticCurveTo(W * 0.50, H * 0.11, W * 0.54, H * 0.085);
+                ctx.strokeStyle = '#d4b8a0'; ctx.lineWidth = 0.7; ctx.stroke();
+                // Ear hints
+                ctx.beginPath(); ctx.ellipse(W * 0.44, H * 0.06, W * 0.008, H * 0.018, 0, 0, Math.PI * 2);
+                ctx.strokeStyle = '#d4b8a0'; ctx.lineWidth = 0.6; ctx.stroke();
+                ctx.beginPath(); ctx.ellipse(W * 0.56, H * 0.06, W * 0.008, H * 0.018, 0, 0, Math.PI * 2);
+                ctx.strokeStyle = '#d4b8a0'; ctx.lineWidth = 0.6; ctx.stroke();
+
+                // Neck (tapered)
+                drawBodyPart(function (c) {
+                  c.moveTo(W * 0.465, H * 0.10);
+                  c.quadraticCurveTo(W * 0.46, H * 0.115, W * 0.44, H * 0.135);
+                  c.lineTo(W * 0.56, H * 0.135);
+                  c.quadraticCurveTo(W * 0.54, H * 0.115, W * 0.535, H * 0.10);
+                  c.closePath();
+                });
+                // Sternocleidomastoid hint
                 ctx.beginPath();
-                ctx.moveTo(W * 0.32, H * 0.14); ctx.quadraticCurveTo(W * 0.22, H * 0.20, W * 0.19, H * 0.30);
-                ctx.quadraticCurveTo(W * 0.16, H * 0.38, W * 0.14, H * 0.45);
-                ctx.lineTo(W * 0.18, H * 0.45); ctx.quadraticCurveTo(W * 0.20, H * 0.38, W * 0.23, H * 0.30);
-                ctx.quadraticCurveTo(W * 0.26, H * 0.22, W * 0.35, H * 0.14);
-                ctx.fill(); ctx.stroke();
+                ctx.moveTo(W * 0.47, H * 0.105); ctx.quadraticCurveTo(W * 0.45, H * 0.12, W * 0.45, H * 0.135);
+                ctx.strokeStyle = '#d9c0a8'; ctx.lineWidth = 0.5; ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(W * 0.53, H * 0.105); ctx.quadraticCurveTo(W * 0.55, H * 0.12, W * 0.55, H * 0.135);
+                ctx.stroke();
+
+                // Torso (anatomical proportions with waist taper)
+                drawBodyPart(function (c) {
+                  c.moveTo(W * 0.34, H * 0.135);
+                  c.quadraticCurveTo(W * 0.38, H * 0.13, W * 0.50, H * 0.132);
+                  c.quadraticCurveTo(W * 0.62, H * 0.13, W * 0.66, H * 0.135);
+                  c.quadraticCurveTo(W * 0.69, H * 0.16, W * 0.68, H * 0.20);
+                  c.quadraticCurveTo(W * 0.67, H * 0.28, W * 0.64, H * 0.34);
+                  c.quadraticCurveTo(W * 0.61, H * 0.38, W * 0.58, H * 0.40);
+                  c.quadraticCurveTo(W * 0.55, H * 0.425, W * 0.50, H * 0.43);
+                  c.quadraticCurveTo(W * 0.45, H * 0.425, W * 0.42, H * 0.40);
+                  c.quadraticCurveTo(W * 0.39, H * 0.38, W * 0.36, H * 0.34);
+                  c.quadraticCurveTo(W * 0.33, H * 0.28, W * 0.32, H * 0.20);
+                  c.quadraticCurveTo(W * 0.31, H * 0.16, W * 0.34, H * 0.135);
+                });
+                // Torso musculature contours
+                ctx.globalAlpha = 0.3;
+                // Pec line
+                ctx.beginPath();
+                ctx.moveTo(W * 0.36, H * 0.155); ctx.quadraticCurveTo(W * 0.42, H * 0.19, W * 0.50, H * 0.19);
+                ctx.quadraticCurveTo(W * 0.58, H * 0.19, W * 0.64, H * 0.155);
+                ctx.strokeStyle = '#c4aa94'; ctx.lineWidth = 0.6; ctx.stroke();
+                // Midline (linea alba)
+                ctx.beginPath();
+                ctx.moveTo(W * 0.50, H * 0.15); ctx.lineTo(W * 0.50, H * 0.42);
+                ctx.strokeStyle = '#c4aa94'; ctx.lineWidth = 0.5; ctx.stroke();
+                // Rib hints (subtle curves)
+                for (var ri = 0; ri < 4; ri++) {
+                  var ry = H * (0.19 + ri * 0.032);
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.42, ry); ctx.quadraticCurveTo(W * 0.46, ry + H * 0.008, W * 0.50, ry + H * 0.003);
+                  ctx.strokeStyle = '#d0b89e'; ctx.lineWidth = 0.4; ctx.stroke();
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.58, ry); ctx.quadraticCurveTo(W * 0.54, ry + H * 0.008, W * 0.50, ry + H * 0.003);
+                  ctx.stroke();
+                }
+                // Rectus abdominis segments
+                for (var ai = 0; ai < 3; ai++) {
+                  var ay = H * (0.30 + ai * 0.035);
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.44, ay); ctx.lineTo(W * 0.56, ay);
+                  ctx.strokeStyle = '#d0b89e'; ctx.lineWidth = 0.4; ctx.stroke();
+                }
+                // Navel
+                ctx.beginPath(); ctx.arc(W * 0.50, H * 0.36, 2.5, 0, Math.PI * 2);
+                ctx.strokeStyle = '#c4aa94'; ctx.lineWidth = 0.5; ctx.stroke();
+                ctx.globalAlpha = 1.0;
+
+                // Shoulders (defined deltoid caps)
+                drawBodyPart(function (c) {
+                  c.moveTo(W * 0.34, H * 0.135);
+                  c.quadraticCurveTo(W * 0.28, H * 0.125, W * 0.25, H * 0.145);
+                  c.quadraticCurveTo(W * 0.24, H * 0.165, W * 0.27, H * 0.185);
+                  c.quadraticCurveTo(W * 0.30, H * 0.17, W * 0.34, H * 0.155);
+                  c.closePath();
+                });
+                drawBodyPart(function (c) {
+                  c.moveTo(W * 0.66, H * 0.135);
+                  c.quadraticCurveTo(W * 0.72, H * 0.125, W * 0.75, H * 0.145);
+                  c.quadraticCurveTo(W * 0.76, H * 0.165, W * 0.73, H * 0.185);
+                  c.quadraticCurveTo(W * 0.70, H * 0.17, W * 0.66, H * 0.155);
+                  c.closePath();
+                });
+
+                // Left arm (bicep/forearm definition)
+                drawBodyPart(function (c) {
+                  c.moveTo(W * 0.27, H * 0.185);
+                  c.quadraticCurveTo(W * 0.22, H * 0.22, W * 0.20, H * 0.28);
+                  c.quadraticCurveTo(W * 0.185, H * 0.33, W * 0.175, H * 0.36);
+                  c.quadraticCurveTo(W * 0.17, H * 0.39, W * 0.155, H * 0.44);
+                  c.lineTo(W * 0.13, H * 0.46);
+                  c.lineTo(W * 0.17, H * 0.47);
+                  c.quadraticCurveTo(W * 0.19, H * 0.42, W * 0.195, H * 0.38);
+                  c.quadraticCurveTo(W * 0.21, H * 0.33, W * 0.22, H * 0.29);
+                  c.quadraticCurveTo(W * 0.25, H * 0.22, W * 0.30, H * 0.185);
+                  c.closePath();
+                });
+                // Left arm muscle contour
+                ctx.globalAlpha = 0.25;
+                ctx.beginPath();
+                ctx.moveTo(W * 0.24, H * 0.22); ctx.quadraticCurveTo(W * 0.215, H * 0.27, W * 0.20, H * 0.30);
+                ctx.strokeStyle = '#c4aa94'; ctx.lineWidth = 0.5; ctx.stroke();
+                ctx.globalAlpha = 1.0;
+
                 // Right arm
+                drawBodyPart(function (c) {
+                  c.moveTo(W * 0.73, H * 0.185);
+                  c.quadraticCurveTo(W * 0.78, H * 0.22, W * 0.80, H * 0.28);
+                  c.quadraticCurveTo(W * 0.815, H * 0.33, W * 0.825, H * 0.36);
+                  c.quadraticCurveTo(W * 0.83, H * 0.39, W * 0.845, H * 0.44);
+                  c.lineTo(W * 0.87, H * 0.46);
+                  c.lineTo(W * 0.83, H * 0.47);
+                  c.quadraticCurveTo(W * 0.81, H * 0.42, W * 0.805, H * 0.38);
+                  c.quadraticCurveTo(W * 0.79, H * 0.33, W * 0.78, H * 0.29);
+                  c.quadraticCurveTo(W * 0.75, H * 0.22, W * 0.70, H * 0.185);
+                  c.closePath();
+                });
+                // Right arm muscle contour
+                ctx.globalAlpha = 0.25;
                 ctx.beginPath();
-                ctx.moveTo(W * 0.68, H * 0.14); ctx.quadraticCurveTo(W * 0.78, H * 0.20, W * 0.81, H * 0.30);
-                ctx.quadraticCurveTo(W * 0.84, H * 0.38, W * 0.86, H * 0.45);
-                ctx.lineTo(W * 0.82, H * 0.45); ctx.quadraticCurveTo(W * 0.80, H * 0.38, W * 0.77, H * 0.30);
-                ctx.quadraticCurveTo(W * 0.74, H * 0.22, W * 0.65, H * 0.14);
-                ctx.fill(); ctx.stroke();
-                // Left leg
+                ctx.moveTo(W * 0.76, H * 0.22); ctx.quadraticCurveTo(W * 0.785, H * 0.27, W * 0.80, H * 0.30);
+                ctx.strokeStyle = '#c4aa94'; ctx.lineWidth = 0.5; ctx.stroke();
+                ctx.globalAlpha = 1.0;
+
+                // Hands (simple paddle shape)
+                drawBodyPart(function (c) { c.ellipse(W * 0.15, H * 0.468, W * 0.022, H * 0.014, -0.2, 0, Math.PI * 2); });
+                drawBodyPart(function (c) { c.ellipse(W * 0.85, H * 0.468, W * 0.022, H * 0.014, 0.2, 0, Math.PI * 2); });
+
+                // Left leg (thigh + calf muscle definition)
+                drawBodyPart(function (c) {
+                  c.moveTo(W * 0.42, H * 0.425);
+                  c.quadraticCurveTo(W * 0.39, H * 0.46, W * 0.375, H * 0.52);
+                  c.quadraticCurveTo(W * 0.365, H * 0.58, W * 0.355, H * 0.63);
+                  c.quadraticCurveTo(W * 0.35, H * 0.66, W * 0.36, H * 0.70);
+                  c.quadraticCurveTo(W * 0.355, H * 0.74, W * 0.345, H * 0.80);
+                  c.quadraticCurveTo(W * 0.34, H * 0.86, W * 0.335, H * 0.90);
+                  c.lineTo(W * 0.30, H * 0.935);
+                  c.lineTo(W * 0.39, H * 0.935);
+                  c.lineTo(W * 0.40, H * 0.90);
+                  c.quadraticCurveTo(W * 0.405, H * 0.86, W * 0.41, H * 0.80);
+                  c.quadraticCurveTo(W * 0.42, H * 0.74, W * 0.425, H * 0.70);
+                  c.quadraticCurveTo(W * 0.43, H * 0.66, W * 0.435, H * 0.63);
+                  c.quadraticCurveTo(W * 0.44, H * 0.58, W * 0.45, H * 0.52);
+                  c.quadraticCurveTo(W * 0.46, H * 0.46, W * 0.49, H * 0.425);
+                  c.closePath();
+                });
+                // Left leg muscle contours
+                ctx.globalAlpha = 0.22;
                 ctx.beginPath();
-                ctx.moveTo(W * 0.43, H * 0.43); ctx.quadraticCurveTo(W * 0.38, H * 0.56, W * 0.36, H * 0.68);
-                ctx.quadraticCurveTo(W * 0.35, H * 0.78, W * 0.34, H * 0.88);
-                ctx.lineTo(W * 0.30, H * 0.93); ctx.lineTo(W * 0.40, H * 0.93);
-                ctx.lineTo(W * 0.42, H * 0.88); ctx.quadraticCurveTo(W * 0.43, H * 0.78, W * 0.44, H * 0.68);
-                ctx.quadraticCurveTo(W * 0.46, H * 0.56, W * 0.50, H * 0.43);
-                ctx.fill(); ctx.stroke();
+                ctx.moveTo(W * 0.40, H * 0.46); ctx.quadraticCurveTo(W * 0.39, H * 0.54, W * 0.38, H * 0.62);
+                ctx.strokeStyle = '#c4aa94'; ctx.lineWidth = 0.5; ctx.stroke();
+                // Kneecap hint
+                ctx.beginPath(); ctx.arc(W * 0.395, H * 0.68, 4, 0, Math.PI * 2);
+                ctx.strokeStyle = '#c4aa94'; ctx.lineWidth = 0.5; ctx.stroke();
+                // Calf bulge
+                ctx.beginPath();
+                ctx.moveTo(W * 0.37, H * 0.73); ctx.quadraticCurveTo(W * 0.36, H * 0.77, W * 0.36, H * 0.80);
+                ctx.stroke();
+                ctx.globalAlpha = 1.0;
+
                 // Right leg
+                drawBodyPart(function (c) {
+                  c.moveTo(W * 0.58, H * 0.425);
+                  c.quadraticCurveTo(W * 0.61, H * 0.46, W * 0.625, H * 0.52);
+                  c.quadraticCurveTo(W * 0.635, H * 0.58, W * 0.645, H * 0.63);
+                  c.quadraticCurveTo(W * 0.65, H * 0.66, W * 0.64, H * 0.70);
+                  c.quadraticCurveTo(W * 0.645, H * 0.74, W * 0.655, H * 0.80);
+                  c.quadraticCurveTo(W * 0.66, H * 0.86, W * 0.665, H * 0.90);
+                  c.lineTo(W * 0.70, H * 0.935);
+                  c.lineTo(W * 0.61, H * 0.935);
+                  c.lineTo(W * 0.60, H * 0.90);
+                  c.quadraticCurveTo(W * 0.595, H * 0.86, W * 0.59, H * 0.80);
+                  c.quadraticCurveTo(W * 0.58, H * 0.74, W * 0.575, H * 0.70);
+                  c.quadraticCurveTo(W * 0.57, H * 0.66, W * 0.565, H * 0.63);
+                  c.quadraticCurveTo(W * 0.56, H * 0.58, W * 0.55, H * 0.52);
+                  c.quadraticCurveTo(W * 0.54, H * 0.46, W * 0.51, H * 0.425);
+                  c.closePath();
+                });
+                // Right leg muscle contours
+                ctx.globalAlpha = 0.22;
                 ctx.beginPath();
-                ctx.moveTo(W * 0.57, H * 0.43); ctx.quadraticCurveTo(W * 0.62, H * 0.56, W * 0.64, H * 0.68);
-                ctx.quadraticCurveTo(W * 0.65, H * 0.78, W * 0.66, H * 0.88);
-                ctx.lineTo(W * 0.70, H * 0.93); ctx.lineTo(W * 0.60, H * 0.93);
-                ctx.lineTo(W * 0.58, H * 0.88); ctx.quadraticCurveTo(W * 0.57, H * 0.78, W * 0.56, H * 0.68);
-                ctx.quadraticCurveTo(W * 0.54, H * 0.56, W * 0.50, H * 0.43);
-                ctx.fill(); ctx.stroke();
+                ctx.moveTo(W * 0.60, H * 0.46); ctx.quadraticCurveTo(W * 0.61, H * 0.54, W * 0.62, H * 0.62);
+                ctx.strokeStyle = '#c4aa94'; ctx.lineWidth = 0.5; ctx.stroke();
+                ctx.beginPath(); ctx.arc(W * 0.605, H * 0.68, 4, 0, Math.PI * 2);
+                ctx.strokeStyle = '#c4aa94'; ctx.lineWidth = 0.5; ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(W * 0.63, H * 0.73); ctx.quadraticCurveTo(W * 0.64, H * 0.77, W * 0.64, H * 0.80);
+                ctx.stroke();
+                ctx.globalAlpha = 1.0;
+
+                // Feet
+                drawBodyPart(function (c) {
+                  c.moveTo(W * 0.30, H * 0.935); c.lineTo(W * 0.28, H * 0.955); c.quadraticCurveTo(W * 0.30, H * 0.965, W * 0.38, H * 0.96); c.lineTo(W * 0.39, H * 0.935); c.closePath();
+                });
+                drawBodyPart(function (c) {
+                  c.moveTo(W * 0.70, H * 0.935); c.lineTo(W * 0.72, H * 0.955); c.quadraticCurveTo(W * 0.70, H * 0.965, W * 0.62, H * 0.96); c.lineTo(W * 0.61, H * 0.935); c.closePath();
+                });
+
+                // ── System-specific overlay ──
+                ctx.globalAlpha = 0.30;
+                if (sysKey === 'skeletal') {
+                  // Spine line
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.50, H * 0.10);
+                  for (var si = 0; si < 18; si++) {
+                    var sy = H * (0.11 + si * 0.018);
+                    ctx.lineTo(W * (0.50 + Math.sin(si * 0.3) * 0.003), sy);
+                  }
+                  ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 3; ctx.stroke();
+                  // Vertebra marks
+                  for (var vi2 = 0; vi2 < 18; vi2++) {
+                    var vy2 = H * (0.11 + vi2 * 0.018);
+                    ctx.beginPath();
+                    ctx.moveTo(W * 0.48, vy2); ctx.lineTo(W * 0.52, vy2);
+                    ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 1.5; ctx.stroke();
+                  }
+                  // Pelvis outline
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.40, H * 0.39); ctx.quadraticCurveTo(W * 0.36, H * 0.42, W * 0.38, H * 0.45);
+                  ctx.quadraticCurveTo(W * 0.44, H * 0.46, W * 0.50, H * 0.44);
+                  ctx.quadraticCurveTo(W * 0.56, H * 0.46, W * 0.62, H * 0.45);
+                  ctx.quadraticCurveTo(W * 0.64, H * 0.42, W * 0.60, H * 0.39);
+                  ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 2; ctx.stroke();
+                  // Clavicles
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.42, H * 0.138); ctx.quadraticCurveTo(W * 0.36, H * 0.132, W * 0.30, H * 0.145);
+                  ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 1.5; ctx.stroke();
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.58, H * 0.138); ctx.quadraticCurveTo(W * 0.64, H * 0.132, W * 0.70, H * 0.145);
+                  ctx.stroke();
+                } else if (sysKey === 'muscular') {
+                  // Pectoral muscle outlines
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.37, H * 0.14); ctx.quadraticCurveTo(W * 0.42, H * 0.19, W * 0.49, H * 0.19);
+                  ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 1.2; ctx.stroke();
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.63, H * 0.14); ctx.quadraticCurveTo(W * 0.58, H * 0.19, W * 0.51, H * 0.19);
+                  ctx.stroke();
+                  // Abs lines (more visible)
+                  for (var mi = 0; mi < 4; mi++) {
+                    var my = H * (0.28 + mi * 0.03);
+                    ctx.beginPath(); ctx.moveTo(W * 0.45, my); ctx.lineTo(W * 0.55, my);
+                    ctx.strokeStyle = '#dc262680'; ctx.lineWidth = 0.8; ctx.stroke();
+                  }
+                  // Quad outlines
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.42, H * 0.44); ctx.quadraticCurveTo(W * 0.40, H * 0.54, W * 0.39, H * 0.64);
+                  ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 1; ctx.stroke();
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.58, H * 0.44); ctx.quadraticCurveTo(W * 0.60, H * 0.54, W * 0.61, H * 0.64);
+                  ctx.stroke();
+                } else if (sysKey === 'circulatory') {
+                  // Pulsing heart
+                  var heartPulse = 1.0 + Math.sin(anatTick * 0.08) * 0.08;
+                  ctx.save();
+                  ctx.translate(W * 0.52, H * 0.22);
+                  ctx.scale(heartPulse, heartPulse);
+                  ctx.beginPath();
+                  ctx.moveTo(0, 8);
+                  ctx.bezierCurveTo(-12, -6, -22, -2, -22, 8);
+                  ctx.bezierCurveTo(-22, 18, -5, 26, 0, 35);
+                  ctx.bezierCurveTo(5, 26, 22, 18, 22, 8);
+                  ctx.bezierCurveTo(22, -2, 12, -6, 0, 8);
+                  ctx.fillStyle = '#ef4444';
+                  ctx.globalAlpha = 0.5;
+                  ctx.fill();
+                  ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 1.5; ctx.stroke();
+                  ctx.restore();
+                  ctx.globalAlpha = 0.30;
+                  // Major vessels
+                  ctx.beginPath(); ctx.moveTo(W * 0.50, H * 0.15); ctx.lineTo(W * 0.50, H * 0.42);
+                  ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 2; ctx.stroke();
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.50, H * 0.44); ctx.lineTo(W * 0.42, H * 0.65); ctx.moveTo(W * 0.50, H * 0.44); ctx.lineTo(W * 0.58, H * 0.65);
+                  ctx.stroke();
+                } else if (sysKey === 'nervous') {
+                  // Central spine/cord
+                  ctx.beginPath(); ctx.moveTo(W * 0.50, H * 0.08); ctx.lineTo(W * 0.50, H * 0.42);
+                  ctx.strokeStyle = '#eab308'; ctx.lineWidth = 2.5; ctx.stroke();
+                  // Neural branches
+                  var nervePts = [
+                    [0.50, 0.15, 0.30, 0.30], [0.50, 0.15, 0.70, 0.30],
+                    [0.50, 0.25, 0.35, 0.36], [0.50, 0.25, 0.65, 0.36],
+                    [0.50, 0.42, 0.40, 0.70], [0.50, 0.42, 0.60, 0.70]
+                  ];
+                  nervePts.forEach(function (np) {
+                    ctx.beginPath();
+                    ctx.moveTo(W * np[0], H * np[1]);
+                    ctx.quadraticCurveTo(W * (np[0] + np[2]) * 0.5, H * (np[1] + np[3]) * 0.5, W * np[2], H * np[3]);
+                    ctx.strokeStyle = '#eab30880'; ctx.lineWidth = 1; ctx.stroke();
+                  });
+                  // Brain glow
+                  ctx.beginPath(); ctx.arc(W * 0.50, H * 0.055, 18, 0, Math.PI * 2);
+                  ctx.fillStyle = '#eab30820'; ctx.fill();
+                } else if (sysKey === 'digestive') {
+                  // Esophagus
+                  ctx.beginPath(); ctx.moveTo(W * 0.50, H * 0.13); ctx.lineTo(W * 0.50, H * 0.26);
+                  ctx.strokeStyle = '#16a34a'; ctx.lineWidth = 2; ctx.stroke();
+                  // Stomach
+                  ctx.beginPath(); ctx.ellipse(W * 0.47, H * 0.29, W * 0.04, H * 0.035, -0.3, 0, Math.PI * 2);
+                  ctx.fillStyle = '#16a34a40'; ctx.fill(); ctx.strokeStyle = '#16a34a'; ctx.lineWidth = 1; ctx.stroke();
+                  // Intestines (coil hint)
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.44, H * 0.33);
+                  for (var ii = 0; ii < 8; ii++) {
+                    ctx.lineTo(W * (0.44 + (ii % 2 === 0 ? 0.06 : 0)), H * (0.34 + ii * 0.012));
+                  }
+                  ctx.strokeStyle = '#16a34a'; ctx.lineWidth = 1; ctx.stroke();
+                }
+                ctx.globalAlpha = 1.0;
                 ctx.restore();
 
-                // Draw structure markers
+                // ── Enhanced Structure Markers ──
                 filtered.forEach(function (st) {
                   var px = st.x * W, py = st.y * H;
                   var isSel = sel && sel.id === st.id;
                   var r = isSel ? 9 : 5;
-                  // Glow for selected
+                  // Animated pulsing ring for selected
                   if (isSel) {
+                    var pulse = 1.0 + Math.sin(tick * 0.06) * 0.3;
                     ctx.save();
-                    ctx.shadowColor = sys.accent;
-                    ctx.shadowBlur = 12;
-                    ctx.beginPath(); ctx.arc(px, py, r + 2, 0, Math.PI * 2);
-                    ctx.fillStyle = sys.accent + '40';
-                    ctx.fill();
+                    ctx.globalAlpha = 0.3 - pulse * 0.1;
+                    ctx.beginPath(); ctx.arc(px, py, r + 6 + pulse * 4, 0, Math.PI * 2);
+                    ctx.strokeStyle = sys.accent; ctx.lineWidth = 1.5; ctx.stroke();
+                    ctx.restore();
+                    // Inner glow
+                    ctx.save();
+                    var sGlow = ctx.createRadialGradient(px, py, r * 0.3, px, py, r + 4);
+                    sGlow.addColorStop(0, sys.accent + '50');
+                    sGlow.addColorStop(1, sys.accent + '00');
+                    ctx.beginPath(); ctx.arc(px, py, r + 4, 0, Math.PI * 2);
+                    ctx.fillStyle = sGlow; ctx.fill();
                     ctx.restore();
                   }
+                  // Marker dot (gradient sphere)
+                  var mG = ctx.createRadialGradient(px - 1, py - 1, 1, px, py, r);
+                  mG.addColorStop(0, isSel ? sys.accent + 'cc' : sys.accent + '88');
+                  mG.addColorStop(1, sys.accent);
                   ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
-                  ctx.fillStyle = isSel ? sys.accent : sys.accent + '99';
-                  ctx.fill();
+                  ctx.fillStyle = mG; ctx.fill();
                   ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
-                  // Label for selected
+                  // Label with leader line + tooltip pill
                   if (isSel) {
                     ctx.save();
-                    ctx.font = 'bold 10px Inter, system-ui, sans-serif';
-                    ctx.textAlign = px > W * 0.5 ? 'right' : 'left';
-                    ctx.fillStyle = sys.accent;
-                    var lx = px > W * 0.5 ? px - 14 : px + 14;
-                    ctx.fillText(st.name, lx, py + 3);
+                    var isRight = px > W * 0.5;
+                    var labelX = isRight ? px - 18 : px + 18;
+                    ctx.font = 'bold 9px Inter, system-ui, sans-serif';
+                    var tw = ctx.measureText(st.name).width;
+                    var pillX = isRight ? labelX - tw - 8 : labelX - 4;
+                    var pillY = py - 7;
+                    // Leader line
+                    ctx.beginPath();
+                    ctx.moveTo(px + (isRight ? -r - 2 : r + 2), py);
+                    ctx.lineTo(isRight ? pillX + tw + 8 : pillX, py);
+                    ctx.strokeStyle = sys.accent + '60'; ctx.lineWidth = 1; ctx.setLineDash([2, 2]); ctx.stroke(); ctx.setLineDash([]);
+                    // Tooltip pill
+                    ctx.beginPath();
+                    ctx.roundRect(pillX, pillY, tw + 10, 15, 4);
+                    ctx.fillStyle = sys.accent; ctx.fill();
+                    ctx.shadowColor = sys.accent + '40'; ctx.shadowBlur = 4;
+                    // Label text
+                    ctx.textAlign = isRight ? 'right' : 'left';
+                    ctx.fillStyle = '#fff';
+                    ctx.fillText(st.name, isRight ? pillX + tw + 5 : pillX + 5, py + 3);
                     ctx.restore();
                   }
                 });
-
-                // View label
+                // ── Styled View Label ──
                 ctx.save();
-                ctx.font = 'bold 10px Inter, system-ui, sans-serif';
-                ctx.fillStyle = '#94a3b8';
-                ctx.textAlign = 'center';
-                ctx.fillText(view === 'anterior' ? 'ANTERIOR VIEW' : 'POSTERIOR VIEW', W * 0.5, H - 6);
+                var viewLbl = view === 'anterior' ? 'ANTERIOR VIEW' : 'POSTERIOR VIEW';
+                ctx.font = 'bold 9px Inter, system-ui, sans-serif';
+                var vW = ctx.measureText(viewLbl).width + 16;
+                ctx.beginPath();
+                ctx.roundRect(W * 0.5 - vW / 2, H - 18, vW, 14, 4);
+                ctx.fillStyle = '#f8fafc'; ctx.fill();
+                ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 0.5; ctx.stroke();
+                ctx.fillStyle = '#94a3b8'; ctx.textAlign = 'center';
+                ctx.fillText(viewLbl, W * 0.5, H - 8);
                 ctx.restore();
 
                 // Continue animation
@@ -15967,10 +18774,18 @@
                 ctx.clearRect(0, 0, W, H);
                 ctx.save();
 
-                // Neurotransmitter synapse view
+                // ── Enhanced Neurotransmitter Synapse View ──
                 if (currentView.isNT) {
-                  // Presynaptic terminal
-                  ctx.fillStyle = '#f5f0f8'; ctx.strokeStyle = '#7c3aed'; ctx.lineWidth = 2;
+                  var tNT = brainTick * 0.02;
+                  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+                  // ── Presynaptic Terminal (gradient fill + shadow) ──
+                  ctx.save();
+                  ctx.shadowColor = 'rgba(124,58,237,0.12)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 3;
+                  var preGrad = ctx.createLinearGradient(W * 0.1, H * 0.05, W * 0.1, H * 0.40);
+                  preGrad.addColorStop(0, '#f3eefc');
+                  preGrad.addColorStop(0.5, '#ede5f8');
+                  preGrad.addColorStop(1, '#e4d9f0');
                   ctx.beginPath();
                   ctx.moveTo(W * 0.15, H * 0.05); ctx.lineTo(W * 0.85, H * 0.05);
                   ctx.quadraticCurveTo(W * 0.90, H * 0.05, W * 0.90, H * 0.10);
@@ -15980,98 +18795,432 @@
                   ctx.quadraticCurveTo(W * 0.15, H * 0.38, W * 0.10, H * 0.32);
                   ctx.lineTo(W * 0.10, H * 0.10);
                   ctx.quadraticCurveTo(W * 0.10, H * 0.05, W * 0.15, H * 0.05);
-                  ctx.fill(); ctx.stroke();
+                  ctx.fillStyle = preGrad; ctx.fill();
+                  ctx.restore();
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.15, H * 0.05); ctx.lineTo(W * 0.85, H * 0.05);
+                  ctx.quadraticCurveTo(W * 0.90, H * 0.05, W * 0.90, H * 0.10);
+                  ctx.lineTo(W * 0.90, H * 0.32);
+                  ctx.quadraticCurveTo(W * 0.85, H * 0.38, W * 0.70, H * 0.40);
+                  ctx.lineTo(W * 0.30, H * 0.40);
+                  ctx.quadraticCurveTo(W * 0.15, H * 0.38, W * 0.10, H * 0.32);
+                  ctx.lineTo(W * 0.10, H * 0.10);
+                  ctx.quadraticCurveTo(W * 0.10, H * 0.05, W * 0.15, H * 0.05);
+                  ctx.strokeStyle = '#8b6fc0'; ctx.lineWidth = 2; ctx.stroke();
+
+                  // Phospholipid bilayer texture on presynaptic membrane bottom
+                  ctx.save(); ctx.globalAlpha = 0.22;
+                  for (var pli = 0; pli < 16; pli++) {
+                    var plx = W * 0.18 + pli * W * 0.045;
+                    var plBaseY = H * 0.38 + (pli < 4 || pli > 12 ? -H * 0.02 : 0);
+                    // Lipid heads (circles)
+                    ctx.beginPath(); ctx.arc(plx, plBaseY, 3, 0, Math.PI * 2);
+                    ctx.fillStyle = '#a78bfa'; ctx.fill();
+                    // Lipid tails (wavy lines)
+                    ctx.beginPath();
+                    ctx.moveTo(plx, plBaseY - 3);
+                    ctx.quadraticCurveTo(plx - 1.5, plBaseY - 8, plx, plBaseY - 12);
+                    ctx.strokeStyle = '#c4b5d8'; ctx.lineWidth = 0.8; ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(plx + 1, plBaseY - 3);
+                    ctx.quadraticCurveTo(plx + 2.5, plBaseY - 8, plx + 1, plBaseY - 12);
+                    ctx.stroke();
+                  }
+                  ctx.restore();
+
+                  // Label
                   ctx.font = 'bold 10px Inter, system-ui, sans-serif';
                   ctx.fillStyle = '#7c3aed'; ctx.textAlign = 'center';
-                  ctx.fillText('PRESYNAPTIC TERMINAL', W * 0.5, H * 0.15);
-                  // Vesicles
+                  ctx.fillText('PRESYNAPTIC TERMINAL', W * 0.5, H * 0.10);
+
+                  // ── Mitochondria (energy source) ──
+                  ctx.save(); ctx.globalAlpha = 0.35;
+                  ctx.beginPath(); ctx.ellipse(W * 0.78, H * 0.12, W * 0.06, H * 0.025, 0.2, 0, Math.PI * 2);
+                  ctx.fillStyle = '#fde68a'; ctx.fill();
+                  ctx.strokeStyle = '#d97706'; ctx.lineWidth = 1; ctx.stroke();
+                  // Cristae folds
+                  for (var cr = 0; cr < 4; cr++) {
+                    var crx = W * 0.74 + cr * W * 0.022;
+                    ctx.beginPath();
+                    ctx.moveTo(crx, H * 0.10); ctx.quadraticCurveTo(crx + W * 0.005, H * 0.12, crx, H * 0.14);
+                    ctx.strokeStyle = '#b4590080'; ctx.lineWidth = 0.6; ctx.stroke();
+                  }
+                  ctx.font = '6px Inter, system-ui, sans-serif';
+                  ctx.fillStyle = '#b45900'; ctx.textAlign = 'center';
+                  ctx.fillText('Mitochondria', W * 0.78, H * 0.155);
+                  ctx.restore();
+
+                  // ── Calcium channel (animated glow on membrane edge) ──
+                  var caGlow = 0.4 + Math.sin(tNT * 2.5) * 0.3;
+                  ctx.save();
+                  ctx.globalAlpha = caGlow;
+                  ctx.beginPath(); ctx.arc(W * 0.42, H * 0.39, 7, 0, Math.PI * 2);
+                  var caGrad = ctx.createRadialGradient(W * 0.42, H * 0.39, 1, W * 0.42, H * 0.39, 7);
+                  caGrad.addColorStop(0, '#22d3ee');
+                  caGrad.addColorStop(1, '#22d3ee00');
+                  ctx.fillStyle = caGrad; ctx.fill();
+                  ctx.restore();
+                  ctx.beginPath(); ctx.arc(W * 0.42, H * 0.39, 4, 0, Math.PI * 2);
+                  ctx.fillStyle = '#06b6d4'; ctx.fill();
+                  ctx.strokeStyle = '#0891b2'; ctx.lineWidth = 1; ctx.stroke();
+                  ctx.font = '6px Inter, system-ui, sans-serif';
+                  ctx.fillStyle = '#0e7490'; ctx.textAlign = 'center';
+                  ctx.fillText('Ca²⁺', W * 0.42, H * 0.39 + 2);
+
+                  // ── Vesicles with glow + one fusing ──
                   var vesColors = ['#c084fc', '#a78bfa', '#8b5cf6', '#7c3aed'];
                   for (var vi = 0; vi < 8; vi++) {
-                    var vx = W * 0.25 + (vi % 4) * W * 0.14, vy = H * 0.22 + Math.floor(vi / 4) * H * 0.06;
-                    ctx.beginPath(); ctx.arc(vx, vy, 8, 0, Math.PI * 2);
-                    ctx.fillStyle = vesColors[vi % 4] + '60'; ctx.fill();
-                    ctx.strokeStyle = vesColors[vi % 4]; ctx.lineWidth = 1.5; ctx.stroke();
-                    // NT dots inside vesicle
-                    for (var di = 0; di < 3; di++) {
-                      ctx.beginPath(); ctx.arc(vx - 3 + di * 3, vy, 1.5, 0, Math.PI * 2);
-                      ctx.fillStyle = vesColors[vi % 4]; ctx.fill();
+                    var vx = W * 0.22 + (vi % 4) * W * 0.15, vy = H * 0.20 + Math.floor(vi / 4) * H * 0.064;
+                    var isFusing = vi === 5; // One vesicle animates toward membrane
+                    var vRadius = 9;
+                    var vyAnim = vy;
+                    if (isFusing) {
+                      vyAnim = vy + Math.abs(Math.sin(tNT * 1.2)) * H * 0.08;
+                      vRadius = 9 - Math.abs(Math.sin(tNT * 1.2)) * 3;
+                    }
+                    // Vesicle glow
+                    ctx.save();
+                    var vesGlow = ctx.createRadialGradient(vx, vyAnim, 2, vx, vyAnim, vRadius + 5);
+                    vesGlow.addColorStop(0, vesColors[vi % 4] + '40');
+                    vesGlow.addColorStop(1, vesColors[vi % 4] + '00');
+                    ctx.beginPath(); ctx.arc(vx, vyAnim, vRadius + 5, 0, Math.PI * 2);
+                    ctx.fillStyle = vesGlow; ctx.fill();
+                    ctx.restore();
+                    // Vesicle body (gradient sphere)
+                    var vesBody = ctx.createRadialGradient(vx - 2, vyAnim - 2, 1, vx, vyAnim, vRadius);
+                    vesBody.addColorStop(0, '#f0e6ff');
+                    vesBody.addColorStop(0.5, vesColors[vi % 4] + '80');
+                    vesBody.addColorStop(1, vesColors[vi % 4]);
+                    ctx.beginPath(); ctx.arc(vx, vyAnim, vRadius, 0, Math.PI * 2);
+                    ctx.fillStyle = vesBody; ctx.fill();
+                    ctx.strokeStyle = vesColors[vi % 4]; ctx.lineWidth = 1; ctx.stroke();
+                    // NT molecules inside (small dots)
+                    if (!isFusing || vRadius > 5) {
+                      for (var di = 0; di < 4; di++) {
+                        var da = (di / 4) * Math.PI * 2 + tNT * 0.5;
+                        var dr = vRadius * 0.4;
+                        ctx.beginPath(); ctx.arc(vx + Math.cos(da) * dr, vyAnim + Math.sin(da) * dr, 1.5, 0, Math.PI * 2);
+                        ctx.fillStyle = '#fff'; ctx.fill();
+                      }
                     }
                   }
-                  // Synaptic cleft
-                  ctx.fillStyle = '#e2e8f040'; ctx.strokeStyle = '#94a3b8';
-                  ctx.lineWidth = 1; ctx.setLineDash([4, 3]);
-                  ctx.fillRect(W * 0.08, H * 0.42, W * 0.84, H * 0.16);
-                  ctx.strokeRect(W * 0.08, H * 0.42, W * 0.84, H * 0.16);
+
+                  // ── Synaptic Cleft (gradient + depth) ──
+                  ctx.save();
+                  var cleftGrad = ctx.createLinearGradient(0, H * 0.41, 0, H * 0.59);
+                  cleftGrad.addColorStop(0, '#ede5f810');
+                  cleftGrad.addColorStop(0.3, '#e8f4f812');
+                  cleftGrad.addColorStop(0.7, '#e8f4f812');
+                  cleftGrad.addColorStop(1, '#fef3c710');
+                  ctx.fillStyle = cleftGrad;
+                  ctx.fillRect(W * 0.06, H * 0.41, W * 0.88, H * 0.18);
+                  ctx.restore();
+                  // Cleft borders
+                  ctx.setLineDash([5, 3]);
+                  ctx.strokeStyle = '#94a3b830'; ctx.lineWidth = 1;
+                  ctx.beginPath(); ctx.moveTo(W * 0.06, H * 0.41); ctx.lineTo(W * 0.94, H * 0.41); ctx.stroke();
+                  ctx.beginPath(); ctx.moveTo(W * 0.06, H * 0.59); ctx.lineTo(W * 0.94, H * 0.59); ctx.stroke();
                   ctx.setLineDash([]);
-                  ctx.font = '9px Inter, system-ui, sans-serif';
-                  ctx.fillStyle = '#94a3b8'; ctx.textAlign = 'center';
-                  ctx.fillText('SYNAPTIC CLEFT', W * 0.5, H * 0.51);
-                  // Animated NT particles in cleft
-                  var t2 = brainTick * 0.03;
-                  for (var pi = 0; pi < 12; pi++) {
-                    var px2 = W * 0.15 + (pi * W * 0.06) + Math.sin(t2 + pi * 0.7) * 8;
-                    var py2 = H * 0.44 + Math.abs(Math.sin(t2 * 0.8 + pi * 1.1)) * H * 0.12;
-                    ctx.beginPath(); ctx.arc(px2, py2, 2.5, 0, Math.PI * 2);
-                    ctx.fillStyle = 'hsl(' + ((pi * 30 + brainTick) % 360) + ', 70%, 55%)';
-                    ctx.fill();
-                  }
-                  // Postsynaptic membrane
-                  ctx.fillStyle = '#fef3c720'; ctx.strokeStyle = '#7c3aed'; ctx.lineWidth = 2;
+                  // Cleft label with background
+                  ctx.save();
+                  var cleftLabelW = 80;
+                  ctx.fillStyle = '#f1f5f9'; ctx.globalAlpha = 0.7;
                   ctx.beginPath();
-                  ctx.moveTo(W * 0.08, H * 0.60); ctx.lineTo(W * 0.92, H * 0.60);
-                  ctx.quadraticCurveTo(W * 0.95, H * 0.62, W * 0.92, H * 0.64);
-                  ctx.lineTo(W * 0.92, H * 0.95); ctx.lineTo(W * 0.08, H * 0.95);
-                  ctx.lineTo(W * 0.08, H * 0.64);
-                  ctx.quadraticCurveTo(W * 0.05, H * 0.62, W * 0.08, H * 0.60);
-                  ctx.fill(); ctx.stroke();
-                  ctx.font = 'bold 10px Inter, system-ui, sans-serif';
-                  ctx.fillStyle = '#7c3aed'; ctx.textAlign = 'center';
-                  ctx.fillText('POSTSYNAPTIC MEMBRANE', W * 0.5, H * 0.72);
-                  // Receptors on postsynaptic
-                  var recTypes = ['Ionotropic', 'Metabotropic', 'GPCR', 'Ion Channel'];
-                  for (var ri = 0; ri < 6; ri++) {
-                    var rx = W * 0.18 + ri * W * 0.12, ry = H * 0.60;
-                    ctx.fillStyle = '#fde68a'; ctx.strokeStyle = '#b45309'; ctx.lineWidth = 1.5;
-                    ctx.beginPath();
-                    ctx.moveTo(rx - 5, ry); ctx.lineTo(rx - 8, ry + 14); ctx.lineTo(rx + 8, ry + 14); ctx.lineTo(rx + 5, ry);
-                    ctx.fill(); ctx.stroke();
-                    ctx.font = '7px Inter, system-ui, sans-serif';
-                    ctx.fillStyle = '#92400e'; ctx.textAlign = 'center';
-                    ctx.fillText(recTypes[ri % 4], rx, ry + 25);
+                  ctx.roundRect(W * 0.5 - cleftLabelW / 2, H * 0.485, cleftLabelW, 14, 4);
+                  ctx.fill();
+                  ctx.restore();
+                  ctx.font = 'bold 8px Inter, system-ui, sans-serif';
+                  ctx.fillStyle = '#64748b'; ctx.textAlign = 'center';
+                  ctx.fillText('SYNAPTIC CLEFT (~20nm)', W * 0.5, H * 0.50);
+
+                  // ── Animated NT particles (glowing with trails) ──
+                  for (var pi = 0; pi < 14; pi++) {
+                    var px2 = W * 0.14 + (pi * W * 0.055) + Math.sin(tNT * 1.5 + pi * 0.8) * 10;
+                    var py2 = H * 0.43 + Math.abs(Math.sin(tNT * 1.0 + pi * 1.3)) * H * 0.14;
+                    // Glow
+                    ctx.save();
+                    var ptGlow = ctx.createRadialGradient(px2, py2, 0.5, px2, py2, 6);
+                    ptGlow.addColorStop(0, 'hsla(' + ((pi * 25 + brainTick) % 360) + ', 80%, 65%, 0.6)');
+                    ptGlow.addColorStop(1, 'hsla(' + ((pi * 25 + brainTick) % 360) + ', 80%, 65%, 0)');
+                    ctx.beginPath(); ctx.arc(px2, py2, 6, 0, Math.PI * 2);
+                    ctx.fillStyle = ptGlow; ctx.fill();
+                    ctx.restore();
+                    // Particle core
+                    ctx.beginPath(); ctx.arc(px2, py2, 2.5, 0, Math.PI * 2);
+                    ctx.fillStyle = 'hsl(' + ((pi * 25 + brainTick) % 360) + ', 80%, 58%)';
+                    ctx.fill();
+                    ctx.strokeStyle = 'hsl(' + ((pi * 25 + brainTick) % 360) + ', 80%, 45%)';
+                    ctx.lineWidth = 0.5; ctx.stroke();
                   }
-                  // Reuptake transporter
-                  ctx.fillStyle = '#bbf7d060'; ctx.strokeStyle = '#16a34a'; ctx.lineWidth = 1.5;
-                  ctx.beginPath(); ctx.arc(W * 0.85, H * 0.40, 12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-                  ctx.font = '7px Inter, system-ui, sans-serif';
+
+                  // ── Postsynaptic Membrane (gradient + shadow) ──
+                  ctx.save();
+                  ctx.shadowColor = 'rgba(124,58,237,0.10)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = -3;
+                  var postGrad = ctx.createLinearGradient(0, H * 0.59, 0, H * 0.96);
+                  postGrad.addColorStop(0, '#fef9ee');
+                  postGrad.addColorStop(0.3, '#fdf3e0');
+                  postGrad.addColorStop(1, '#fcecd0');
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.06, H * 0.59); ctx.lineTo(W * 0.94, H * 0.59);
+                  ctx.quadraticCurveTo(W * 0.96, H * 0.61, W * 0.94, H * 0.63);
+                  ctx.lineTo(W * 0.94, H * 0.96); ctx.lineTo(W * 0.06, H * 0.96);
+                  ctx.lineTo(W * 0.06, H * 0.63);
+                  ctx.quadraticCurveTo(W * 0.04, H * 0.61, W * 0.06, H * 0.59);
+                  ctx.fillStyle = postGrad; ctx.fill();
+                  ctx.restore();
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.06, H * 0.59); ctx.lineTo(W * 0.94, H * 0.59);
+                  ctx.quadraticCurveTo(W * 0.96, H * 0.61, W * 0.94, H * 0.63);
+                  ctx.lineTo(W * 0.94, H * 0.96); ctx.lineTo(W * 0.06, H * 0.96);
+                  ctx.lineTo(W * 0.06, H * 0.63);
+                  ctx.quadraticCurveTo(W * 0.04, H * 0.61, W * 0.06, H * 0.59);
+                  ctx.strokeStyle = '#b49370'; ctx.lineWidth = 1.5; ctx.stroke();
+
+                  // Phospholipid bilayer on postsynaptic top
+                  ctx.save(); ctx.globalAlpha = 0.18;
+                  for (var pli2 = 0; pli2 < 18; pli2++) {
+                    var plx2 = W * 0.10 + pli2 * W * 0.046;
+                    var plBaseY2 = H * 0.60;
+                    ctx.beginPath(); ctx.arc(plx2, plBaseY2, 3, 0, Math.PI * 2);
+                    ctx.fillStyle = '#d97706'; ctx.fill();
+                    ctx.beginPath();
+                    ctx.moveTo(plx2, plBaseY2 + 3);
+                    ctx.quadraticCurveTo(plx2 - 1.5, plBaseY2 + 8, plx2, plBaseY2 + 12);
+                    ctx.strokeStyle = '#e8c48a'; ctx.lineWidth = 0.8; ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(plx2 + 1, plBaseY2 + 3);
+                    ctx.quadraticCurveTo(plx2 + 2.5, plBaseY2 + 8, plx2 + 1, plBaseY2 + 12);
+                    ctx.stroke();
+                  }
+                  ctx.restore();
+
+                  ctx.font = 'bold 9px Inter, system-ui, sans-serif';
+                  ctx.fillStyle = '#92400e'; ctx.textAlign = 'center';
+                  ctx.fillText('POSTSYNAPTIC DENSITY', W * 0.5, H * 0.70);
+
+                  // ── Enhanced Receptors (varied shapes) ──
+                  var recData = [
+                    { name: 'AMPA', type: 'ion', color: '#3b82f6' },
+                    { name: 'NMDA', type: 'ion', color: '#8b5cf6' },
+                    { name: 'mGluR', type: 'meta', color: '#f59e0b' },
+                    { name: 'GABA-A', type: 'ion', color: '#22c55e' },
+                    { name: 'GABA-B', type: 'meta', color: '#14b8a6' },
+                    { name: 'nACh', type: 'ion', color: '#ef4444' }
+                  ];
+                  for (var ri = 0; ri < 6; ri++) {
+                    var rx = W * 0.14 + ri * W * 0.135, ry = H * 0.59;
+                    var rd = recData[ri];
+                    if (rd.type === 'ion') {
+                      // Y-shaped ionotropic receptor
+                      ctx.beginPath();
+                      ctx.moveTo(rx, ry + 16); ctx.lineTo(rx, ry + 6);
+                      ctx.moveTo(rx, ry + 6); ctx.lineTo(rx - 5, ry - 2);
+                      ctx.moveTo(rx, ry + 6); ctx.lineTo(rx + 5, ry - 2);
+                      ctx.strokeStyle = rd.color; ctx.lineWidth = 2.5; ctx.stroke();
+                      // Pore opening
+                      ctx.beginPath(); ctx.arc(rx, ry + 3, 2, 0, Math.PI * 2);
+                      ctx.fillStyle = '#fff'; ctx.fill();
+                      ctx.strokeStyle = rd.color; ctx.lineWidth = 1; ctx.stroke();
+                    } else {
+                      // Serpentine metabotropic receptor (7TM-like wavy)
+                      ctx.beginPath();
+                      ctx.moveTo(rx - 4, ry - 2);
+                      ctx.quadraticCurveTo(rx - 2, ry + 4, rx, ry + 2);
+                      ctx.quadraticCurveTo(rx + 2, ry, rx + 1, ry + 6);
+                      ctx.quadraticCurveTo(rx, ry + 10, rx - 1, ry + 14);
+                      ctx.lineTo(rx + 3, ry + 16);
+                      ctx.strokeStyle = rd.color; ctx.lineWidth = 2; ctx.stroke();
+                      // G-protein bulge
+                      ctx.beginPath(); ctx.ellipse(rx + 2, ry + 15, 4, 2.5, 0, 0, Math.PI * 2);
+                      ctx.fillStyle = rd.color + '30'; ctx.fill();
+                      ctx.strokeStyle = rd.color; ctx.lineWidth = 0.8; ctx.stroke();
+                    }
+                    ctx.font = 'bold 6px Inter, system-ui, sans-serif';
+                    ctx.fillStyle = rd.color; ctx.textAlign = 'center';
+                    ctx.fillText(rd.name, rx, ry + 26);
+                  }
+
+                  // ── Reuptake Pump (animated spinning arrows) ──
+                  ctx.save();
+                  ctx.translate(W * 0.88, H * 0.41);
+                  // Pump body
+                  var pumpGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, 14);
+                  pumpGrad.addColorStop(0, '#d1fae5');
+                  pumpGrad.addColorStop(1, '#86efac');
+                  ctx.beginPath(); ctx.arc(0, 0, 14, 0, Math.PI * 2);
+                  ctx.fillStyle = pumpGrad; ctx.fill();
+                  ctx.strokeStyle = '#16a34a'; ctx.lineWidth = 1.5; ctx.stroke();
+                  // Spinning arrow
+                  ctx.rotate(tNT * 2);
+                  ctx.beginPath();
+                  ctx.moveTo(0, -8); ctx.lineTo(4, -3); ctx.lineTo(-4, -3);
+                  ctx.fillStyle = '#16a34a'; ctx.fill();
+                  ctx.beginPath();
+                  ctx.moveTo(0, 8); ctx.lineTo(-4, 3); ctx.lineTo(4, 3);
+                  ctx.fill();
+                  ctx.restore();
+                  ctx.font = 'bold 6px Inter, system-ui, sans-serif';
                   ctx.fillStyle = '#16a34a'; ctx.textAlign = 'center';
-                  ctx.fillText('Reuptake', W * 0.85, H * 0.40 + 2);
-                  // Enzyme (MAO/COMT)
-                  ctx.fillStyle = '#fee2e260'; ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 1.5;
-                  ctx.beginPath(); ctx.arc(W * 0.15, H * 0.50, 10, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-                  ctx.font = '7px Inter, system-ui, sans-serif';
-                  ctx.fillStyle = '#dc2626';
-                  ctx.fillText('Enzyme', W * 0.15, H * 0.50 + 2);
-                  // Signal cascade arrow
-                  ctx.strokeStyle = '#7c3aed80'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 2]);
-                  ctx.beginPath(); ctx.moveTo(W * 0.5, H * 0.74); ctx.lineTo(W * 0.5, H * 0.88);
-                  ctx.stroke(); ctx.setLineDash([]);
-                  ctx.beginPath(); ctx.moveTo(W * 0.5, H * 0.88); ctx.lineTo(W * 0.47, H * 0.85); ctx.moveTo(W * 0.5, H * 0.88); ctx.lineTo(W * 0.53, H * 0.85); ctx.stroke();
-                  ctx.font = '8px Inter, system-ui, sans-serif';
-                  ctx.fillStyle = '#7c3aed'; ctx.fillText('Intracellular Signaling', W * 0.5, H * 0.93);
-                  // View label
-                  ctx.font = 'bold 10px Inter, system-ui, sans-serif'; ctx.fillStyle = '#94a3b8'; ctx.textAlign = 'center';
-                  ctx.fillText('NEUROTRANSMITTER SYNAPSE', W * 0.5, H - 6);
+                  ctx.fillText('Reuptake', W * 0.88, H * 0.41 + 20);
+                  ctx.fillText('Transporter', W * 0.88, H * 0.41 + 27);
+
+                  // ── Enzyme (MAO/COMT) with scissor icon ──
+                  ctx.save();
+                  var enzGrad = ctx.createRadialGradient(W * 0.12, H * 0.50, 2, W * 0.12, H * 0.50, 12);
+                  enzGrad.addColorStop(0, '#fef2f2');
+                  enzGrad.addColorStop(1, '#fecaca');
+                  ctx.beginPath(); ctx.arc(W * 0.12, H * 0.50, 12, 0, Math.PI * 2);
+                  ctx.fillStyle = enzGrad; ctx.fill();
+                  ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 1.5; ctx.stroke();
+                  // Scissor lines
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.12 - 5, H * 0.50 - 5); ctx.lineTo(W * 0.12 + 5, H * 0.50 + 5);
+                  ctx.moveTo(W * 0.12 + 5, H * 0.50 - 5); ctx.lineTo(W * 0.12 - 5, H * 0.50 + 5);
+                  ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 1.2; ctx.stroke();
+                  ctx.restore();
+                  ctx.font = 'bold 6px Inter, system-ui, sans-serif';
+                  ctx.fillStyle = '#dc2626'; ctx.textAlign = 'center';
+                  ctx.fillText('MAO/COMT', W * 0.12, H * 0.50 + 18);
+                  ctx.fillText('Enzyme', W * 0.12, H * 0.50 + 25);
+
+                  // ── Signal Cascade (multi-stage with arrows) ──
+                  ctx.save();
+                  // cAMP / IP3 cascade stages
+                  var cascadeY = [H * 0.73, H * 0.79, H * 0.85, H * 0.91];
+                  var cascadeLabels = ['G-protein', 'cAMP / IP₃', 'Protein Kinase', 'Gene Expression'];
+                  var cascadeColors = ['#7c3aed', '#6d28d9', '#5b21b6', '#4c1d95'];
+                  for (var ci = 0; ci < 4; ci++) {
+                    // Arrow
+                    if (ci > 0) {
+                      ctx.beginPath();
+                      ctx.moveTo(W * 0.5, cascadeY[ci - 1] + 4);
+                      ctx.lineTo(W * 0.5, cascadeY[ci] - 4);
+                      ctx.strokeStyle = cascadeColors[ci] + '60'; ctx.lineWidth = 1.5;
+                      ctx.setLineDash([2, 2]); ctx.stroke(); ctx.setLineDash([]);
+                      // Arrowhead
+                      ctx.beginPath();
+                      ctx.moveTo(W * 0.5, cascadeY[ci] - 2);
+                      ctx.lineTo(W * 0.49, cascadeY[ci] - 5);
+                      ctx.moveTo(W * 0.5, cascadeY[ci] - 2);
+                      ctx.lineTo(W * 0.51, cascadeY[ci] - 5);
+                      ctx.strokeStyle = cascadeColors[ci]; ctx.lineWidth = 1; ctx.stroke();
+                    }
+                    // Label pill
+                    var pillW = ctx.measureText ? 70 : 70;
+                    ctx.beginPath();
+                    ctx.roundRect(W * 0.5 - pillW / 2, cascadeY[ci] - 5, pillW, 11, 3);
+                    ctx.fillStyle = cascadeColors[ci] + '15'; ctx.fill();
+                    ctx.strokeStyle = cascadeColors[ci] + '40'; ctx.lineWidth = 0.5; ctx.stroke();
+                    ctx.font = 'bold 6px Inter, system-ui, sans-serif';
+                    ctx.fillStyle = cascadeColors[ci]; ctx.textAlign = 'center';
+                    ctx.fillText(cascadeLabels[ci], W * 0.5, cascadeY[ci] + 2);
+                  }
+                  ctx.restore();
+
+                  // ── View Label (styled) ──
+                  ctx.save();
+                  ctx.beginPath();
+                  ctx.roundRect(W * 0.5 - 80, H - 18, 160, 14, 4);
+                  ctx.fillStyle = '#f8fafc'; ctx.fill();
+                  ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 0.5; ctx.stroke();
+                  ctx.font = 'bold 9px Inter, system-ui, sans-serif'; ctx.fillStyle = '#94a3b8'; ctx.textAlign = 'center';
+                  ctx.fillText('NEUROTRANSMITTER SYNAPSE', W * 0.5, H - 8);
+                  ctx.restore();
+
                   canvas._brainAnim = requestAnimationFrame(drawBrainFrame); return;
                 }
 
-                // Brain outline per view
-                ctx.fillStyle = '#f5f0f8';
-                ctx.strokeStyle = '#a78bfa';
-                ctx.lineWidth = 2;
+                // ── Enhanced Brain Rendering ──
                 ctx.lineJoin = 'round';
+                ctx.lineCap = 'round';
+
+                // Brain gradient for realistic tissue appearance
+                var brainGrad = ctx.createRadialGradient(W * 0.5, H * 0.4, W * 0.05, W * 0.5, H * 0.4, W * 0.45);
+                brainGrad.addColorStop(0, '#f0e6f6');
+                brainGrad.addColorStop(0.4, '#ebe0f0');
+                brainGrad.addColorStop(0.8, '#e4d8ea');
+                brainGrad.addColorStop(1, '#ddd0e2');
+
+                // Helper: draw gyri convolutions on a brain surface
+                function drawGyri(cx, cy, radius, count, spread) {
+                  ctx.save();
+                  ctx.globalAlpha = 0.18;
+                  ctx.strokeStyle = '#9b7fb8';
+                  ctx.lineWidth = 0.7;
+                  for (var gi = 0; gi < count; gi++) {
+                    var angle = (gi / count) * Math.PI * 2 + brainTick * 0.001;
+                    var r1 = radius * (0.3 + Math.random() * 0.5);
+                    var gx = cx + Math.cos(angle) * r1;
+                    var gy = cy + Math.sin(angle) * r1;
+                    ctx.beginPath();
+                    ctx.arc(gx, gy, spread * (0.6 + Math.random() * 0.4), angle, angle + Math.PI * (0.5 + Math.random() * 0.8));
+                    ctx.stroke();
+                  }
+                  ctx.restore();
+                }
+
+                // Helper: draw cerebellum with foliation
+                function drawCerebellum(cx, cy, rx, ry) {
+                  // Gradient fill
+                  var cbGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, rx);
+                  cbGrad.addColorStop(0, '#f0e9ff');
+                  cbGrad.addColorStop(1, '#ddd0f0');
+                  ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+                  ctx.fillStyle = cbGrad; ctx.fill();
+                  ctx.strokeStyle = '#a78bfa'; ctx.lineWidth = 1.5; ctx.stroke();
+                  // Foliation lines
+                  ctx.save();
+                  ctx.globalAlpha = 0.25;
+                  ctx.strokeStyle = '#8b6fc0';
+                  ctx.lineWidth = 0.6;
+                  for (var fi = 0; fi < 7; fi++) {
+                    var fy = cy - ry * 0.7 + fi * (ry * 1.4 / 7);
+                    var fxSpread = rx * Math.sqrt(1 - Math.pow((fy - cy) / ry, 2)) * 0.85;
+                    if (fxSpread > 2) {
+                      ctx.beginPath();
+                      ctx.moveTo(cx - fxSpread, fy);
+                      ctx.quadraticCurveTo(cx, fy + (fi % 2 === 0 ? 2 : -2), cx + fxSpread, fy);
+                      ctx.stroke();
+                    }
+                  }
+                  ctx.restore();
+                }
+
+                // Helper: draw brainstem with gradient
+                function drawBrainstem(x1, y1, x2, y2, x3, y3, x4, y4) {
+                  var bsGrad = ctx.createLinearGradient(x1, y1, x2, y2);
+                  bsGrad.addColorStop(0, '#e8ddf5');
+                  bsGrad.addColorStop(0.5, '#dcd0ea');
+                  bsGrad.addColorStop(1, '#d2c4e0');
+                  ctx.beginPath();
+                  ctx.moveTo(x1, y1);
+                  ctx.quadraticCurveTo((x1 + x2) * 0.5 + 3, (y1 + y2) * 0.5, x2, y2);
+                  ctx.lineTo(x3, y3);
+                  ctx.quadraticCurveTo((x4 + x3) * 0.5 - 3, (y4 + y3) * 0.5, x4, y4);
+                  ctx.closePath();
+                  ctx.fillStyle = bsGrad; ctx.fill();
+                  ctx.strokeStyle = '#a78bfa'; ctx.lineWidth = 1.5; ctx.stroke();
+                  // Medulla segments
+                  ctx.save();
+                  ctx.globalAlpha = 0.15;
+                  ctx.strokeStyle = '#8b6fc0'; ctx.lineWidth = 0.5;
+                  for (var si = 1; si < 4; si++) {
+                    var t = si / 4;
+                    var sx1 = x1 + (x2 - x1) * t, sy1 = y1 + (y2 - y1) * t;
+                    var sx2 = x4 + (x3 - x4) * t, sy2 = y4 + (y3 - y4) * t;
+                    ctx.beginPath(); ctx.moveTo(sx1, sy1); ctx.lineTo(sx2, sy2); ctx.stroke();
+                  }
+                  ctx.restore();
+                }
 
                 if (viewKey === 'lateral') {
-                  // Side view brain shape
+                  // ── Lateral View ──
+                  // Main brain shape with shadow
+                  ctx.save();
+                  ctx.shadowColor = 'rgba(100,70,130,0.15)';
+                  ctx.shadowBlur = 10;
+                  ctx.shadowOffsetX = 3;
+                  ctx.shadowOffsetY = 4;
                   ctx.beginPath();
                   ctx.moveTo(W * 0.15, H * 0.45);
                   ctx.quadraticCurveTo(W * 0.12, H * 0.20, W * 0.35, H * 0.12);
@@ -16082,27 +19231,108 @@
                   ctx.quadraticCurveTo(W * 0.50, H * 0.78, W * 0.42, H * 0.72);
                   ctx.quadraticCurveTo(W * 0.30, H * 0.62, W * 0.20, H * 0.55);
                   ctx.quadraticCurveTo(W * 0.14, H * 0.50, W * 0.15, H * 0.45);
-                  ctx.fill(); ctx.stroke();
-                  // Central sulcus (divides frontal/parietal)
-                  ctx.beginPath(); ctx.setLineDash([4, 3]);
-                  ctx.moveTo(W * 0.50, H * 0.12); ctx.lineTo(W * 0.42, H * 0.55);
-                  ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1; ctx.stroke();
-                  // Lateral sulcus (Sylvian fissure)
+                  ctx.fillStyle = brainGrad; ctx.fill();
+                  ctx.restore();
+
+                  // Lobe coloring (Frontal – blue, Parietal – green, Temporal – yellow, Occipital – red)
+                  ctx.save(); ctx.globalAlpha = 0.12;
+                  // Frontal lobe region
                   ctx.beginPath();
-                  ctx.moveTo(W * 0.35, H * 0.50); ctx.quadraticCurveTo(W * 0.50, H * 0.48, W * 0.65, H * 0.42);
-                  ctx.stroke();
+                  ctx.moveTo(W * 0.15, H * 0.45);
+                  ctx.quadraticCurveTo(W * 0.12, H * 0.20, W * 0.35, H * 0.12);
+                  ctx.quadraticCurveTo(W * 0.43, H * 0.10, W * 0.48, H * 0.12);
+                  ctx.lineTo(W * 0.40, H * 0.55);
+                  ctx.quadraticCurveTo(W * 0.30, H * 0.52, W * 0.20, H * 0.50);
+                  ctx.closePath();
+                  ctx.fillStyle = '#3b82f6'; ctx.fill();
+                  // Parietal lobe region
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.48, H * 0.12);
+                  ctx.quadraticCurveTo(W * 0.60, H * 0.09, W * 0.72, H * 0.15);
+                  ctx.quadraticCurveTo(W * 0.82, H * 0.22, W * 0.85, H * 0.35);
+                  ctx.lineTo(W * 0.65, H * 0.42);
+                  ctx.lineTo(W * 0.40, H * 0.50);
+                  ctx.closePath();
+                  ctx.fillStyle = '#22c55e'; ctx.fill();
+                  // Temporal lobe region
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.20, H * 0.52);
+                  ctx.quadraticCurveTo(W * 0.35, H * 0.50, W * 0.50, H * 0.48);
+                  ctx.lineTo(W * 0.62, H * 0.76);
+                  ctx.quadraticCurveTo(W * 0.50, H * 0.78, W * 0.42, H * 0.72);
+                  ctx.quadraticCurveTo(W * 0.30, H * 0.62, W * 0.20, H * 0.55);
+                  ctx.closePath();
+                  ctx.fillStyle = '#eab308'; ctx.fill();
+                  // Occipital lobe region
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.85, H * 0.35);
+                  ctx.quadraticCurveTo(W * 0.90, H * 0.42, W * 0.88, H * 0.55);
+                  ctx.quadraticCurveTo(W * 0.85, H * 0.58, W * 0.78, H * 0.60);
+                  ctx.lineTo(W * 0.65, H * 0.42);
+                  ctx.closePath();
+                  ctx.fillStyle = '#ef4444'; ctx.fill();
+                  ctx.restore();
+
+                  // Brain outline
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.15, H * 0.45);
+                  ctx.quadraticCurveTo(W * 0.12, H * 0.20, W * 0.35, H * 0.12);
+                  ctx.quadraticCurveTo(W * 0.55, H * 0.08, W * 0.72, H * 0.15);
+                  ctx.quadraticCurveTo(W * 0.88, H * 0.25, W * 0.90, H * 0.42);
+                  ctx.quadraticCurveTo(W * 0.88, H * 0.55, W * 0.78, H * 0.60);
+                  ctx.quadraticCurveTo(W * 0.70, H * 0.72, W * 0.62, H * 0.76);
+                  ctx.quadraticCurveTo(W * 0.50, H * 0.78, W * 0.42, H * 0.72);
+                  ctx.quadraticCurveTo(W * 0.30, H * 0.62, W * 0.20, H * 0.55);
+                  ctx.quadraticCurveTo(W * 0.14, H * 0.50, W * 0.15, H * 0.45);
+                  ctx.strokeStyle = '#8b6fc0'; ctx.lineWidth = 2; ctx.stroke();
+
+                  // Gyri convolutions
+                  drawGyri(W * 0.35, H * 0.30, W * 0.15, 12, 8);
+                  drawGyri(W * 0.60, H * 0.30, W * 0.12, 10, 7);
+                  drawGyri(W * 0.45, H * 0.60, W * 0.10, 8, 6);
+
+                  // Central sulcus (bold, anatomical curve)
+                  ctx.beginPath(); ctx.setLineDash([5, 3]);
+                  ctx.moveTo(W * 0.50, H * 0.11);
+                  ctx.quadraticCurveTo(W * 0.47, H * 0.28, W * 0.44, H * 0.38);
+                  ctx.quadraticCurveTo(W * 0.42, H * 0.48, W * 0.40, H * 0.55);
+                  ctx.strokeStyle = '#6d5a8f'; ctx.lineWidth = 1.2; ctx.stroke();
+                  // Lateral sulcus (Sylvian fissure — deeper curve)
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.22, H * 0.52);
+                  ctx.quadraticCurveTo(W * 0.35, H * 0.50, W * 0.50, H * 0.47);
+                  ctx.quadraticCurveTo(W * 0.58, H * 0.44, W * 0.65, H * 0.42);
+                  ctx.strokeStyle = '#6d5a8f'; ctx.lineWidth = 1.2; ctx.stroke();
+                  // Parieto-occipital sulcus
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.78, H * 0.15);
+                  ctx.quadraticCurveTo(W * 0.75, H * 0.28, W * 0.72, H * 0.38);
+                  ctx.strokeStyle = '#8b7faa'; ctx.lineWidth = 0.8; ctx.stroke();
                   ctx.setLineDash([]); ctx.strokeStyle = '#a78bfa'; ctx.lineWidth = 2;
-                  // Cerebellum (separate shape)
-                  ctx.beginPath();
-                  ctx.ellipse(W * 0.80, H * 0.65, W * 0.10, H * 0.08, 0, 0, Math.PI * 2);
-                  ctx.fillStyle = '#ede9fe'; ctx.fill(); ctx.stroke();
-                  // Brainstem
-                  ctx.beginPath();
-                  ctx.moveTo(W * 0.62, H * 0.62); ctx.lineTo(W * 0.65, H * 0.78);
-                  ctx.lineTo(W * 0.58, H * 0.78); ctx.lineTo(W * 0.55, H * 0.62);
-                  ctx.fillStyle = '#e0d6f8'; ctx.fill(); ctx.stroke();
+
+                  // Additional sulci (precentral, postcentral)
+                  ctx.save(); ctx.globalAlpha = 0.15; ctx.strokeStyle = '#9b87c0'; ctx.lineWidth = 0.6;
+                  // Precentral sulcus
+                  ctx.beginPath(); ctx.moveTo(W * 0.43, H * 0.14); ctx.quadraticCurveTo(W * 0.40, H * 0.30, W * 0.38, H * 0.48); ctx.stroke();
+                  // Postcentral sulcus
+                  ctx.beginPath(); ctx.moveTo(W * 0.55, H * 0.13); ctx.quadraticCurveTo(W * 0.52, H * 0.28, W * 0.48, H * 0.46); ctx.stroke();
+                  // Superior temporal sulcus
+                  ctx.beginPath(); ctx.moveTo(W * 0.28, H * 0.56); ctx.quadraticCurveTo(W * 0.40, H * 0.58, W * 0.55, H * 0.55); ctx.stroke();
+                  ctx.restore();
+
+                  // Cerebellum with foliation
+                  drawCerebellum(W * 0.80, H * 0.65, W * 0.10, H * 0.08);
+                  // Brainstem with gradient
+                  drawBrainstem(W * 0.62, H * 0.62, W * 0.65, H * 0.80, W * 0.58, H * 0.80, W * 0.55, H * 0.62);
+
                 } else if (viewKey === 'medial') {
-                  // Sagittal brain
+                  // ── Medial (Sagittal) View ──
+                  // Main brain shape with shadow
+                  ctx.save();
+                  ctx.shadowColor = 'rgba(100,70,130,0.15)';
+                  ctx.shadowBlur = 10;
+                  ctx.shadowOffsetX = 3;
+                  ctx.shadowOffsetY = 4;
                   ctx.beginPath();
                   ctx.moveTo(W * 0.20, H * 0.50);
                   ctx.quadraticCurveTo(W * 0.15, H * 0.22, W * 0.40, H * 0.12);
@@ -16112,93 +19342,304 @@
                   ctx.lineTo(W * 0.60, H * 0.60);
                   ctx.quadraticCurveTo(W * 0.50, H * 0.58, W * 0.40, H * 0.60);
                   ctx.quadraticCurveTo(W * 0.25, H * 0.58, W * 0.20, H * 0.50);
-                  ctx.fill(); ctx.stroke();
-                  // Corpus callosum (arc)
-                  ctx.beginPath(); ctx.lineWidth = 4; ctx.strokeStyle = '#c084fc';
-                  ctx.moveTo(W * 0.35, H * 0.38); ctx.quadraticCurveTo(W * 0.52, H * 0.28, W * 0.68, H * 0.35);
-                  ctx.stroke(); ctx.lineWidth = 2; ctx.strokeStyle = '#a78bfa';
-                  // Cerebellum
+                  ctx.fillStyle = brainGrad; ctx.fill();
+                  ctx.restore();
+
+                  // Medial lobe coloring
+                  ctx.save(); ctx.globalAlpha = 0.10;
+                  // Cingulate gyrus (above corpus callosum)
                   ctx.beginPath();
-                  ctx.ellipse(W * 0.78, H * 0.68, W * 0.09, H * 0.08, 0, 0, Math.PI * 2);
-                  ctx.fillStyle = '#ede9fe'; ctx.fill(); ctx.stroke();
-                  // Brainstem
+                  ctx.moveTo(W * 0.30, H * 0.32);
+                  ctx.quadraticCurveTo(W * 0.50, H * 0.22, W * 0.72, H * 0.30);
+                  ctx.quadraticCurveTo(W * 0.72, H * 0.38, W * 0.50, H * 0.34);
+                  ctx.quadraticCurveTo(W * 0.35, H * 0.36, W * 0.30, H * 0.38);
+                  ctx.closePath();
+                  ctx.fillStyle = '#8b5cf6'; ctx.fill();
+                  ctx.restore();
+
+                  // Brain outline
                   ctx.beginPath();
-                  ctx.moveTo(W * 0.58, H * 0.58); ctx.lineTo(W * 0.62, H * 0.78);
-                  ctx.lineTo(W * 0.55, H * 0.78); ctx.lineTo(W * 0.50, H * 0.58);
-                  ctx.fillStyle = '#e0d6f8'; ctx.fill(); ctx.stroke();
-                } else if (viewKey === 'superior') {
-                  // Top-down: two hemispheres
+                  ctx.moveTo(W * 0.20, H * 0.50);
+                  ctx.quadraticCurveTo(W * 0.15, H * 0.22, W * 0.40, H * 0.12);
+                  ctx.quadraticCurveTo(W * 0.60, H * 0.08, W * 0.78, H * 0.18);
+                  ctx.quadraticCurveTo(W * 0.88, H * 0.32, W * 0.85, H * 0.50);
+                  ctx.quadraticCurveTo(W * 0.82, H * 0.60, W * 0.72, H * 0.62);
+                  ctx.lineTo(W * 0.60, H * 0.60);
+                  ctx.quadraticCurveTo(W * 0.50, H * 0.58, W * 0.40, H * 0.60);
+                  ctx.quadraticCurveTo(W * 0.25, H * 0.58, W * 0.20, H * 0.50);
+                  ctx.strokeStyle = '#8b6fc0'; ctx.lineWidth = 2; ctx.stroke();
+
+                  // Gyri on medial surface
+                  drawGyri(W * 0.45, H * 0.25, W * 0.18, 10, 7);
+
+                  // Corpus callosum (thick C-shaped band with gradient)
+                  ctx.save();
+                  var ccGrad = ctx.createLinearGradient(W * 0.30, H * 0.34, W * 0.70, H * 0.34);
+                  ccGrad.addColorStop(0, '#e0d6f8');
+                  ccGrad.addColorStop(0.5, '#d4c8f0');
+                  ccGrad.addColorStop(1, '#e0d6f8');
                   ctx.beginPath();
-                  ctx.ellipse(W * 0.35, H * 0.50, W * 0.20, H * 0.38, 0, 0, Math.PI * 2);
-                  ctx.fill(); ctx.stroke();
+                  ctx.moveTo(W * 0.30, H * 0.40);
+                  ctx.quadraticCurveTo(W * 0.50, H * 0.30, W * 0.70, H * 0.36);
+                  ctx.quadraticCurveTo(W * 0.72, H * 0.38, W * 0.71, H * 0.40);
+                  ctx.quadraticCurveTo(W * 0.50, H * 0.34, W * 0.32, H * 0.43);
+                  ctx.closePath();
+                  ctx.fillStyle = ccGrad; ctx.fill();
+                  ctx.strokeStyle = '#b49de0'; ctx.lineWidth = 1.2; ctx.stroke();
+                  // Corpus callosum label area
+                  ctx.font = '7px Inter, system-ui, sans-serif';
+                  ctx.fillStyle = '#8b6fc080'; ctx.textAlign = 'center';
+                  ctx.fillText('CC', W * 0.50, H * 0.38);
+                  ctx.restore();
+
+                  // Thalamus (egg shape in center)
                   ctx.beginPath();
-                  ctx.ellipse(W * 0.65, H * 0.50, W * 0.20, H * 0.38, 0, 0, Math.PI * 2);
-                  ctx.fill(); ctx.stroke();
-                  // Longitudinal fissure
-                  ctx.beginPath(); ctx.setLineDash([5, 3]);
-                  ctx.moveTo(W * 0.50, H * 0.10); ctx.lineTo(W * 0.50, H * 0.90);
-                  ctx.strokeStyle = '#7c3aed'; ctx.lineWidth = 2; ctx.stroke();
-                  // Central sulcus
+                  ctx.ellipse(W * 0.52, H * 0.44, W * 0.06, H * 0.04, 0, 0, Math.PI * 2);
+                  ctx.fillStyle = '#fde68a40'; ctx.fill();
+                  ctx.strokeStyle = '#d97706'; ctx.lineWidth = 1; ctx.stroke();
+                  ctx.font = '6px Inter, system-ui, sans-serif';
+                  ctx.fillStyle = '#b4590080'; ctx.textAlign = 'center';
+                  ctx.fillText('Thalamus', W * 0.52, H * 0.445);
+
+                  // Hypothalamus (small oval below)
                   ctx.beginPath();
-                  ctx.moveTo(W * 0.20, H * 0.38); ctx.quadraticCurveTo(W * 0.50, H * 0.35, W * 0.80, H * 0.38);
+                  ctx.ellipse(W * 0.45, H * 0.50, W * 0.03, H * 0.02, 0, 0, Math.PI * 2);
+                  ctx.fillStyle = '#fecaca40'; ctx.fill();
+                  ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 0.8; ctx.stroke();
+
+                  // Medial sulci
+                  ctx.save(); ctx.globalAlpha = 0.15; ctx.strokeStyle = '#9b87c0'; ctx.lineWidth = 0.6;
+                  ctx.setLineDash([3, 2]);
+                  // Calcarine sulcus
+                  ctx.beginPath(); ctx.moveTo(W * 0.72, H * 0.42); ctx.quadraticCurveTo(W * 0.80, H * 0.48, W * 0.84, H * 0.50); ctx.stroke();
+                  // Cingulate sulcus
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.25, H * 0.30);
+                  ctx.quadraticCurveTo(W * 0.45, H * 0.18, W * 0.68, H * 0.22);
                   ctx.stroke();
-                  ctx.setLineDash([]); ctx.strokeStyle = '#a78bfa';
+                  ctx.setLineDash([]);
+                  ctx.restore();
+
+                  // Cerebellum with foliation
+                  drawCerebellum(W * 0.78, H * 0.68, W * 0.09, H * 0.08);
+                  // Brainstem with gradient
+                  drawBrainstem(W * 0.58, H * 0.58, W * 0.62, H * 0.80, W * 0.55, H * 0.80, W * 0.50, H * 0.58);
+
+                } else if (viewKey === 'superior') {
+                  // ── Superior (Top-Down) View ──
+                  // Left hemisphere with shadow
+                  ctx.save();
+                  ctx.shadowColor = 'rgba(100,70,130,0.12)';
+                  ctx.shadowBlur = 8;
+                  ctx.beginPath();
+                  ctx.ellipse(W * 0.38, H * 0.50, W * 0.18, H * 0.38, 0, 0, Math.PI * 2);
+                  ctx.fillStyle = brainGrad; ctx.fill();
+                  ctx.restore();
+                  // Right hemisphere
+                  ctx.save();
+                  ctx.shadowColor = 'rgba(100,70,130,0.12)';
+                  ctx.shadowBlur = 8;
+                  ctx.beginPath();
+                  ctx.ellipse(W * 0.62, H * 0.50, W * 0.18, H * 0.38, 0, 0, Math.PI * 2);
+                  ctx.fillStyle = brainGrad; ctx.fill();
+                  ctx.restore();
+
+                  // Lobe coloring top-down
+                  ctx.save(); ctx.globalAlpha = 0.10;
+                  // Frontal (anterior half)
+                  ctx.beginPath(); ctx.ellipse(W * 0.38, H * 0.35, W * 0.16, H * 0.22, 0, 0, Math.PI * 2); ctx.fillStyle = '#3b82f6'; ctx.fill();
+                  ctx.beginPath(); ctx.ellipse(W * 0.62, H * 0.35, W * 0.16, H * 0.22, 0, 0, Math.PI * 2); ctx.fill();
+                  // Occipital (posterior)
+                  ctx.beginPath(); ctx.ellipse(W * 0.38, H * 0.72, W * 0.10, H * 0.14, 0, 0, Math.PI * 2); ctx.fillStyle = '#ef4444'; ctx.fill();
+                  ctx.beginPath(); ctx.ellipse(W * 0.62, H * 0.72, W * 0.10, H * 0.14, 0, 0, Math.PI * 2); ctx.fill();
+                  ctx.restore();
+
+                  // Hemisphere outlines
+                  ctx.beginPath(); ctx.ellipse(W * 0.38, H * 0.50, W * 0.18, H * 0.38, 0, 0, Math.PI * 2);
+                  ctx.strokeStyle = '#8b6fc0'; ctx.lineWidth = 2; ctx.stroke();
+                  ctx.beginPath(); ctx.ellipse(W * 0.62, H * 0.50, W * 0.18, H * 0.38, 0, 0, Math.PI * 2);
+                  ctx.stroke();
+
+                  // Gyri on top surface
+                  drawGyri(W * 0.38, H * 0.45, W * 0.12, 14, 6);
+                  drawGyri(W * 0.62, H * 0.45, W * 0.12, 14, 6);
+
+                  // Longitudinal fissure (deep shadow line)
+                  ctx.save();
+                  ctx.shadowColor = 'rgba(80,50,120,0.2)';
+                  ctx.shadowBlur = 4;
+                  ctx.beginPath(); ctx.setLineDash([6, 3]);
+                  ctx.moveTo(W * 0.50, H * 0.10); ctx.lineTo(W * 0.50, H * 0.90);
+                  ctx.strokeStyle = '#6d4a8e'; ctx.lineWidth = 2.5; ctx.stroke();
+                  ctx.restore();
+                  // Central sulcus (curved)
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.20, H * 0.38);
+                  ctx.quadraticCurveTo(W * 0.35, H * 0.35, W * 0.50, H * 0.36);
+                  ctx.quadraticCurveTo(W * 0.65, H * 0.35, W * 0.80, H * 0.38);
+                  ctx.strokeStyle = '#8b7faa'; ctx.lineWidth = 1; ctx.stroke();
+                  ctx.setLineDash([]);
+
+                  // Additional sulci
+                  ctx.save(); ctx.globalAlpha = 0.12; ctx.strokeStyle = '#9b87c0'; ctx.lineWidth = 0.5;
+                  for (var tsi = 0; tsi < 6; tsi++) {
+                    var tsAngle = (tsi / 6) * Math.PI * 0.6 + 0.3;
+                    ctx.beginPath();
+                    ctx.moveTo(W * 0.38 + Math.cos(tsAngle) * W * 0.04, H * 0.50 + Math.sin(tsAngle) * H * 0.08);
+                    ctx.lineTo(W * 0.38 + Math.cos(tsAngle) * W * 0.16, H * 0.50 + Math.sin(tsAngle) * H * 0.34);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(W * 0.62 + Math.cos(Math.PI - tsAngle) * W * 0.04, H * 0.50 + Math.sin(tsAngle) * H * 0.08);
+                    ctx.lineTo(W * 0.62 + Math.cos(Math.PI - tsAngle) * W * 0.16, H * 0.50 + Math.sin(tsAngle) * H * 0.34);
+                    ctx.stroke();
+                  }
+                  ctx.restore();
+
                 } else if (viewKey === 'inferior') {
-                  // Bottom view
+                  // ── Inferior (Bottom) View ──
+                  // Main cerebral base with shadow
+                  ctx.save();
+                  ctx.shadowColor = 'rgba(100,70,130,0.15)';
+                  ctx.shadowBlur = 10;
                   ctx.beginPath();
-                  ctx.ellipse(W * 0.50, H * 0.40, W * 0.30, H * 0.30, 0, 0, Math.PI * 2);
-                  ctx.fill(); ctx.stroke();
-                  // Cerebellum
+                  ctx.ellipse(W * 0.50, H * 0.38, W * 0.30, H * 0.28, 0, 0, Math.PI * 2);
+                  ctx.fillStyle = brainGrad; ctx.fill();
+                  ctx.restore();
                   ctx.beginPath();
-                  ctx.ellipse(W * 0.50, H * 0.72, W * 0.22, H * 0.12, 0, 0, Math.PI * 2);
-                  ctx.fillStyle = '#ede9fe'; ctx.fill(); ctx.stroke();
+                  ctx.ellipse(W * 0.50, H * 0.38, W * 0.30, H * 0.28, 0, 0, Math.PI * 2);
+                  ctx.strokeStyle = '#8b6fc0'; ctx.lineWidth = 2; ctx.stroke();
+
+                  // Temporal lobe regions
+                  ctx.save(); ctx.globalAlpha = 0.10;
+                  ctx.beginPath(); ctx.ellipse(W * 0.35, H * 0.35, W * 0.12, H * 0.18, 0.2, 0, Math.PI * 2);
+                  ctx.fillStyle = '#eab308'; ctx.fill();
+                  ctx.beginPath(); ctx.ellipse(W * 0.65, H * 0.35, W * 0.12, H * 0.18, -0.2, 0, Math.PI * 2);
+                  ctx.fill();
+                  ctx.restore();
+
+                  // Gyri on inferior surface
+                  drawGyri(W * 0.40, H * 0.35, W * 0.12, 8, 5);
+                  drawGyri(W * 0.60, H * 0.35, W * 0.12, 8, 5);
+
+                  // Longitudinal fissure (ventral)
+                  ctx.beginPath(); ctx.setLineDash([4, 3]);
+                  ctx.moveTo(W * 0.50, H * 0.12); ctx.lineTo(W * 0.50, H * 0.64);
+                  ctx.strokeStyle = '#6d4a8e'; ctx.lineWidth = 1.5; ctx.stroke();
+                  ctx.setLineDash([]);
+
+                  // Cerebellum with foliation
+                  drawCerebellum(W * 0.50, H * 0.72, W * 0.22, H * 0.12);
                   // Brainstem
+                  drawBrainstem(W * 0.46, H * 0.55, W * 0.48, H * 0.68, W * 0.52, H * 0.68, W * 0.54, H * 0.55);
+
+                  // Optic chiasm (X shape with nerve paths)
+                  ctx.save();
+                  ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 2;
+                  // Optic nerves coming in
                   ctx.beginPath();
-                  ctx.moveTo(W * 0.46, H * 0.55); ctx.lineTo(W * 0.48, H * 0.68);
-                  ctx.lineTo(W * 0.52, H * 0.68); ctx.lineTo(W * 0.54, H * 0.55);
-                  ctx.fillStyle = '#e0d6f8'; ctx.fill(); ctx.stroke();
-                  // Optic chiasm X
-                  ctx.beginPath(); ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 2;
-                  ctx.moveTo(W * 0.44, H * 0.30); ctx.lineTo(W * 0.56, H * 0.36);
-                  ctx.moveTo(W * 0.56, H * 0.30); ctx.lineTo(W * 0.44, H * 0.36);
-                  ctx.stroke(); ctx.strokeStyle = '#a78bfa';
+                  ctx.moveTo(W * 0.36, H * 0.26); ctx.quadraticCurveTo(W * 0.42, H * 0.28, W * 0.48, H * 0.33);
+                  ctx.stroke();
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.64, H * 0.26); ctx.quadraticCurveTo(W * 0.58, H * 0.28, W * 0.52, H * 0.33);
+                  ctx.stroke();
+                  // The crossing
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.48, H * 0.33); ctx.lineTo(W * 0.55, H * 0.38);
+                  ctx.moveTo(W * 0.52, H * 0.33); ctx.lineTo(W * 0.45, H * 0.38);
+                  ctx.lineWidth = 1.5; ctx.stroke();
+                  // Optic tracts going back
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.45, H * 0.38); ctx.quadraticCurveTo(W * 0.40, H * 0.42, W * 0.38, H * 0.48);
+                  ctx.stroke();
+                  ctx.beginPath();
+                  ctx.moveTo(W * 0.55, H * 0.38); ctx.quadraticCurveTo(W * 0.60, H * 0.42, W * 0.62, H * 0.48);
+                  ctx.stroke();
+                  // Label
+                  ctx.font = '7px Inter, system-ui, sans-serif';
+                  ctx.fillStyle = '#b4590090'; ctx.textAlign = 'center';
+                  ctx.fillText('Optic Chiasm', W * 0.50, H * 0.30);
+                  ctx.restore();
+
+                  // Cranial nerve stumps (simplified)
+                  ctx.save(); ctx.globalAlpha = 0.3; ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1;
+                  var cnPositions = [[0.42, 0.46], [0.58, 0.46], [0.44, 0.50], [0.56, 0.50], [0.46, 0.54], [0.54, 0.54]];
+                  cnPositions.forEach(function (cn) {
+                    ctx.beginPath();
+                    ctx.moveTo(W * cn[0], H * cn[1]);
+                    ctx.lineTo(W * (cn[0] + (cn[0] < 0.5 ? -0.04 : 0.04)), H * (cn[1] + 0.02));
+                    ctx.stroke();
+                  });
+                  ctx.restore();
                 }
 
                 ctx.restore();
 
-                // Draw region markers
+                // ── Enhanced Region Markers ──
                 filtered.forEach(function (r) {
                   var px = r.x * W, py = r.y * H;
                   var isSel = sel && sel.id === r.id;
-                  var rad = isSel ? 10 : 6;
+                  var rad = isSel ? 10 : 5;
+                  // Animated pulsing ring for selected
                   if (isSel) {
+                    var pulse = 1.0 + Math.sin(brainTick * 0.06) * 0.3;
                     ctx.save();
-                    ctx.shadowColor = '#7c3aed';
-                    ctx.shadowBlur = 14;
-                    ctx.beginPath(); ctx.arc(px, py, rad + 3, 0, Math.PI * 2);
-                    ctx.fillStyle = '#7c3aed30';
-                    ctx.fill();
+                    ctx.globalAlpha = 0.3 - pulse * 0.1;
+                    ctx.beginPath(); ctx.arc(px, py, rad + 6 + pulse * 4, 0, Math.PI * 2);
+                    ctx.strokeStyle = '#7c3aed'; ctx.lineWidth = 1.5; ctx.stroke();
+                    ctx.restore();
+                    // Inner glow
+                    ctx.save();
+                    var selGlow = ctx.createRadialGradient(px, py, rad * 0.3, px, py, rad + 4);
+                    selGlow.addColorStop(0, '#7c3aed50');
+                    selGlow.addColorStop(1, '#7c3aed00');
+                    ctx.beginPath(); ctx.arc(px, py, rad + 4, 0, Math.PI * 2);
+                    ctx.fillStyle = selGlow; ctx.fill();
                     ctx.restore();
                   }
+                  // Marker dot (gradient sphere)
+                  var mGrad = ctx.createRadialGradient(px - 1, py - 1, 1, px, py, rad);
+                  mGrad.addColorStop(0, isSel ? '#a78bfa' : '#c4b5fd');
+                  mGrad.addColorStop(1, isSel ? '#7c3aed' : '#8b5cf6');
                   ctx.beginPath(); ctx.arc(px, py, rad, 0, Math.PI * 2);
-                  ctx.fillStyle = isSel ? '#7c3aed' : '#7c3aedaa';
-                  ctx.fill();
+                  ctx.fillStyle = mGrad; ctx.fill();
                   ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+                  // Label with leader line + tooltip pill
                   if (isSel) {
                     ctx.save();
+                    var isRight = px > W * 0.5;
+                    var labelX = isRight ? px - 18 : px + 18;
                     ctx.font = 'bold 9px Inter, system-ui, sans-serif';
-                    ctx.textAlign = px > W * 0.5 ? 'right' : 'left';
-                    ctx.fillStyle = '#7c3aed';
-                    ctx.fillText(r.name, px > W * 0.5 ? px - 15 : px + 15, py + 3);
+                    var tw = ctx.measureText(r.name).width;
+                    var pillX = isRight ? labelX - tw - 8 : labelX - 4;
+                    var pillY = py - 7;
+                    // Leader line
+                    ctx.beginPath();
+                    ctx.moveTo(px + (isRight ? -rad - 2 : rad + 2), py);
+                    ctx.lineTo(isRight ? pillX + tw + 8 : pillX, py);
+                    ctx.strokeStyle = '#7c3aed60'; ctx.lineWidth = 1; ctx.setLineDash([2, 2]); ctx.stroke(); ctx.setLineDash([]);
+                    // Tooltip pill background
+                    ctx.beginPath();
+                    ctx.roundRect(pillX, pillY, tw + 10, 15, 4);
+                    ctx.fillStyle = '#7c3aed'; ctx.fill();
+                    ctx.shadowColor = 'rgba(124,58,237,0.25)'; ctx.shadowBlur = 4;
+                    // Label text
+                    ctx.textAlign = isRight ? 'right' : 'left';
+                    ctx.fillStyle = '#fff';
+                    ctx.fillText(r.name, isRight ? pillX + tw + 5 : pillX + 5, py + 3);
                     ctx.restore();
                   }
                 });
-                // View label
+                // ── Styled View Label ──
                 ctx.save();
-                ctx.font = 'bold 10px Inter, system-ui, sans-serif';
-                ctx.fillStyle = '#94a3b8';
-                ctx.textAlign = 'center';
-                ctx.fillText(currentView.name.toUpperCase() + ' VIEW', W * 0.5, H - 6);
+                var viewLabel = currentView.name.toUpperCase() + ' VIEW';
+                ctx.font = 'bold 9px Inter, system-ui, sans-serif';
+                var vlW = ctx.measureText(viewLabel).width + 16;
+                ctx.beginPath();
+                ctx.roundRect(W * 0.5 - vlW / 2, H - 18, vlW, 14, 4);
+                ctx.fillStyle = '#f8fafc'; ctx.fill();
+                ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 0.5; ctx.stroke();
+                ctx.fillStyle = '#94a3b8'; ctx.textAlign = 'center';
+                ctx.fillText(viewLabel, W * 0.5, H - 8);
                 ctx.restore();
 
                 // Continue animation
@@ -16920,52 +20361,165 @@
                     }
                   }
                 }
+                // ── Mycorrhizal fungal network (connecting all root systems) ──
+                if ((_corn && _beans || _corn && _squash || _beans && _squash) && gt > 0.25) {
+                  var netAlpha = Math.min(0.5, (gt - 0.25) * 0.8) * (0.5 + 0.5 * Math.sin(tick * 0.015));
+                  ctx.strokeStyle = 'rgba(180,140,255,' + netAlpha + ')';
+                  ctx.lineWidth = 0.8;
+                  // Draw branching fungal threads across the underground zone
+                  var netY0 = cy + h * 0.3;
+                  var netY1 = cy + h * 0.7;
+                  var netSpanX = w * 0.9;
+                  for (var fi = 0; fi < 8; fi++) {
+                    var fx0 = cx - netSpanX * 0.5 + fi * netSpanX * 0.14;
+                    var fy0 = netY0 + (fi % 3) * (netY1 - netY0) * 0.3;
+                    var fx1 = fx0 + netSpanX * 0.18 + Math.sin(tick * 0.008 + fi) * 5;
+                    var fy1 = fy0 + (netY1 - netY0) * 0.2 + Math.cos(tick * 0.01 + fi * 2) * 4;
+                    ctx.beginPath();
+                    ctx.moveTo(fx0, fy0);
+                    ctx.bezierCurveTo(fx0 + 8, fy0 - 4, fx1 - 6, fy1 + 3, fx1, fy1);
+                    ctx.stroke();
+                    // Branch nodes (hyphal tips / arbuscules)
+                    if (fi % 2 === 0) {
+                      ctx.fillStyle = 'rgba(200,160,255,' + (netAlpha * 0.8) + ')';
+                      ctx.beginPath(); ctx.arc(fx1, fy1, 1.5 + gt, 0, Math.PI * 2); ctx.fill();
+                    }
+                  }
+                  // Nutrient transfer indicators (small dots flowing along threads)
+                  if (gt > 0.5) {
+                    for (var nd = 0; nd < 4; nd++) {
+                      var ndFrac = ((tick * 0.01 + nd * 0.25) % 1);
+                      var ndX = cx - netSpanX * 0.4 + ndFrac * netSpanX * 0.8;
+                      var ndY = netY0 + (netY1 - netY0) * 0.3 + Math.sin(ndFrac * Math.PI * 2 + nd) * 6;
+                      ctx.fillStyle = 'rgba(255,215,100,' + (0.3 + 0.4 * Math.sin(tick * 0.04 + nd)) + ')';
+                      ctx.beginPath(); ctx.arc(ndX, ndY, 1.8, 0, Math.PI * 2); ctx.fill();
+                    }
+                  }
+                }
 
-                // ── Corn stalks ──
+                // ── Corn stalks (enhanced with segments, leaf midribs, silk, husks) ──
                 if (_corn) {
                   var cornH = gt * h * 2.2;
                   var sway = Math.sin(tick * 0.015) * 3 * gt;
                   for (var ci = 0; ci < 3; ci++) {
                     var cornX = cx + (ci - 1) * w * 0.15;
-                    ctx.strokeStyle = '#2E7D32';
-                    ctx.lineWidth = 3 + gt * 3;
-                    ctx.beginPath();
-                    ctx.moveTo(cornX, cy - h * 0.2);
-                    ctx.quadraticCurveTo(cornX + sway, cy - h * 0.2 - cornH * 0.5, cornX + sway * 1.3, cy - h * 0.2 - cornH);
-                    ctx.stroke();
-                    // Corn leaves
-                    if (gt > 0.3) {
-                      for (var li = 0; li < 3; li++) {
-                        var ly = cy - h * 0.2 - cornH * (0.3 + li * 0.25);
-                        var leafSway = Math.sin(tick * 0.02 + li) * 5;
-                        ctx.strokeStyle = '#43A047';
-                        ctx.lineWidth = 2;
+                    // Stalk with segments
+                    var segCount = Math.floor(3 + gt * 5);
+                    for (var seg = 0; seg < segCount; seg++) {
+                      var segFrac0 = seg / segCount;
+                      var segFrac1 = (seg + 1) / segCount;
+                      var sx0 = cornX + sway * segFrac0;
+                      var sy0 = cy - h * 0.2 - cornH * segFrac0;
+                      var sx1 = cornX + sway * segFrac1;
+                      var sy1 = cy - h * 0.2 - cornH * segFrac1;
+                      var segWidth = 3 + gt * 3 - seg * 0.3;
+                      // Alternating segment shading for realism
+                      ctx.strokeStyle = seg % 2 === 0 ? '#2E7D32' : '#388E3C';
+                      ctx.lineWidth = Math.max(1.5, segWidth);
+                      ctx.beginPath(); ctx.moveTo(sx0, sy0); ctx.lineTo(sx1, sy1); ctx.stroke();
+                      // Node joint ring
+                      if (seg > 0 && seg < segCount - 1) {
                         ctx.beginPath();
-                        ctx.moveTo(cornX + sway * (0.3 + li * 0.25), ly);
-                        ctx.quadraticCurveTo(cornX + sway * (0.3 + li * 0.25) + (li % 2 === 0 ? 1 : -1) * 20 + leafSway, ly - 5, cornX + sway * (0.3 + li * 0.25) + (li % 2 === 0 ? 1 : -1) * 35 + leafSway, ly + 5);
-                        ctx.stroke();
-                      }
-                    }
-                    // Corn tassels
-                    if (gt > 0.7) {
-                      ctx.fillStyle = '#FDD835';
-                      for (var ti = 0; ti < 3; ti++) {
-                        ctx.beginPath();
-                        ctx.arc(cornX + sway * 1.3 + (ti - 1) * 4, cy - h * 0.2 - cornH - 3 + ti * 2, 2, 0, Math.PI * 2);
+                        ctx.arc(sx0, sy0, segWidth * 0.6, 0, Math.PI * 2);
+                        ctx.fillStyle = 'rgba(27,94,32,0.4)';
                         ctx.fill();
                       }
                     }
-                    // Corn ears
+                    // Corn leaves with midrib
+                    if (gt > 0.3) {
+                      for (var li = 0; li < 4; li++) {
+                        var ly = cy - h * 0.2 - cornH * (0.25 + li * 0.2);
+                        var leafSway = Math.sin(tick * 0.02 + li + ci) * 5;
+                        var leafDir = (li % 2 === 0 ? 1 : -1);
+                        var leafLen = 30 + gt * 10 - li * 3;
+                        var leafTipX = cornX + sway * (0.25 + li * 0.2) + leafDir * leafLen + leafSway;
+                        var leafTipY = ly + 8;
+                        // Leaf blade
+                        ctx.beginPath();
+                        ctx.moveTo(cornX + sway * (0.25 + li * 0.2), ly);
+                        ctx.quadraticCurveTo(
+                          cornX + sway * (0.25 + li * 0.2) + leafDir * leafLen * 0.6 + leafSway * 0.5, ly - 6,
+                          leafTipX, leafTipY
+                        );
+                        ctx.strokeStyle = '#43A047';
+                        ctx.lineWidth = 2.5;
+                        ctx.stroke();
+                        // Fill leaf shape
+                        ctx.beginPath();
+                        ctx.moveTo(cornX + sway * (0.25 + li * 0.2), ly);
+                        ctx.quadraticCurveTo(
+                          cornX + sway * (0.25 + li * 0.2) + leafDir * leafLen * 0.6 + leafSway * 0.5, ly - 8,
+                          leafTipX, leafTipY
+                        );
+                        ctx.quadraticCurveTo(
+                          cornX + sway * (0.25 + li * 0.2) + leafDir * leafLen * 0.5 + leafSway * 0.3, ly + 3,
+                          cornX + sway * (0.25 + li * 0.2), ly
+                        );
+                        ctx.fillStyle = 'rgba(76,175,80,' + (0.3 + gt * 0.2) + ')';
+                        ctx.fill();
+                        // Midrib line
+                        ctx.beginPath();
+                        ctx.moveTo(cornX + sway * (0.25 + li * 0.2), ly);
+                        ctx.lineTo(leafTipX, leafTipY);
+                        ctx.strokeStyle = 'rgba(27,94,32,0.4)';
+                        ctx.lineWidth = 0.8;
+                        ctx.stroke();
+                      }
+                    }
+                    // Corn tassels with silk threads
+                    if (gt > 0.7) {
+                      var tasselBase = cy - h * 0.2 - cornH;
+                      ctx.fillStyle = '#FDD835';
+                      for (var ti = 0; ti < 5; ti++) {
+                        var tAngle = (ti / 5) * Math.PI - Math.PI * 0.5;
+                        var tLen = 6 + gt * 4;
+                        ctx.beginPath();
+                        ctx.moveTo(cornX + sway * 1.3, tasselBase);
+                        ctx.lineTo(cornX + sway * 1.3 + Math.cos(tAngle) * tLen, tasselBase - Math.abs(Math.sin(tAngle)) * tLen * 0.8);
+                        ctx.strokeStyle = '#FDD835';
+                        ctx.lineWidth = 1.2;
+                        ctx.stroke();
+                        // Pollen dots at tips
+                        ctx.beginPath();
+                        ctx.arc(cornX + sway * 1.3 + Math.cos(tAngle) * tLen, tasselBase - Math.abs(Math.sin(tAngle)) * tLen * 0.8, 1.5, 0, Math.PI * 2);
+                        ctx.fill();
+                      }
+                    }
+                    // Corn ears with husk detail
                     if (gt > 0.6) {
-                      ctx.fillStyle = '#FFB300';
                       var earY = cy - h * 0.2 - cornH * 0.55;
+                      var earX = cornX + sway * 0.5 + 8;
+                      // Husk (outer layers)
                       ctx.beginPath();
-                      ctx.ellipse(cornX + sway * 0.5 + 8, earY, 4, 8 + gt * 4, 0.3, 0, Math.PI * 2);
+                      ctx.ellipse(earX - 1, earY, 6 + gt * 2, 10 + gt * 5, 0.3, 0, Math.PI * 2);
+                      ctx.fillStyle = '#8BC34A';
                       ctx.fill();
+                      // Ear (inner yellow)
+                      ctx.beginPath();
+                      ctx.ellipse(earX, earY, 4, 8 + gt * 4, 0.3, 0, Math.PI * 2);
+                      ctx.fillStyle = '#FFB300';
+                      ctx.fill();
+                      // Kernel rows
+                      ctx.beginPath();
+                      ctx.ellipse(earX, earY, 3, 6 + gt * 3, 0.3, 0, Math.PI * 2);
                       ctx.fillStyle = '#C8B900';
-                      ctx.beginPath();
-                      ctx.ellipse(cornX + sway * 0.5 + 8, earY, 3, 6 + gt * 3, 0.3, 0, Math.PI * 2);
                       ctx.fill();
+                      // Silk threads emerging from top of ear
+                      if (gt > 0.75) {
+                        for (var si2 = 0; si2 < 4; si2++) {
+                          ctx.beginPath();
+                          ctx.moveTo(earX, earY - 8 - gt * 4);
+                          ctx.quadraticCurveTo(
+                            earX + (si2 - 1.5) * 4 + Math.sin(tick * 0.03 + si2) * 2,
+                            earY - 12 - gt * 6,
+                            earX + (si2 - 1.5) * 6 + Math.sin(tick * 0.02 + si2) * 3,
+                            earY - 16 - gt * 5
+                          );
+                          ctx.strokeStyle = 'rgba(255,235,180,0.6)';
+                          ctx.lineWidth = 0.6;
+                          ctx.stroke();
+                        }
+                      }
                     }
                   }
                 }
@@ -17011,7 +20565,7 @@
                   }
                 }
 
-                // ── Squash vines & leaves ──
+                // ── Squash vines & leaves (enhanced with multi-lobed leaves, cross-veins, flowers, ribbed fruit) ──
                 if (_squash) {
                   var sqSpread = gt * w * 1.3;
                   for (var si = 0; si < 5; si++) {
@@ -17019,39 +20573,118 @@
                     var sqx = cx + Math.cos(angle) * sqSpread * (0.5 + si * 0.12);
                     var sqy = cy + Math.sin(angle) * h * 0.3 * gt + h * 0.1;
                     var vineSway = Math.sin(tick * 0.01 + si) * 3;
-                    // Vine
+                    // Vine with tapered width
                     ctx.strokeStyle = '#2E7D32';
                     ctx.lineWidth = 2 + gt * 2;
                     ctx.beginPath();
                     ctx.moveTo(cx, cy);
                     ctx.quadraticCurveTo(cx + (sqx - cx) * 0.5 + vineSway, sqy - 10, sqx, sqy);
                     ctx.stroke();
-                    // Large leaves (living mulch!)
+                    // Tendrils along vine
+                    if (gt > 0.3) {
+                      var midVX = cx + (sqx - cx) * 0.5 + vineSway;
+                      var midVY = sqy - 10;
+                      ctx.strokeStyle = 'rgba(46,125,50,0.5)';
+                      ctx.lineWidth = 0.8;
+                      for (var tn = 0; tn < 2; tn++) {
+                        var tnX = midVX + (tn === 0 ? -8 : 8);
+                        var tnY = midVY + tn * 5;
+                        ctx.beginPath(); ctx.moveTo(midVX + (sqx - cx) * 0.1 * tn, midVY + tn * 3);
+                        ctx.bezierCurveTo(tnX, tnY - 6, tnX + (tn === 0 ? -4 : 4), tnY - 8, tnX + (tn === 0 ? -2 : 2), tnY - 3);
+                        ctx.stroke();
+                      }
+                    }
+                    // Multi-lobed squash leaves
                     if (gt > 0.2) {
                       var leafSize = 8 + gt * 18;
                       var leafAlpha = 0.6 + gt * 0.3;
+                      // Draw 5-lobed leaf shape
+                      ctx.save();
+                      ctx.translate(sqx + vineSway, sqy);
+                      ctx.rotate(angle + Math.sin(tick * 0.01) * 0.1);
+                      // Main leaf body
+                      ctx.beginPath();
+                      for (var lobe = 0; lobe < 5; lobe++) {
+                        var lobeAngle = (lobe / 5) * Math.PI * 2 - Math.PI / 2;
+                        var lobeR = leafSize * (lobe % 2 === 0 ? 1 : 0.7);
+                        if (lobe === 0) {
+                          ctx.moveTo(Math.cos(lobeAngle) * lobeR, Math.sin(lobeAngle) * lobeR * 0.6);
+                        } else {
+                          ctx.quadraticCurveTo(
+                            Math.cos(lobeAngle - 0.3) * leafSize * 0.4,
+                            Math.sin(lobeAngle - 0.3) * leafSize * 0.35,
+                            Math.cos(lobeAngle) * lobeR,
+                            Math.sin(lobeAngle) * lobeR * 0.6
+                          );
+                        }
+                      }
+                      ctx.closePath();
                       ctx.fillStyle = 'rgba(76,175,80,' + leafAlpha + ')';
-                      ctx.beginPath();
-                      ctx.ellipse(sqx + vineSway, sqy, leafSize, leafSize * 0.6, angle + Math.sin(tick * 0.01) * 0.1, 0, Math.PI * 2);
                       ctx.fill();
-                      // Leaf veins
-                      ctx.strokeStyle = 'rgba(27,94,32,0.3)';
-                      ctx.lineWidth = 0.5;
-                      ctx.beginPath();
-                      ctx.moveTo(sqx + vineSway - leafSize * 0.8, sqy);
-                      ctx.lineTo(sqx + vineSway + leafSize * 0.8, sqy);
+                      ctx.strokeStyle = 'rgba(46,125,50,0.4)';
+                      ctx.lineWidth = 0.6;
                       ctx.stroke();
+                      // Central vein + cross veins
+                      ctx.strokeStyle = 'rgba(27,94,32,0.35)';
+                      ctx.lineWidth = 0.8;
+                      ctx.beginPath(); ctx.moveTo(-leafSize * 0.6, 0); ctx.lineTo(leafSize * 0.6, 0); ctx.stroke();
+                      ctx.beginPath(); ctx.moveTo(0, -leafSize * 0.4); ctx.lineTo(0, leafSize * 0.4); ctx.stroke();
+                      // Cross veins
+                      for (var cv = 0; cv < 3; cv++) {
+                        var cvX = (-0.4 + cv * 0.4) * leafSize;
+                        ctx.beginPath();
+                        ctx.moveTo(cvX, -leafSize * 0.25); ctx.lineTo(cvX + 2, leafSize * 0.25);
+                        ctx.strokeStyle = 'rgba(27,94,32,0.2)'; ctx.lineWidth = 0.5; ctx.stroke();
+                      }
+                      ctx.restore();
                     }
-                    // Squash fruits
+                    // Squash flower buds (before fruit)
+                    if (gt > 0.4 && gt < 0.7 && si < 3) {
+                      var flX = sqx + vineSway + 6;
+                      var flY = sqy - 3;
+                      ctx.beginPath();
+                      for (var petal = 0; petal < 5; petal++) {
+                        var petalAngle = (petal / 5) * Math.PI * 2;
+                        var petalR = 4 + gt * 3;
+                        ctx.ellipse(
+                          flX + Math.cos(petalAngle) * petalR * 0.5,
+                          flY + Math.sin(petalAngle) * petalR * 0.5,
+                          petalR * 0.4, petalR * 0.25, petalAngle, 0, Math.PI * 2
+                        );
+                      }
+                      ctx.fillStyle = 'rgba(255,193,7,0.7)';
+                      ctx.fill();
+                      // Flower center
+                      ctx.beginPath(); ctx.arc(flX, flY, 2, 0, Math.PI * 2);
+                      ctx.fillStyle = 'rgba(255,152,0,0.8)'; ctx.fill();
+                    }
+                    // Squash fruits with ribs
                     if (gt > 0.65 && si < 3) {
+                      var frX = sqx + 5;
+                      var frY = sqy + 3;
+                      var frW = 6 + gt * 5;
+                      var frH = 4 + gt * 3;
                       ctx.fillStyle = si === 0 ? '#FF8F00' : si === 1 ? '#F9A825' : '#FFB300';
                       ctx.beginPath();
-                      ctx.ellipse(sqx + 5, sqy + 3, 6 + gt * 5, 4 + gt * 3, 0.2, 0, Math.PI * 2);
+                      ctx.ellipse(frX, frY, frW, frH, 0.2, 0, Math.PI * 2);
                       ctx.fill();
+                      // Ribs
+                      ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+                      ctx.lineWidth = 0.6;
+                      for (var rib = 0; rib < 4; rib++) {
+                        ctx.beginPath();
+                        var ribAngle = (rib / 4) * Math.PI;
+                        ctx.ellipse(frX, frY, frW * 0.95, frH * 0.3, 0.2 + ribAngle * 0.15, 0, Math.PI * 2);
+                        ctx.stroke();
+                      }
+                      // Shadow
                       ctx.fillStyle = 'rgba(0,0,0,0.1)';
                       ctx.beginPath();
-                      ctx.ellipse(sqx + 7, sqy + 5, 4 + gt * 3, 2 + gt * 2, 0.2, 0, Math.PI * 2);
+                      ctx.ellipse(frX + 2, frY + frH * 0.7, frW * 0.8, frH * 0.3, 0.2, 0, Math.PI * 2);
                       ctx.fill();
+                      // Stem nub
+                      ctx.fillStyle = '#558B2F';
+                      ctx.beginPath(); ctx.arc(frX - frW + 2, frY - 1, 2, 0, Math.PI * 2); ctx.fill();
                     }
                   }
                   // Shade coverage indicator
@@ -17223,7 +20856,7 @@
                   drawMound(cW * 0.5 / dpr, cH * 0.58 / dpr, 100, 35, '', _corn, _beans, _squash, _gt, false);
                 }
 
-                // ── Floating particles (pollen, butterflies, N₂ symbols) ──
+                // ── Floating particles (pollen, pollinators, N₂ symbols) ──
                 particles.forEach(function (p) {
                   p.life++;
                   p.x += p.vx + Math.sin(tick * 0.01 + p.life * 0.1) * 0.2;
@@ -17231,17 +20864,58 @@
                   if (p.y < -10 || p.life > 250) { p.y = cH * 0.35 / dpr; p.x = Math.random() * cW / dpr; p.life = 0; }
                   var pAlpha = Math.min(1, p.life / 30) * (1 - Math.max(0, p.life - 200) / 50);
                   if (p.type === 'pollen' && _gt > 50) {
+                    // Pollen with glow
                     ctx.fillStyle = 'rgba(255,235,59,' + (pAlpha * 0.5) + ')';
                     ctx.beginPath(); ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2); ctx.fill();
+                    // Pollen glow halo
+                    ctx.fillStyle = 'rgba(255,235,59,' + (pAlpha * 0.15) + ')';
+                    ctx.beginPath(); ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2); ctx.fill();
                   } else if (p.type === 'butterfly' && _gt > 30) {
-                    var wingAngle = Math.sin(tick * 0.08 + p.life) * 0.4;
+                    // Enhanced butterfly with detailed wings
+                    var wingFlap = Math.sin(tick * 0.08 + p.life) * 0.5;
+                    var bfSize = 3.5;
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    // Left upper wing
+                    ctx.beginPath();
+                    ctx.ellipse(-bfSize * 0.7, -bfSize * 0.15, bfSize * 0.9 * (0.5 + wingFlap * 0.5), bfSize * 0.55, -0.2, 0, Math.PI * 2);
                     ctx.fillStyle = 'rgba(255,152,0,' + (pAlpha * 0.7) + ')';
-                    ctx.beginPath();
-                    ctx.ellipse(p.x - 3, p.y, 3, 1.5, wingAngle, 0, Math.PI * 2);
                     ctx.fill();
+                    // Right upper wing
                     ctx.beginPath();
-                    ctx.ellipse(p.x + 3, p.y, 3, 1.5, -wingAngle, 0, Math.PI * 2);
+                    ctx.ellipse(bfSize * 0.7, -bfSize * 0.15, bfSize * 0.9 * (0.5 + wingFlap * 0.5), bfSize * 0.55, 0.2, 0, Math.PI * 2);
                     ctx.fill();
+                    // Left lower wing (smaller)
+                    ctx.beginPath();
+                    ctx.ellipse(-bfSize * 0.5, bfSize * 0.25, bfSize * 0.55 * (0.5 + wingFlap * 0.5), bfSize * 0.35, -0.3, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(255,183,77,' + (pAlpha * 0.6) + ')';
+                    ctx.fill();
+                    // Right lower wing
+                    ctx.beginPath();
+                    ctx.ellipse(bfSize * 0.5, bfSize * 0.25, bfSize * 0.55 * (0.5 + wingFlap * 0.5), bfSize * 0.35, 0.3, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Wing pattern spots
+                    ctx.fillStyle = 'rgba(230,100,0,' + (pAlpha * 0.4) + ')';
+                    ctx.beginPath(); ctx.arc(-bfSize * 0.6, -bfSize * 0.1, bfSize * 0.2, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(bfSize * 0.6, -bfSize * 0.1, bfSize * 0.2, 0, Math.PI * 2); ctx.fill();
+                    // Body
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, bfSize * 0.08, bfSize * 0.45, 0, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(40,40,40,' + pAlpha + ')';
+                    ctx.fill();
+                    // Head
+                    ctx.beginPath(); ctx.arc(0, -bfSize * 0.42, bfSize * 0.1, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Antennae
+                    ctx.strokeStyle = 'rgba(40,40,40,' + (pAlpha * 0.6) + ')';
+                    ctx.lineWidth = 0.5;
+                    ctx.beginPath(); ctx.moveTo(0, -bfSize * 0.5); ctx.lineTo(-bfSize * 0.3, -bfSize * 0.75); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(0, -bfSize * 0.5); ctx.lineTo(bfSize * 0.3, -bfSize * 0.75); ctx.stroke();
+                    // Antenna bulbs
+                    ctx.fillStyle = 'rgba(40,40,40,' + (pAlpha * 0.5) + ')';
+                    ctx.beginPath(); ctx.arc(-bfSize * 0.3, -bfSize * 0.75, 0.6, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(bfSize * 0.3, -bfSize * 0.75, 0.6, 0, Math.PI * 2); ctx.fill();
+                    ctx.restore();
                   } else if (p.type === 'n2' && _beans && _gt > 20) {
                     ctx.fillStyle = 'rgba(130,230,170,' + (pAlpha * 0.4) + ')';
                     ctx.font = '8px monospace';
@@ -17800,6 +21474,641 @@
             );
           })(),
 
+          // --- GEOMETRY SANDBOX ---
+          stemLabTab === 'explore' && stemLabTool === 'geoSandbox' && (() => {
+            const gd = (labToolData && labToolData.geoSandbox) || {};
+            const upd = (key, val) => setLabToolData(prev => ({ ...prev, geoSandbox: { ...(prev.geoSandbox || {}), [key]: val } }));
+            const updDim = (key, val) => setLabToolData(prev => {
+              const g = prev.geoSandbox || {};
+              return { ...prev, geoSandbox: { ...g, dims: { ...(g.dims || { w: 3, h: 3, d: 3, r: 1.5, rTop: 1.5, rBot: 1.5, tube: 0.5, segs: 32 }), [key]: parseFloat(val) } } };
+            });
+            const shape = gd.shape || 'box';
+            const dims = gd.dims || { w: 3, h: 3, d: 3, r: 1.5, rTop: 1.5, rBot: 1.5, tube: 0.5, segs: 32 };
+            const shapeColor = gd.color || '#60a5fa';
+            const wireframe = gd.wireframe || false;
+            const opacity = gd.opacity != null ? gd.opacity : 1;
+
+            // --- Measurement calculations ---
+            const calcMeasurements = () => {
+              const PI = Math.PI;
+              switch (shape) {
+                case 'box': {
+                  const w = dims.w || 3, h = dims.h || 3, d = dims.d || 3;
+                  return { vol: w * h * d, sa: 2 * (w * h + w * d + h * d), faces: 6, edges: 12, vertices: 8, name: 'Rectangular Prism' };
+                }
+                case 'sphere': {
+                  const r = dims.r || 1.5;
+                  return { vol: (4 / 3) * PI * r * r * r, sa: 4 * PI * r * r, faces: 0, edges: 0, vertices: 0, name: 'Sphere', note: 'Curved surface — no flat faces' };
+                }
+                case 'cylinder': {
+                  const rT = dims.rTop || 1.5, rB = dims.rBot || 1.5, h = dims.h || 3;
+                  const sl = Math.sqrt(Math.pow(rT - rB, 2) + h * h);
+                  return { vol: (PI * h / 3) * (rT * rT + rB * rT + rB * rB), sa: PI * (rT * rT + rB * rB + (rT + rB) * sl), faces: 3, edges: 2, vertices: 0, name: rT === rB ? 'Cylinder' : 'Frustum' };
+                }
+                case 'cone': {
+                  const r = dims.r || 1.5, h = dims.h || 3;
+                  const sl = Math.sqrt(r * r + h * h);
+                  return { vol: (PI * r * r * h) / 3, sa: PI * r * (r + sl), faces: 2, edges: 1, vertices: 1, name: 'Cone' };
+                }
+                case 'pyramid': {
+                  const r = dims.r || 1.5, h = dims.h || 3;
+                  const base = 2 * r, baseA = base * base;
+                  const sl = Math.sqrt(r * r + h * h);
+                  return { vol: baseA * h / 3, sa: baseA + 4 * (0.5 * base * sl), faces: 5, edges: 8, vertices: 5, name: 'Square Pyramid' };
+                }
+                case 'torus': {
+                  const R = dims.r || 1.5, r = dims.tube || 0.5;
+                  return { vol: 2 * PI * PI * R * r * r, sa: 4 * PI * PI * R * r, faces: 0, edges: 0, vertices: 0, name: 'Torus', note: 'Donut shape — curved surface' };
+                }
+                case 'prism': {
+                  const w = dims.w || 3, h = dims.h || 3, d = dims.d || 3;
+                  const triA = 0.5 * w * h;
+                  const hyp = Math.sqrt((w / 2) * (w / 2) + h * h);
+                  return { vol: triA * d, sa: 2 * triA + w * d + 2 * hyp * d, faces: 5, edges: 9, vertices: 6, name: 'Triangular Prism' };
+                }
+                default: return { vol: 0, sa: 0, faces: 0, edges: 0, vertices: 0, name: 'Shape' };
+              }
+            };
+            const m = calcMeasurements();
+
+            // --- STL Export ---
+            const exportSTL = () => {
+              if (!window._geoScene || !window._geoScene.mesh || !window.THREE) return;
+              const mesh = window._geoScene.mesh;
+              const geo = mesh.geometry.clone();
+              geo.applyMatrix4(mesh.matrixWorld);
+              const pos = geo.attributes.position;
+              const idx = geo.index;
+              const triCount = idx ? idx.count / 3 : pos.count / 3;
+              const bufLen = 80 + 4 + triCount * 50;
+              var buf = new ArrayBuffer(bufLen);
+              var dv = new DataView(buf);
+              // Header (80 bytes)
+              var headerStr = 'AlloFlow Geometry Sandbox - ' + shape;
+              for (var hi = 0; hi < 80; hi++) dv.setUint8(hi, hi < headerStr.length ? headerStr.charCodeAt(hi) : 0);
+              dv.setUint32(80, triCount, true);
+              var offset = 84;
+              const _v = (i) => {
+                if (idx) return new window.THREE.Vector3(pos.getX(idx.getX(i)), pos.getY(idx.getX(i)), pos.getZ(idx.getX(i)));
+                return new window.THREE.Vector3(pos.getX(i), pos.getY(i), pos.getZ(i));
+              };
+              for (var t = 0; t < triCount; t++) {
+                const i0 = idx ? t * 3 : t * 3, i1 = i0 + 1, i2 = i0 + 2;
+                const v0 = _v(i0), v1 = _v(i1), v2 = _v(i2);
+                const edge1 = new window.THREE.Vector3().subVectors(v1, v0);
+                const edge2 = new window.THREE.Vector3().subVectors(v2, v0);
+                const normal = new window.THREE.Vector3().crossVectors(edge1, edge2).normalize();
+                // Normal
+                dv.setFloat32(offset, normal.x, true); offset += 4;
+                dv.setFloat32(offset, normal.y, true); offset += 4;
+                dv.setFloat32(offset, normal.z, true); offset += 4;
+                // Vertices
+                [v0, v1, v2].forEach(v => {
+                  dv.setFloat32(offset, v.x, true); offset += 4;
+                  dv.setFloat32(offset, v.y, true); offset += 4;
+                  dv.setFloat32(offset, v.z, true); offset += 4;
+                });
+                dv.setUint16(offset, 0, true); offset += 2;
+              }
+              geo.dispose();
+              const blob = new Blob([buf], { type: 'application/sla' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = 'geometry_sandbox_' + shape + '_' + Date.now() + '.stl';
+              a.click();
+              URL.revokeObjectURL(url);
+              if (typeof addToast === 'function') addToast('\u{1F4E6} STL exported — ready for 3D printing!', 'success');
+            };
+
+            // --- Shape palette config ---
+            const shapes = [
+              { id: 'box', icon: '\u{1F7E6}', label: 'Cube' },
+              { id: 'sphere', icon: '\u{26AA}', label: 'Sphere' },
+              { id: 'cylinder', icon: '\u{1F6E2}\uFE0F', label: 'Cylinder' },
+              { id: 'cone', icon: '\u{1F4D0}', label: 'Cone' },
+              { id: 'pyramid', icon: '\u{1F53A}', label: 'Pyramid' },
+              { id: 'torus', icon: '\u{1F369}', label: 'Torus' },
+              { id: 'prism', icon: '\u{1F4D0}', label: 'Prism' }
+            ];
+
+            // --- Slider configs per shape ---
+            const sliderConfigs = {
+              box: [
+                { key: 'w', label: 'Width', min: 0.5, max: 10, step: 0.1 },
+                { key: 'h', label: 'Height', min: 0.5, max: 10, step: 0.1 },
+                { key: 'd', label: 'Depth', min: 0.5, max: 10, step: 0.1 }
+              ],
+              sphere: [
+                { key: 'r', label: 'Radius', min: 0.5, max: 5, step: 0.1 },
+                { key: 'segs', label: 'Smoothness', min: 8, max: 64, step: 4 }
+              ],
+              cylinder: [
+                { key: 'rTop', label: 'Top Radius', min: 0.1, max: 5, step: 0.1 },
+                { key: 'rBot', label: 'Bottom Radius', min: 0.1, max: 5, step: 0.1 },
+                { key: 'h', label: 'Height', min: 0.5, max: 10, step: 0.1 }
+              ],
+              cone: [
+                { key: 'r', label: 'Base Radius', min: 0.5, max: 5, step: 0.1 },
+                { key: 'h', label: 'Height', min: 0.5, max: 10, step: 0.1 }
+              ],
+              pyramid: [
+                { key: 'r', label: 'Base Size', min: 0.5, max: 5, step: 0.1 },
+                { key: 'h', label: 'Height', min: 0.5, max: 10, step: 0.1 }
+              ],
+              torus: [
+                { key: 'r', label: 'Major Radius', min: 0.5, max: 5, step: 0.1 },
+                { key: 'tube', label: 'Tube Radius', min: 0.1, max: 2, step: 0.05 }
+              ],
+              prism: [
+                { key: 'w', label: 'Base Width', min: 0.5, max: 10, step: 0.1 },
+                { key: 'h', label: 'Height', min: 0.5, max: 10, step: 0.1 },
+                { key: 'd', label: 'Depth', min: 0.5, max: 10, step: 0.1 }
+              ]
+            };
+
+            // --- Coach tips ---
+            const coachTips = {
+              box: { title: 'Rectangular Prism', tip: 'A prism with 6 rectangular faces. Every corner is a right angle. V = l \u00D7 w \u00D7 h', example: 'Shipping boxes, buildings, books — most structures start as rectangular prisms.' },
+              sphere: { title: 'Sphere', tip: 'Every point on the surface is the same distance from the center. V = \u2074\u2044\u2083\u03C0r\u00B3', example: 'Planets, basketballs, soap bubbles — nature prefers spheres because they minimize surface area.' },
+              cylinder: { title: 'Cylinder', tip: 'Two circular bases connected by a curved surface. V = \u03C0r\u00B2h', example: 'Cans, pipes, pillars — cylinders are strong under compression.' },
+              cone: { title: 'Cone', tip: 'A circular base that narrows to a point. V = \u2153\u03C0r\u00B2h', example: 'Ice cream cones, traffic cones, volcanoes — one-third the volume of a cylinder!' },
+              pyramid: { title: 'Square Pyramid', tip: '4 triangular faces meeting at an apex over a square base. V = \u2153Bh', example: 'The Great Pyramid of Giza has a 230m base and 146m height — over 2.3 million blocks.' },
+              torus: { title: 'Torus', tip: 'A donut shape — a circle rotated around an axis. V = 2\u03C0\u00B2Rr\u00B2', example: 'Donuts, bagels, tire inner tubes, and tokamak fusion reactors are all tori!' },
+              prism: { title: 'Triangular Prism', tip: '2 triangular faces + 3 rectangular faces. V = \u00BDbh \u00D7 depth', example: 'Roof trusses, Toblerone boxes, and optical prisms that split light into rainbows.' }
+            };
+            const ct = coachTips[shape] || coachTips.box;
+
+            // Color palette
+            const colorPalette = ['#60a5fa', '#f472b6', '#34d399', '#fbbf24', '#a78bfa', '#fb923c', '#f87171', '#e2e8f0'];
+
+            const currentSliders = sliderConfigs[shape] || sliderConfigs.box;
+
+            // ── Three.js not loaded yet? Show loading state ──
+            if (!labToolData._threeLoaded) {
+              return React.createElement('div', { className: 'flex flex-col items-center justify-center gap-4 p-12 animate-pulse' },
+                React.createElement('div', { className: 'text-5xl' }, '\uD83D\uDD37'),
+                React.createElement('div', { className: 'text-slate-400 text-lg' }, 'Loading 3D engine...')
+              );
+            }
+
+            return React.createElement('div', { className: 'flex flex-col gap-3 animate-in fade-in duration-300' },
+              // Header row
+              React.createElement('div', { className: 'flex items-center justify-between gap-3 flex-wrap' },
+                React.createElement('h2', { className: 'text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-blue-500 flex items-center gap-2' },
+                  '\uD83D\uDD37 Geometry Sandbox'
+                ),
+                React.createElement('div', { className: 'flex gap-2' },
+                  React.createElement('button', {
+                    onClick: exportSTL,
+                    className: 'px-3 py-1.5 text-xs font-bold text-white bg-gradient-to-r from-emerald-500 to-green-600 rounded-full hover:from-emerald-600 hover:to-green-700 shadow-md hover:shadow-lg transition-all flex items-center gap-1'
+                  }, '\uD83D\uDCE6 Export STL'),
+                  React.createElement('button', {
+                    onClick: () => { if (window._geoScene) { cancelAnimationFrame(window._geoScene.animId); if (window._geoScene.renderer) window._geoScene.renderer.dispose(); if (window._geoScene.controls) window._geoScene.controls.dispose(); window._geoScene = null; } setStemLabTool(null); },
+                    className: 'px-3 py-1.5 text-xs font-bold text-slate-300 bg-slate-700/60 rounded-full hover:bg-slate-600 transition-all'
+                  }, '\u2190 Back')
+                )
+              ),
+
+              // Main layout: sidebar + viewport
+              React.createElement('div', { className: 'flex flex-col md:flex-row gap-3', style: { minHeight: '480px' } },
+
+                // === LEFT SIDEBAR ===
+                React.createElement('div', { className: 'w-full md:w-64 flex-shrink-0 flex flex-col gap-3' },
+
+                  // Shape palette
+                  React.createElement('div', { className: 'bg-slate-800/60 backdrop-blur-md rounded-xl p-3 border border-slate-700/50' },
+                    React.createElement('div', { className: 'text-xs font-bold text-slate-400 uppercase tracking-wider mb-2' }, 'Shapes'),
+                    React.createElement('div', { className: 'grid grid-cols-4 gap-1.5' },
+                      ...shapes.map(s =>
+                        React.createElement('button', {
+                          key: s.id,
+                          onClick: () => upd('shape', s.id),
+                          className: 'flex flex-col items-center gap-0.5 p-1.5 rounded-lg text-xs transition-all ' +
+                            (shape === s.id ? 'bg-sky-500/30 border border-sky-400/50 text-sky-300 shadow-lg shadow-sky-500/10' : 'bg-slate-700/40 border border-slate-600/30 text-slate-400 hover:bg-slate-700/60 hover:text-slate-300')
+                        },
+                          React.createElement('span', { className: 'text-lg leading-none' }, s.icon),
+                          React.createElement('span', { className: 'text-[10px] leading-tight' }, s.label)
+                        )
+                      )
+                    )
+                  ),
+
+                  // Property sliders
+                  React.createElement('div', { className: 'bg-slate-800/60 backdrop-blur-md rounded-xl p-3 border border-slate-700/50' },
+                    React.createElement('div', { className: 'text-xs font-bold text-slate-400 uppercase tracking-wider mb-2' }, 'Properties'),
+                    ...currentSliders.map(sl =>
+                      React.createElement('div', { key: sl.key, className: 'mb-2' },
+                        React.createElement('div', { className: 'flex justify-between text-[10px] text-slate-400 mb-0.5' },
+                          React.createElement('span', null, sl.label),
+                          React.createElement('span', { className: 'text-sky-400 font-mono' }, (dims[sl.key] || sl.min).toFixed(sl.step < 1 ? 1 : 0))
+                        ),
+                        React.createElement('input', {
+                          type: 'range',
+                          min: sl.min,
+                          max: sl.max,
+                          step: sl.step,
+                          value: dims[sl.key] || sl.min,
+                          onChange: e => updDim(sl.key, e.target.value),
+                          className: 'w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-sky-500'
+                        })
+                      )
+                    ),
+                    // Color picker
+                    React.createElement('div', { className: 'mt-3' },
+                      React.createElement('div', { className: 'text-[10px] text-slate-400 mb-1' }, 'Color'),
+                      React.createElement('div', { className: 'flex gap-1.5 flex-wrap' },
+                        ...colorPalette.map(c =>
+                          React.createElement('button', {
+                            key: c,
+                            onClick: () => upd('color', c),
+                            style: { backgroundColor: c },
+                            className: 'w-5 h-5 rounded-full transition-all border-2 ' +
+                              (shapeColor === c ? 'border-white scale-110 shadow-lg' : 'border-transparent hover:scale-105 opacity-70 hover:opacity-100')
+                          })
+                        )
+                      )
+                    ),
+                    // Wireframe toggle
+                    React.createElement('div', { className: 'flex items-center gap-2 mt-3' },
+                      React.createElement('button', {
+                        onClick: () => upd('wireframe', !wireframe),
+                        className: 'w-8 h-4 rounded-full transition-all relative ' + (wireframe ? 'bg-sky-500' : 'bg-slate-600')
+                      },
+                        React.createElement('div', {
+                          className: 'w-3 h-3 rounded-full bg-white absolute top-0.5 transition-all ' + (wireframe ? 'left-4' : 'left-0.5')
+                        })
+                      ),
+                      React.createElement('span', { className: 'text-[10px] text-slate-400' }, 'Wireframe')
+                    ),
+                    // Opacity slider
+                    React.createElement('div', { className: 'mt-2' },
+                      React.createElement('div', { className: 'flex justify-between text-[10px] text-slate-400 mb-0.5' },
+                        React.createElement('span', null, 'Opacity'),
+                        React.createElement('span', { className: 'text-sky-400 font-mono' }, Math.round(opacity * 100) + '%')
+                      ),
+                      React.createElement('input', {
+                        type: 'range', min: 0.1, max: 1, step: 0.05,
+                        value: opacity,
+                        onChange: e => upd('opacity', parseFloat(e.target.value)),
+                        className: 'w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-sky-500'
+                      })
+                    )
+                  ),
+
+                  // Measurements
+                  React.createElement('div', { className: 'bg-slate-800/60 backdrop-blur-md rounded-xl p-3 border border-slate-700/50' },
+                    React.createElement('div', { className: 'text-xs font-bold text-slate-400 uppercase tracking-wider mb-2' }, '\uD83D\uDCCF Measurements'),
+                    React.createElement('div', { className: 'space-y-1.5' },
+                      React.createElement('div', { className: 'flex justify-between text-xs' },
+                        React.createElement('span', { className: 'text-slate-400' }, 'Volume'),
+                        React.createElement('span', { className: 'text-emerald-400 font-mono font-bold' }, m.vol.toFixed(2) + ' u\u00B3')
+                      ),
+                      React.createElement('div', { className: 'flex justify-between text-xs' },
+                        React.createElement('span', { className: 'text-slate-400' }, 'Surface Area'),
+                        React.createElement('span', { className: 'text-sky-400 font-mono font-bold' }, m.sa.toFixed(2) + ' u\u00B2')
+                      ),
+                      React.createElement('div', { className: 'flex justify-between text-xs' },
+                        React.createElement('span', { className: 'text-slate-400' }, 'Faces'),
+                        React.createElement('span', { className: 'text-amber-400 font-mono font-bold' }, m.faces)
+                      ),
+                      React.createElement('div', { className: 'flex justify-between text-xs' },
+                        React.createElement('span', { className: 'text-slate-400' }, 'Edges'),
+                        React.createElement('span', { className: 'text-purple-400 font-mono font-bold' }, m.edges)
+                      ),
+                      React.createElement('div', { className: 'flex justify-between text-xs' },
+                        React.createElement('span', { className: 'text-slate-400' }, 'Vertices'),
+                        React.createElement('span', { className: 'text-rose-400 font-mono font-bold' }, m.vertices)
+                      ),
+                      m.note && React.createElement('div', { className: 'text-[10px] text-slate-500 italic mt-1' }, m.note)
+                    )
+                  )
+                ),
+
+                // === THREE.JS VIEWPORT ===
+                React.createElement('div', { className: 'flex-1 bg-slate-900/60 backdrop-blur-md rounded-xl border border-slate-700/50 overflow-hidden relative', style: { minHeight: '400px' } },
+                  React.createElement('canvas', {
+                    id: 'geo-sandbox-canvas',
+                    className: 'w-full h-full',
+                    style: { display: 'block', width: '100%', height: '100%', minHeight: '400px' }
+                  }),
+                  // Controls hint overlay
+                  React.createElement('div', { className: 'absolute bottom-2 right-2 text-[10px] text-slate-500 bg-slate-900/80 px-2 py-1 rounded-md' },
+                    '\uD83D\uDDB1\uFE0F Drag: rotate \u2022 Scroll: zoom \u2022 Right-click: pan'
+                  ),
+                  // Shape name overlay
+                  React.createElement('div', { className: 'absolute top-2 left-2 text-xs font-bold text-sky-400 bg-slate-900/80 px-2 py-1 rounded-md' },
+                    m.name
+                  )
+                )
+              ),
+
+              // Coach panel
+              React.createElement('div', { className: 'bg-gradient-to-r from-sky-900/30 to-blue-900/30 backdrop-blur-md rounded-xl p-3 border border-sky-700/30' },
+                React.createElement('div', { className: 'flex items-start gap-3' },
+                  React.createElement('div', { className: 'text-2xl flex-shrink-0' }, '\uD83D\uDCD0'),
+                  React.createElement('div', null,
+                    React.createElement('div', { className: 'text-sm font-bold text-sky-300 mb-1' }, ct.title),
+                    React.createElement('div', { className: 'text-xs text-slate-300 mb-1' }, ct.tip),
+                    React.createElement('div', { className: 'text-[10px] text-slate-400 italic' }, '\uD83C\uDF0D ' + ct.example)
+                  )
+                )
+              ),
+
+              // STL note
+              React.createElement('div', { className: 'text-[10px] text-slate-500 text-center' },
+                '\uD83D\uDCA1 STL files are unit-less. Most 3D printer slicers (Cura, PrusaSlicer) default to millimeters. A shape with width=5 will print as 5mm wide.'
+              )
+            );
+          })(),
+
+          // --- ARCHITECTURE STUDIO ---
+          stemLabTab === 'explore' && stemLabTool === 'archStudio' && (function () {
+            var d = (labToolData && labToolData.archStudio) || {};
+            var upd = function (key, val) { setLabToolData(function (prev) { return Object.assign({}, prev, { archStudio: Object.assign({}, prev.archStudio || {}, (typeof key === 'object' ? key : (function () { var o = {}; o[key] = val; return o; })())) }); }); };
+            var blocks = d.blocks || [];
+            var activeShape = d.activeShape || 'block';
+            var activeMaterial = d.activeMaterial || 'stone';
+            var activeColor = d.activeColor || '#94a3b8';
+            var mode = d.mode || 'place';
+            var styleMode = d.styleMode || 'architect';
+            var blueprintView = d.blueprintView || false;
+            var threeReady = labToolData._threeLoaded;
+
+            // Shape definitions
+            var shapes = [
+              { id: 'block', icon: '\uD83D\uDFE6', label: 'Block', vol: 1 },
+              { id: 'slab', icon: '\uD83D\uDCCF', label: 'Slab', vol: 0.5 },
+              { id: 'ramp', icon: '\uD83C\uDFD4\uFE0F', label: 'Ramp', vol: 0.5 },
+              { id: 'column', icon: '\uD83C\uDFDB\uFE0F', label: 'Column', vol: 0.385 },
+              { id: 'arch', icon: '\uD83C\uDF09', label: 'Arch', vol: 0.24 },
+              { id: 'roof', icon: '\uD83D\uDCD0', label: 'Roof', vol: 0.35 },
+              { id: 'pyramid', icon: '\uD83D\uDD3A', label: 'Pyramid', vol: 0.26 },
+              { id: 'dome', icon: '\uD83D\uDD35', label: 'Dome', vol: 0.26 }
+            ];
+            // Material definitions
+            var materials = [
+              { id: 'stone', label: 'Stone', color: '#94a3b8', icon: '\uD83E\uDEA8' },
+              { id: 'brick', label: 'Brick', color: '#b45309', icon: '\uD83E\uDDF1' },
+              { id: 'wood', label: 'Wood', color: '#92400e', icon: '\uD83E\uDEB5' },
+              { id: 'glass', label: 'Glass', color: '#38bdf8', icon: '\uD83E\uDE9F' },
+              { id: 'marble', label: 'Marble', color: '#f1f5f9', icon: '\u26AA' },
+              { id: 'metal', label: 'Metal', color: '#cbd5e1', icon: '\u2699\uFE0F' }
+            ];
+            // Tool modes
+            var modes = [
+              { id: 'place', label: 'Place', icon: '\u2795' },
+              { id: 'erase', label: 'Erase', icon: '\u274C' },
+              { id: 'paint', label: 'Paint', icon: '\uD83C\uDFA8' }
+            ];
+            // Volume lookup
+            var volLookup = {};
+            shapes.forEach(function (s) { volLookup[s.id] = s.vol; });
+            // Stats
+            var totalBlocks = blocks.length;
+            var totalVolume = blocks.reduce(function (sum, b) { return sum + (volLookup[b.shape || 'block'] || 1); }, 0).toFixed(2);
+            // Footprint = unique (x,z) cells
+            var footprintSet = {};
+            blocks.forEach(function (b) { footprintSet[b.x + ',' + b.z] = true; });
+            var footprint = Object.keys(footprintSet).length;
+            // Surface area (rough estimate: 6 faces per block - 2 per shared face)
+            var blockMap = {};
+            blocks.forEach(function (b) { blockMap[b.x + ',' + b.y + ',' + b.z] = true; });
+            var surfaceArea = 0;
+            blocks.forEach(function (b) {
+              var neighbors = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+              neighbors.forEach(function (n) {
+                if (!blockMap[(b.x + n[0]) + ',' + (b.y + n[1]) + ',' + (b.z + n[2])]) surfaceArea += 1;
+              });
+            });
+            // Bounding box dimensions
+            var buildW = 0, buildD = 0, buildH = 0;
+            if (blocks.length > 0) {
+              var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity;
+              blocks.forEach(function (b) {
+                if (b.x < minX) minX = b.x; if (b.x > maxX) maxX = b.x;
+                if (b.y < minY) minY = b.y; if (b.y > maxY) maxY = b.y;
+                if (b.z < minZ) minZ = b.z; if (b.z > maxZ) maxZ = b.z;
+              });
+              buildW = maxX - minX + 1; buildD = maxZ - minZ + 1; buildH = maxY - minY + 1;
+            }
+
+            // STL export function
+            var exportSTL = function () {
+              if (!window.THREE || !window._archScene || blocks.length === 0) return;
+              var THREE = window.THREE;
+              var combined = new THREE.BufferGeometry();
+              var geos = [];
+              window._archScene.blockMeshes.forEach(function (m) {
+                var g = m.geometry.clone();
+                g.applyMatrix4(m.matrixWorld);
+                geos.push(g);
+              });
+              if (geos.length === 0) return;
+              // Merge all geometries
+              var positions = [];
+              var normals = [];
+              geos.forEach(function (g) {
+                var idx = g.index;
+                var pos = g.getAttribute('position');
+                var nrm = g.getAttribute('normal');
+                if (idx) {
+                  for (var i = 0; i < idx.count; i++) {
+                    var vi = idx.getX(i);
+                    positions.push(pos.getX(vi), pos.getY(vi), pos.getZ(vi));
+                    if (nrm) normals.push(nrm.getX(vi), nrm.getY(vi), nrm.getZ(vi));
+                    else normals.push(0, 1, 0);
+                  }
+                } else {
+                  for (var j = 0; j < pos.count; j++) {
+                    positions.push(pos.getX(j), pos.getY(j), pos.getZ(j));
+                    if (nrm) normals.push(nrm.getX(j), nrm.getY(j), nrm.getZ(j));
+                    else normals.push(0, 1, 0);
+                  }
+                }
+              });
+              var triCount = positions.length / 9;
+              var bufLen = 84 + triCount * 50;
+              var buf = new ArrayBuffer(bufLen);
+              var dv = new DataView(buf);
+              for (var h = 0; h < 80; h++) dv.setUint8(h, 0);
+              dv.setUint32(80, triCount, true);
+              var offset = 84;
+              for (var t = 0; t < triCount; t++) {
+                var ni = t * 9;
+                dv.setFloat32(offset, normals[ni], true);
+                dv.setFloat32(offset + 4, normals[ni + 1], true);
+                dv.setFloat32(offset + 8, normals[ni + 2], true);
+                offset += 12;
+                for (var v = 0; v < 3; v++) {
+                  var pi = t * 9 + v * 3;
+                  dv.setFloat32(offset, positions[pi], true);
+                  dv.setFloat32(offset + 4, positions[pi + 1], true);
+                  dv.setFloat32(offset + 8, positions[pi + 2], true);
+                  offset += 12;
+                }
+                dv.setUint16(offset, 0, true);
+                offset += 2;
+              }
+              var blob = new Blob([buf], { type: 'application/octet-stream' });
+              var url = URL.createObjectURL(blob);
+              var a = document.createElement('a');
+              a.href = url;
+              a.download = 'architecture_studio_' + Date.now() + '.stl';
+              a.click();
+              URL.revokeObjectURL(url);
+              if (typeof addToast === 'function') addToast('\uD83C\uDFD7\uFE0F Building exported as STL!', 'success');
+            };
+
+            // Undo
+            var undoBlock = function () {
+              setLabToolData(function (p) {
+                var a = Object.assign({}, p.archStudio || {});
+                var nb = (a.blocks || []).slice(0, -1);
+                return Object.assign({}, p, { archStudio: Object.assign({}, a, { blocks: nb }) });
+              });
+            };
+            // Clear all
+            var clearAll = function () {
+              setLabToolData(function (p) {
+                var a = Object.assign({}, p.archStudio || {});
+                return Object.assign({}, p, { archStudio: Object.assign({}, a, { blocks: [] }) });
+              });
+            };
+
+            // Coach tips based on block count
+            var coachTip = totalBlocks === 0 ? '\uD83C\uDFD7\uFE0F Click on the grid to place your first block! Use different shapes and materials to build amazing structures.'
+              : totalBlocks < 5 ? '\uD83D\uDCA1 Tip: Click on the side of an existing block to stack blocks upward. Try building a simple wall!'
+                : totalBlocks < 15 ? '\uD83C\uDFDB\uFE0F Try adding columns and arches to give your structure a classical look. Ancient Greeks used columns to support roofs.'
+                  : totalBlocks < 30 ? '\uD83C\uDFE0 Great progress! Mix materials for visual contrast \u2014 try a stone foundation with wooden walls and a brick chimney.'
+                    : totalBlocks < 50 ? '\uD83C\uDF09 Fun fact: The Roman Colosseum used 80 arched entrances. Try adding arches to your design!'
+                      : '\uD83C\uDFF0 You\'re an architect! The Great Wall of China used over 3.8 billion bricks. How big can you build?';
+
+            return React.createElement('div', { key: 'archStudio', style: { display: 'flex', flexDirection: 'column', height: '100%', background: '#0f172a', borderRadius: 16, overflow: 'hidden' } },
+              // Header bar
+              React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', background: 'linear-gradient(90deg,#1e293b,#0f172a)', borderBottom: '1px solid #334155', flexWrap: 'wrap' } },
+                React.createElement('button', { onClick: function () { setStemLabTool(''); }, style: { background: 'rgba(71,85,105,.5)', border: 'none', color: '#e2e8f0', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 600 } }, '\u2190 Back'),
+                React.createElement('span', { style: { fontSize: 20 } }, styleMode === 'bricks' ? '\uD83E\uDDF1' : '\uD83C\uDFD7\uFE0F'),
+                React.createElement('span', { style: { fontWeight: 700, fontSize: 17, color: '#f8fafc', letterSpacing: 0.5 } }, styleMode === 'bricks' ? 'Brick Builder' : 'Architecture Studio'),
+                React.createElement('span', { style: { fontSize: 11, color: '#64748b', marginLeft: 4 } }, blocks.length + ' blocks'),
+                // Style mode toggle
+                React.createElement('button', { onClick: function () { upd('styleMode', styleMode === 'architect' ? 'bricks' : 'architect'); }, style: { background: styleMode === 'bricks' ? 'rgba(239,68,68,.2)' : 'rgba(99,102,241,.15)', border: '1px solid ' + (styleMode === 'bricks' ? '#f87171' : '#6366f1'), color: styleMode === 'bricks' ? '#fca5a5' : '#a5b4fc', borderRadius: 20, padding: '4px 12px', cursor: 'pointer', fontSize: 11, fontWeight: 700 } }, styleMode === 'bricks' ? '\uD83E\uDDF1 Brick Builder' : '\uD83C\uDFDB\uFE0F Architect'),
+                // Blueprint toggle
+                React.createElement('button', { onClick: function () { upd('blueprintView', !blueprintView); }, style: { background: blueprintView ? 'rgba(34,211,238,.2)' : 'rgba(71,85,105,.3)', border: '1px solid ' + (blueprintView ? '#22d3ee' : '#475569'), color: blueprintView ? '#67e8f9' : '#94a3b8', borderRadius: 20, padding: '4px 12px', cursor: 'pointer', fontSize: 11, fontWeight: 700 } }, blueprintView ? '\uD83D\uDCD0 Blueprint' : '\uD83C\uDFD7\uFE0F 3D View'),
+                React.createElement('div', { style: { flex: 1 } }),
+                React.createElement('button', { onClick: undoBlock, disabled: blocks.length === 0, style: { background: 'rgba(71,85,105,.5)', border: 'none', color: blocks.length ? '#e2e8f0' : '#475569', borderRadius: 8, padding: '6px 12px', cursor: blocks.length ? 'pointer' : 'default', fontSize: 12, fontWeight: 600 } }, '\u21A9 Undo'),
+                React.createElement('button', { onClick: clearAll, disabled: blocks.length === 0, style: { background: blocks.length ? 'rgba(239,68,68,.3)' : 'rgba(71,85,105,.3)', border: blocks.length ? '1px solid rgba(239,68,68,.4)' : '1px solid transparent', color: blocks.length ? '#fca5a5' : '#475569', borderRadius: 8, padding: '6px 12px', cursor: blocks.length ? 'pointer' : 'default', fontSize: 12, fontWeight: 600 } }, '\uD83D\uDDD1\uFE0F Clear'),
+                React.createElement('button', { onClick: exportSTL, disabled: blocks.length === 0, style: { background: blocks.length ? 'linear-gradient(135deg,#f59e0b,#d97706)' : 'rgba(71,85,105,.3)', border: 'none', color: blocks.length ? '#fff' : '#475569', borderRadius: 8, padding: '6px 14px', cursor: blocks.length ? 'pointer' : 'default', fontSize: 12, fontWeight: 700 } }, '\uD83D\uDCE5 Export STL')
+              ),
+              // Main content: sidebar + viewport
+              React.createElement('div', { style: { display: 'flex', flex: 1, overflow: 'hidden' } },
+                // Left sidebar
+                React.createElement('div', { style: { width: 180, background: '#1e293b', padding: '12px 10px', overflowY: 'auto', borderRight: '1px solid #334155', display: 'flex', flexDirection: 'column', gap: 14 } },
+                  // Tool mode selector
+                  React.createElement('div', null,
+                    React.createElement('div', { style: { fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 6 } }, 'Mode'),
+                    React.createElement('div', { style: { display: 'flex', gap: 4 } },
+                      modes.map(function (m) {
+                        return React.createElement('button', {
+                          key: m.id,
+                          onClick: function () { upd('mode', m.id); },
+                          style: {
+                            flex: 1, padding: '6px 4px', fontSize: 11, fontWeight: 600, border: mode === m.id ? '2px solid #f59e0b' : '1px solid #475569',
+                            borderRadius: 8, background: mode === m.id ? 'rgba(245,158,11,.15)' : 'rgba(30,41,59,.8)', color: mode === m.id ? '#fbbf24' : '#94a3b8',
+                            cursor: 'pointer', textAlign: 'center'
+                          }
+                        }, m.icon + ' ' + m.label);
+                      })
+                    )
+                  ),
+                  // Shape palette
+                  React.createElement('div', null,
+                    React.createElement('div', { style: { fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 6 } }, 'Shapes'),
+                    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 } },
+                      shapes.map(function (s) {
+                        return React.createElement('button', {
+                          key: s.id,
+                          onClick: function () { upd('activeShape', s.id); },
+                          style: {
+                            padding: '8px 4px', fontSize: 11, fontWeight: 600, border: activeShape === s.id ? '2px solid #60a5fa' : '1px solid #334155',
+                            borderRadius: 8, background: activeShape === s.id ? 'rgba(96,165,250,.12)' : 'transparent', color: activeShape === s.id ? '#93c5fd' : '#94a3b8',
+                            cursor: 'pointer', textAlign: 'center', lineHeight: 1.2
+                          }
+                        }, React.createElement('div', { style: { fontSize: 18 } }, s.icon), s.label);
+                      })
+                    )
+                  ),
+                  // Material palette
+                  React.createElement('div', null,
+                    React.createElement('div', { style: { fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 6 } }, 'Materials'),
+                    React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 3 } },
+                      materials.map(function (m) {
+                        return React.createElement('button', {
+                          key: m.id,
+                          onClick: function () { upd({ activeMaterial: m.id, activeColor: m.color }); },
+                          style: {
+                            display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', fontSize: 11, fontWeight: 600,
+                            border: activeMaterial === m.id ? '2px solid ' + m.color : '1px solid #334155',
+                            borderRadius: 8, background: activeMaterial === m.id ? 'rgba(255,255,255,.06)' : 'transparent',
+                            color: activeMaterial === m.id ? '#f8fafc' : '#94a3b8', cursor: 'pointer', textAlign: 'left'
+                          }
+                        },
+                          React.createElement('span', { style: { width: 18, height: 18, borderRadius: 4, background: m.color, display: 'inline-block', flexShrink: 0, border: '1px solid rgba(255,255,255,.15)' } }),
+                          m.icon + ' ' + m.label
+                        );
+                      })
+                    )
+                  )
+                ),
+                // Main viewport area
+                React.createElement('div', { style: { flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' } },
+                  // Three.js canvas
+                  !threeReady
+                    ? React.createElement('div', { style: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontSize: 14 } },
+                      React.createElement('div', { style: { textAlign: 'center' } },
+                        React.createElement('div', { style: { fontSize: 32, marginBottom: 8, animation: 'spin 2s linear infinite' } }, '\u2699\uFE0F'),
+                        'Loading 3D engine...'
+                      )
+                    )
+                    : React.createElement('canvas', {
+                      id: 'arch-studio-canvas',
+                      style: { flex: 1, width: '100%', display: 'block', cursor: mode === 'place' ? 'crosshair' : mode === 'erase' ? 'not-allowed' : 'pointer' }
+                    }),
+                  // Controls overlay
+                  React.createElement('div', { style: { position: 'absolute', top: 10, right: 10, background: 'rgba(15,23,42,.85)', borderRadius: 10, padding: '8px 12px', fontSize: 10, color: '#64748b', lineHeight: 1.5, backdropFilter: 'blur(8px)', border: '1px solid #1e293b' } },
+                    React.createElement('div', null, '\uD83D\uDD04 Drag \u2014 Orbit'),
+                    React.createElement('div', null, '\uD83D\uDD0D Scroll \u2014 Zoom'),
+                    React.createElement('div', null, '\u2747\uFE0F Right-drag \u2014 Pan'),
+                    React.createElement('div', null, '\uD83D\uDC49 Click \u2014 ' + (mode === 'place' ? 'Place block' : mode === 'erase' ? 'Remove block' : 'Paint block'))
+                  ),
+                  // Mode indicator overlay
+                  React.createElement('div', { style: { position: 'absolute', top: 10, left: 10, background: mode === 'place' ? 'rgba(34,197,94,.2)' : mode === 'erase' ? 'rgba(239,68,68,.2)' : 'rgba(168,85,247,.2)', border: '1px solid ' + (mode === 'place' ? '#22c55e' : mode === 'erase' ? '#ef4444' : '#a855f7'), borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 700, color: mode === 'place' ? '#4ade80' : mode === 'erase' ? '#f87171' : '#c084fc' } },
+                    (mode === 'place' ? '\u2795 Place' : mode === 'erase' ? '\u274C Erase' : '\uD83C\uDFA8 Paint') + ' Mode'
+                  ),
+                  // Bottom stats bar
+                  React.createElement('div', { style: { display: 'flex', gap: 16, justifyContent: 'center', padding: '8px 16px', background: 'linear-gradient(0deg,#1e293b,#0f172a)', borderTop: '1px solid #334155', flexWrap: 'wrap' } },
+                    [
+                      { label: 'Blocks', value: totalBlocks, icon: '\uD83E\uDDF1' },
+                      { label: 'Dimensions', value: blocks.length > 0 ? buildW + '\u00D7' + buildD + '\u00D7' + buildH : '\u2014', icon: '\uD83D\uDCCF' },
+                      { label: 'Volume', value: totalVolume + ' u\u00B3', icon: '\uD83D\uDCE6' },
+                      { label: 'Footprint', value: footprint + ' u\u00B2', icon: '\uD83D\uDDFA\uFE0F' },
+                      { label: 'Surface', value: surfaceArea + ' u\u00B2', icon: '\uD83D\uDCC0' }
+                    ].map(function (stat) {
+                      return React.createElement('div', { key: stat.label, style: { textAlign: 'center' } },
+                        React.createElement('div', { style: { fontSize: 11, color: '#64748b', fontWeight: 600 } }, stat.icon + ' ' + stat.label),
+                        React.createElement('div', { style: { fontSize: 16, fontWeight: 700, color: '#f8fafc' } }, stat.value)
+                      );
+                    })
+                  )
+                )
+              ),
+              // Coach panel
+              React.createElement('div', { style: { padding: '10px 16px', background: '#1e293b', borderTop: '1px solid #334155', fontSize: 12, color: '#94a3b8', lineHeight: 1.5 } },
+                coachTip
+              )
+            );
+          })(),
+
           // --- GRAPHING CALCULATOR EMULATOR ---
           stemLabTab === 'explore' && stemLabTool === 'graphCalc' && (() => {
             const d = labToolData.graphCalc || {};
@@ -17810,86 +22119,49 @@
             const showTable = d.showTable || false;
             const showWindow = d.showWindow || false;
             const showChallenge = d.showChallenge || false;
+            const showMathPad = d.showMathPad != null ? d.showMathPad : false;
+            const focusedInput = d.focusedInput || 0;
             const tableX = d.tableX != null ? d.tableX : -5;
             const tableStep = d.tableStep || 1;
 
-            // Load math.js on demand
-            React.useEffect(() => {
-              if (window.math) return;
-              const s = document.createElement('script');
-              s.src = 'https://cdn.jsdelivr.net/npm/mathjs@13.2.2/lib/browser/math.min.js';
-              s.async = true;
-              s.onload = () => { if (typeof addToast === 'function') addToast('\uD83E\uDDEE Math engine loaded', 'info'); };
-              document.head.appendChild(s);
-            }, []);
+            // Math Pad symbols gated by tier
+            const MATH_SYMBOLS = [
+              // Explorer tier (always visible)
+              { label: 'x', insert: 'x', tier: 'explorer' },
+              { label: '^', insert: '^', tier: 'explorer' },
+              { label: '( )', insert: '()', tier: 'explorer' },
+              { label: '\u03C0', insert: 'pi', tier: 'explorer' },
+              { label: '\u221A', insert: 'sqrt(', tier: 'explorer' },
+              { label: '|x|', insert: 'abs(', tier: 'explorer' },
+              // Analyst tier
+              { label: 'x\u00B2', insert: '^2', tier: 'analyst' },
+              { label: 'x\u00B3', insert: '^3', tier: 'analyst' },
+              { label: '\u00B1', insert: '-', tier: 'analyst' },
+              { label: '1/x', insert: '1/', tier: 'analyst' },
+              // Engineer tier
+              { label: 'sin', insert: 'sin(', tier: 'engineer' },
+              { label: 'cos', insert: 'cos(', tier: 'engineer' },
+              { label: 'tan', insert: 'tan(', tier: 'engineer' },
+              { label: 'log', insert: 'log(', tier: 'engineer' },
+              { label: 'ln', insert: 'ln(', tier: 'engineer' },
+              { label: 'e', insert: 'e', tier: 'engineer' },
+            ];
+            const visibleSymbols = MATH_SYMBOLS.filter(function (s) {
+              if (tier === 'researcher') return true;
+              if (tier === 'engineer') return s.tier !== 'researcher';
+              if (tier === 'analyst') return s.tier === 'explorer' || s.tier === 'analyst';
+              return s.tier === 'explorer';
+            });
+            var insertSymbol = function (text) {
+              var nf = funcs.slice();
+              var idx = focusedInput;
+              nf[idx] = Object.assign({}, nf[idx], { expr: (nf[idx].expr || '') + text });
+              upd('funcs', nf);
+            };
 
-            // Render graph on Canvas
-            React.useEffect(() => {
-              const cv = document.getElementById('graph-calc-canvas');
-              if (!cv || !window.math) return;
-              const ctx = cv.getContext('2d');
-              const W = cv.width, H = cv.height;
-              const xr = win.xmax - win.xmin, yr = win.ymax - win.ymin;
-              const toScreenX = x => ((x - win.xmin) / xr) * W;
-              const toScreenY = y => H - ((y - win.ymin) / yr) * H;
-
-              // Clear
-              ctx.fillStyle = '#0f172a'; ctx.fillRect(0, 0, W, H);
-
-              // Grid
-              ctx.strokeStyle = 'rgba(56,189,248,0.08)'; ctx.lineWidth = 1;
-              const gridStep = Math.pow(10, Math.floor(Math.log10(xr / 5)));
-              for (let gx = Math.ceil(win.xmin / gridStep) * gridStep; gx <= win.xmax; gx += gridStep) {
-                const sx = toScreenX(gx); ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx, H); ctx.stroke();
-              }
-              for (let gy = Math.ceil(win.ymin / gridStep) * gridStep; gy <= win.ymax; gy += gridStep) {
-                const sy = toScreenY(gy); ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(W, sy); ctx.stroke();
-              }
-
-              // Axes
-              ctx.strokeStyle = 'rgba(148,163,184,0.5)'; ctx.lineWidth = 1.5;
-              if (win.ymin <= 0 && win.ymax >= 0) { const ay = toScreenY(0); ctx.beginPath(); ctx.moveTo(0, ay); ctx.lineTo(W, ay); ctx.stroke(); }
-              if (win.xmin <= 0 && win.xmax >= 0) { const ax = toScreenX(0); ctx.beginPath(); ctx.moveTo(ax, 0); ctx.lineTo(ax, H); ctx.stroke(); }
-
-              // Axis labels
-              ctx.font = '10px monospace'; ctx.fillStyle = '#64748b';
-              for (let gx = Math.ceil(win.xmin / gridStep) * gridStep; gx <= win.xmax; gx += gridStep) {
-                if (Math.abs(gx) > 0.001) { const sx = toScreenX(gx); const ay = win.ymin <= 0 && win.ymax >= 0 ? toScreenY(0) : H - 10; ctx.fillText(Number(gx.toPrecision(4)).toString(), sx + 2, ay - 3); }
-              }
-              for (let gy = Math.ceil(win.ymin / gridStep) * gridStep; gy <= win.ymax; gy += gridStep) {
-                if (Math.abs(gy) > 0.001) { const sy = toScreenY(gy); const ax = win.xmin <= 0 && win.xmax >= 0 ? toScreenX(0) : 10; ctx.fillText(Number(gy.toPrecision(4)).toString(), ax + 4, sy - 3); }
-              }
-
-              // Plot functions
-              funcs.forEach((fn, fi) => {
-                if (!fn.expr || !fn.expr.trim()) return;
-                try {
-                  let exprStr = fn.expr.replace(/^y\s*=\s*/i, '').replace(/^f\s*\(x\)\s*=\s*/i, '');
-                  exprStr = exprStr.replace(/(\d)([x])/gi, '$1*$2').replace(/([x])(\d)/gi, '$1*$2');
-                  const compiled = math.compile(exprStr);
-                  ctx.strokeStyle = fn.color; ctx.lineWidth = 2.5; ctx.beginPath();
-                  let started = false;
-                  for (let px = 0; px <= W; px++) {
-                    const x = win.xmin + (px / W) * xr;
-                    try {
-                      const y = compiled.evaluate({ x: x });
-                      if (typeof y === 'number' && isFinite(y)) {
-                        const sy = toScreenY(y);
-                        if (!started) { ctx.moveTo(px, sy); started = true; }
-                        else if (sy > -500 && sy < H + 500) ctx.lineTo(px, sy);
-                        else { ctx.stroke(); ctx.beginPath(); started = false; }
-                      } else { ctx.stroke(); ctx.beginPath(); started = false; }
-                    } catch(e) { ctx.stroke(); ctx.beginPath(); started = false; }
-                  }
-                  ctx.stroke();
-                } catch(e) { /* invalid expression */ }
-              });
-
-              // Axis labels x and y
-              ctx.fillStyle = '#94a3b8'; ctx.font = 'bold 11px sans-serif';
-              ctx.fillText('x', W - 14, (win.ymin <= 0 && win.ymax >= 0 ? toScreenY(0) : H / 2) - 6);
-              ctx.fillText('y', (win.xmin <= 0 && win.xmax >= 0 ? toScreenX(0) : W / 2) + 6, 14);
-            }, [funcs, win, d]);
+            // NOTE: useEffect hooks for math.js loading and canvas rendering
+            // have been moved to the component body level (above) to satisfy
+            // React's Rules of Hooks. They guard internally with early returns.
 
             const COACH_TIPS = {
               explorer: [
@@ -17959,9 +22231,9 @@
                 const tCompiled = math.compile(tExpr);
                 for (let tx = tableX; tx <= tableX + 10 * tableStep; tx += tableStep) {
                   try { const ty = tCompiled.evaluate({ x: tx }); tableRows.push({ x: tx, y: typeof ty === 'number' && isFinite(ty) ? Number(ty.toFixed(4)) : '---' }); }
-                  catch(e) { tableRows.push({ x: tx, y: 'ERR' }); }
+                  catch (e) { tableRows.push({ x: tx, y: 'ERR' }); }
                 }
-              } catch(e) { tableRows = [{ x: 0, y: 'Invalid expression' }]; }
+              } catch (e) { tableRows = [{ x: 0, y: 'Invalid expression' }]; }
             }
 
             return React.createElement('div', {
@@ -17999,10 +22271,32 @@
                       React.createElement('input', {
                         type: 'text', value: fn.expr || '', placeholder: i === 0 ? '2x + 3' : i === 1 ? 'x^2 - 4' : 'sin(x)',
                         onChange: e => { const nf = [...funcs]; nf[i] = { ...nf[i], expr: e.target.value }; upd('funcs', nf); },
+                        onFocus: function () { upd('focusedInput', i); },
                         style: { width: '100%', padding: '6px 8px', borderRadius: '8px', border: '1px solid ' + fn.color + '44', background: fn.color + '11', color: '#e2e8f0', fontFamily: 'monospace', fontSize: '12px', outline: 'none' },
                         'aria-label': 'Function y' + (i + 1) + ' expression'
                       })
                     ))
+                  ),
+
+                  // ── Math Pad (collapsible symbol buttons) ──
+                  React.createElement('div', { style: { padding: '4px 12px', borderTop: '1px solid rgba(99,102,241,0.1)' } },
+                    React.createElement('button', {
+                      onClick: function () { upd('showMathPad', !showMathPad); },
+                      style: { width: '100%', padding: '4px', borderRadius: '6px', background: showMathPad ? '#818cf833' : 'rgba(255,255,255,0.05)', color: showMathPad ? '#a5b4fc' : '#64748b', border: showMathPad ? '1px solid #818cf844' : '1px solid transparent', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer', marginBottom: showMathPad ? '6px' : '0' }
+                    }, '\u2328 Math Pad ' + (showMathPad ? '\u25B2' : '\u25BC')),
+                    showMathPad && React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '3px', paddingBottom: '4px' } },
+                      visibleSymbols.map(function (sym) {
+                        return React.createElement('button', {
+                          key: sym.label,
+                          onClick: function () { insertSymbol(sym.insert); },
+                          style: { padding: '3px 7px', borderRadius: '5px', background: 'rgba(99,102,241,0.12)', color: '#c7d2fe', border: '1px solid rgba(99,102,241,0.2)', fontSize: '11px', fontFamily: 'monospace', fontWeight: 'bold', cursor: 'pointer', lineHeight: '1.2', transition: 'background 0.15s' },
+                          onMouseEnter: function (e) { e.currentTarget.style.background = 'rgba(99,102,241,0.3)'; },
+                          onMouseLeave: function (e) { e.currentTarget.style.background = 'rgba(99,102,241,0.12)'; },
+                          title: 'Insert ' + sym.insert,
+                          'aria-label': 'Insert ' + sym.label
+                        }, sym.label);
+                      })
+                    )
                   ),
 
                   React.createElement('div', { style: { padding: '8px 12px', borderTop: '1px solid rgba(99,102,241,0.1)', display: 'flex', flexWrap: 'wrap', gap: '4px' } },
@@ -18782,6 +23076,1771 @@
             );
           })(),
 
+
+          // ═══════════════════════════════════════════════════════════════
+          // ██  AQUACULTURE & OCEAN ECOLOGY LAB                         ██
+          // ═══════════════════════════════════════════════════════════════
+          stemLabTab === 'explore' && stemLabTool === 'aquarium' && (() => {
+            var d = (labToolData && labToolData._aquarium) || {};
+            var upd = function (key, val) {
+              setLabToolData(function (prev) {
+                var aq = Object.assign({}, (prev && prev._aquarium) || {});
+                aq[key] = val;
+                return Object.assign({}, prev, { _aquarium: aq });
+              });
+            };
+            var updMulti = function (obj) {
+              setLabToolData(function (prev) {
+                var aq = Object.assign({}, (prev && prev._aquarium) || {});
+                Object.keys(obj).forEach(function (k) { aq[k] = obj[k]; });
+                return Object.assign({}, prev, { _aquarium: aq });
+              });
+            };
+
+            var mode = d.mode || 'tank';
+
+            // ── Inject aquarium CSS animations ──
+            if (!document.getElementById('aqua-css')) {
+              var style = document.createElement('style');
+              style.id = 'aqua-css';
+              style.textContent = [
+                '@keyframes aquaSwim { 0% { transform: translateX(0) translateY(0); } 25% { transform: translateX(12px) translateY(-4px); } 50% { transform: translateX(-8px) translateY(3px); } 75% { transform: translateX(6px) translateY(-2px); } 100% { transform: translateX(0) translateY(0); } }',
+                '@keyframes aquaBubble { 0% { bottom: 30px; opacity: 0.6; } 50% { opacity: 0.8; } 100% { bottom: 220px; opacity: 0; } }',
+                '@keyframes aquaWave { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }',
+                '@keyframes oceanPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }',
+                '.aqua-fish:hover { transform: scale(1.3) !important; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3)) !important; }'
+              ].join('\n');
+              document.head.appendChild(style);
+            }
+            // ═══ ANATOMY VIEWER SYSTEM ═══
+            var BODY_PLANS = {
+              fish: {
+                label: 'Bony Fish (Osteichthyes)',
+                svg: function (w, h, color) {
+                  var c1 = color || '#22d3ee', c2 = color || '#0891b2';
+                  return '<svg viewBox="0 0 440 260" xmlns="http://www.w3.org/2000/svg">' +
+                    '<defs>' +
+                    '<linearGradient id="fishG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="' + c1 + '"/><stop offset="100%" stop-color="' + c2 + '"/></linearGradient>' +
+                    '<linearGradient id="fishBelly" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="' + c2 + '"/><stop offset="100%" stop-color="#e2e8f0"/></linearGradient>' +
+                    '</defs>' +
+                    '<path d="M55,130 Q65,75 110,65 Q160,50 210,55 Q270,58 310,75 Q340,85 355,110 Q360,130 355,150 Q340,175 310,185 Q270,200 210,205 Q160,210 110,195 Q65,185 55,130Z" fill="url(#fishG)" stroke="' + c2 + '" stroke-width="2.5"/>' +
+                    '<path d="M55,130 Q65,145 110,170 Q160,190 210,193 Q270,195 310,185 Q340,175 355,150 Q360,130 355,150" fill="url(#fishBelly)" opacity="0.4"/>' +
+                    '<path d="M350,125 Q370,115 400,90 Q415,80 420,85 L420,95 Q418,100 410,110 Q395,125 380,130 Q395,135 410,150 Q418,160 420,165 L420,175 Q415,180 400,170 Q370,145 350,135" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1.5" opacity="0.9"/>' +
+                    '<line x1="400" y1="93" x2="400" y2="167" stroke="' + c2 + '" stroke-width="0.8" opacity="0.5"/>' +
+                    '<line x1="390" y1="100" x2="390" y2="160" stroke="' + c2 + '" stroke-width="0.6" opacity="0.4"/>' +
+                    '<line x1="380" y1="107" x2="380" y2="153" stroke="' + c2 + '" stroke-width="0.5" opacity="0.3"/>' +
+                    '<path d="M180,58 Q185,38 195,20 Q210,5 225,10 Q235,15 240,25 Q248,40 250,60" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1.5" opacity="0.85"/>' +
+                    '<line x1="195" y1="55" x2="210" y2="18" stroke="' + c2 + '" stroke-width="0.6" opacity="0.4"/>' +
+                    '<line x1="210" y1="55" x2="220" y2="14" stroke="' + c2 + '" stroke-width="0.6" opacity="0.4"/>' +
+                    '<line x1="225" y1="56" x2="233" y2="17" stroke="' + c2 + '" stroke-width="0.6" opacity="0.4"/>' +
+                    '<path d="M215,200 Q220,220 225,235 Q230,245 240,248 Q245,245 248,235 Q250,220 250,200" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1.2" opacity="0.75"/>' +
+                    '<path d="M270,198 Q275,215 280,225 Q285,230 290,228 Q293,222 295,210 Q296,200 295,195" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1.2" opacity="0.7"/>' +
+                    '<path d="M120,165 Q105,178 92,188 Q85,192 88,195 Q95,195 108,188 Q125,178 135,170" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1.5" opacity="0.8" transform="rotate(-10,120,175)"/>' +
+                    '<path d="M138,170 Q128,182 118,190 Q112,193 115,196 Q120,196 130,190 Q142,182 148,175" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1.2" opacity="0.7" transform="rotate(-5,138,180)"/>' +
+                    '<circle cx="88" cy="118" r="16" fill="white" stroke="#334155" stroke-width="2"/>' +
+                    '<circle cx="92" cy="118" r="9" fill="#1e293b"/>' +
+                    '<circle cx="95" cy="115" r="3" fill="white" opacity="0.8"/>' +
+                    '<path d="M55,128 Q48,125 40,124" stroke="' + c2 + '" stroke-width="2" fill="none" stroke-linecap="round"/>' +
+                    '<path d="M118,90 Q113,120 118,150" stroke="' + c2 + '" fill="none" stroke-width="3" stroke-linecap="round" opacity="0.6"/>' +
+                    '<path d="M123,93 Q118,120 123,147" stroke="' + c2 + '" fill="none" stroke-width="2" stroke-linecap="round" opacity="0.4"/>' +
+                    '<path d="M130,110 L340,110" stroke="' + c2 + '" fill="none" stroke-width="1" stroke-dasharray="6,4" opacity="0.35"/>' +
+                    '<path d="M130,115 L340,115" stroke="' + c2 + '" fill="none" stroke-width="0.5" stroke-dasharray="3,3" opacity="0.2"/>' +
+                    '<ellipse cx="210" cy="100" rx="45" ry="12" fill="rgba(255,255,255,0.08)" stroke="' + c2 + '" stroke-width="0.5" stroke-dasharray="4,4" opacity="0.5"/>' +
+                    '</svg>';
+                },
+                parts: [
+                  { name: 'Dorsal Fin', x: 48, y: 5, desc: 'Stabilizes the fish during swimming, preventing rolling. Contains bony spines (rays) connected by thin membrane. Erected when alarmed.' },
+                  { name: 'Caudal Fin (Tail)', x: 93, y: 48, desc: 'Primary propulsion organ. Shape determines swimming style — forked tails are built for speed, rounded for maneuverability.' },
+                  { name: 'Pectoral Fins', x: 26, y: 68, desc: 'Paired fins used for steering, braking, and hovering. Act like hydrofoils. Can be fanned out to appear larger to rivals.' },
+                  { name: 'Anal/Pelvic Fins', x: 53, y: 85, desc: 'Ventral stabilizers that prevent pitching and yawing. Pelvic fins evolved from ancestral limb buds.' },
+                  { name: 'Gill Cover (Operculum)', x: 27, y: 42, desc: 'Bony plate protecting delicate gill filaments. Pumps water over gills by rhythmically opening and closing.' },
+                  { name: 'Lateral Line', x: 58, y: 42, desc: 'A row of sensory pores detecting vibrations and pressure changes. Allows fish to sense movement, currents, and obstacles in total darkness.' },
+                  { name: 'Eye', x: 19, y: 44, desc: 'Spherical lens focuses light. Most fish see in color and some perceive UV light. No eyelids — cornea is bathed in water.' },
+                  { name: 'Swim Bladder (internal)', x: 48, y: 38, desc: 'Gas-filled organ for buoyancy control. Fish add or remove gas to hover at any depth without expending energy.' },
+                  { name: 'Scales & Mucus', x: 70, y: 55, desc: 'Overlapping cycloid or ctenoid scales covered in antibacterial mucus. Reduces hydrodynamic drag by up to 65%.' }
+                ]
+              },
+              shark: {
+                label: 'Cartilaginous Fish (Chondrichthyes)',
+                svg: function (w, h, color) {
+                  return '<svg viewBox="0 0 460 230" xmlns="http://www.w3.org/2000/svg">' +
+                    '<defs>' +
+                    '<linearGradient id="sharkG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#64748b"/><stop offset="50%" stop-color="#475569"/><stop offset="100%" stop-color="#cbd5e1"/></linearGradient>' +
+                    '</defs>' +
+                    '<path d="M30,115 Q45,85 75,78 Q120,65 180,68 Q250,62 310,78 Q350,88 380,98 Q400,105 410,105 Q430,90 445,70 L448,72 Q445,85 440,100 Q438,110 440,118 Q445,135 448,148 L445,150 Q430,130 410,115 Q400,115 380,122 Q350,132 310,142 Q250,158 180,155 Q120,155 75,142 Q45,135 30,115Z" fill="url(#sharkG)" stroke="#334155" stroke-width="2.5"/>' +
+                    '<path d="M30,115 Q45,130 75,140 Q120,152 180,155 Q250,158 310,142 Q350,132 380,122 Q400,115 410,115" fill="#e2e8f0" opacity="0.4"/>' +
+                    '<path d="M230,68 Q232,42 238,22 Q244,8 252,5 Q258,8 260,18 Q264,35 264,68" fill="#475569" stroke="#334155" stroke-width="2"/>' +
+                    '<line x1="240" y1="65" x2="248" y2="12" stroke="#334155" stroke-width="0.6" opacity="0.4"/>' +
+                    '<line x1="250" y1="65" x2="255" y2="10" stroke="#334155" stroke-width="0.6" opacity="0.4"/>' +
+                    '<path d="M330,78 Q335,68 340,62 Q344,60 347,62 Q348,68 346,78" fill="#475569" stroke="#334155" stroke-width="1.2" opacity="0.7"/>' +
+                    '<path d="M120,145 Q108,160 98,170 Q92,172 93,168 Q97,158 108,145 Q115,140 120,142" fill="#64748b" stroke="#334155" stroke-width="1.2" opacity="0.7"/>' +
+                    '<path d="M135,148 Q128,160 122,168 Q118,170 119,166 Q122,158 130,148" fill="#64748b" stroke="#334155" stroke-width="1" opacity="0.6"/>' +
+                    '<ellipse cx="68" cy="105" r="8" ry="6" fill="white" stroke="#1e293b" stroke-width="1.5"/>' +
+                    '<circle cx="70" cy="105" r="3.5" fill="#0f172a"/>' +
+                    '<path d="M30,112 Q22,110 15,110" stroke="#64748b" stroke-width="2" fill="none" stroke-linecap="round"/>' +
+                    '<path d="M30,118 Q22,120 15,120" stroke="#64748b" stroke-width="2" fill="none" stroke-linecap="round"/>' +
+                    '<line x1="105" y1="90" x2="105" y2="80" stroke="#334155" stroke-width="1.8" stroke-linecap="round"/>' +
+                    '<line x1="115" y1="88" x2="115" y2="78" stroke="#334155" stroke-width="1.8" stroke-linecap="round"/>' +
+                    '<line x1="125" y1="86" x2="125" y2="77" stroke="#334155" stroke-width="1.6" stroke-linecap="round"/>' +
+                    '<line x1="135" y1="84" x2="135" y2="76" stroke="#334155" stroke-width="1.4" stroke-linecap="round"/>' +
+                    '<line x1="145" y1="82" x2="145" y2="75" stroke="#334155" stroke-width="1.2" stroke-linecap="round"/>' +
+                    '<circle cx="45" cy="108" r="2" fill="#475569" opacity="0.5"/>' +
+                    '<circle cx="40" cy="112" r="1.5" fill="#475569" opacity="0.4"/>' +
+                    '<circle cx="50" cy="105" r="1.5" fill="#475569" opacity="0.4"/>' +
+                    '<circle cx="38" cy="106" r="1" fill="#475569" opacity="0.3"/>' +
+                    '</svg>';
+                },
+                parts: [
+                  { name: 'Dorsal Fin', x: 53, y: 3, desc: 'The iconic triangular fin provides stability. Made entirely of cartilage — sharks have no true bones anywhere in their body.' },
+                  { name: 'Gill Slits (5)', x: 27, y: 36, desc: 'Five exposed gill slits with no protective cover. Sharks must swim to push water over gills — they cannot pump water like bony fish.' },
+                  { name: 'Ampullae of Lorenzini', x: 9, y: 46, desc: 'Jelly-filled pores on the snout that detect electrical fields as weak as 5 nanovolts — enough to sense a prey heartbeat buried in sand.' },
+                  { name: 'Heterocercal Tail', x: 95, y: 32, desc: 'Upper lobe is longer, generating upward lift as the shark swims. This compensates for the lack of a swim bladder.' },
+                  { name: 'Pectoral Fins', x: 26, y: 62, desc: 'Rigid, wing-like fins that generate lift. Unlike bony fish, shark pectoral fins cannot fold flat — they act as airplane wings.' },
+                  { name: 'Dermal Denticles', x: 62, y: 55, desc: 'Tooth-like scales (placoid scales) that channel water flow. Surface texture reduces drag by 8% — inspired NASA swimsuit designs.' },
+                  { name: 'Cartilage Skeleton', x: 45, y: 50, desc: 'Skeleton is 100% cartilage — half the density of bone. This makes sharks lighter and more agile, but fossils only preserve teeth and spines.' },
+                  { name: 'Replaceable Teeth', x: 5, y: 50, desc: 'Teeth grow in rows on a conveyor-belt jaw. A single shark may produce 30,000+ teeth in its lifetime, replacing them every 1-2 weeks.' }
+                ]
+              },
+              jellyfish: {
+                label: 'Cnidarian (Medusa Form)',
+                svg: function (w, h, color) {
+                  var c1 = color || '#c4b5fd', c2 = color || '#8b5cf6';
+                  return '<svg viewBox="0 0 320 340" xmlns="http://www.w3.org/2000/svg">' +
+                    '<defs>' +
+                    '<radialGradient id="jellyG" cx="50%" cy="40%"><stop offset="0%" stop-color="' + c1 + '" stop-opacity="0.3"/><stop offset="60%" stop-color="' + c1 + '" stop-opacity="0.5"/><stop offset="100%" stop-color="' + c2 + '" stop-opacity="0.7"/></radialGradient>' +
+                    '<radialGradient id="jellyInner" cx="50%" cy="50%"><stop offset="0%" stop-color="white" stop-opacity="0.15"/><stop offset="100%" stop-color="' + c2 + '" stop-opacity="0"/></radialGradient>' +
+                    '</defs>' +
+                    '<path d="M60,100 Q60,30 160,25 Q260,30 260,100 Q260,120 240,130 Q200,145 160,145 Q120,145 80,130 Q60,120 60,100Z" fill="url(#jellyG)" stroke="' + c2 + '" stroke-width="1.5"/>' +
+                    '<ellipse cx="160" cy="75" rx="55" ry="30" fill="url(#jellyInner)"/>' +
+                    '<path d="M100,100 Q95,95 100,90 Q105,85 110,87" stroke="' + c1 + '" stroke-width="0.8" fill="none" opacity="0.5"/>' +
+                    '<path d="M200,95 Q195,90 200,85 Q205,80 210,82" stroke="' + c1 + '" stroke-width="0.8" fill="none" opacity="0.5"/>' +
+                    '<path d="M160,100 L160,120 Q155,140 160,155 Q163,160 168,155 Q165,140 165,120" fill="' + c2 + '" opacity="0.3" stroke="' + c2 + '" stroke-width="0.5"/>' +
+                    '<path d="M80,130 Q85,180 75,230 Q70,260 65,290" stroke="' + c2 + '" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.65"/>' +
+                    '<path d="M115,140 Q118,200 110,260 Q108,280 105,310" stroke="' + c1 + '" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.55"/>' +
+                    '<path d="M145,145 Q148,210 142,275 Q140,295 137,320" stroke="' + c2 + '" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.6"/>' +
+                    '<path d="M175,145 Q172,210 178,275 Q180,295 183,320" stroke="' + c1 + '" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.55"/>' +
+                    '<path d="M205,140 Q202,200 210,260 Q212,280 215,310" stroke="' + c2 + '" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.65"/>' +
+                    '<path d="M240,130 Q235,180 245,230 Q250,260 255,290" stroke="' + c1 + '" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.5"/>' +
+                    '<path d="M90,132 Q100,155 88,175 Q100,190 90,210 Q100,225 92,245" stroke="' + c1 + '" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.35"/>' +
+                    '<path d="M230,132 Q220,155 232,175 Q220,190 230,210 Q220,225 228,245" stroke="' + c1 + '" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.35"/>' +
+                    '</svg>';
+                },
+                parts: [
+                  { name: 'Bell (Medusa)', x: 50, y: 10, desc: 'The dome-shaped body contracts rhythmically for jet propulsion. Made of mesoglea — 95% water with collagen fibers for elasticity.' },
+                  { name: 'Tentacles', x: 78, y: 60, desc: 'Trailing appendages lined with cnidocytes — stinging cells that fire nematocysts in 700 nanoseconds, among the fastest events in nature.' },
+                  { name: 'Oral Arms', x: 25, y: 50, desc: 'Frilly appendages near the mouth that capture food particles. In some species they fuse to form a feeding curtain.' },
+                  { name: 'Gastrovascular Cavity', x: 50, y: 33, desc: 'A central cavity serves as both stomach and circulatory system. One opening functions as both mouth and anus.' },
+                  { name: 'Nerve Net', x: 40, y: 22, desc: 'No brain, no central nervous system. A diffuse nerve net coordinates swimming contractions. Some species have rhopalia (light/gravity sensors).' },
+                  { name: 'Radial Canals', x: 65, y: 25, desc: 'Channels radiating from the central cavity to the bell margin, distributing nutrients. Their radial symmetry predates bilateral body plans by 200M+ years.' }
+                ]
+              },
+              crustacean: {
+                label: 'Crustacean (Arthropoda)',
+                svg: function (w, h, color) {
+                  var c1 = color || '#f97316', c2 = color || '#dc2626';
+                  return '<svg viewBox="0 0 400 280" xmlns="http://www.w3.org/2000/svg">' +
+                    '<defs>' +
+                    '<linearGradient id="crustG" x1="0" y1="0" x2="0.5" y2="1"><stop offset="0%" stop-color="' + c1 + '"/><stop offset="100%" stop-color="' + c2 + '"/></linearGradient>' +
+                    '</defs>' +
+                    '<ellipse cx="200" cy="120" rx="100" ry="55" fill="url(#crustG)" stroke="#991b1b" stroke-width="2.5"/>' +
+                    '<path d="M200,67 Q200,75 195,85 Q190,90 200,90 Q210,90 205,85 Q200,75 200,67" fill="#991b1b" opacity="0.3"/>' +
+                    '<ellipse cx="200" cy="90" rx="60" ry="25" fill="none" stroke="#fbbf24" stroke-width="1" stroke-dasharray="5,3" opacity="0.4"/>' +
+                    '<ellipse cx="110" cy="105" rx="40" ry="32" fill="' + c1 + '" stroke="#991b1b" stroke-width="2"/>' +
+                    '<circle cx="82" cy="92" r="8" fill="black" stroke="#991b1b" stroke-width="1.5"/><circle cx="84" cy="90" r="3" fill="white" opacity="0.7"/>' +
+                    '<circle cx="95" cy="88" r="7" fill="black" stroke="#991b1b" stroke-width="1.5"/><circle cx="97" cy="86" r="2.5" fill="white" opacity="0.7"/>' +
+                    '<path d="M80,88 Q50,55 30,38 Q25,35 28,32 Q32,30 38,35 Q55,48 78,80" stroke="' + c1 + '" stroke-width="3.5" fill="none" stroke-linecap="round"/>' +
+                    '<path d="M85,82 Q60,40 48,22 Q45,18 48,15 Q52,13 55,18 Q65,35 82,75" stroke="' + c1 + '" stroke-width="3" fill="none" stroke-linecap="round"/>' +
+                    '<path d="M140,155 Q135,185 130,215 Q128,225 132,230 Q138,228 140,220 Q145,195 148,165" stroke="#991b1b" stroke-width="4" fill="none" stroke-linecap="round"/>' +
+                    '<path d="M170,162 Q168,192 165,225 Q163,235 168,238 Q174,236 175,228 Q178,198 178,168" stroke="#991b1b" stroke-width="4" fill="none" stroke-linecap="round"/>' +
+                    '<path d="M210,165 Q212,195 215,228 Q217,238 222,238 Q226,235 225,225 Q222,195 218,168" stroke="#991b1b" stroke-width="4" fill="none" stroke-linecap="round"/>' +
+                    '<path d="M245,162 Q248,190 252,218 Q254,226 258,225 Q262,222 260,215 Q255,188 250,160" stroke="#991b1b" stroke-width="3.5" fill="none" stroke-linecap="round"/>' +
+                    '<path d="M275,155 Q280,180 285,205 Q287,212 290,210 Q293,207 290,200 Q285,178 280,155" stroke="#991b1b" stroke-width="3" fill="none" stroke-linecap="round"/>' +
+                    '<path d="M285,100 Q310,95 335,100 Q340,108 335,115 Q310,108 290,115" fill="' + c1 + '" stroke="#991b1b" stroke-width="2" opacity="0.6"/>' +
+                    '</svg>';
+                },
+                parts: [
+                  { name: 'Carapace (Exoskeleton)', x: 50, y: 24, desc: 'Hardened shell of chitin and calcium carbonate. Must be molted (shed) to grow — the animal is soft and vulnerable for hours after.' },
+                  { name: 'Antennae (2 pairs)', x: 10, y: 11, desc: 'Long antennae detect touch, chemicals, and water currents. Short antennules sense gravity and balance via statocysts.' },
+                  { name: 'Compound Eyes', x: 22, y: 30, desc: 'Mounted on stalks with thousands of ommatidia (individual lenses). Excellent motion detection. Some species see polarized and UV light.' },
+                  { name: 'Walking Legs (Pereopods)', x: 42, y: 78, desc: 'Five pairs of jointed walking legs. First pair often modified into claws (chelipeds) for defense, feeding, and signaling.' },
+                  { name: 'Swimmerets (Pleopods)', x: 60, y: 60, desc: 'Small paddle-like appendages under the abdomen. Used for swimming, carrying eggs, and circulating water over abdominal gills.' },
+                  { name: 'Gills (under carapace)', x: 72, y: 38, desc: 'Feathery gills sit in chambers under the carapace. Appendages called scaphognathites act as pumps to draw water through.' }
+                ]
+              },
+              cephalopod: {
+                label: 'Cephalopod (Mollusca)',
+                svg: function (w, h, color) {
+                  var c1 = color || '#f472b6', c2 = color || '#be185d';
+                  return '<svg viewBox="0 0 320 360" xmlns="http://www.w3.org/2000/svg">' +
+                    '<defs>' +
+                    '<radialGradient id="cephG" cx="50%" cy="35%"><stop offset="0%" stop-color="' + c1 + '" stop-opacity="0.8"/><stop offset="100%" stop-color="' + c2 + '"/></radialGradient>' +
+                    '</defs>' +
+                    '<path d="M100,130 Q80,70 100,30 Q130,5 160,5 Q190,5 220,30 Q240,70 220,130 Q210,145 200,150 Q160,158 120,150 Q110,145 100,130Z" fill="url(#cephG)" stroke="' + c2 + '" stroke-width="2"/>' +
+                    '<ellipse cx="160" cy="90" rx="40" ry="20" fill="rgba(255,255,255,0.06)"/>' +
+                    '<circle cx="125" cy="80" r="18" fill="white" stroke="#1e293b" stroke-width="2"/><ellipse cx="128" cy="80" rx="7" ry="11" fill="#1e293b"/><circle cx="130" cy="77" r="2.5" fill="white"/>' +
+                    '<circle cx="195" cy="80" r="18" fill="white" stroke="#1e293b" stroke-width="2"/><ellipse cx="198" cy="80" rx="7" ry="11" fill="#1e293b"/><circle cx="200" cy="77" r="2.5" fill="white"/>' +
+                    '<path d="M148,120 Q155,125 160,120 Q165,125 172,120" stroke="' + c2 + '" stroke-width="2" fill="none"/>' +
+                    '<path d="M160,130 Q158,140 155,148 Q160,155 165,148 Q162,140 160,130" fill="' + c2 + '" opacity="0.5"/>' +
+                    '<path d="M108,155 Q100,200 90,250 Q85,280 82,310 Q80,320 85,325 Q92,322 95,310 Q100,280 105,250 Q108,220 112,190" stroke="' + c1 + '" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.8"/>' +
+                    '<path d="M125,158 Q120,210 115,265 Q112,295 110,320 Q108,330 113,332 Q120,328 120,315 Q122,290 125,260 Q128,220 130,180" stroke="' + c2 + '" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.75"/>' +
+                    '<path d="M145,160 Q143,220 140,280 Q138,310 137,335 Q136,342 140,342 Q145,340 145,330 Q146,305 148,275 Q150,220 150,170" stroke="' + c1 + '" stroke-width="5.5" fill="none" stroke-linecap="round" opacity="0.8"/>' +
+                    '<path d="M175,160 Q177,220 180,280 Q182,310 183,335 Q184,342 180,342 Q175,340 175,330 Q174,305 172,275 Q170,220 170,170" stroke="' + c2 + '" stroke-width="5.5" fill="none" stroke-linecap="round" opacity="0.75"/>' +
+                    '<path d="M195,158 Q200,210 205,265 Q208,295 210,320 Q212,330 207,332 Q200,328 200,315 Q198,290 195,260 Q192,220 190,180" stroke="' + c1 + '" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.8"/>' +
+                    '<path d="M212,155 Q220,200 230,250 Q235,280 238,310 Q240,320 235,325 Q228,322 225,310 Q220,280 215,250 Q212,220 208,190" stroke="' + c2 + '" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.75"/>' +
+                    '<circle cx="95" cy="260" r="3" fill="rgba(255,255,255,0.3)"/>' +
+                    '<circle cx="115" cy="285" r="2.5" fill="rgba(255,255,255,0.25)"/>' +
+                    '<circle cx="145" cy="300" r="3" fill="rgba(255,255,255,0.3)"/>' +
+                    '<circle cx="180" cy="295" r="2.5" fill="rgba(255,255,255,0.25)"/>' +
+                    '<circle cx="210" cy="270" r="3" fill="rgba(255,255,255,0.3)"/>' +
+                    '<circle cx="225" cy="260" r="2" fill="rgba(255,255,255,0.2)"/>' +
+                    '<circle cx="130" cy="50" r="5" fill="' + c1 + '" opacity="0.25"/>' +
+                    '<circle cx="190" cy="45" r="6" fill="' + c1 + '" opacity="0.2"/>' +
+                    '<circle cx="160" cy="115" r="4" fill="' + c1 + '" opacity="0.15"/>' +
+                    '</svg>';
+                },
+                parts: [
+                  { name: 'Mantle', x: 50, y: 8, desc: 'Muscular body housing all organs. Contracts forcefully to jet water through the siphon, achieving speeds up to 40 km/h in squids.' },
+                  { name: 'Arms (8) with Suckers', x: 25, y: 60, desc: 'Eight arms lined with suckers containing chemoreceptors — they can taste what they touch. Each sucker can exert tremendous grip force.' },
+                  { name: 'Siphon (Funnel)', x: 50, y: 40, desc: 'A muscular nozzle for jet propulsion. Water is drawn into the mantle cavity, then expelled forcefully. Also ejects ink for escape.' },
+                  { name: 'Camera Eyes', x: 38, y: 22, desc: 'Evolved independently from vertebrate eyes but are structurally similar. No blind spot (unlike human eyes). Can see polarized light.' },
+                  { name: 'Chromatophores', x: 60, y: 15, desc: 'Thousands of pigment-filled sacs that expand/contract in milliseconds. Controlled directly by the brain for instant camouflage, signaling, and hypnotic hunting displays.' },
+                  { name: 'Three Hearts', x: 50, y: 30, desc: 'Two branchial hearts push blood through the gills. One systemic heart circulates oxygenated blood. Blood is copper-based (hemocyanin) — it is blue.' },
+                  { name: 'Beak', x: 50, y: 36, desc: 'A hard, parrot-like beak of chitin — the only rigid structure. An octopus can squeeze through any gap larger than its beak.' }
+                ]
+              },
+              echinoderm: {
+                label: 'Echinoderm (Asteroidea)',
+                svg: function (w, h, color) {
+                  var c1 = color || '#f97316', c2 = color || '#ea580c';
+                  return '<svg viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg">' +
+                    '<defs>' +
+                    '<linearGradient id="echiG" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="' + c1 + '"/><stop offset="100%" stop-color="' + c2 + '"/></linearGradient>' +
+                    '<radialGradient id="echiCenter"><stop offset="0%" stop-color="#fed7aa"/><stop offset="100%" stop-color="' + c2 + '"/></radialGradient>' +
+                    '</defs>' +
+                    '<path d="M160,15 Q170,60 178,85 L195,95 Q240,80 275,68 Q285,68 285,75 Q280,82 240,105 L225,118 Q235,140 245,175 Q250,195 248,200 Q242,205 235,195 Q215,162 200,140 L185,138 Q170,155 160,175 Q150,155 135,138 L120,140 Q105,162 85,195 Q78,205 72,200 Q70,195 75,175 Q85,140 95,118 L80,105 Q40,82 35,75 Q35,68 45,68 Q80,80 125,95 L142,85 Q150,60 160,15Z" fill="url(#echiG)" stroke="#c2410c" stroke-width="2.5" stroke-linejoin="round"/>' +
+                    '<circle cx="160" cy="135" r="22" fill="url(#echiCenter)" stroke="#c2410c" stroke-width="2"/>' +
+                    '<circle cx="160" cy="135" r="5" fill="#c2410c"/>' +
+                    '<circle cx="160" cy="22" r="4" fill="#fbbf24" stroke="#c2410c" stroke-width="1" opacity="0.8"/>' +
+                    '<circle cx="278" cy="72" r="4" fill="#fbbf24" stroke="#c2410c" stroke-width="1" opacity="0.8"/>' +
+                    '<circle cx="245" cy="197" r="4" fill="#fbbf24" stroke="#c2410c" stroke-width="1" opacity="0.8"/>' +
+                    '<circle cx="75" cy="197" r="4" fill="#fbbf24" stroke="#c2410c" stroke-width="1" opacity="0.8"/>' +
+                    '<circle cx="42" cy="72" r="4" fill="#fbbf24" stroke="#c2410c" stroke-width="1" opacity="0.8"/>' +
+                    '<line x1="160" y1="113" x2="160" y2="25" stroke="#c2410c" stroke-width="0.8" stroke-dasharray="3,3" opacity="0.4"/>' +
+                    '<line x1="178" y1="122" x2="275" y2="72" stroke="#c2410c" stroke-width="0.8" stroke-dasharray="3,3" opacity="0.4"/>' +
+                    '<line x1="172" y1="152" x2="242" y2="195" stroke="#c2410c" stroke-width="0.8" stroke-dasharray="3,3" opacity="0.4"/>' +
+                    '<line x1="148" y1="152" x2="78" y2="195" stroke="#c2410c" stroke-width="0.8" stroke-dasharray="3,3" opacity="0.4"/>' +
+                    '<line x1="142" y1="122" x2="45" y2="72" stroke="#c2410c" stroke-width="0.8" stroke-dasharray="3,3" opacity="0.4"/>' +
+                    '<circle cx="155" cy="128" r="3" fill="#fde68a" opacity="0.6"/>' +
+                    '</svg>';
+                },
+                parts: [
+                  { name: 'Water Vascular System', x: 50, y: 42, desc: 'A hydraulic network unique to echinoderms. Seawater enters through the madreporite and fills radial canals powering hundreds of tube feet.' },
+                  { name: 'Tube Feet', x: 30, y: 42, desc: 'Tiny suction-cup appendages powered by hydraulic pressure. Coordinated movement can pry open clam shells with sustained force of 5+ kg.' },
+                  { name: 'Madreporite', x: 48, y: 38, desc: 'A small sieve plate (visible as a pale dot) that filters seawater into the water vascular system. Located off-center on the aboral surface.' },
+                  { name: 'Eyespots', x: 50, y: 5, desc: 'Simple photoreceptors at each arm tip — bright spots visible at extremities. Cannot form images but detect light direction and intensity.' },
+                  { name: 'Pentaradial Symmetry', x: 85, y: 22, desc: 'Five-fold body plan. Adults develop this from bilateral larvae — a unique metamorphosis among animals. No front, back, or sides.' },
+                  { name: 'Regeneration Zone', x: 24, y: 60, desc: 'Can regrow entire arms from the central disc. Some species regenerate a complete animal from a single arm. Process takes months to years.' }
+                ]
+              },
+              cetacean: {
+                label: 'Marine Mammal (Cetacea)',
+                svg: function (w, h, color) {
+                  return '<svg viewBox="0 0 480 220" xmlns="http://www.w3.org/2000/svg">' +
+                    '<defs>' +
+                    '<linearGradient id="cetG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#64748b"/><stop offset="55%" stop-color="#94a3b8"/><stop offset="100%" stop-color="#e2e8f0"/></linearGradient>' +
+                    '</defs>' +
+                    '<path d="M35,110 Q45,72 80,62 Q120,52 170,55 Q230,52 290,62 Q340,72 370,85 Q400,95 420,100 Q440,95 455,78 Q462,70 465,72 Q465,80 460,92 Q455,105 455,115 Q460,130 465,148 Q465,150 462,150 Q455,142 440,125 Q420,120 400,125 Q370,135 340,148 Q290,162 230,168 Q170,168 120,162 Q80,155 45,142 Q35,135 35,110Z" fill="url(#cetG)" stroke="#475569" stroke-width="2.5"/>' +
+                    '<path d="M35,112 Q45,135 80,150 Q120,160 170,165 Q230,168 290,162 Q340,148 370,135 Q400,125 420,120" fill="#e2e8f0" opacity="0.35"/>' +
+                    '<path d="M260,60 Q265,42 272,30 Q278,24 284,28 Q288,35 288,48 Q286,58 282,65" fill="#94a3b8" stroke="#475569" stroke-width="1.5" opacity="0.8"/>' +
+                    '<circle cx="65" cy="100" r="7" fill="white" stroke="#1e293b" stroke-width="1.5"/><circle cx="67" cy="100" r="3.5" fill="#0f172a"/>' +
+                    '<ellipse cx="58" cy="72" rx="8" ry="4" fill="#64748b" stroke="#475569" stroke-width="1.5" opacity="0.8"/>' +
+                    '<path d="M140,145 Q128,162 118,172 Q112,175 113,170 Q118,158 130,142" fill="#94a3b8" stroke="#475569" stroke-width="1.5" opacity="0.7"/>' +
+                    '<path d="M150,148 Q142,162 135,170 Q130,172 131,168 Q136,158 145,146" fill="#94a3b8" stroke="#475569" stroke-width="1.2" opacity="0.6"/>' +
+                    '<path d="M35,108 Q42,100 50,98 Q55,102 48,110" fill="#94a3b8" stroke="#475569" stroke-width="1" opacity="0.5"/>' +
+                    '<ellipse cx="100" cy="95" rx="25" ry="15" fill="rgba(255,255,255,0.05)" stroke="#475569" stroke-width="0.5" stroke-dasharray="4,4" />' +
+                    '</svg>';
+                },
+                parts: [
+                  { name: 'Blowhole', x: 12, y: 28, desc: 'Modified nostril(s) on top of skull. Breathing is voluntary — cetaceans must consciously surface. Only half the brain sleeps at a time (unihemispheric sleep).' },
+                  { name: 'Melon (Echolocation)', x: 20, y: 40, desc: 'A fatty, oil-filled lens in the forehead that focuses outgoing clicks into a directional beam. Returning echoes are received through the lower jaw.' },
+                  { name: 'Dorsal Fin', x: 57, y: 12, desc: 'Dense connective tissue (no bone). Used for thermoregulation — blood vessels release or retain heat. Shape and nicks identify individuals.' },
+                  { name: 'Fluke (Tail)', x: 95, y: 38, desc: 'Horizontal tail moved up-and-down by powerful back muscles (not side-to-side like fish). No bones — pure collagen and connective tissue.' },
+                  { name: 'Pectoral Flippers', x: 30, y: 68, desc: 'Modified forelimbs containing humerus, radius, ulna, and finger bones — the same skeletal plan as a human arm, adapted for steering and braking.' },
+                  { name: 'Blubber Layer', x: 50, y: 55, desc: 'Thick subcutaneous fat providing insulation, energy storage, buoyancy, and streamlining. Up to 50 cm thick in Arctic species like bowhead whales.' }
+                ]
+              },
+              chelonian: {
+                label: 'Sea Turtle (Testudines)',
+                svg: function (w, h, color) {
+                  return '<svg viewBox="0 0 400 280" xmlns="http://www.w3.org/2000/svg">' +
+                    '<defs>' +
+                    '<linearGradient id="turtG" x1="0.2" y1="0" x2="0.8" y2="1"><stop offset="0%" stop-color="#65a30d"/><stop offset="50%" stop-color="#3f6212"/><stop offset="100%" stop-color="#365314"/></linearGradient>' +
+                    '<linearGradient id="turtSkin" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#4d7c0f"/><stop offset="100%" stop-color="#365314"/></linearGradient>' +
+                    '</defs>' +
+                    '<ellipse cx="200" cy="140" rx="110" ry="72" fill="url(#turtG)" stroke="#1a2e05" stroke-width="3"/>' +
+                    '<path d="M200,70 L240,80 L260,105 L252,132 L220,148 L200,152 L180,148 L148,132 L140,105 L160,80Z" fill="none" stroke="#4d7c0f" stroke-width="2" opacity="0.5"/>' +
+                    '<line x1="200" y1="70" x2="200" y2="152" stroke="#4d7c0f" stroke-width="1.2" opacity="0.3"/>' +
+                    '<line x1="140" y1="105" x2="260" y2="105" stroke="#4d7c0f" stroke-width="1.2" opacity="0.3"/>' +
+                    '<line x1="160" y1="80" x2="220" y2="148" stroke="#4d7c0f" stroke-width="0.8" opacity="0.2"/>' +
+                    '<line x1="240" y1="80" x2="180" y2="148" stroke="#4d7c0f" stroke-width="0.8" opacity="0.2"/>' +
+                    '<path d="M94,105 Q62,90 38,85 Q25,85 22,92 Q22,100 30,105 Q40,110 55,112" fill="url(#turtSkin)" stroke="#365314" stroke-width="2" opacity="0.9"/>' +
+                    '<path d="M306,105 Q338,90 362,85 Q375,85 378,92 Q378,100 370,105 Q360,110 345,112" fill="url(#turtSkin)" stroke="#365314" stroke-width="2" opacity="0.9"/>' +
+                    '<path d="M115,190 Q95,210 82,225 Q78,230 82,232 Q88,230 100,218 Q112,202 120,192" fill="url(#turtSkin)" stroke="#365314" stroke-width="2" opacity="0.85"/>' +
+                    '<path d="M285,190 Q305,210 318,225 Q322,230 318,232 Q312,230 300,218 Q288,202 280,192" fill="url(#turtSkin)" stroke="#365314" stroke-width="2" opacity="0.85"/>' +
+                    '<circle cx="32" cy="92" r="14" fill="#4d7c0f" stroke="#365314" stroke-width="2"/>' +
+                    '<circle cx="28" cy="88" r="5" fill="black" stroke="#1a2e05" stroke-width="1"/><circle cx="27" cy="87" r="2" fill="white" opacity="0.6"/>' +
+                    '<circle cx="26" cy="95" r="3" fill="#e2e8f0" opacity="0.3" stroke="#365314" stroke-width="0.5"/>' +
+                    '</svg>';
+                },
+                parts: [
+                  { name: 'Carapace (Shell)', x: 50, y: 25, desc: 'Fused vertebrae and ribs covered in keratinous scutes. Unlike land turtles, sea turtles cannot retract into their shell — it is streamlined for swimming.' },
+                  { name: 'Front Flippers', x: 8, y: 33, desc: 'Elongated forelimbs used for powerful underwater flight. Leatherbacks can dive to 1,280 meters. Front flippers generate all thrust.' },
+                  { name: 'Rear Flippers', x: 20, y: 80, desc: 'Shorter and rounder than front flippers. Used as rudders for steering. Females use them to dig egg chambers on nesting beaches.' },
+                  { name: 'Salt Glands', x: 7, y: 32, desc: 'Orbital glands near the eyes excrete concentrated salt — this is why sea turtles appear to cry. Excreted salt is twice as concentrated as seawater.' },
+                  { name: 'Scute Pattern', x: 40, y: 28, desc: 'Keratinous plates in species-specific arrangements. The pattern helps identify species. Growth rings on scutes record age like tree rings.' },
+                  { name: 'Magnetic Navigation', x: 50, y: 55, desc: 'Magnetite crystals in the brain create an internal compass. Hatchlings imprint their natal beach\'s unique magnetic signature and return decades later to nest.' }
+                ]
+              }
+            };
+
+            // Map each species to its body plan
+            var SPECIES_BODY_MAP = {
+              neon: 'fish', guppy: 'fish', cory: 'fish', angel: 'fish', platy: 'fish', molly: 'fish',
+              cardinal: 'fish', rummy: 'fish', oto: 'fish', betta: 'fish',
+              clown: 'fish', tang: 'fish', goby: 'fish',
+              oscar: 'fish', pike: 'fish', pleco: 'fish',
+              goldfish: 'fish', rockfish: 'fish',
+              archer: 'fish', puffer: 'fish', mudskip: 'fish',
+              anemone: 'jellyfish',
+              shrimp: 'crustacean', cleaner: 'crustacean', crab: 'crustacean', amphipod: 'crustacean',
+              starfish: 'echinoderm', seastar: 'echinoderm', urchin: 'echinoderm', seacucumber: 'echinoderm',
+              slider: 'chelonian', turtle: 'chelonian',
+              kelp: 'fish',
+              clownfish: 'fish', dolphin: 'cetacean', jellyfish: 'jellyfish', squid: 'cephalopod',
+              hatchetfish: 'fish', swordfish: 'fish', anglerfish: 'fish', gulpereel: 'fish',
+              giantsquid: 'cephalopod', tubeworms: 'jellyfish', snailfish: 'fish',
+              mantaray: 'shark', bluewhale: 'cetacean', seahorse: 'fish',
+              octopus: 'cephalopod', nautilus: 'cephalopod', coelacanth: 'fish'
+            };
+
+            // Per-species colors for unique anatomy close-ups
+            var SPECIES_COLORS = {
+              // ── Freshwater ──
+              neon: '#38bdf8',     // electric blue stripe
+              guppy: '#f97316',    // orange/rainbow
+              cory: '#a78bfa',     // pale lavender
+              angel: '#fbbf24',    // gold/silver
+              platy: '#fb923c',    // orange-red
+              molly: '#1e293b',    // dark/black
+              // ── Planted ──
+              cardinal: '#dc2626', // deep red stripe
+              rummy: '#ef4444',    // red nose accent
+              oto: '#84cc16',      // olive/green
+              shrimp: '#e11d48',   // cherry red
+              betta: '#7c3aed',    // royal purple
+              // ── Reef ──
+              clown: '#f97316',    // orange clownfish
+              tang: '#3b82f6',     // royal blue
+              goby: '#14b8a6',     // teal/aqua
+              anemone: '#ec4899',  // pink/magenta
+              cleaner: '#ef4444',  // red/white stripe
+              // ── Predator ──
+              oscar: '#b45309',    // dark orange/brown tiger
+              pike: '#4d7c0f',     // forest green
+              pleco: '#57534e',    // dark brown armor
+              // ── Turtle & Reptile ──
+              slider: '#16a34a',   // green shell
+              turtle: '#15803d',   // deep green
+              goldfish: '#f59e0b', // classic gold
+              // ── Invertebrate Reef ──
+              crab: '#dc2626',     // red crab
+              urchin: '#6b21a8',   // dark purple spines
+              starfish: '#f97316', // orange starfish
+              seastar: '#ef4444',  // red seastar
+              // ── Cold Water ──
+              rockfish: '#9f1239', // vermillion rockfish
+              kelp: '#15803d',     // dark green
+              // ── Brackish ──
+              archer: '#c2410c',   // amber/brown bands
+              puffer: '#eab308',   // yellow puffer
+              mudskip: '#713f12',  // muddy brown
+              // ── Marine Science species ──
+              clownfish: '#f97316',  // orange
+              dolphin: '#64748b',   // grey
+              jellyfish: '#c084fc', // translucent purple
+              squid: '#ec4899',     // pink/bioluminescent
+              hatchetfish: '#94a3b8', // silver
+              swordfish: '#475569', // steel blue-grey
+              anglerfish: '#1c1917', // deep black
+              gulpereel: '#292524', // near-black
+              giantsquid: '#881337', // dark crimson
+              tubeworms: '#dc2626', // red plume
+              snailfish: '#cbd5e1', // pale/translucent
+              mantaray: '#1e293b', // dark navy
+              bluewhale: '#3b82f6', // blue
+              seahorse: '#f59e0b', // golden yellow
+              octopus: '#7c3aed',  // purple
+              nautilus: '#b45309', // amber/brown shell
+              coelacanth: '#1e3a5f', // deep steel blue
+              amphipod: '#f87171',  // pale red
+              seacucumber: '#854d0e' // brown
+            };
+
+            // Species-specific anatomy overrides and extra info
+            var SPECIES_ANATOMY = {
+              mudskip: { override: 'Modified pectoral fins act as legs. Can breathe through skin and oral lining when on land.', locomotion: 'Uses pectoral fins to "walk" and "skip" across mud. Can also climb roots.' },
+              betta: { override: 'Has a labyrinth organ that allows breathing atmospheric air directly — can survive in low-oxygen water.', locomotion: 'Flowing fins create drag; bettas are slow but agile swimmers using sculling pectoral fins.' },
+              seahorse: { override: 'Swims upright using a tiny dorsal fin that beats 35 times per second. Prehensile tail grips substrates.', locomotion: 'The worst swimmer in the ocean — relies on rapid dorsal fin oscillation and steers with pectoral fins.' },
+              anglerfish: { override: 'The bioluminescent lure (esca) contains symbiotic bacteria. Males fuse permanently to females, sharing blood supply.', locomotion: 'Slow ambush predator. Uses modified pectoral fins to "walk" on the seafloor.' },
+              puffer: { override: 'Can inflate body by swallowing water rapidly. Many species contain tetrodotoxin — 1200x more toxic than cyanide.', locomotion: 'Slow swimmer using pectoral and dorsal fin sculling. Sacrifices speed for defensive inflation ability.' },
+              mantaray: { override: 'Cephalic fins funnel plankton into mouth. Largest brain-to-body ratio of any fish. Recognized individual humans.', locomotion: 'Underwater flight — flaps wing-like pectoral fins. Can breach completely out of the water.' },
+              coelacanth: { override: 'Lobed fins move in alternating pattern like tetrapod limbs — may represent step in fish-to-land transition.', locomotion: 'Slow drift feeder. Uses lobed fins in a unique "walking" pattern not seen in other living fish.' },
+              nautilus: { override: 'Shell chambers filled with gas for buoyancy control. Has 90+ tentacles with no suckers — uses sticky ridges.', locomotion: 'Jet propulsion via siphon. Can withdraw completely into shell and seal with a leathery hood.' },
+              clown: { override: 'Mucus coating prevents anemone stings. All born male — the dominant fish transitions to female (sequential hermaphroditism).', locomotion: 'Rapid pectoral fin waving for hovering near host anemone. Rarely strays far from home.' },
+              slider: { override: 'Basking behavior critical for thermoregulation and vitamin D synthesis. Can brumate (hibernate) underwater for months.', locomotion: 'Powerful rear leg kicks propel through water. On land, uses all four legs in a characteristic waddle.' }
+            };
+
+            // ── Anatomy viewer state ──
+            var viewingAnatomy = d.viewingAnatomy || null;
+            var anatomyHighlight = d.anatomyHighlight || null;
+
+            var openAnatomy = function (speciesId) {
+              updMulti({ viewingAnatomy: speciesId, anatomyHighlight: null });
+            };
+            var closeAnatomy = function () {
+              updMulti({ viewingAnatomy: null, anatomyHighlight: null });
+            };
+
+            var TANK_TYPES = [
+
+              { id: 'freshwater', name: '🐠 Freshwater Community', size: 20, temp: 76, salinity: 0, pH: 7.0, diff: 1, desc: 'Classic beginner setup with tetras, guppies, and corydoras.' },
+              { id: 'planted', name: '🌿 Planted Tropical', size: 40, temp: 78, salinity: 0, pH: 6.8, diff: 2, desc: 'Lush aquascape with live plants and small schooling fish.' },
+              { id: 'reef', name: '🐡 Saltwater Reef', size: 55, temp: 78, salinity: 35, pH: 8.2, diff: 3, desc: 'Vibrant coral reef with clownfish and anemones.' },
+              { id: 'predator', name: '🦈 Predator Tank', size: 75, temp: 76, salinity: 0, pH: 7.2, diff: 3, desc: 'Oscars, pike cichlids, and other large predatory fish.' },
+              { id: 'turtle', name: '🐢 Turtle & Reptile', size: 40, temp: 80, salinity: 0, pH: 7.5, diff: 2, desc: 'Basking dock, UVB lighting, and hardy companion fish.' },
+              { id: 'invert', name: '🦐 Invertebrate Reef', size: 30, temp: 77, salinity: 35, pH: 8.3, diff: 4, desc: 'Shrimp, crabs, urchins, and delicate corals.' },
+              { id: 'coldwater', name: '🐧 Cold Water Marine', size: 100, temp: 55, salinity: 34, pH: 8.1, diff: 4, desc: 'Kelp forest ecosystem with rockfish and sea stars.' },
+              { id: 'brackish', name: '🔬 Brackish Estuary', size: 30, temp: 75, salinity: 15, pH: 7.8, diff: 3, desc: 'Where river meets sea — archerfish, puffers, mudskippers.' }
+            ];
+
+            var SPECIES_BY_TANK = {
+              freshwater: [
+                { id: 'neon', name: 'Neon Tetra', icon: '🐟', load: 1, minTank: 10, tempRange: [72, 80], pHRange: [6.0, 7.5], compat: ['guppy', 'cory', 'platy'], fact: 'Their iridescent stripe is made of guanine crystals.' },
+                { id: 'guppy', name: 'Guppy', icon: '🐟', load: 1, minTank: 5, tempRange: [72, 82], pHRange: [6.8, 7.8], compat: ['neon', 'cory', 'platy', 'molly'], fact: 'Males display vibrant colors to attract females.' },
+                { id: 'cory', name: 'Corydoras', icon: '🐡', load: 2, minTank: 15, tempRange: [72, 79], pHRange: [6.0, 7.5], compat: ['neon', 'guppy', 'platy', 'angel'], fact: 'They breathe air by darting to the surface!' },
+                { id: 'angel', name: 'Angelfish', icon: '🐠', load: 4, minTank: 20, tempRange: [76, 84], pHRange: [6.0, 7.5], compat: ['cory'], fact: 'Angelfish are cichlids — they guard their eggs fiercely.' },
+                { id: 'platy', name: 'Platy', icon: '🐟', load: 1, minTank: 10, tempRange: [70, 80], pHRange: [7.0, 8.2], compat: ['neon', 'guppy', 'cory', 'molly'], fact: 'Platys are livebearers — they give birth to free-swimming fry.' },
+                { id: 'molly', name: 'Molly', icon: '🐟', load: 2, minTank: 15, tempRange: [72, 82], pHRange: [7.0, 8.5], compat: ['guppy', 'platy'], fact: 'Mollies can survive in both fresh and saltwater!' }
+              ],
+              planted: [
+                { id: 'cardinal', name: 'Cardinal Tetra', icon: '🐟', load: 1, minTank: 10, tempRange: [73, 81], pHRange: [5.5, 7.0], compat: ['rummy', 'oto', 'shrimp'], fact: 'Cardinals have a deeper red stripe than neons.' },
+                { id: 'rummy', name: 'Rummynose Tetra', icon: '🐟', load: 1, minTank: 15, tempRange: [75, 82], pHRange: [5.5, 7.0], compat: ['cardinal', 'oto', 'shrimp'], fact: 'Their red nose fades when stressed — a living water quality indicator!' },
+                { id: 'oto', name: 'Otocinclus', icon: '🐡', load: 1, minTank: 10, tempRange: [72, 79], pHRange: [6.0, 7.5], compat: ['cardinal', 'rummy', 'shrimp', 'betta'], fact: 'These tiny catfish are the best algae cleaners in the hobby.' },
+                { id: 'shrimp', name: 'Cherry Shrimp', icon: '🦐', load: 0.5, minTank: 5, tempRange: [68, 78], pHRange: [6.5, 8.0], compat: ['cardinal', 'rummy', 'oto'], fact: 'A colony can double in size every 2-3 months.' },
+                { id: 'betta', name: 'Betta', icon: '🐠', load: 2, minTank: 5, tempRange: [76, 82], pHRange: [6.5, 7.5], compat: ['oto'], fact: 'Bettas build bubble nests at the surface for their eggs.' }
+              ],
+              reef: [
+                { id: 'clown', name: 'Clownfish', icon: '🐠', load: 3, minTank: 20, tempRange: [75, 82], pHRange: [8.0, 8.4], compat: ['tang', 'goby', 'anemone'], fact: 'All clownfish are born male — the dominant one becomes female!' },
+                { id: 'tang', name: 'Blue Tang', icon: '🐟', load: 5, minTank: 55, tempRange: [75, 82], pHRange: [8.0, 8.4], compat: ['clown', 'goby'], fact: 'Blue tangs can "play dead" when stressed, lying on their side.' },
+                { id: 'goby', name: 'Watchman Goby', icon: '🐡', load: 2, minTank: 20, tempRange: [75, 82], pHRange: [8.0, 8.4], compat: ['clown', 'tang', 'anemone'], fact: 'Gobies form symbiotic partnerships with pistol shrimp.' },
+                { id: 'anemone', name: 'Sea Anemone', icon: '🪸', load: 3, minTank: 30, tempRange: [76, 82], pHRange: [8.1, 8.4], compat: ['clown', 'goby'], fact: 'Anemones can live over 100 years in the right conditions.' }
+              ],
+              predator: [
+                { id: 'oscar', name: 'Oscar', icon: '🐠', load: 10, minTank: 55, tempRange: [74, 81], pHRange: [6.0, 8.0], compat: ['pleco'], fact: 'Oscars recognize their owners and can learn tricks.' },
+                { id: 'pike', name: 'Pike Cichlid', icon: '🐟', load: 8, minTank: 55, tempRange: [75, 82], pHRange: [6.0, 7.5], compat: ['pleco'], fact: 'Pike cichlids are ambush predators that strike in milliseconds.' },
+                { id: 'pleco', name: 'Plecostomus', icon: '🐡', load: 6, minTank: 40, tempRange: [72, 82], pHRange: [6.5, 7.5], compat: ['oscar', 'pike'], fact: 'Some plecos can grow over 2 feet long!' }
+              ],
+              turtle: [
+                { id: 'slider', name: 'Red-Eared Slider', icon: '🐢', load: 15, minTank: 40, tempRange: [75, 85], pHRange: [6.5, 8.0], compat: ['goldfish'], fact: 'They can hold their breath for over 30 minutes!' },
+                { id: 'goldfish', name: 'Feeder Goldfish', icon: '🐟', load: 3, minTank: 20, tempRange: [65, 75], pHRange: [7.0, 8.4], compat: ['slider'], fact: 'Goldfish can live 20+ years with proper care.' }
+              ],
+              invert: [
+                { id: 'cleaner', name: 'Cleaner Shrimp', icon: '🦐', load: 1, minTank: 10, tempRange: [75, 82], pHRange: [8.0, 8.4], compat: ['urchin', 'crab', 'starfish'], fact: 'They set up cleaning stations where fish line up to be groomed!' },
+                { id: 'urchin', name: 'Sea Urchin', icon: '🦔', load: 2, minTank: 20, tempRange: [72, 78], pHRange: [8.0, 8.4], compat: ['cleaner', 'crab', 'starfish'], fact: 'Urchin spines are actually modified teeth.' },
+                { id: 'crab', name: 'Hermit Crab', icon: '🦀', load: 2, minTank: 10, tempRange: [72, 80], pHRange: [8.0, 8.4], compat: ['cleaner', 'urchin', 'starfish'], fact: 'Hermit crabs form "vacancy chains" — swapping shells in order of size!' },
+                { id: 'starfish', name: 'Sea Star', icon: '⭐', load: 3, minTank: 20, tempRange: [72, 78], pHRange: [8.0, 8.4], compat: ['cleaner', 'urchin', 'crab'], fact: 'Sea stars can regenerate lost arms — and sometimes an entire body from one arm.' }
+              ],
+              coldwater: [
+                { id: 'rockfish', name: 'Rockfish', icon: '🐟', load: 5, minTank: 55, tempRange: [50, 60], pHRange: [7.8, 8.4], compat: ['seastar', 'kelp'], fact: 'Some rockfish live over 200 years!' },
+                { id: 'seastar', name: 'Sunflower Star', icon: '⭐', load: 4, minTank: 40, tempRange: [48, 58], pHRange: [7.8, 8.4], compat: ['rockfish', 'kelp'], fact: 'Sunflower stars have up to 24 arms and can move 1 meter per minute.' },
+                { id: 'kelp', name: 'Giant Kelp', icon: '🌿', load: 1, minTank: 30, tempRange: [50, 65], pHRange: [7.5, 8.5], compat: ['rockfish', 'seastar'], fact: 'Giant kelp can grow up to 2 feet per day!' }
+              ],
+              brackish: [
+                { id: 'archer', name: 'Archerfish', icon: '🐟', load: 3, minTank: 20, tempRange: [72, 82], pHRange: [7.0, 8.5], compat: ['puffer', 'mudskip'], fact: 'Archerfish shoot jets of water to knock insects off branches!' },
+                { id: 'puffer', name: 'Figure-8 Puffer', icon: '🐡', load: 4, minTank: 15, tempRange: [72, 79], pHRange: [7.5, 8.5], compat: ['archer'], fact: 'Puffers need to crunch hard-shelled food to keep their beaks trimmed.' },
+                { id: 'mudskip', name: 'Mudskipper', icon: '🐸', load: 3, minTank: 20, tempRange: [75, 86], pHRange: [7.0, 8.5], compat: ['archer'], fact: 'Mudskippers are fish that can walk on land and breathe air!' }
+              ]
+            };
+
+            // ── Current state ──
+            var selectedTank = d.selectedTank || null;
+            var tankFish = d.tankFish || [];
+            var waterChem = d.waterChem || null;
+            var simTick = d.simTick || 0;
+            var simRunning = d.simRunning || false;
+            var fishHealth = d.fishHealth || {};
+            var eventLog = d.eventLog || [];
+
+            // ── Enhanced sim state ──
+            var hungerLevels = d.hungerLevels || {};
+            var simSpeed = d.simSpeed || 1;
+            var simDay = d.simDay || 0;
+            var simHour = d.simHour || 8;
+            var feedingLog = d.feedingLog || null;
+            var chemTooltip = d.chemTooltip || null;
+            var fishStress = d.fishStress || {};
+
+            // ── Ocean Ecology state ──
+            var oceanPop = d.oceanPop || { sardines: 800, tuna: 200, sharks: 50 };
+            var harvestRate = d.harvestRate != null ? d.harvestRate : 20;
+            var meshSize = d.meshSize || 'medium';
+            var mpaPercent = d.mpaPercent != null ? d.mpaPercent : 10;
+            var isOpenSeason = d.isOpenSeason != null ? d.isOpenSeason : true;
+            var oceanHistory = d.oceanHistory || [];
+            var oceanYear = d.oceanYear || 0;
+            var oceanRevenue = d.oceanRevenue || 0;
+            var oceanBycatch = d.oceanBycatch || 0;
+            var oceanCollapsed = d.oceanCollapsed || false;
+            var oceanScenario = d.oceanScenario || null;
+
+            // ── Marine Science state ──
+            var selectedZone = d.selectedZone || null;
+            var selectedSpecies = d.selectedSpecies || null;
+            var quizActive = d.quizActive || false;
+            var quizScore = d.quizScore || { correct: 0, total: 0 };
+            var quizQ = d.quizQ || null;
+
+
+            // ── Chemistry educational data ──
+            var CHEM_INFO = {
+              pH: {
+                name: 'pH (Power of Hydrogen)',
+                icon: '\u2697\uFE0F',
+                what: 'A measure of how acidic or basic the water is. The scale runs 0-14, where 7 is neutral. Each whole number change represents a 10x difference in hydrogen ion concentration.',
+                safeRange: 'Depends on species — freshwater: 6.5-7.5, African cichlids: 7.8-8.6, marine: 8.1-8.4',
+                danger: 'Rapid pH swings > 0.5 in 24h cause osmotic stress. Fish gills struggle to regulate ion exchange, leading to respiratory distress.',
+                math: function (wc, tank) {
+                  var diff = Math.abs(wc.pH - tank.pH);
+                  return 'Target: ' + tank.pH.toFixed(1) + ' | Current deviation: ' + diff.toFixed(2) + ' units\nA pH of ' + wc.pH.toFixed(1) + ' means [H\u207A] = 10\u207B' + wc.pH.toFixed(1) + ' mol/L';
+                },
+                fix: 'Partial water changes gradually bring pH toward target. Never adjust more than 0.2 units per day.'
+              },
+              temp: {
+                name: 'Temperature',
+                icon: '\uD83C\uDF21\uFE0F',
+                what: 'Fish are ectotherms — their metabolism is controlled by water temperature. Higher temps increase metabolism, oxygen demand, and ammonia toxicity.',
+                safeRange: 'Tropical: 75-82\u00B0F (24-28\u00B0C), Coldwater: 60-72\u00B0F (16-22\u00B0C), Marine: 76-82\u00B0F (24-28\u00B0C)',
+                danger: 'Every 10\u00B0F increase roughly doubles metabolic rate. Ammonia toxicity increases 10x between 68\u00B0F and 86\u00B0F.',
+                math: function (wc, tank) {
+                  var diff = Math.abs(wc.temp - tank.temp);
+                  var celsius = ((wc.temp - 32) * 5 / 9).toFixed(1);
+                  return 'Current: ' + wc.temp.toFixed(1) + '\u00B0F (' + celsius + '\u00B0C) | Target: ' + tank.temp + '\u00B0F\nDeviation: \u00B1' + diff.toFixed(1) + '\u00B0F';
+                },
+                fix: 'Adjust heater gradually — no more than 2\u00B0F per hour. Rapid changes cause thermal shock.'
+              },
+              ammonia: {
+                name: 'Ammonia (NH\u2083/NH\u2084\u207A)',
+                icon: '\u2620\uFE0F',
+                what: 'The primary waste product from fish gills and decomposing food. In its un-ionized form (NH\u2083), it is extremely toxic to fish even at low concentrations.',
+                safeRange: '0 ppm ideal | < 0.25 ppm tolerable | 0.25-1.0 ppm stressful | > 1.0 ppm lethal',
+                danger: 'Ammonia burns gill tissue, causing fish to gasp at the surface. At > 1 ppm, irreversible gill damage occurs within hours.',
+                math: function (wc, tank, bioload, fishCount) {
+                  var gen = bioload * 0.02;
+                  var converted = wc.ammonia * 0.15;
+                  return 'Generation: ' + fishCount + ' fish \u00D7 bioload = ' + gen.toFixed(3) + ' ppm/tick\nBacteria (Nitrosomonas) convert: ' + wc.ammonia.toFixed(2) + ' \u00D7 15% = ' + converted.toFixed(3) + ' ppm \u2192 NO\u2082\nNet change: +' + (gen - wc.ammonia * 0.05).toFixed(3) + ' ppm/tick';
+                },
+                fix: 'Immediate 25% water change. Reduce feeding. Add beneficial bacteria supplement. Do NOT add more fish.'
+              },
+              nitrite: {
+                name: 'Nitrite (NO\u2082\u207B)',
+                icon: '\u26A0\uFE0F',
+                what: 'Produced by Nitrosomonas bacteria converting ammonia. Still toxic — it binds to hemoglobin, reducing oxygen-carrying capacity (brown blood disease).',
+                safeRange: '0 ppm ideal | < 0.25 ppm tolerable | 0.25-1.0 ppm dangerous | > 1.0 ppm critical',
+                danger: 'Nitrite replaces oxygen on hemoglobin molecules. Fish blood turns brown and cannot carry O\u2082. Gills appear dark/chocolate colored.',
+                math: function (wc, tank) {
+                  var fromAmmonia = wc.ammonia * 0.15;
+                  var converted = wc.nitrite * 0.08;
+                  var toNitrate = wc.nitrite * 0.2;
+                  return 'Input from NH\u2083: ' + fromAmmonia.toFixed(3) + ' ppm/tick\nNatural decay: ' + converted.toFixed(3) + ' ppm/tick\nConverted to NO\u2083 by Nitrobacter: ' + toNitrate.toFixed(3) + ' ppm/tick';
+                },
+                fix: 'Water change + add aquarium salt (1 tsp/gal) to block nitrite absorption through gills.'
+              },
+              nitrate: {
+                name: 'Nitrate (NO\u2083\u207B)',
+                icon: '\uD83C\uDF3F',
+                what: 'The end product of the nitrogen cycle. Much less toxic than ammonia or nitrite, but accumulates over time. Live plants absorb nitrate as fertilizer.',
+                safeRange: '< 20 ppm excellent | < 40 ppm acceptable | 40-80 ppm high | > 80 ppm water change needed',
+                danger: 'Chronic high nitrate (> 40 ppm) suppresses immune function and stunts growth. Promotes algae blooms that consume oxygen at night.',
+                math: function (wc) {
+                  var fromNitrite = wc.nitrite * 0.2;
+                  return 'Input from NO\u2082: ' + fromNitrite.toFixed(3) + ' ppm/tick\nAccumulation: ' + wc.nitrate.toFixed(1) + ' ppm total\nOnly removed by: water changes or live plants';
+                },
+                fix: 'Regular 25% weekly water changes. Add fast-growing plants (hornwort, pothos). Reduce fish load.'
+              },
+              salinity: {
+                name: 'Salinity',
+                icon: '\uD83E\uDDC2',
+                what: 'The concentration of dissolved salts (primarily NaCl). Freshwater fish maintain internal salt levels higher than their environment; marine fish do the opposite.',
+                safeRange: 'Freshwater: 0 ppt | Brackish: 5-15 ppt | Marine: 34-36 ppt',
+                danger: 'Incorrect salinity disrupts osmoregulation. Fish cells either swell (too fresh) or shrink (too salty), damaging organs.',
+                math: function (wc) {
+                  return 'Current: ' + wc.salinity + ' ppt (parts per thousand)\n1 ppt = 1g salt per 1000g water\nSeawater: ~35 ppt = 3.5% salt by weight';
+                },
+                fix: 'Adjust slowly through water changes with correctly mixed water. Never change > 2 ppt per day.'
+              }
+            };
+            // ── Tank setup helpers ──
+            var initTank = function (tankId) {
+              var tank = TANK_TYPES.find(function (t) { return t.id === tankId; });
+              if (!tank) return;
+              updMulti({
+                selectedTank: tankId,
+                tankFish: [],
+                waterChem: { pH: tank.pH, temp: tank.temp, ammonia: 0, nitrite: 0, nitrate: 5, salinity: tank.salinity },
+                simTick: 0, simRunning: false, fishHealth: {}, eventLog: [{ tick: 0, msg: '🐠 ' + tank.name + ' tank initialized!' }]
+              });
+            };
+
+            var addFish = function (speciesId) {
+              var tank = TANK_TYPES.find(function (t) { return t.id === selectedTank; });
+              var species = (SPECIES_BY_TANK[selectedTank] || []).find(function (s) { return s.id === speciesId; });
+              if (!tank || !species) return;
+              var currentLoad = tankFish.reduce(function (sum, f) {
+                var sp = (SPECIES_BY_TANK[selectedTank] || []).find(function (s) { return s.id === f; });
+                return sum + (sp ? sp.load : 0);
+              }, 0);
+              var maxLoad = Math.floor(tank.size / 2);
+              if (currentLoad + species.load > maxLoad) {
+                if (addToast) addToast('⚠️ Tank is at capacity! Bioload would exceed safe limits.', 'warning');
+                return;
+              }
+              var newFish = tankFish.concat([speciesId]);
+              var newHealth = Object.assign({}, fishHealth);
+              newHealth[speciesId] = (newHealth[speciesId] || 0) + 1;
+              var newHunger = Object.assign({}, hungerLevels);
+              if (newHunger[speciesId] === undefined) newHunger[speciesId] = 50;
+              updMulti({ tankFish: newFish, fishHealth: newHealth, eventLog: eventLog.concat([{ tick: simTick, msg: '🐟 Added ' + species.name + ' to tank' }]) });
+            };
+
+            var removeFish = function (idx) {
+              var newFish = tankFish.slice();
+              var removed = newFish.splice(idx, 1)[0];
+              var sp = (SPECIES_BY_TANK[selectedTank] || []).find(function (s) { return s.id === removed; });
+              updMulti({ tankFish: newFish, eventLog: eventLog.concat([{ tick: simTick, msg: '🔄 Removed ' + (sp ? sp.name : removed) }]) });
+            };
+
+            // ── Water chemistry helpers ──
+            var getChemStatus = function (param, value) {
+              var tank = TANK_TYPES.find(function (t) { return t.id === selectedTank; });
+              if (!tank) return 'ok';
+              if (param === 'ammonia') return value < 0.25 ? 'ok' : value < 1.0 ? 'warn' : 'danger';
+              if (param === 'nitrite') return value < 0.25 ? 'ok' : value < 1.0 ? 'warn' : 'danger';
+              if (param === 'nitrate') return value < 40 ? 'ok' : value < 80 ? 'warn' : 'danger';
+              if (param === 'pH') {
+                var diff = Math.abs(value - tank.pH);
+                return diff < 0.5 ? 'ok' : diff < 1.0 ? 'warn' : 'danger';
+              }
+              if (param === 'temp') {
+                var tdiff = Math.abs(value - tank.temp);
+                return tdiff < 3 ? 'ok' : tdiff < 6 ? 'warn' : 'danger';
+              }
+              return 'ok';
+            };
+
+            var statusIcon = function (s) { return s === 'ok' ? '✅' : s === 'warn' ? '⚠️' : '❌'; };
+            var statusColor = function (s) { return s === 'ok' ? 'text-green-600' : s === 'warn' ? 'text-amber-600' : 'text-red-600'; };
+
+            var doWaterChange = function () {
+              if (!waterChem) return;
+              var tank = TANK_TYPES.find(function (t) { return t.id === selectedTank; });
+              var newChem = Object.assign({}, waterChem, {
+                ammonia: Math.max(0, waterChem.ammonia * 0.5),
+                nitrite: Math.max(0, waterChem.nitrite * 0.5),
+                nitrate: Math.max(0, waterChem.nitrate * 0.6),
+                pH: waterChem.pH + (tank.pH - waterChem.pH) * 0.3
+              });
+              updMulti({ waterChem: newChem, eventLog: eventLog.concat([{ tick: simTick, msg: '💧 25% water change performed' }]) });
+              if (addToast) addToast('💧 Water change complete!', 'success');
+            };
+
+            var feedFish = function () {
+              if (!waterChem) return;
+              var newChem = Object.assign({}, waterChem, {
+                ammonia: waterChem.ammonia + 0.15 * (tankFish.length || 1),
+              });
+              updMulti({ waterChem: newChem, eventLog: eventLog.concat([{ tick: simTick, msg: '🍽️ Fish fed' }]) });
+            };
+
+            // ── Simulation tick (water chemistry drift) ──
+            var simStep = function () {
+              if (!waterChem || !selectedTank) return;
+              var bioload = tankFish.reduce(function (sum, f) {
+                var sp = (SPECIES_BY_TANK[selectedTank] || []).find(function (s) { return s.id === f; });
+                return sum + (sp ? sp.load : 0);
+              }, 0);
+              var ammoniaGen = bioload * 0.02;
+              var newAmm = Math.max(0, waterChem.ammonia + ammoniaGen - waterChem.ammonia * 0.05);
+              var nitriteBact = waterChem.ammonia * 0.15;
+              var newNitrite = Math.max(0, waterChem.nitrite + nitriteBact - waterChem.nitrite * 0.08);
+              var nitrateBact = waterChem.nitrite * 0.2;
+              var newNitrate = Math.max(0, waterChem.nitrate + nitrateBact);
+              var pHdrift = (Math.random() - 0.5) * 0.05;
+              var tempDrift = (Math.random() - 0.5) * 0.3;
+              var newChem = {
+                pH: Math.max(5.5, Math.min(9.0, waterChem.pH + pHdrift)),
+                temp: Math.max(40, Math.min(95, waterChem.temp + tempDrift)),
+                ammonia: Math.round(newAmm * 100) / 100,
+                nitrite: Math.round(newNitrite * 100) / 100,
+                nitrate: Math.round(newNitrate * 10) / 10,
+                salinity: waterChem.salinity
+              };
+              var newTick = simTick + 1;
+              var newLog = eventLog.slice();
+              // Random events
+              if (newTick % 10 === 0 && Math.random() < 0.3) {
+                var events = ['🌿 Algae bloom detected!', '🌡️ Heater fluctuation!', '💀 Ammonia spike from overfeeding!'];
+                var evt = events[Math.floor(Math.random() * events.length)];
+                if (evt.includes('Ammonia')) newChem.ammonia += 0.5;
+                if (evt.includes('Heater')) newChem.temp += (Math.random() > 0.5 ? 3 : -3);
+                newLog.push({ tick: newTick, msg: evt });
+              }
+              // XP for maintaining healthy parameters
+              var allOk = getChemStatus('ammonia', newChem.ammonia) === 'ok' &&
+                getChemStatus('nitrite', newChem.nitrite) === 'ok' &&
+                getChemStatus('pH', newChem.pH) === 'ok';
+              if (allOk && tankFish.length > 0 && newTick % 5 === 0) {
+                awardXP(2, 'Healthy tank maintenance');
+              }
+              updMulti({ waterChem: newChem, simTick: newTick, eventLog: newLog.slice(-20) });
+            };
+
+
+            // ── Tank Health Score & Strategy Tips ──
+            var getTankHealth = function () {
+              if (!waterChem || tankFish.length === 0) return { score: 100, tips: [{ icon: '\uD83D\uDC1F', text: 'Add some fish to get started!', color: 'text-cyan-600' }] };
+              var score = 100;
+              var tips = [];
+              // Ammonia penalty
+              var ammSt = getChemStatus('ammonia', waterChem.ammonia);
+              if (ammSt === 'warn') { score -= 15; tips.push({ icon: '\u26A0\uFE0F', text: 'Ammonia at ' + waterChem.ammonia.toFixed(2) + ' ppm \u2014 approaching toxic levels. Consider a water change.', color: 'text-amber-600' }); }
+              if (ammSt === 'danger') { score -= 35; tips.push({ icon: '\u2620\uFE0F', text: 'CRITICAL: Ammonia at ' + waterChem.ammonia.toFixed(2) + ' ppm! Immediate water change needed. Fish are suffering gill damage.', color: 'text-red-600' }); }
+              // Nitrite penalty
+              var nitSt = getChemStatus('nitrite', waterChem.nitrite);
+              if (nitSt === 'warn') { score -= 12; tips.push({ icon: '\u26A0\uFE0F', text: 'Nitrite rising (' + waterChem.nitrite.toFixed(2) + ' ppm). Your nitrogen cycle may not be established yet.', color: 'text-amber-600' }); }
+              if (nitSt === 'danger') { score -= 30; tips.push({ icon: '\u2620\uFE0F', text: 'CRITICAL: Nitrite at ' + waterChem.nitrite.toFixed(2) + ' ppm! Brown blood disease risk. Emergency water change!', color: 'text-red-600' }); }
+              // Nitrate penalty
+              if (waterChem.nitrate > 80) { score -= 15; tips.push({ icon: '\uD83D\uDE2C', text: 'Nitrate very high (' + waterChem.nitrate.toFixed(0) + ' ppm). Schedule regular water changes or add live plants.', color: 'text-amber-600' }); }
+              else if (waterChem.nitrate > 40) { score -= 8; tips.push({ icon: '\uD83C\uDF3F', text: 'Nitrate at ' + waterChem.nitrate.toFixed(0) + ' ppm \u2014 a water change will bring this down.', color: 'text-amber-600' }); }
+              // pH penalty
+              var phSt = getChemStatus('pH', waterChem.pH);
+              if (phSt === 'warn') { score -= 10; tips.push({ icon: '\u2697\uFE0F', text: 'pH drifting (' + waterChem.pH.toFixed(1) + '). Fish prefer stable pH near ' + (TANK_TYPES.find(function (t) { return t.id === selectedTank; }) || { pH: 7 }).pH + '.', color: 'text-amber-600' }); }
+              if (phSt === 'danger') { score -= 25; tips.push({ icon: '\u2697\uFE0F', text: 'pH dangerously off-target (' + waterChem.pH.toFixed(1) + ')! Osmotic stress is likely.', color: 'text-red-600' }); }
+              // Bioload check
+              var species = SPECIES_BY_TANK[selectedTank] || [];
+              var currentLoad = tankFish.reduce(function (s, f) { var sp = species.find(function (x) { return x.id === f; }); return s + (sp ? sp.load : 0); }, 0);
+              var maxLoad = Math.floor((TANK_TYPES.find(function (t) { return t.id === selectedTank; }) || { size: 20 }).size / 2);
+              var loadPct = Math.round(currentLoad / maxLoad * 100);
+              if (loadPct > 80) { score -= 10; tips.push({ icon: '\uD83D\uDC1F', text: 'Bioload at ' + loadPct + '% capacity. High bioload = more waste = faster ammonia buildup.', color: 'text-amber-600' }); }
+              // Hunger check
+              var avgHunger = 0;
+              var hungerCount = 0;
+              tankFish.forEach(function (fId) { var h = hungerLevels[fId]; if (h !== undefined) { avgHunger += h; hungerCount++; } });
+              if (hungerCount > 0) avgHunger = avgHunger / hungerCount;
+              if (avgHunger > 75) { score -= 12; tips.push({ icon: '\uD83C\uDF7D\uFE0F', text: 'Fish are very hungry (avg ' + Math.round(avgHunger) + '%). Feed soon to reduce stress!', color: 'text-amber-600' }); }
+              // All good!
+              if (tips.length === 0) {
+                tips.push({ icon: '\uD83C\uDF1F', text: 'Excellent tank management! All parameters in safe range. Your nitrogen cycle is established.', color: 'text-green-600' });
+              }
+              return { score: Math.max(0, score), tips: tips };
+            };
+            // ── Ocean Ecology helpers ──
+            var OCEAN_SPECIES = [
+              { id: 'sardines', name: 'Sardines', icon: '🐟', r: 0.4, K: 1000, value: 1, desc: 'Fast-reproducing small fish. Foundation of the marine food web.' },
+              { id: 'tuna', name: 'Tuna', icon: '🐠', r: 0.15, K: 400, value: 8, desc: 'Mid-level predator. High commercial value but slow to recover.' },
+              { id: 'sharks', name: 'Sharks', icon: '🦈', r: 0.05, K: 100, value: 3, desc: 'Apex predator. Extremely slow reproduction — vulnerable to overfishing.' }
+            ];
+
+            var stepOcean = function () {
+              var newPop = Object.assign({}, oceanPop);
+              var harvestFactor = isOpenSeason ? harvestRate / 100 : 0;
+              var mpaFactor = 1 - mpaPercent / 100;
+              var bycatchMult = meshSize === 'small' ? 0.15 : meshSize === 'medium' ? 0.05 : 0.02;
+              var yearRevenue = 0;
+              var yearBycatch = 0;
+
+              OCEAN_SPECIES.forEach(function (sp) {
+                var N = newPop[sp.id];
+                var growth = sp.r * N * (1 - N / sp.K);
+                var predation = 0;
+                if (sp.id === 'sardines') predation = 0.003 * N * newPop.tuna;
+                if (sp.id === 'tuna') predation = 0.004 * N * newPop.sharks;
+                var harvest = sp.id !== 'sharks' ? harvestFactor * mpaFactor * N * 0.1 : harvestFactor * mpaFactor * N * 0.03;
+                var bycatch = sp.id === 'sharks' ? harvest * bycatchMult * 3 : 0;
+                yearBycatch += bycatch;
+                yearRevenue += harvest * sp.value;
+                newPop[sp.id] = Math.max(0, Math.round(N + growth - predation - harvest - bycatch));
+              });
+
+              var newYear = oceanYear + 1;
+              var newHistory = oceanHistory.concat([{ year: newYear, sardines: newPop.sardines, tuna: newPop.tuna, sharks: newPop.sharks, revenue: Math.round(yearRevenue) }]);
+              var collapsed = newPop.sardines < 50 || newPop.tuna < 20;
+
+              updMulti({
+                oceanPop: newPop,
+                oceanYear: newYear,
+                oceanRevenue: oceanRevenue + Math.round(yearRevenue),
+                oceanBycatch: oceanBycatch + Math.round(yearBycatch),
+                oceanHistory: newHistory.slice(-50),
+                oceanCollapsed: collapsed
+              });
+
+              if (collapsed && !oceanCollapsed) {
+                if (addToast) addToast('🚨 Fish stock collapse! Populations have crashed below sustainable levels.', 'error');
+              }
+              if (!collapsed && newYear % 5 === 0) {
+                awardXP(3, 'Sustainable fishing for 5 years');
+              }
+            };
+
+            var resetOcean = function () {
+              updMulti({
+                oceanPop: { sardines: 800, tuna: 200, sharks: 50 },
+                harvestRate: 20, meshSize: 'medium', mpaPercent: 10, isOpenSeason: true,
+                oceanHistory: [], oceanYear: 0, oceanRevenue: 0, oceanBycatch: 0,
+                oceanCollapsed: false, oceanScenario: null
+              });
+            };
+
+            // ── Marine Science data ──
+            var OCEAN_ZONES = [
+              { id: 'sunlight', name: 'Sunlight Zone (Epipelagic)', depth: '0-200m', light: '100%', temp: '20-25°C', color: '#38bdf8', species: ['clownfish', 'dolphin', 'jellyfish', 'turtle'] },
+              { id: 'twilight', name: 'Twilight Zone (Mesopelagic)', depth: '200-1000m', light: '1%', temp: '5-20°C', color: '#1e40af', species: ['squid', 'hatchetfish', 'swordfish'] },
+              { id: 'midnight', name: 'Midnight Zone (Bathypelagic)', depth: '1000-4000m', light: '0%', temp: '2-5°C', color: '#1e1b4b', species: ['anglerfish', 'gulpereel', 'giantsquid'] },
+              { id: 'abyssal', name: 'Abyssal Zone (Abyssopelagic)', depth: '4000-6000m', light: '0%', temp: '1-2°C', color: '#0f0a2e', species: ['tubeworms', 'seacucumber'] },
+              { id: 'hadal', name: 'Hadal Zone (Trenches)', depth: '6000-11000m', light: '0%', temp: '1-4°C', color: '#050210', species: ['amphipod', 'snailfish'] }
+            ];
+
+            var MARINE_SPECIES = [
+              { id: 'clownfish', name: 'Clownfish', icon: '🐠', zone: 'sunlight', habitat: 'Coral Reef', diet: 'Omnivore', status: 'LC', fact: 'Lives in symbiosis with venomous sea anemones.', quiz: 'What protects clownfish from anemone stings?' },
+              { id: 'dolphin', name: 'Bottlenose Dolphin', icon: '🐬', zone: 'sunlight', habitat: 'Open Ocean', diet: 'Carnivore', status: 'LC', fact: 'Dolphins sleep with one eye open — one brain hemisphere at a time.', quiz: 'How do dolphins breathe while sleeping?' },
+              { id: 'jellyfish', name: 'Moon Jellyfish', icon: '🪼', zone: 'sunlight', habitat: 'Coastal', diet: 'Carnivore', status: 'LC', fact: 'Jellyfish have no brain, heart, or blood — just a nerve net.', quiz: 'What body system do jellyfish lack?' },
+              { id: 'turtle', name: 'Green Sea Turtle', icon: '🐢', zone: 'sunlight', habitat: 'Coastal & Reef', diet: 'Herbivore', status: 'EN', fact: 'Sea turtles navigate using Earth\'s magnetic field.', quiz: 'How do sea turtles find their nesting beaches?' },
+              { id: 'squid', name: 'Firefly Squid', icon: '🦑', zone: 'twilight', habitat: 'Open Ocean', diet: 'Carnivore', status: 'LC', fact: 'Firefly squid produce bioluminescent light from photophores.', quiz: 'What is the light-producing ability of deep sea creatures called?' },
+              { id: 'hatchetfish', name: 'Hatchetfish', icon: '🐟', zone: 'twilight', habitat: 'Open Ocean', diet: 'Carnivore', status: 'LC', fact: 'Uses counter-illumination to hide from predators below.', quiz: 'Why do hatchetfish have light organs on their belly?' },
+              { id: 'swordfish', name: 'Swordfish', icon: '🐟', zone: 'twilight', habitat: 'Open Ocean', diet: 'Carnivore', status: 'LC', fact: 'Swordfish heat their eyes and brain to hunt in cold deep waters.', quiz: 'What unique adaptation helps swordfish hunt in cold water?' },
+              { id: 'anglerfish', name: 'Anglerfish', icon: '🐡', zone: 'midnight', habitat: 'Deep Sea', diet: 'Carnivore', status: 'LC', fact: 'The glowing lure is a bioluminescent bacteria colony.', quiz: 'What zone does the anglerfish inhabit?' },
+              { id: 'gulpereel', name: 'Gulper Eel', icon: '🐍', zone: 'midnight', habitat: 'Deep Sea', diet: 'Carnivore', status: 'LC', fact: 'Can unhinge its jaw to swallow prey larger than itself.', quiz: 'What adaptation lets the gulper eel eat large prey?' },
+              { id: 'giantsquid', name: 'Giant Squid', icon: '🦑', zone: 'midnight', habitat: 'Deep Sea', diet: 'Carnivore', status: 'LC', fact: 'Has the largest eyes in the animal kingdom — up to 10 inches across.', quiz: 'How large can a giant squid\'s eyes grow?' },
+              { id: 'tubeworms', name: 'Giant Tube Worms', icon: '🪱', zone: 'abyssal', habitat: 'Hydrothermal Vents', diet: 'Chemosynthetic', status: 'LC', fact: 'They have no mouth or stomach — bacteria inside them convert chemicals to energy.', quiz: 'What process do tube worm symbionts use instead of photosynthesis?' },
+              { id: 'seacucumber', name: 'Sea Cucumber', icon: '🥒', zone: 'abyssal', habitat: 'Abyssal Plain', diet: 'Detritivore', status: 'LC', fact: 'Can expel their internal organs as a defense and regrow them.', quiz: 'What defense mechanism do sea cucumbers use?' },
+              { id: 'amphipod', name: 'Supergiant Amphipod', icon: '🦐', zone: 'hadal', habitat: 'Trenches', diet: 'Scavenger', status: 'LC', fact: 'Found 7 miles deep in the Mariana Trench.', quiz: 'What is the deepest ocean trench on Earth?' },
+              { id: 'snailfish', name: 'Mariana Snailfish', icon: '🐟', zone: 'hadal', habitat: 'Trenches', diet: 'Carnivore', status: 'LC', fact: 'Deepest-living fish ever recorded at 8,178 meters.', quiz: 'What is the deepest-living fish species discovered?' },
+              { id: 'mantaray', name: 'Manta Ray', icon: '🐟', zone: 'sunlight', habitat: 'Open Ocean', diet: 'Filter Feeder', status: 'VU', fact: 'Mantas have the largest brain-to-body ratio of any fish.', quiz: 'What type of feeding do manta rays use?' },
+              { id: 'bluewhale', name: 'Blue Whale', icon: '🐋', zone: 'sunlight', habitat: 'Open Ocean', diet: 'Filter Feeder', status: 'EN', fact: 'The largest animal ever — their heart is the size of a small car.', quiz: 'What is the largest animal that has ever lived?' },
+              { id: 'seahorse', name: 'Seahorse', icon: '🐟', zone: 'sunlight', habitat: 'Coastal', diet: 'Carnivore', status: 'VU', fact: 'Males carry and give birth to the babies — unique in the animal kingdom.', quiz: 'Which seahorse parent carries the eggs?' },
+              { id: 'octopus', name: 'Dumbo Octopus', icon: '🐙', zone: 'midnight', habitat: 'Deep Sea', diet: 'Carnivore', status: 'LC', fact: 'Named for their ear-like fins. Three hearts pump blue blood.', quiz: 'How many hearts does an octopus have?' },
+              { id: 'nautilus', name: 'Nautilus', icon: '🐚', zone: 'twilight', habitat: 'Deep Reef', diet: 'Scavenger', status: 'VU', fact: 'A living fossil — virtually unchanged for 500 million years.', quiz: 'How long have nautiluses existed?' },
+              { id: 'coelacanth', name: 'Coelacanth', icon: '🐟', zone: 'twilight', habitat: 'Deep Caves', diet: 'Carnivore', status: 'CR', fact: 'Thought extinct for 66 million years until rediscovered in 1938!', quiz: 'When was the coelacanth rediscovered?' }
+            ];
+
+            var generateQuiz = function () {
+              var sp = MARINE_SPECIES[Math.floor(Math.random() * MARINE_SPECIES.length)];
+              var q = {
+                species: sp.id, question: sp.quiz, answer: sp.name,
+                options: [sp.name].concat(
+                  MARINE_SPECIES.filter(function (s) { return s.id !== sp.id; })
+                    .sort(function () { return Math.random() - 0.5; }).slice(0, 3)
+                    .map(function (s) { return s.name; })
+                ).sort(function () { return Math.random() - 0.5; })
+              };
+              updMulti({ quizQ: q, quizActive: true });
+            };
+
+            var answerQuiz = function (ans) {
+              if (!quizQ) return;
+              var correct = ans === quizQ.answer;
+              announceToSR(correct ? 'Correct!' : 'Incorrect');
+              if (correct) awardXP(3, 'Marine science quiz');
+              updMulti({
+                quizScore: { correct: quizScore.correct + (correct ? 1 : 0), total: quizScore.total + 1 },
+                quizQ: Object.assign({}, quizQ, { answered: ans, correct: correct })
+              });
+            };
+
+
+
+            // ═══ RENDER ═══
+            var modeColors = { tank: 'cyan', ocean: 'blue', marine: 'indigo' };
+            var mColor = modeColors[mode] || 'cyan';
+
+            return React.createElement("div", { className: "space-y-4 max-w-3xl mx-auto animate-in fade-in duration-300" },
+
+              // ── Header ──
+              React.createElement("div", { className: "flex items-center gap-3 mb-2" },
+                React.createElement("button", {
+                  onClick: function () { setStemLabTool(null); updMulti({ simRunning: false }); },
+                  className: "p-1.5 hover:bg-slate-100 rounded-lg transition-colors"
+                }, React.createElement(ArrowLeft, { size: 18, className: "text-slate-500" })),
+                React.createElement("h3", { className: "text-lg font-bold bg-gradient-to-r from-cyan-700 via-blue-600 to-indigo-700 bg-clip-text text-transparent" }, "\uD83D\uDC20 Aquaculture & Ocean Lab"),
+                React.createElement("div", { className: "flex items-center gap-2 ml-auto" },
+                  React.createElement("button", {
+                    onClick: function () {
+                      var snap = { id: 'aqua-' + Date.now(), tool: 'aquarium', label: mode === 'tank' ? 'Tank: ' + (selectedTank || 'none') : mode === 'ocean' ? 'Ocean Year ' + oceanYear : 'Marine Science', data: Object.assign({}, d), timestamp: Date.now() };
+                      setToolSnapshots(function (prev) { return prev.concat([snap]); });
+                      if (addToast) addToast('\uD83D\uDCF8 Snapshot saved!', 'success');
+                    },
+                    className: "text-[10px] font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-full px-2 py-0.5 transition-all"
+                  }, "\uD83D\uDCF8 Snapshot")
+                )
+              ),
+
+              // ── Mode Tabs ──
+              React.createElement("div", { className: "flex gap-1 bg-slate-100 rounded-xl p-1" },
+                [
+                  { id: 'tank', icon: '\uD83D\uDC20', label: 'Aquarium Lab' },
+                  { id: 'ocean', icon: '\uD83C\uDF0A', label: 'Ocean Ecology' },
+                  { id: 'marine', icon: '\uD83D\uDD2C', label: 'Marine Science' }
+                ].map(function (tab) {
+                  return React.createElement("button", {
+                    key: tab.id,
+                    onClick: function () { upd('mode', tab.id); },
+                    className: "flex-1 py-2.5 px-3 rounded-xl text-sm font-bold transition-all duration-200 " + (mode === tab.id ? "bg-gradient-to-r from-" + modeColors[tab.id] + "-500 to-" + modeColors[tab.id] + "-600 text-white shadow-lg shadow-" + modeColors[tab.id] + "-500/25" : "text-slate-500 hover:text-slate-700 hover:bg-white/60")
+                  }, tab.icon, " ", tab.label);
+                })
+              ),
+
+
+              // ═══ ANATOMY VIEWER OVERLAY ═══
+              viewingAnatomy && (() => {
+                // Find species data from all sources
+                var allSpecies = [].concat(
+                  SPECIES_BY_TANK[selectedTank] || [],
+                  MARINE_SPECIES || []
+                );
+                var sp = allSpecies.find(function (s) { return s.id === viewingAnatomy; });
+                if (!sp) { closeAnatomy(); return null; }
+                var bodyPlanKey = SPECIES_BODY_MAP[viewingAnatomy] || 'fish';
+                var plan = BODY_PLANS[bodyPlanKey];
+                if (!plan) { closeAnatomy(); return null; }
+                var extraInfo = SPECIES_ANATOMY[viewingAnatomy] || {};
+
+                return React.createElement("div", { className: "bg-gradient-to-br from-slate-900/95 via-indigo-950/95 to-slate-900/95 rounded-2xl p-5 border-2 border-indigo-400/30 shadow-2xl animate-in fade-in duration-300 relative overflow-hidden" },
+                  // Subtle background pattern
+                  React.createElement("div", { style: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'radial-gradient(circle at 20% 80%, rgba(99,102,241,0.08) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(34,211,238,0.06) 0%, transparent 50%)', pointerEvents: 'none' } }),
+
+                  // Header
+                  React.createElement("div", { className: "flex items-center gap-3 mb-4 relative z-10" },
+                    React.createElement("div", { className: "text-3xl" }, sp.icon || '\uD83D\uDC1F'),
+                    React.createElement("div", null,
+                      React.createElement("h4", { className: "text-base font-bold text-white" }, sp.name),
+                      React.createElement("p", { className: "text-[11px] text-indigo-300/80" }, plan.label)
+                    ),
+                    React.createElement("button", {
+                      onClick: closeAnatomy,
+                      className: "ml-auto px-3 py-1 text-xs font-bold text-slate-400 bg-slate-800/60 hover:bg-slate-700/80 rounded-full transition-all border border-slate-600/30"
+                    }, "\u2715 Close")
+                  ),
+
+                  // ── SVG Diagram with interactive labels ──
+                  React.createElement("div", { className: "relative bg-gradient-to-b from-slate-800/50 to-slate-900/50 rounded-xl p-4 mb-4 border border-slate-700/30" },
+                    // Render SVG diagram
+                    React.createElement("div", {
+                      dangerouslySetInnerHTML: { __html: plan.svg(400, 250, SPECIES_COLORS[viewingAnatomy]) },
+                      className: "max-w-sm mx-auto",
+                      style: { filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.3))' }
+                    }),
+                    // Clickable label dots overlaid on the diagram
+                    React.createElement("div", { style: { position: 'absolute', top: '16px', left: '16px', right: '16px', bottom: '16px' } },
+                      plan.parts.map(function (part, i) {
+                        var isHighlighted = anatomyHighlight === i;
+                        return React.createElement("div", {
+                          key: i,
+                          style: {
+                            position: 'absolute',
+                            left: part.x + '%', top: part.y + '%',
+                            transform: 'translate(-50%,-50%)',
+                            zIndex: isHighlighted ? 20 : 10,
+                            cursor: 'pointer'
+                          },
+                          onClick: function () { upd('anatomyHighlight', isHighlighted ? null : i); }
+                        },
+                          // Pulsing dot
+                          React.createElement("div", {
+                            className: "relative",
+                            style: { width: '16px', height: '16px' }
+                          },
+                            React.createElement("div", {
+                              style: {
+                                width: '16px', height: '16px', borderRadius: '50%',
+                                background: isHighlighted ? '#22d3ee' : 'rgba(255,255,255,0.9)',
+                                border: '2px solid ' + (isHighlighted ? '#06b6d4' : 'rgba(99,102,241,0.6)'),
+                                boxShadow: isHighlighted ? '0 0 12px rgba(34,211,238,0.6)' : '0 0 6px rgba(255,255,255,0.3)',
+                                animation: isHighlighted ? 'none' : 'pulse 2s ease-in-out infinite',
+                                transition: 'all 0.2s'
+                              }
+                            }),
+                            // Number label
+                            React.createElement("span", {
+                              style: { position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', fontSize: '8px', fontWeight: 'bold', color: isHighlighted ? '#164e63' : '#4338ca', lineHeight: 1 }
+                            }, String(i + 1))
+                          ),
+                          // Tooltip on highlight
+                          isHighlighted && React.createElement("div", {
+                            className: "absolute z-30",
+                            style: { top: '20px', left: '50%', transform: 'translateX(-50%)', minWidth: '200px' }
+                          },
+                            React.createElement("div", { className: "bg-slate-800/95 backdrop-blur-sm rounded-lg p-2.5 border border-cyan-500/30 shadow-xl" },
+                              React.createElement("p", { className: "text-[11px] font-bold text-cyan-300 mb-0.5" }, part.name),
+                              React.createElement("p", { className: "text-[10px] text-slate-300 leading-relaxed" }, part.desc)
+                            )
+                          )
+                        );
+                      })
+                    )
+                  ),
+
+                  // ── Parts Legend ──
+                  React.createElement("div", { className: "grid grid-cols-2 gap-1.5 mb-3 relative z-10" },
+                    plan.parts.map(function (part, i) {
+                      var isHighlighted = anatomyHighlight === i;
+                      return React.createElement("button", {
+                        key: i,
+                        onClick: function () { upd('anatomyHighlight', isHighlighted ? null : i); },
+                        className: "flex items-center gap-2 px-2 py-1.5 rounded-lg text-left transition-all " + (isHighlighted ? "bg-cyan-500/20 border border-cyan-400/40" : "bg-slate-800/40 border border-transparent hover:bg-slate-700/40")
+                      },
+                        React.createElement("span", { className: "w-4 h-4 flex items-center justify-center rounded-full text-[9px] font-bold flex-shrink-0 " + (isHighlighted ? "bg-cyan-400 text-slate-900" : "bg-slate-600 text-slate-300") }, String(i + 1)),
+                        React.createElement("span", { className: "text-[10px] font-bold " + (isHighlighted ? "text-cyan-300" : "text-slate-400") }, part.name)
+                      );
+                    })
+                  ),
+
+                  // ── Species-Specific Info ──
+                  React.createElement("div", { className: "space-y-2 relative z-10" },
+                    // Fun fact
+                    sp.fact && React.createElement("div", { className: "bg-indigo-500/10 rounded-xl p-3 border border-indigo-400/20" },
+                      React.createElement("p", { className: "text-[10px] font-bold text-indigo-300 mb-0.5" }, "\uD83D\uDCA1 Did You Know?"),
+                      React.createElement("p", { className: "text-[11px] text-indigo-200/80 leading-relaxed" }, sp.fact)
+                    ),
+                    // Anatomy override (species-specific)
+                    extraInfo.override && React.createElement("div", { className: "bg-cyan-500/10 rounded-xl p-3 border border-cyan-400/20" },
+                      React.createElement("p", { className: "text-[10px] font-bold text-cyan-300 mb-0.5" }, "\uD83E\uDDAC Unique Anatomy"),
+                      React.createElement("p", { className: "text-[11px] text-cyan-200/80 leading-relaxed" }, extraInfo.override)
+                    ),
+                    // Locomotion
+                    extraInfo.locomotion && React.createElement("div", { className: "bg-emerald-500/10 rounded-xl p-3 border border-emerald-400/20" },
+                      React.createElement("p", { className: "text-[10px] font-bold text-emerald-300 mb-0.5" }, "\uD83C\uDFCA How It Moves"),
+                      React.createElement("p", { className: "text-[11px] text-emerald-200/80 leading-relaxed" }, extraInfo.locomotion)
+                    ),
+                    // Habitat info from marine species
+                    sp.habitat && React.createElement("div", { className: "flex gap-2 flex-wrap" },
+                      React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-300 font-bold border border-blue-400/20" }, "\uD83C\uDF0A " + sp.habitat),
+                      sp.diet && React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 font-bold border border-amber-400/20" }, "\uD83C\uDF7D\uFE0F " + sp.diet),
+                      sp.status && React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full font-bold " + (sp.status === 'CR' ? 'bg-red-500/20 text-red-300 border border-red-400/20' : sp.status === 'EN' ? 'bg-red-500/15 text-red-300 border border-red-400/20' : sp.status === 'VU' ? 'bg-amber-500/15 text-amber-300 border border-amber-400/20' : 'bg-green-500/15 text-green-300 border border-green-400/20') },
+                        "\uD83D\uDEE1\uFE0F " + ({ LC: 'Least Concern', VU: 'Vulnerable', EN: 'Endangered', CR: 'Critically Endangered' }[sp.status] || sp.status))
+                    ),
+
+                    // XP button
+                    React.createElement("button", {
+                      onClick: function () {
+                        awardXP(2, 'Studied anatomy of ' + sp.name);
+                        if (addToast) addToast('\uD83E\uDDAC +2 XP for studying ' + sp.name + ' anatomy!', 'success');
+                      },
+                      className: "w-full py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl hover:from-indigo-600 hover:to-purple-600 transition-all shadow-lg shadow-indigo-500/25 active:scale-[0.98]"
+                    }, "\uD83C\uDF93 I Studied This! (+2 XP)")
+                  )
+                );
+              })(),
+
+
+              // ═══════════════ MODE 1: AQUARIUM LAB ═══════════════
+              mode === 'tank' && !selectedTank && React.createElement("div", { className: "space-y-3" },
+                React.createElement("h4", { className: "text-sm font-bold text-cyan-700" }, "\uD83D\uDC1F Choose Your Tank"),
+                React.createElement("div", { className: "grid grid-cols-2 gap-3" },
+                  TANK_TYPES.map(function (tank) {
+                    return React.createElement("button", {
+                      key: tank.id,
+                      onClick: function () { initTank(tank.id); },
+                      className: "group p-4 rounded-2xl border-2 text-left transition-all duration-300 hover:scale-[1.03] hover:shadow-xl hover:shadow-cyan-500/10 bg-gradient-to-br from-white via-cyan-50/50 to-sky-50 border-cyan-200/60 hover:border-cyan-400"
+                    },
+                      React.createElement("div", { className: "flex items-center gap-2 mb-1" },
+                        React.createElement("span", { className: "text-xl" }, tank.name.split(' ')[0]),
+                        React.createElement("span", { className: "text-xs font-bold text-cyan-800" }, tank.name.split(' ').slice(1).join(' ')),
+                        React.createElement("span", { className: "ml-auto text-[10px] text-amber-600 font-bold" }, '\u2B50'.repeat(tank.diff))
+                      ),
+                      React.createElement("p", { className: "text-[11px] text-slate-500 mb-2" }, tank.desc),
+                      React.createElement("div", { className: "flex gap-2 text-[10px] text-cyan-600" },
+                        React.createElement("span", null, tank.size + " gal"),
+                        React.createElement("span", null, "\u2022"),
+                        React.createElement("span", null, tank.temp + "\u00B0F"),
+                        React.createElement("span", null, "\u2022"),
+                        React.createElement("span", null, "pH " + tank.pH),
+                        tank.salinity > 0 && React.createElement("span", null, "\u2022 " + tank.salinity + " ppt")
+                      )
+                    );
+                  })
+                )
+              ),
+
+              // ── Active Tank View ──
+              mode === 'tank' && selectedTank && (() => {
+                var tank = TANK_TYPES.find(function (t) { return t.id === selectedTank; });
+                var species = SPECIES_BY_TANK[selectedTank] || [];
+                var currentLoad = tankFish.reduce(function (sum, f) {
+                  var sp = species.find(function (s) { return s.id === f; });
+                  return sum + (sp ? sp.load : 0);
+                }, 0);
+                var maxLoad = Math.floor(tank.size / 2);
+                var loadPct = Math.min(100, Math.round(currentLoad / maxLoad * 100));
+
+                return React.createElement("div", { className: "space-y-3" },
+                  // Tank header with time & speed
+                  React.createElement("div", { className: "bg-gradient-to-r from-cyan-50 to-sky-50 rounded-xl p-3 border border-cyan-200/50" },
+                    React.createElement("div", { className: "flex items-center gap-2 mb-2" },
+                      React.createElement("button", {
+                        onClick: function () { updMulti({ selectedTank: null, simRunning: false }); },
+                        className: "text-xs text-cyan-600 hover:text-cyan-800 font-bold"
+                      }, "\u2190 Back"),
+                      React.createElement("span", { className: "text-sm font-bold text-cyan-800" }, tank.name),
+                      React.createElement("span", { className: "ml-auto text-xs font-mono text-slate-500" },
+                        "\uD83D\uDCC5 Day " + simDay + ", " + (simHour < 10 ? '0' : '') + simHour + ":00" + (simHour >= 20 || simHour < 6 ? ' \uD83C\uDF19' : ' \u2600\uFE0F')
+                      )
+                    ),
+                    // Speed controls
+                    React.createElement("div", { className: "flex items-center gap-1.5" },
+                      React.createElement("span", { className: "text-[10px] font-bold text-slate-500 mr-1" }, "\u23F1 Speed:"),
+                      [
+                        { spd: 0, label: '\u23F8', tip: 'Pause' },
+                        { spd: 1, label: '\u25B6', tip: 'Normal (2s/tick)' },
+                        { spd: 2, label: '\u23E9', tip: 'Fast (1s/tick)' },
+                        { spd: 5, label: '\u23ED', tip: 'Turbo (0.4s/tick)' }
+                      ].map(function (s) {
+                        return React.createElement("button", {
+                          key: s.spd,
+                          onClick: function () { upd('simSpeed', s.spd); },
+                          title: s.tip,
+                          className: "px-2 py-1 text-xs font-bold rounded-lg transition-all " + (simSpeed === s.spd ? "bg-cyan-500 text-white shadow-md shadow-cyan-500/25" : "bg-white text-slate-500 hover:bg-cyan-100 border border-slate-200")
+                        }, s.label);
+                      }),
+                      React.createElement("span", { className: "ml-auto text-[10px] text-slate-400 font-mono" }, "T:" + simTick)
+                    )
+                  ),
+
+                  // Water Chemistry Panel (clickable tooltips)
+                  waterChem && React.createElement("div", { className: "bg-gradient-to-br from-cyan-50 via-sky-50 to-blue-50 rounded-2xl p-4 border border-cyan-200/60 shadow-sm" },
+                    React.createElement("div", { className: "flex items-center justify-between mb-2" },
+                      React.createElement("h4", { className: "text-xs font-bold text-cyan-700" }, "\uD83E\uDDEA Water Chemistry"),
+                      React.createElement("span", { className: "text-[9px] text-slate-400 italic" }, "Tap any card for details")
+                    ),
+                    React.createElement("div", { className: "grid grid-cols-3 gap-2" },
+                      [
+                        { key: 'pH', label: 'pH', val: waterChem.pH.toFixed(1) },
+                        { key: 'temp', label: 'Temp', val: waterChem.temp.toFixed(0) + '\u00B0F' },
+                        { key: 'ammonia', label: 'NH\u2083', val: waterChem.ammonia.toFixed(2) + ' ppm' },
+                        { key: 'nitrite', label: 'NO\u2082', val: waterChem.nitrite.toFixed(2) + ' ppm' },
+                        { key: 'nitrate', label: 'NO\u2083', val: waterChem.nitrate.toFixed(1) + ' ppm' },
+                        { key: 'salinity', label: 'Salt', val: waterChem.salinity + ' ppt' }
+                      ].map(function (p) {
+                        var st = getChemStatus(p.key, waterChem[p.key]);
+                        var isActive = chemTooltip === p.key;
+                        return React.createElement("div", {
+                          key: p.key,
+                          onClick: function () { upd('chemTooltip', isActive ? null : p.key); },
+                          className: "rounded-lg p-2 text-center cursor-pointer transition-all hover:scale-105 " + (isActive ? "bg-white ring-2 ring-cyan-400 shadow-lg" : "bg-white/70 hover:bg-white/90")
+                        },
+                          React.createElement("div", { className: "text-[10px] text-slate-500 font-bold" }, (CHEM_INFO[p.key] || {}).icon || '', ' ', p.label),
+                          React.createElement("div", { className: "text-sm font-bold " + statusColor(st) }, statusIcon(st) + " " + p.val)
+                        );
+                      })
+                    ),
+                    // ── Chemistry Tooltip Overlay ──
+                    chemTooltip && CHEM_INFO[chemTooltip] && (() => {
+                      var info = CHEM_INFO[chemTooltip];
+                      var t = TANK_TYPES.find(function (x) { return x.id === selectedTank; }) || {};
+                      var bio = tankFish.reduce(function (s, f) { var sp = (SPECIES_BY_TANK[selectedTank] || []).find(function (x) { return x.id === f; }); return s + (sp ? sp.load : 0); }, 0);
+                      var mathStr = info.math ? info.math(waterChem, t, bio, tankFish.length) : '';
+                      return React.createElement("div", { className: "mt-3 bg-white rounded-xl p-3 border-2 border-cyan-300/60 shadow-lg animate-in fade-in duration-200" },
+                        React.createElement("div", { className: "flex items-center justify-between mb-2" },
+                          React.createElement("h5", { className: "text-xs font-bold text-cyan-800" }, info.icon + " " + info.name),
+                          React.createElement("button", { onClick: function () { upd('chemTooltip', null); }, className: "text-[10px] text-slate-400 hover:text-slate-600" }, "\u2715")
+                        ),
+                        React.createElement("div", { className: "space-y-2 text-[11px] leading-relaxed" },
+                          React.createElement("div", { className: "bg-cyan-50 rounded-lg p-2" },
+                            React.createElement("p", { className: "font-bold text-cyan-700 mb-0.5" }, "\uD83D\uDCD6 What is it?"),
+                            React.createElement("p", { className: "text-slate-600" }, info.what)
+                          ),
+                          React.createElement("div", { className: "bg-green-50 rounded-lg p-2" },
+                            React.createElement("p", { className: "font-bold text-green-700 mb-0.5" }, "\u2705 Safe Range"),
+                            React.createElement("p", { className: "text-slate-600" }, info.safeRange)
+                          ),
+                          React.createElement("div", { className: "bg-red-50 rounded-lg p-2" },
+                            React.createElement("p", { className: "font-bold text-red-700 mb-0.5" }, "\u26A0\uFE0F Why It's Dangerous"),
+                            React.createElement("p", { className: "text-slate-600" }, info.danger)
+                          ),
+                          mathStr && React.createElement("div", { className: "bg-indigo-50 rounded-lg p-2" },
+                            React.createElement("p", { className: "font-bold text-indigo-700 mb-0.5" }, "\uD83E\uDDEE Current Math"),
+                            React.createElement("pre", { className: "text-[10px] text-slate-600 font-mono whitespace-pre-wrap" }, mathStr)
+                          ),
+                          React.createElement("div", { className: "bg-amber-50 rounded-lg p-2" },
+                            React.createElement("p", { className: "font-bold text-amber-700 mb-0.5" }, "\uD83D\uDCA1 How to Fix"),
+                            React.createElement("p", { className: "text-slate-600" }, info.fix)
+                          )
+                        )
+                      );
+                    })(),
+                    // Nitrogen cycle mini-diagram
+                    !chemTooltip && React.createElement("div", { className: "mt-3 flex items-center justify-center gap-1 text-[10px] text-slate-500 bg-gradient-to-r from-red-50/50 via-orange-50/50 to-green-50/50 rounded-xl p-2.5 border border-slate-100" },
+                      React.createElement("span", { className: "font-bold text-red-500" }, "NH\u2083"),
+                      React.createElement("span", null, " \u2192 "),
+                      React.createElement("span", { className: "text-[9px] text-slate-400" }, "Nitrosomonas"),
+                      React.createElement("span", null, " \u2192 "),
+                      React.createElement("span", { className: "font-bold text-orange-500" }, "NO\u2082"),
+                      React.createElement("span", null, " \u2192 "),
+                      React.createElement("span", { className: "text-[9px] text-slate-400" }, "Nitrobacter"),
+                      React.createElement("span", null, " \u2192 "),
+                      React.createElement("span", { className: "font-bold text-green-500" }, "NO\u2083"),
+                      React.createElement("span", { className: "ml-1 text-slate-400" }, "(Nitrogen Cycle)")
+                    )
+                  ),
+
+                  // Bioload Meter
+                  React.createElement("div", { className: "bg-white rounded-xl p-3 border border-slate-200" },
+                    React.createElement("div", { className: "flex items-center justify-between mb-1" },
+                      React.createElement("span", { className: "text-xs font-bold text-slate-600" }, "\uD83D\uDC1F Bioload"),
+                      React.createElement("span", { className: "text-xs font-mono " + (loadPct > 80 ? 'text-red-600' : loadPct > 60 ? 'text-amber-600' : 'text-green-600') }, currentLoad + " / " + maxLoad + " (" + loadPct + "%)")
+                    ),
+                    React.createElement("div", { className: "h-3 bg-slate-100 rounded-full overflow-hidden" },
+                      React.createElement("div", { style: { width: loadPct + '%', transition: 'width 0.3s' }, className: "h-full rounded-full " + (loadPct > 80 ? 'bg-red-500' : loadPct > 60 ? 'bg-amber-400' : 'bg-green-500') })
+                    )
+                  ),
+
+                  // Tank visualization (animated fish)
+                  React.createElement("div", {
+                    className: "relative rounded-2xl overflow-hidden border-2 border-cyan-300/60 shadow-lg shadow-cyan-500/20",
+                    style: { height: '240px', background: selectedTank === 'reef' || selectedTank === 'invert' ? 'linear-gradient(180deg, #67e8f9 0%, #22d3ee 15%, #0891b2 40%, #155e75 70%, #164e63 100%)' : selectedTank === 'coldwater' ? 'linear-gradient(180deg, #bae6fd 0%, #7dd3fc 15%, #3b82f6 40%, #1e40af 70%, #1e3a5f 100%)' : selectedTank === 'brackish' ? 'linear-gradient(180deg, #a7f3d0 0%, #6ee7b7 15%, #059669 40%, #065f46 70%, #064e3b 100%)' : 'linear-gradient(180deg, #a5f3fc 0%, #67e8f9 15%, #22d3ee 40%, #0891b2 70%, #155e75 100%)' }
+                  },
+                    // Water surface shimmer
+                    React.createElement("div", {
+                      style: { position: 'absolute', top: 0, left: 0, right: 0, height: '30px', background: 'linear-gradient(180deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.1) 40%, transparent 100%)', zIndex: 5 }
+                    }),
+                    // Light rays
+                    [0, 1, 2].map(function (i) {
+                      return React.createElement("div", {
+                        key: 'ray-' + i,
+                        style: {
+                          position: 'absolute', top: 0, left: (20 + i * 30) + '%',
+                          width: '40px', height: '100%',
+                          background: 'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, transparent 70%)',
+                          transform: 'skewX(-15deg)', zIndex: 1
+                        }
+                      });
+                    }),
+                    // Decorative plants
+                    (selectedTank === 'planted' || selectedTank === 'freshwater' || selectedTank === 'brackish') && [0, 1, 2, 3].map(function (i) {
+                      var heights = [50, 35, 60, 40];
+                      return React.createElement("div", {
+                        key: 'plant-' + i,
+                        style: {
+                          position: 'absolute', bottom: '24px', left: (8 + i * 25) + '%',
+                          width: '8px', height: heights[i] + 'px', borderRadius: '4px 4px 0 0',
+                          background: 'linear-gradient(180deg, #22c55e 0%, #15803d 100%)',
+                          opacity: 0.7, zIndex: 2,
+                          animation: 'pulse 4s ease-in-out ' + (i * 0.8) + 's infinite'
+                        }
+                      });
+                    }),
+                    // Coral for reef tanks
+                    (selectedTank === 'reef' || selectedTank === 'invert') && [0, 1, 2].map(function (i) {
+                      var colors = ['#f472b6', '#fb923c', '#a78bfa'];
+                      return React.createElement("div", {
+                        key: 'coral-' + i,
+                        style: {
+                          position: 'absolute', bottom: '24px', left: (15 + i * 30) + '%',
+                          width: '20px', height: (25 + i * 8) + 'px', borderRadius: '8px 8px 0 0',
+                          background: colors[i], opacity: 0.6, zIndex: 2,
+                          animation: 'pulse 5s ease-in-out ' + (i * 1.2) + 's infinite'
+                        }
+                      });
+                    }),
+                    // Rocky substrate
+                    React.createElement("div", {
+                      style: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '28px', borderRadius: '0 0 12px 12px', zIndex: 3, background: selectedTank === 'reef' || selectedTank === 'invert' ? 'linear-gradient(0deg, #92400e 0%, #b45309 40%, transparent 100%)' : 'linear-gradient(0deg, #92400e 0%, #d97706 40%, transparent 100%)' }
+                    }),
+                    // Pebbles on substrate
+                    [0, 1, 2, 3, 4, 5, 6].map(function (i) {
+                      return React.createElement("div", {
+                        key: 'pebble-' + i,
+                        style: {
+                          position: 'absolute', bottom: (3 + (i % 3) * 4) + 'px', left: (5 + i * 13) + '%',
+                          width: (5 + (i % 3) * 3) + 'px', height: (4 + (i % 2) * 2) + 'px',
+                          borderRadius: '50%', background: i % 2 === 0 ? 'rgba(120,100,80,0.5)' : 'rgba(160,140,110,0.4)',
+                          zIndex: 4
+                        }
+                      });
+                    }),
+                    // Fish with smooth swimming animation
+                    tankFish.map(function (fId, idx) {
+                      var sp = species.find(function (s) { return s.id === fId; });
+                      var yPos = 30 + (idx * 29 + idx * 7) % 150;
+                      var xPos = 5 + (idx * 31 + idx * idx * 11) % 85;
+                      var swimDuration = 3 + (idx % 3) * 1.5;
+                      var swimDelay = (idx * 0.9) % 4;
+                      var direction = idx % 2 === 0 ? 1 : -1;
+                      return React.createElement("div", {
+                        key: idx,
+                        style: {
+                          position: 'absolute', top: yPos + 'px', left: xPos + '%',
+                          cursor: 'pointer', fontSize: '28px', zIndex: 6, userSelect: 'none',
+                          transform: direction < 0 ? 'scaleX(-1)' : 'none',
+                          animation: 'aquaSwim ' + swimDuration + 's ease-in-out ' + swimDelay + 's infinite alternate',
+                          filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))',
+                          transition: 'transform 0.3s'
+                        },
+                        title: sp ? sp.name + ': ' + sp.fact : fId,
+                        onClick: function () {
+                          openAnatomy(fId);
+                        }
+                      }, sp ? sp.icon : '\uD83D\uDC1F',
+                        // Hunger bar under fish
+                        (() => {
+                          var hunger = hungerLevels[fId] !== undefined ? hungerLevels[fId] : 50;
+                          var stress = fishStress[fId] || 0;
+                          var barColor = hunger >= 80 ? '#ef4444' : hunger >= 50 ? '#f59e0b' : '#22c55e';
+                          return React.createElement("div", {
+                            style: { position: 'absolute', bottom: '-6px', left: '50%', transform: 'translateX(-50%)', width: '24px', height: '3px', background: 'rgba(0,0,0,0.2)', borderRadius: '2px', overflow: 'hidden' }
+                          },
+                            React.createElement("div", { style: { width: (100 - hunger) + '%', height: '100%', background: barColor, borderRadius: '2px', transition: 'width 0.5s, background 0.3s' } })
+                          );
+                        })()
+                      );
+                    }),
+                    // Animated bubbles
+                    [0, 1, 2, 3, 4, 5, 6, 7].map(function (i) {
+                      var sizes = [3, 5, 4, 6, 3, 7, 4, 5];
+                      return React.createElement("div", {
+                        key: 'bubble-' + i,
+                        style: {
+                          position: 'absolute', left: (8 + i * 12) + '%',
+                          width: sizes[i] + 'px', height: sizes[i] + 'px',
+                          background: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.7), rgba(255,255,255,0.2))',
+                          borderRadius: '50%', zIndex: 5,
+                          animation: 'aquaBubble ' + (2 + i * 0.5) + 's ease-in-out ' + (i * 0.7) + 's infinite'
+                        }
+                      });
+                    }),
+                    // Day/night overlay
+                    (simHour >= 20 || simHour < 6) && React.createElement("div", {
+                      style: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'linear-gradient(180deg, rgba(15,23,42,0.3) 0%, rgba(30,41,59,0.25) 50%, rgba(15,23,42,0.35) 100%)', zIndex: 7, pointerEvents: 'none', borderRadius: '16px', transition: 'opacity 0.5s' }
+                    }),
+                    // Tank label overlay
+                    React.createElement("div", {
+                      style: { position: 'absolute', top: '8px', right: '10px', zIndex: 10, padding: '2px 8px', borderRadius: '8px', background: 'rgba(0,0,0,0.25)', backdropFilter: 'blur(4px)' }
+                    },
+                      React.createElement("span", { style: { fontSize: '10px', color: 'rgba(255,255,255,0.8)', fontWeight: 'bold' } }, tank.name),
+                      React.createElement("span", { style: { fontSize: '9px', color: 'rgba(255,255,255,0.5)', marginLeft: '6px' } }, (simHour >= 20 || simHour < 6) ? '\uD83C\uDF19 Night' : '\u2600\uFE0F Day')
+                    )
+                  ),
+
+
+                  // Fish stocking list
+                  React.createElement("div", { className: "bg-white rounded-xl p-3 border border-slate-200" },
+                    React.createElement("h4", { className: "text-xs font-bold text-slate-600 mb-2" }, "\u2795 Add Fish"),
+                    React.createElement("div", { className: "flex flex-wrap gap-1" },
+                      species.map(function (sp) {
+                        return React.createElement("button", {
+                          key: sp.id,
+                          onClick: function () { addFish(sp.id); },
+                          className: "px-2 py-1 text-[11px] font-bold bg-cyan-50 text-cyan-700 border border-cyan-200 rounded-full hover:bg-cyan-100 transition-all",
+                          title: sp.fact
+                        }, sp.icon + " " + sp.name + " (" + sp.load + ")");
+                      })
+                    ),
+                    tankFish.length > 0 && React.createElement("div", { className: "mt-2 flex flex-wrap gap-1" },
+                      tankFish.map(function (fId, idx) {
+                        var sp = species.find(function (s) { return s.id === fId; });
+                        return React.createElement("span", {
+                          key: idx,
+                          onClick: function () { removeFish(idx); },
+                          className: "px-2 py-0.5 text-[10px] bg-cyan-100 text-cyan-800 rounded-full cursor-pointer hover:bg-red-100 hover:text-red-700 transition-all",
+                          title: "Click to remove"
+                        }, (sp ? sp.icon + " " + sp.name : fId) + " \u00D7");
+                      })
+                    )
+                  ),
+
+                  // Action buttons
+                  React.createElement("div", { className: "space-y-2" },
+                    React.createElement("div", { className: "flex gap-2" },
+                      React.createElement("button", {
+                        onClick: function () {
+                          if (simRunning) {
+                            upd('simRunning', false);
+                          } else {
+                            upd('simRunning', true);
+                            var speed = simSpeed || 1;
+                            var interval = speed === 0 ? 99999 : speed === 1 ? 2000 : speed === 2 ? 1000 : 400;
+                            var iv = setInterval(function () {
+                              simStep();
+                            }, interval);
+                            setTimeout(function () { clearInterval(iv); upd('simRunning', false); }, 120000);
+                          }
+                        },
+                        className: "flex-1 py-2.5 font-bold rounded-xl text-sm transition-all shadow-md " + (simRunning ? "bg-red-500 text-white hover:bg-red-600 shadow-red-500/25" : "bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-600 hover:to-blue-600 shadow-cyan-500/25")
+                      }, simRunning ? "\u23F8 Pause" : "\u25B6 Run Simulation"),
+                      React.createElement("button", {
+                        onClick: doWaterChange,
+                        className: "px-4 py-2.5 bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 font-bold rounded-xl text-sm hover:from-blue-100 hover:to-blue-200 transition-all border border-blue-200/60"
+                      }, "\uD83D\uDCA7 Water Change"),
+                      React.createElement("button", {
+                        onClick: feedFish,
+                        disabled: tankFish.length === 0,
+                        className: "px-4 py-2.5 font-bold rounded-xl text-sm transition-all border " + (tankFish.length === 0 ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed" : "bg-gradient-to-r from-amber-50 to-amber-100 text-amber-700 hover:from-amber-100 hover:to-amber-200 border-amber-200/60")
+                      }, "\uD83C\uDF7D\uFE0F Feed")
+                    ),
+
+                    // ── Feeding Impact Panel (slides in after feeding) ──
+                    feedingLog && React.createElement("div", { className: "bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-3 border border-amber-200/60 animate-in slide-in-from-top duration-300" },
+                      React.createElement("div", { className: "flex items-center gap-2 mb-1.5" },
+                        React.createElement("span", { className: "text-sm" }, "\uD83C\uDF7D\uFE0F"),
+                        React.createElement("span", { className: "text-xs font-bold text-amber-800" }, "Feeding Report"),
+                        React.createElement("button", { onClick: function () { upd('feedingLog', null); }, className: "ml-auto text-[10px] text-slate-400" }, "\u2715")
+                      ),
+                      React.createElement("div", { className: "grid grid-cols-3 gap-2 text-center mb-2" },
+                        React.createElement("div", { className: "bg-white/70 rounded-lg p-1.5" },
+                          React.createElement("div", { className: "text-[9px] text-slate-500" }, "Fish Fed"),
+                          React.createElement("div", { className: "text-sm font-bold text-amber-700" }, feedingLog.fishCount)
+                        ),
+                        React.createElement("div", { className: "bg-white/70 rounded-lg p-1.5" },
+                          React.createElement("div", { className: "text-[9px] text-slate-500" }, "Hunger \u2193"),
+                          React.createElement("div", { className: "text-sm font-bold text-green-600" }, "-" + feedingLog.avgHungerDrop + " avg")
+                        ),
+                        React.createElement("div", { className: "bg-white/70 rounded-lg p-1.5" },
+                          React.createElement("div", { className: "text-[9px] text-slate-500" }, "NH\u2083 \u2191"),
+                          React.createElement("div", { className: "text-sm font-bold text-red-600" }, "+" + feedingLog.ammoniaAdded.toFixed(2))
+                        )
+                      ),
+                      feedingLog.overfedCount > 0 && React.createElement("div", { className: "bg-red-50 rounded-lg p-1.5 text-[10px] text-red-700 font-bold mb-1" },
+                        "\u26A0\uFE0F " + feedingLog.overfedCount + " fish already full! Excess food = extra ammonia waste."
+                      ),
+                      React.createElement("p", { className: "text-[10px] text-amber-700 italic" }, "\uD83D\uDCA1 " + feedingLog.tip)
+                    )
+                  ),
+
+                  // ── Tank Health Score & Strategy Tips ──
+                  (() => {
+                    var health = getTankHealth();
+                    var scoreColor = health.score >= 80 ? 'text-green-600' : health.score >= 50 ? 'text-amber-600' : 'text-red-600';
+                    var scoreBg = health.score >= 80 ? 'from-green-50 to-emerald-50 border-green-200/60' : health.score >= 50 ? 'from-amber-50 to-orange-50 border-amber-200/60' : 'from-red-50 to-rose-50 border-red-200/60';
+                    var barColor = health.score >= 80 ? 'bg-green-500' : health.score >= 50 ? 'bg-amber-500' : 'bg-red-500';
+                    return React.createElement("div", { className: "bg-gradient-to-r " + scoreBg + " rounded-xl p-3 border shadow-sm" },
+                      React.createElement("div", { className: "flex items-center gap-2 mb-2" },
+                        React.createElement("span", { className: "text-sm" }, health.score >= 80 ? '\uD83C\uDF1F' : health.score >= 50 ? '\u26A0\uFE0F' : '\uD83D\uDEA8'),
+                        React.createElement("span", { className: "text-xs font-bold " + scoreColor }, "Tank Health"),
+                        React.createElement("span", { className: "text-lg font-bold ml-auto " + scoreColor }, health.score + "/100")
+                      ),
+                      React.createElement("div", { className: "h-2.5 bg-white/50 rounded-full overflow-hidden mb-2" },
+                        React.createElement("div", { style: { width: health.score + '%', transition: 'width 0.5s' }, className: "h-full rounded-full " + barColor })
+                      ),
+                      React.createElement("div", { className: "space-y-1" },
+                        health.tips.map(function (tip, i) {
+                          return React.createElement("p", { key: i, className: "text-[10px] " + tip.color + " font-bold leading-relaxed" }, tip.icon + " " + tip.text);
+                        })
+                      )
+                    );
+                  })(),
+
+                  // ── Hunger Overview ──
+                  tankFish.length > 0 && React.createElement("div", { className: "bg-white rounded-xl p-3 border border-slate-200" },
+                    React.createElement("h4", { className: "text-xs font-bold text-slate-600 mb-2" }, "\uD83C\uDF7D\uFE0F Fish Hunger Status"),
+                    React.createElement("div", { className: "grid grid-cols-2 gap-1.5" },
+                      (() => {
+                        var seen = {};
+                        return tankFish.map(function (fId, idx) {
+                          var sp = (SPECIES_BY_TANK[selectedTank] || []).find(function (s) { return s.id === fId; });
+                          var hunger = hungerLevels[fId] !== undefined ? hungerLevels[fId] : 50;
+                          var stress = fishStress[fId] || 0;
+                          var hungerColor = hunger >= 80 ? 'bg-red-500' : hunger >= 50 ? 'bg-amber-400' : 'bg-green-500';
+                          var hungerText = hunger >= 80 ? 'Starving!' : hunger >= 50 ? 'Hungry' : hunger >= 20 ? 'Satisfied' : 'Full';
+                          var hungerTextColor = hunger >= 80 ? 'text-red-600' : hunger >= 50 ? 'text-amber-600' : 'text-green-600';
+                          return React.createElement("div", { key: idx, className: "flex items-center gap-2 bg-slate-50 rounded-lg p-1.5" },
+                            React.createElement("span", { className: "text-sm" }, sp ? sp.icon : '\uD83D\uDC1F'),
+                            React.createElement("div", { className: "flex-1 min-w-0" },
+                              React.createElement("div", { className: "flex items-center justify-between mb-0.5" },
+                                React.createElement("span", { className: "text-[9px] font-bold text-slate-600 truncate" }, sp ? sp.name : fId),
+                                React.createElement("span", { className: "text-[9px] font-bold " + hungerTextColor }, hungerText)
+                              ),
+                              React.createElement("div", { className: "h-1.5 bg-slate-200 rounded-full overflow-hidden" },
+                                React.createElement("div", { style: { width: (100 - hunger) + '%', transition: 'width 0.5s' }, className: "h-full rounded-full " + hungerColor })
+                              )
+                            ),
+                            stress > 30 && React.createElement("span", { className: "text-[9px] text-red-500", title: 'Stress: ' + Math.round(stress) + '%' }, '\u26A0\uFE0F')
+                          );
+                        });
+                      })()
+                    )
+                  ),
+
+                  // Event log
+                  eventLog.length > 0 && React.createElement("div", { className: "bg-slate-50 rounded-xl p-2 border border-slate-200 max-h-32 overflow-y-auto" },
+                    React.createElement("h4", { className: "text-[10px] font-bold text-slate-400 mb-1" }, "\uD83D\uDCDC Event Log (Day " + simDay + ")"),
+                    eventLog.slice().reverse().slice(0, 10).map(function (evt, i) {
+                      return React.createElement("p", { key: i, className: "text-[10px] text-slate-500" }, "[T" + evt.tick + "] " + evt.msg);
+                    })
+                  )
+                );
+              })(),
+
+              // ═══════════════ MODE 2: OCEAN ECOLOGY ═══════════════
+              mode === 'ocean' && React.createElement("div", { className: "space-y-3" },
+
+                // Scenario selector
+                React.createElement("div", { className: "flex gap-2 flex-wrap" },
+                  [
+                    { id: 'free', label: '\uD83C\uDF0A Free Play', desc: 'Manage fisheries freely' },
+                    { id: 'feed', label: '\uD83C\uDFC6 Feed the Town', desc: 'Sustain harvest for 10 years' },
+                    { id: 'recover', label: '\uD83D\uDEE0\uFE0F Recovery Plan', desc: 'Rebuild collapsed stocks' },
+                    { id: 'balance', label: '\u2696\uFE0F Balanced Eco', desc: 'Keep all species above 50' }
+                  ].map(function (sc) {
+                    return React.createElement("button", {
+                      key: sc.id,
+                      onClick: function () {
+                        if (sc.id === 'recover') {
+                          updMulti({ oceanScenario: sc.id, oceanPop: { sardines: 30, tuna: 10, sharks: 5 }, harvestRate: 0, oceanYear: 0, oceanHistory: [], oceanRevenue: 0, oceanBycatch: 0, oceanCollapsed: true });
+                        } else if (sc.id === 'free' || sc.id === 'feed' || sc.id === 'balance') {
+                          resetOcean();
+                          upd('oceanScenario', sc.id);
+                        }
+                      },
+                      className: "px-3 py-2 text-xs font-bold rounded-lg border transition-all " + (oceanScenario === sc.id ? "bg-blue-500 text-white border-blue-600 shadow-md" : "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100")
+                    }, sc.label);
+                  })
+                ),
+
+                // Population Display
+                React.createElement("div", { className: "grid grid-cols-3 gap-3" },
+                  OCEAN_SPECIES.map(function (sp) {
+                    var pop = oceanPop[sp.id];
+                    var pct = Math.min(100, Math.round(pop / sp.K * 100));
+                    var critical = pop < sp.K * 0.1;
+                    return React.createElement("div", {
+                      key: sp.id,
+                      className: "rounded-2xl p-3 border-2 text-center transition-all duration-300 shadow-sm " + (critical ? "border-red-300 bg-gradient-to-br from-red-50 to-red-100 shadow-red-500/10" : "border-slate-200/60 bg-gradient-to-br from-white to-slate-50 hover:shadow-md")
+                    },
+                      React.createElement("div", { className: "text-2xl mb-1" }, sp.icon),
+                      React.createElement("div", { className: "text-xs font-bold " + (critical ? "text-red-700" : "text-slate-700") }, sp.name),
+                      React.createElement("div", { className: "text-lg font-bold " + (critical ? "text-red-600" : "text-blue-600") }, pop.toLocaleString()),
+                      React.createElement("div", { className: "h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden" },
+                        React.createElement("div", { style: { width: pct + '%' }, className: "h-full rounded-full transition-all " + (critical ? "bg-red-500" : pct > 50 ? "bg-green-500" : "bg-amber-400") })
+                      ),
+                      React.createElement("div", { className: "text-[10px] text-slate-400 mt-0.5" }, pct + "% of carrying capacity")
+                    );
+                  })
+                ),
+
+                // Population history chart (simple bar visualization)
+                oceanHistory.length > 1 && React.createElement("div", { className: "bg-white rounded-xl p-3 border border-slate-200" },
+                  React.createElement("h4", { className: "text-xs font-bold text-slate-700 mb-2 flex items-center gap-2" }, "\uD83D\uDCC8 Population History", React.createElement("span", { className: "text-[10px] text-slate-400 font-normal" }, "last " + Math.min(20, oceanHistory.length) + " years")),
+                  React.createElement("div", { className: "flex items-end gap-px h-24" },
+                    oceanHistory.slice(-20).map(function (h, i) {
+                      var maxPop = 1000;
+                      return React.createElement("div", { key: i, className: "flex-1 flex flex-col gap-px" },
+                        React.createElement("div", { style: { height: Math.max(1, h.sardines / maxPop * 80) + 'px' }, className: "bg-sky-400 rounded-t-sm", title: 'Sardines: ' + h.sardines }),
+                        React.createElement("div", { style: { height: Math.max(1, h.tuna / maxPop * 80) + 'px' }, className: "bg-blue-500", title: 'Tuna: ' + h.tuna }),
+                        React.createElement("div", { style: { height: Math.max(1, h.sharks / maxPop * 80) + 'px' }, className: "bg-indigo-600 rounded-b-sm", title: 'Sharks: ' + h.sharks })
+                      );
+                    })
+                  ),
+                  React.createElement("div", { className: "flex gap-3 mt-1 text-[10px]" },
+                    React.createElement("span", { className: "text-sky-500 font-bold" }, "\u25CF Sardines"),
+                    React.createElement("span", { className: "text-blue-600 font-bold" }, "\u25CF Tuna"),
+                    React.createElement("span", { className: "text-indigo-700 font-bold" }, "\u25CF Sharks")
+                  )
+                ),
+
+                // Controls
+                React.createElement("div", { className: "bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-50 rounded-2xl p-4 border border-blue-200/60 shadow-sm space-y-3" },
+                  React.createElement("h4", { className: "text-xs font-bold text-blue-700" }, "\u2699\uFE0F Fishery Controls"),
+
+                  // Harvest Rate
+                  React.createElement("div", null,
+                    React.createElement("div", { className: "flex justify-between text-xs mb-1" },
+                      React.createElement("span", { className: "font-bold text-slate-600" }, "\uD83C\uDFA3 Harvest Rate"),
+                      React.createElement("span", { className: "font-mono " + (harvestRate > 50 ? "text-red-600" : "text-green-600") }, harvestRate + "%")
+                    ),
+                    React.createElement("input", {
+                      type: "range", min: "0", max: "100", value: harvestRate,
+                      onChange: function (e) { upd('harvestRate', parseInt(e.target.value)); },
+                      className: "w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                    })
+                  ),
+
+                  // MPA
+                  React.createElement("div", null,
+                    React.createElement("div", { className: "flex justify-between text-xs mb-1" },
+                      React.createElement("span", { className: "font-bold text-slate-600" }, "\uD83C\uDFDD\uFE0F Marine Protected Area"),
+                      React.createElement("span", { className: "font-mono text-green-600" }, mpaPercent + "% protected")
+                    ),
+                    React.createElement("input", {
+                      type: "range", min: "0", max: "80", value: mpaPercent,
+                      onChange: function (e) { upd('mpaPercent', parseInt(e.target.value)); },
+                      className: "w-full h-2 bg-green-200 rounded-lg appearance-none cursor-pointer accent-green-600"
+                    })
+                  ),
+
+                  // Mesh Size
+                  React.createElement("div", { className: "flex items-center gap-2" },
+                    React.createElement("span", { className: "text-xs font-bold text-slate-600" }, "\uD83E\uDE7A Mesh Size"),
+                    ['small', 'medium', 'large'].map(function (m) {
+                      return React.createElement("button", {
+                        key: m,
+                        onClick: function () { upd('meshSize', m); },
+                        className: "px-3 py-1 text-xs font-bold rounded-full transition-all " + (meshSize === m ? "bg-blue-500 text-white" : "bg-white text-blue-700 border border-blue-200 hover:bg-blue-50")
+                      }, m.charAt(0).toUpperCase() + m.slice(1));
+                    }),
+                    React.createElement("span", { className: "text-[10px] text-slate-400 ml-1" }, meshSize === 'small' ? '\u26A0\uFE0F High bycatch' : meshSize === 'large' ? '\u2705 Low bycatch' : '')
+                  ),
+
+                  // Season toggle
+                  React.createElement("div", { className: "flex items-center gap-3" },
+                    React.createElement("span", { className: "text-xs font-bold text-slate-600" }, "\uD83D\uDCC5 Season"),
+                    React.createElement("button", {
+                      onClick: function () { upd('isOpenSeason', !isOpenSeason); },
+                      className: "px-4 py-1.5 text-xs font-bold rounded-full transition-all " + (isOpenSeason ? "bg-green-500 text-white" : "bg-red-100 text-red-700 border border-red-200")
+                    }, isOpenSeason ? "\uD83D\uDFE2 Open Season" : "\uD83D\uDD34 Closed Season")
+                  )
+                ),
+
+                // Stats row
+                React.createElement("div", { className: "grid grid-cols-4 gap-2" },
+                  [
+                    { label: 'Year', val: oceanYear, icon: '\uD83D\uDCC5' },
+                    { label: 'Revenue', val: '$' + oceanRevenue.toLocaleString(), icon: '\uD83D\uDCB0' },
+                    { label: 'Bycatch', val: oceanBycatch, icon: '\u26A0\uFE0F' },
+                    { label: 'Status', val: oceanCollapsed ? 'COLLAPSED' : 'Healthy', icon: oceanCollapsed ? '\u274C' : '\u2705' }
+                  ].map(function (s) {
+                    return React.createElement("div", { key: s.label, className: "bg-white rounded-lg p-2 text-center border border-slate-200" },
+                      React.createElement("div", { className: "text-xs text-slate-400" }, s.icon + " " + s.label),
+                      React.createElement("div", { className: "text-sm font-bold " + (s.label === 'Status' && oceanCollapsed ? 'text-red-600' : 'text-slate-700') }, s.val)
+                    );
+                  })
+                ),
+
+                // Advance button
+                React.createElement("div", { className: "flex gap-2" },
+                  React.createElement("button", {
+                    onClick: stepOcean,
+                    className: "flex-1 py-2.5 bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 text-white font-bold rounded-xl text-sm hover:from-blue-600 hover:via-blue-700 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/25 hover:shadow-blue-600/30 active:scale-[0.98]"
+                  }, "\u23E9 Advance 1 Year"),
+                  React.createElement("button", {
+                    onClick: function () { for (var i = 0; i < 5; i++) stepOcean(); },
+                    className: "px-4 py-2 bg-indigo-100 text-indigo-700 font-bold rounded-lg text-sm hover:bg-indigo-200 transition-all"
+                  }, "\u23E9\u00D75"),
+                  React.createElement("button", {
+                    onClick: resetOcean,
+                    className: "px-4 py-2 bg-slate-200 text-slate-700 font-bold rounded-lg text-sm hover:bg-slate-300 transition-all"
+                  }, "\u21BA Reset")
+                )
+              ),
+
+              // ═══════════════ MODE 3: MARINE SCIENCE ═══════════════
+              mode === 'marine' && React.createElement("div", { className: "space-y-3" },
+
+                // Ocean Zones Cross-Section
+                React.createElement("div", { className: "rounded-xl overflow-hidden border-2 border-blue-300" },
+                  OCEAN_ZONES.map(function (zone) {
+                    var zoneSpecies = MARINE_SPECIES.filter(function (s) { return s.zone === zone.id; });
+                    return React.createElement("div", {
+                      key: zone.id,
+                      role: "button", tabIndex: 0,
+                      onClick: function () { upd('selectedZone', selectedZone === zone.id ? null : zone.id); },
+                      className: "w-full text-left transition-all hover:brightness-110 cursor-pointer",
+                      style: { background: 'linear-gradient(135deg, ' + zone.color + ', ' + zone.color + '88)', padding: selectedZone === zone.id ? '16px 12px' : '10px 12px', transition: 'all 0.3s ease', borderBottom: '1px solid rgba(255,255,255,0.1)' }
+                    },
+                      React.createElement("div", { className: "flex items-center gap-2" },
+                        React.createElement("span", { className: "text-xs font-bold text-white drop-shadow-sm" }, zone.name),
+                        React.createElement("span", { className: "text-[10px] text-white/70 ml-auto font-mono bg-white/10 px-1.5 py-0.5 rounded" }, zone.depth),
+                        React.createElement("span", { className: "text-[10px] text-white/60 font-mono bg-white/10 px-1.5 py-0.5 rounded" }, zone.temp)
+                      ),
+                      selectedZone === zone.id && React.createElement("div", { className: "mt-2 flex flex-wrap gap-2" },
+                        zoneSpecies.map(function (sp) {
+                          return React.createElement("button", {
+                            key: sp.id,
+                            onClick: function (e) { e.stopPropagation(); upd('selectedSpecies', sp.id); openAnatomy(sp.id); },
+                            className: "px-2.5 py-1 bg-white/25 rounded-full text-[11px] text-white font-bold hover:bg-white/40 hover:shadow-lg transition-all duration-200 backdrop-blur-sm border border-white/10"
+                          }, sp.icon + " " + sp.name);
+                        }),
+                        zoneSpecies.length === 0 && React.createElement("span", { className: "text-[10px] text-white/50 italic" }, "Few species survive here")
+                      )
+                    );
+                  })
+                ),
+
+                // Selected Species Card
+                selectedSpecies && (() => {
+                  var sp = MARINE_SPECIES.find(function (s) { return s.id === selectedSpecies; });
+                  if (!sp) return null;
+                  var statusColors = { LC: 'text-green-600 bg-green-50', VU: 'text-amber-600 bg-amber-50', EN: 'text-red-600 bg-red-50', CR: 'text-red-800 bg-red-100' };
+                  var statusLabels = { LC: 'Least Concern', VU: 'Vulnerable', EN: 'Endangered', CR: 'Critically Endangered' };
+                  return React.createElement("div", { className: "bg-gradient-to-br from-white via-indigo-50/30 to-purple-50/30 rounded-2xl p-4 border-2 border-indigo-200/60 shadow-lg shadow-indigo-500/10 animate-in fade-in duration-200" },
+                    React.createElement("div", { className: "flex items-start gap-3" },
+                      React.createElement("div", { className: "text-4xl" }, sp.icon),
+                      React.createElement("div", { className: "flex-1" },
+                        React.createElement("h4", { className: "text-sm font-bold text-indigo-800" }, sp.name),
+                        React.createElement("div", { className: "flex gap-2 mt-1 flex-wrap" },
+                          React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-bold" }, "\uD83C\uDF0A " + sp.habitat),
+                          React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full bg-slate-50 text-slate-600 font-bold" }, "\uD83C\uDF7D\uFE0F " + sp.diet),
+                          React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full font-bold " + (statusColors[sp.status] || '') }, "\uD83D\uDEE1\uFE0F " + (statusLabels[sp.status] || sp.status))
+                        )
+                      ),
+                      React.createElement("button", {
+                        onClick: function () { upd('selectedSpecies', null); },
+                        className: "text-slate-400 hover:text-slate-600 text-lg"
+                      }, "\u2715")
+                    ),
+                    React.createElement("div", { className: "mt-3 bg-indigo-50 rounded-lg p-3" },
+                      React.createElement("p", { className: "text-xs text-indigo-800 leading-relaxed" }, "\uD83D\uDCA1 " + sp.fact)
+                    ),
+                    React.createElement("div", { className: "mt-2 bg-amber-50 rounded-lg p-2" },
+                      React.createElement("p", { className: "text-xs text-amber-700 font-bold" }, "\u2753 " + sp.quiz)
+                    )
+                  );
+                })(),
+
+                // Quiz Section
+                React.createElement("div", { className: "flex gap-2 items-center" },
+                  React.createElement("button", {
+                    onClick: generateQuiz,
+                    className: "flex-1 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-bold rounded-lg text-sm hover:from-indigo-600 hover:to-purple-600 transition-all shadow-md"
+                  }, "\uD83E\uDDE0 Marine Science Quiz"),
+                  quizScore.total > 0 && React.createElement("span", { className: "text-xs font-bold text-indigo-600" }, "\u2705 " + quizScore.correct + "/" + quizScore.total)
+                ),
+
+                quizQ && React.createElement("div", { className: "bg-gradient-to-br from-indigo-50 via-purple-50 to-violet-50 rounded-2xl p-4 border border-indigo-200/60 shadow-sm" },
+                  React.createElement("p", { className: "text-sm font-bold text-indigo-800 mb-3" }, "\u2753 " + quizQ.question),
+                  React.createElement("div", { className: "grid grid-cols-2 gap-2" },
+                    quizQ.options.map(function (opt) {
+                      var answered = quizQ.answered != null;
+                      var isCorrect = opt === quizQ.answer;
+                      var isChosen = opt === quizQ.answered;
+                      return React.createElement("button", {
+                        key: opt,
+                        onClick: function () { if (!answered) answerQuiz(opt); },
+                        disabled: answered,
+                        className: "py-2 px-3 text-xs font-bold rounded-lg border transition-all " + (answered ? (isCorrect ? "bg-green-100 border-green-400 text-green-800" : isChosen ? "bg-red-100 border-red-400 text-red-800" : "bg-slate-50 border-slate-200 text-slate-400") : "bg-white border-indigo-200 text-indigo-700 hover:bg-indigo-50 hover:border-indigo-400")
+                      }, opt);
+                    })
+                  ),
+                  quizQ.answered && React.createElement("div", { className: "mt-2" },
+                    React.createElement("p", { className: "text-xs font-bold " + (quizQ.correct ? "text-green-600" : "text-red-600") }, quizQ.correct ? "\u2705 Correct! +3 XP" : "\u274C The answer is: " + quizQ.answer),
+                    React.createElement("button", {
+                      onClick: generateQuiz,
+                      className: "mt-1 px-3 py-1 text-[10px] font-bold bg-indigo-500 text-white rounded-full hover:bg-indigo-600"
+                    }, "Next Question \u2192")
+                  )
+                )
+              )
+            );
+          })(),
+
           // ═══════════════════════════════════════════════════════════════
           // ██  CODING PLAYGROUND — Visual Block / Text Turtle Graphics  ██
           // ═══════════════════════════════════════════════════════════════
@@ -18814,16 +24873,23 @@
             var challengeIdx = d.challengeIdx != null ? d.challengeIdx : -1;
             var completed = d.completed || [];
             var speed = d.speed || 200;
+            var showTurtle = d.showTurtle !== false;
+            var cumulativeMode = d.cumulativeMode || false;
+            var runHistory = d.history || [];
 
             // ── Block definitions ──
             var BLOCK_TYPES = [
               { type: 'forward', label: '🐢 Move Forward', param: 'distance', defaultVal: 50, unit: 'px', color: '#6366f1' },
+              { type: 'backward', label: '🔙 Move Backward', param: 'distance', defaultVal: 50, unit: 'px', color: '#818cf8' },
               { type: 'right', label: '↩️ Turn Right', param: 'degrees', defaultVal: 90, unit: '°', color: '#f59e0b' },
               { type: 'left', label: '↪️ Turn Left', param: 'degrees', defaultVal: 90, unit: '°', color: '#f59e0b' },
               { type: 'penup', label: '✏️ Pen Up', param: null, defaultVal: null, unit: null, color: '#94a3b8' },
               { type: 'pendown', label: '✏️ Pen Down', param: null, defaultVal: null, unit: null, color: '#22c55e' },
               { type: 'color', label: '🎨 Set Color', param: 'color', defaultVal: '#6366f1', unit: null, color: '#ec4899' },
               { type: 'width', label: '📏 Set Width', param: 'width', defaultVal: 2, unit: 'px', color: '#14b8a6' },
+              { type: 'circle', label: '⭕ Draw Circle', param: 'radius', defaultVal: 30, unit: 'px', color: '#06b6d4' },
+              { type: 'goto', label: '📍 Go To', param: 'x', defaultVal: 250, unit: null, color: '#a855f7' },
+              { type: 'home', label: '🏠 Go Home', param: null, defaultVal: null, unit: null, color: '#78716c' },
               { type: 'repeat', label: '🔄 Repeat', param: 'times', defaultVal: 4, unit: '×', color: '#8b5cf6' }
             ];
 
@@ -18866,12 +24932,16 @@
               for (var i = 0; i < blks.length; i++) {
                 var b = blks[i];
                 if (b.type === 'forward') lines.push(indent + 'forward(' + (b.distance || 50) + ')');
+                else if (b.type === 'backward') lines.push(indent + 'backward(' + (b.distance || 50) + ')');
                 else if (b.type === 'right') lines.push(indent + 'right(' + (b.degrees || 90) + ')');
                 else if (b.type === 'left') lines.push(indent + 'left(' + (b.degrees || 90) + ')');
                 else if (b.type === 'penup') lines.push(indent + 'penUp()');
                 else if (b.type === 'pendown') lines.push(indent + 'penDown()');
                 else if (b.type === 'color') lines.push(indent + 'setColor("' + (b.color || '#6366f1') + '")');
                 else if (b.type === 'width') lines.push(indent + 'setWidth(' + (b.width || 2) + ')');
+                else if (b.type === 'circle') lines.push(indent + 'circle(' + (b.radius || 30) + ')');
+                else if (b.type === 'goto') lines.push(indent + 'goto(' + (b.x != null ? b.x : 250) + ', ' + (b.y != null ? b.y : 250) + ')');
+                else if (b.type === 'home') lines.push(indent + 'home()');
                 else if (b.type === 'repeat') {
                   lines.push(indent + 'repeat(' + (b.times || 4) + ', function() {');
                   if (b.children && b.children.length > 0) {
@@ -18895,12 +24965,16 @@
                   if (line.match(/^}\)?;?$/)) { i++; return blks; }
                   var m;
                   if ((m = line.match(/^forward\((\d+)\)/))) { blks.push({ type: 'forward', distance: parseInt(m[1]) }); }
+                  else if ((m = line.match(/^backward\((\d+)\)/))) { blks.push({ type: 'backward', distance: parseInt(m[1]) }); }
                   else if ((m = line.match(/^right\((\d+)\)/))) { blks.push({ type: 'right', degrees: parseInt(m[1]) }); }
                   else if ((m = line.match(/^left\((\d+)\)/))) { blks.push({ type: 'left', degrees: parseInt(m[1]) }); }
                   else if (line.match(/^penUp\(\)/)) { blks.push({ type: 'penup' }); }
                   else if (line.match(/^penDown\(\)/)) { blks.push({ type: 'pendown' }); }
                   else if ((m = line.match(/^setColor\("([^"]+)"\)/))) { blks.push({ type: 'color', color: m[1] }); }
                   else if ((m = line.match(/^setWidth\((\d+)\)/))) { blks.push({ type: 'width', width: parseInt(m[1]) }); }
+                  else if ((m = line.match(/^circle\((\d+)\)/))) { blks.push({ type: 'circle', radius: parseInt(m[1]) }); }
+                  else if ((m = line.match(/^goto\((\d+),\s*(\d+)\)/))) { blks.push({ type: 'goto', x: parseInt(m[1]), y: parseInt(m[2]) }); }
+                  else if (line.match(/^home\(\)/)) { blks.push({ type: 'home' }); }
                   else if ((m = line.match(/^repeat\((\d+)/))) {
                     i++;
                     var children = parse();
@@ -18951,6 +25025,15 @@
                     allLines.push({ x1: t.x, y1: t.y, x2: nx, y2: ny, color: t.color, width: t.width });
                   }
                   t.x = nx; t.y = ny;
+                } else if (b.type === 'backward') {
+                  var dist2 = b.distance || 50;
+                  var rad2 = t.angle * Math.PI / 180;
+                  var nx2 = t.x - Math.cos(rad2) * dist2;
+                  var ny2 = t.y - Math.sin(rad2) * dist2;
+                  if (t.penDown) {
+                    allLines.push({ x1: t.x, y1: t.y, x2: nx2, y2: ny2, color: t.color, width: t.width });
+                  }
+                  t.x = nx2; t.y = ny2;
                 } else if (b.type === 'right') {
                   t.angle = (t.angle + (b.degrees || 90)) % 360;
                 } else if (b.type === 'left') {
@@ -18963,6 +25046,34 @@
                   t.color = b.color || '#6366f1';
                 } else if (b.type === 'width') {
                   t.width = b.width || 2;
+                } else if (b.type === 'circle') {
+                  var cRadius = b.radius || 30;
+                  if (t.penDown) {
+                    var segs = 36;
+                    for (var si = 0; si < segs; si++) {
+                      var a1 = t.angle + (si / segs) * 360;
+                      var a2 = t.angle + ((si + 1) / segs) * 360;
+                      var r1 = a1 * Math.PI / 180;
+                      var r2 = a2 * Math.PI / 180;
+                      var cx1 = t.x + cRadius * (Math.cos(r1) - Math.cos(t.angle * Math.PI / 180));
+                      var cy1 = t.y + cRadius * (Math.sin(r1) - Math.sin(t.angle * Math.PI / 180));
+                      var cx2 = t.x + cRadius * (Math.cos(r2) - Math.cos(t.angle * Math.PI / 180));
+                      var cy2 = t.y + cRadius * (Math.sin(r2) - Math.sin(t.angle * Math.PI / 180));
+                      allLines.push({ x1: cx1, y1: cy1, x2: cx2, y2: cy2, color: t.color, width: t.width });
+                    }
+                  }
+                } else if (b.type === 'goto') {
+                  var gx = b.x != null ? b.x : 250;
+                  var gy = b.y != null ? b.y : 250;
+                  if (t.penDown) {
+                    allLines.push({ x1: t.x, y1: t.y, x2: gx, y2: gy, color: t.color, width: t.width });
+                  }
+                  t.x = gx; t.y = gy;
+                } else if (b.type === 'home') {
+                  if (t.penDown) {
+                    allLines.push({ x1: t.x, y1: t.y, x2: 250, y2: 250, color: t.color, width: t.width });
+                  }
+                  t.x = 250; t.y = 250; t.angle = -90;
                 }
                 updMulti({ turtle: Object.assign({}, t), lines: allLines.slice(), stepIdx: idx, running: true });
                 idx++;
@@ -18973,12 +25084,25 @@
 
             // ── Run handler ──
             function handleRun() {
-              var startTurtle = { x: 250, y: 250, angle: -90, penDown: true, color: '#6366f1', width: 2 };
-              updMulti({ turtle: startTurtle, lines: [], running: true, stepIdx: 0 });
               var blks = codeMode === 'text' ? textToBlocks(textCode) : blocks;
+              var startTurtle, startLines;
+              if (cumulativeMode) {
+                // In cumulative mode, start from current turtle state and keep existing lines
+                startTurtle = Object.assign({}, turtleState);
+                startLines = drawnLines.slice();
+              } else {
+                startTurtle = { x: 250, y: 250, angle: -90, penDown: true, color: '#6366f1', width: 2 };
+                startLines = [];
+              }
+              updMulti({ turtle: startTurtle, lines: startLines, running: true, stepIdx: 0 });
               setTimeout(function () {
-                executeBlocks(blks, startTurtle, [], function (finalTurtle, finalLines) {
-                  updMulti({ turtle: finalTurtle, lines: finalLines, running: false, stepIdx: -1 });
+                executeBlocks(blks, startTurtle, startLines, function (finalTurtle, finalLines) {
+                  var newHistory = runHistory.concat([{
+                    blocks: blks.slice(),
+                    linesCount: finalLines.length - startLines.length,
+                    timestamp: Date.now()
+                  }]);
+                  updMulti({ turtle: finalTurtle, lines: finalLines, running: false, stepIdx: -1, history: newHistory });
                   if (challengeIdx >= 0 && challengeIdx < CHALLENGES.length) {
                     var ch = CHALLENGES[challengeIdx];
                     if (ch.check(finalLines, blks)) {
@@ -18997,11 +25121,11 @@
             }
 
             function handleClear() {
-              updMulti({ turtle: { x: 250, y: 250, angle: -90, penDown: true, color: '#6366f1', width: 2 }, lines: [], running: false, stepIdx: -1 });
+              updMulti({ turtle: { x: 250, y: 250, angle: -90, penDown: true, color: '#6366f1', width: 2 }, lines: [], running: false, stepIdx: -1, history: [] });
             }
 
             function handleReset() {
-              updMulti({ blocks: [], turtle: { x: 250, y: 250, angle: -90, penDown: true, color: '#6366f1', width: 2 }, lines: [], running: false, stepIdx: -1, textCode: '', challengeIdx: -1 });
+              updMulti({ blocks: [], turtle: { x: 250, y: 250, angle: -90, penDown: true, color: '#6366f1', width: 2 }, lines: [], running: false, stepIdx: -1, textCode: '', challengeIdx: -1, history: [], cumulativeMode: false, showTurtle: true });
             }
 
             function addBlock(type) {
@@ -19159,16 +25283,34 @@
                         },
                           React.createElement("span", { className: "flex-1 truncate" },
                             def ? def.label : b.type,
-                            def && def.param && b.type !== 'repeat' && b.type !== 'color' ? ' ' + (b[def.param] || def.defaultVal) + (def.unit || '') : '',
+                            def && def.param && b.type !== 'repeat' && b.type !== 'color' && b.type !== 'goto' ? ' ' + (b[def.param] || def.defaultVal) + (def.unit || '') : '',
+                            b.type === 'goto' ? ' (' + (b.x != null ? b.x : 250) + ', ' + (b.y != null ? b.y : 250) + ')' : '',
                             b.type === 'repeat' ? ' ' + (b.times || 4) + '×' : ''
                           ),
-                          // Param editor
-                          def && def.param && b.type !== 'color' && React.createElement("input", {
+                          // Param editor (single param)
+                          def && def.param && b.type !== 'color' && b.type !== 'goto' && React.createElement("input", {
                             type: "number", value: b[def.param] || def.defaultVal,
                             onChange: function (e) { updateBlockParam(idx, def.param, parseInt(e.target.value) || def.defaultVal); },
                             className: "w-12 px-1 py-0.5 rounded text-xs bg-white/20 text-white text-center",
                             style: { appearance: 'textfield' }
                           }),
+                          // Goto dual param editor (x, y)
+                          b.type === 'goto' && React.createElement("span", { className: "flex items-center gap-0.5" },
+                            React.createElement("span", { className: "text-[10px] text-white/60" }, "x"),
+                            React.createElement("input", {
+                              type: "number", value: b.x != null ? b.x : 250,
+                              onChange: function (e) { updateBlockParam(idx, 'x', parseInt(e.target.value) || 0); },
+                              className: "w-10 px-1 py-0.5 rounded text-[10px] bg-white/20 text-white text-center",
+                              style: { appearance: 'textfield' }
+                            }),
+                            React.createElement("span", { className: "text-[10px] text-white/60" }, "y"),
+                            React.createElement("input", {
+                              type: "number", value: b.y != null ? b.y : 250,
+                              onChange: function (e) { updateBlockParam(idx, 'y', parseInt(e.target.value) || 0); },
+                              className: "w-10 px-1 py-0.5 rounded text-[10px] bg-white/20 text-white text-center",
+                              style: { appearance: 'textfield' }
+                            })
+                          ),
                           b.type === 'color' && React.createElement("input", {
                             type: "color", value: b.color || '#6366f1',
                             onChange: function (e) { updateBlockParam(idx, 'color', e.target.value); },
@@ -19195,12 +25337,12 @@
                             );
                           }),
                           // Quick-add buttons for repeat children
-                          React.createElement("div", { className: "flex gap-1 mt-1" },
-                            ['forward', 'right', 'left', 'color'].map(function (ct) {
+                          React.createElement("div", { className: "flex flex-wrap gap-1 mt-1" },
+                            ['forward', 'backward', 'right', 'left', 'circle', 'color'].map(function (ct) {
                               return React.createElement("button", {
                                 key: ct, onClick: function () { addChildBlock(idx, ct); },
                                 className: "px-2 py-0.5 rounded text-[10px] bg-slate-600 text-slate-300 hover:bg-slate-500 transition-colors"
-                              }, ct === 'forward' ? '+🐢' : ct === 'right' ? '+↩️' : ct === 'left' ? '+↪️' : '+🎨');
+                              }, ct === 'forward' ? '+🐢' : ct === 'backward' ? '+🔙' : ct === 'right' ? '+↩️' : ct === 'left' ? '+↪️' : ct === 'circle' ? '+⭕' : '+🎨');
                             })
                           )
                         )
@@ -19215,12 +25357,12 @@
                   React.createElement("textarea", {
                     value: textCode,
                     onChange: function (e) { upd('textCode', e.target.value); },
-                    placeholder: "forward(50)\nright(90)\nforward(50)\n\n// Use repeat:\nrepeat(4, function() {\n  forward(100)\n  right(90)\n})",
+                    placeholder: "forward(50)\nright(90)\nbackward(30)\n\ncircle(40)\ngoto(100, 200)\nhome()\n\nrepeat(4, function() {\n  forward(100)\n  right(90)\n})",
                     className: "w-full h-60 p-3 rounded-lg bg-slate-900 text-green-400 text-xs font-mono border border-slate-600 focus:border-amber-400 focus:ring-1 focus:ring-amber-400 resize-none",
                     spellCheck: false
                   }),
                   React.createElement("p", { className: "text-slate-500 text-[10px] mt-1" },
-                    "Commands: forward(px), right(deg), left(deg), penUp(), penDown(), setColor(\"#hex\"), setWidth(px), repeat(n, function() { ... })"
+                    "Commands: forward(px), backward(px), right(deg), left(deg), penUp(), penDown(), setColor(\"#hex\"), setWidth(px), circle(radius), goto(x, y), home(), repeat(n, function() { ... })"
                   )
                 )
               ),
@@ -19255,6 +25397,26 @@
                   running && React.createElement("span", { className: "text-xs text-yellow-400 animate-pulse font-medium" },
                     "🔄 Running... step " + (stepIdx + 1)
                   )
+                ),
+
+                // Options bar (turtle toggle + cumulative mode)
+                React.createElement("div", { className: "flex items-center gap-3 flex-wrap" },
+                  // Show/Hide turtle toggle
+                  React.createElement("button", {
+                    onClick: function () { upd('showTurtle', !showTurtle); },
+                    className: "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all " +
+                      (showTurtle ? 'bg-emerald-600/80 text-white hover:bg-emerald-600' : 'bg-slate-700 text-slate-300 hover:bg-slate-600')
+                  }, showTurtle ? '🐢 Turtle On' : '▸ Cursor Only'),
+                  // Cumulative mode toggle
+                  React.createElement("button", {
+                    onClick: function () { upd('cumulativeMode', !cumulativeMode); },
+                    className: "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all " +
+                      (cumulativeMode ? 'bg-amber-600/80 text-white hover:bg-amber-600 ring-1 ring-amber-400/50' : 'bg-slate-700 text-slate-300 hover:bg-slate-600')
+                  }, cumulativeMode ? '📚 Cumulative Mode' : '🔄 Fresh Start Mode'),
+                  // Run counter in cumulative mode
+                  cumulativeMode && runHistory.length > 0 && React.createElement("span", {
+                    className: "flex items-center gap-1 text-[11px] text-amber-300/80 font-medium bg-amber-900/30 px-2 py-1 rounded-full"
+                  }, '📊 ' + runHistory.length + ' run' + (runHistory.length !== 1 ? 's' : '') + ' • ' + drawnLines.length + ' lines drawn')
                 ),
 
                 // ── Challenges panel ──

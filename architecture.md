@@ -1,106 +1,149 @@
-# AlloFlow Architecture Notes
+# AlloFlow Architecture Guide
 
-## UTF-8 Encoding & CDN Caching — STEM Lab Module  
-*Added: 2026-02-27*
+*Last Updated: 2026-03-04*
 
-### Problem Summary
+## Product Architecture: The 8 Core Pillars
 
-STEM Lab upgrades (Galaxy Explorer, Music Synthesizer, Canvas2D patches) appeared to be
-missing from the running app and from diagnostic tool output. Investigation revealed
-**two distinct issues**:
+AlloFlow is built on eight pillars that define its position in the EdTech landscape:
 
-1. **jsDelivr CDN caching** — the CDN was serving a stale version of `stem_lab_module.js`  
-2. **Mixed encoding causing false negatives** in diagnostic tools (ripgrep, git diff, Python)  
-
-The code itself was fully committed and present. No data loss occurred.
+| # | Pillar | Technical Impl. | Key Stat |
+|---|---|---|---|
+| 1 | 🌍 Universal Offline Access | Local-First Monolith + PWA | **0** server round-trips mid-lesson |
+| 2 | 📖 Instant Leveled Text | Bimodal Generative Pipeline | **5** reading levels in <60s each |
+| 3 | 🎲 Multi-Modal Workflows | Structural JSON Extractor | **7+** output formats per standard |
+| 4 | 🔊 Phonemic Precision | Advanced Audio Orchestration | **44** IPA phonemes mapped |
+| 5 | 🤖 Interactive Tour Engine | `data-help-key` + Embodied Agent | **5-step** guided walkthrough per feature |
+| 6 | 🔒 Absolute Data Privacy | LZ-String Local Persistence | **0** student PII transmitted |
+| 7 | 🏠 Empowering Families | $0 Licensing Model | **$0** parent cost — forever |
+| 8 | 🔓 Open-Source Commitment | MIT License | **100%** open-source |
 
 ---
 
-### Encoding Characteristics of `stem_lab_module.js`
+## Technical Architecture
 
-| Property | Value | Impact |
+### Monolith + Modular Hub-and-Spoke
+
+```
+AlloFlowANTI.txt (App.jsx)     ← Core monolith (~67K lines)
+├── word_sounds_module.js       ← Extracted module (~24K lines)
+├── stem_lab_module.js          ← Extracted module (~24K lines)
+├── help_strings.js             ← Tour/help content
+├── ui_strings.js               ← i18n strings (100+ languages)
+└── audio_bank.json             ← Pre-recorded phoneme audio
+```
+
+### Module Loading: Hash-Based
+
+External modules are loaded via **commit-hash pinned** jsDelivr URLs:
+```
+https://cdn.jsdelivr.net/gh/Apomera/AlloFlow@4def1c7/word_sounds_module.js
+```
+This avoids CDN cache-busting issues — each deployment pins to an exact commit hash, ensuring deterministic loading without manual cache purges.
+
+---
+
+## Codebase Navigation
+
+### `@section` Markers in AlloFlowANTI.txt
+
+The file contains `// @section NAME` comment markers at every major component boundary. These are searchable via `Ctrl+F`, `Select-String`, or Python scripts.
+
+| Marker | Line | What It Covers |
 |---|---|---|
-| BOM | None | ✅ No issues |
-| Line endings | **Mixed** (CRLF + LF) | ⚠️ Causes tool failures |
-| Non-ASCII chars | ~1,663 literal | ⚠️ ripgrep skips these lines |
-| Unicode escapes | ~951 `\uXXXX` | ✅ JS-level, no file issue |
-| File size | ~551 KB / ~7,853 lines | Approaches tool buffer limits |
+| `@section GLOBAL_MUTE` | ~175 | GlobalMuteButton |
+| `@section LARGE_FILE_HANDLER` | ~199 | LargeFileHandler + modal |
+| `@section SAFETY_CHECKER` | ~547 | SafetyContentChecker |
+| `@section WORD_SOUNDS_STRINGS` | ~649 | i18n strings block |
+| `@section PHONEME_DATA` | ~829 | Audio banks, IPA maps, word families |
+| `@section VISUAL_PANEL` | ~1309 | VisualPanelGrid (comics) |
+| `@section WORD_SOUNDS_GENERATOR` | ~2542 | Main Word Sounds component |
+| `@section WORD_SOUNDS_REVIEW` | ~3356 | Session review panel |
+| `@section STUDENT_ANALYTICS` | ~4260 | RTI probes & analytics |
+| `@section STUDENT_SUBMIT` | ~9867 | Student submission modal |
+| `@section SPEECH_BUBBLE` | ~10112 | Allobot speech bubble |
+| `@section ALLOBOT` | ~10335 | Embodied tour agent |
+| `@section MISSION_REPORT` | ~12527 | Quest summary card |
+| `@section STUDENT_QUIZ` | ~12634 | Live quiz overlay |
+| `@section DRAFT_FEEDBACK` | ~12959 | Draft feedback UI |
+| `@section TEACHER_GATE` | ~13160 | Teacher verification |
+| `@section ADVENTURE_SYSTEMS` | ~13459 | Ambience, effects, climax |
+| `@section INTERACTIVE_GAMES` | ~14398 | Confetti, Memory, Matching, etc. |
+| `@section ADVENTURE_UI` | ~17835 | Inventory, dice, shop |
+| `@section CHARTS` | ~18699 | Charts & progress tracking |
+| `@section ESCAPE_ROOM` | ~18830 | Escape Room student overlay |
+| `@section ESCAPE_ROOM_TEACHER` | ~19451 | Escape Room teacher controls |
+| `@section LIVE_QUIZ` | ~19619 | Live quiz broadcast |
+| `@section LEARNER_PROGRESS` | ~20446 | Learning journey view |
+| `@section TEACHER_DASHBOARD` | ~20940 | Main teacher dashboard |
+| `@section QUICKSTART_WIZARD` | ~22095 | Onboarding wizard |
+| `@section IMMERSIVE_READER` | ~23185 | Speed reader tools |
+| `@section CAST_LOBBY` | ~23326 | Multi-device casting |
+| `@section BILINGUAL_RENDERER` | ~32038 | Bilingual field display |
 
-### Why Tools Give False Negatives
+### `@tool` Markers in stem_lab_module.js
 
-1. **ripgrep (`grep_search`)**: With mixed line endings and non-ASCII bytes (emoji like 🪨, ⚗️),
-   ripgrep may classify portions of the file as binary and skip matches entirely.
-   A search for `galaxy` returned zero results even though it appears multiple times.
+Each STEM Lab tool IIFE is marked with `// @tool TOOL_ID`:
 
-2. **Python one-liners**: Windows PowerShell mangles single quotes, backslashes, and Unicode
-   in inline `-c` commands. Scripts must be written to `.py` files and executed via `python script.py`.
+| Category | Tool ID | Marker |
+|---|---|---|
+| Math Fundamentals | `volume`, `numberline`, `areamodel`, `fractionViz`, `base10` | `// @tool volume` etc. |
+| Advanced Math | `coordinate`, `protractor`, `multtable`, `funcGrapher` | `// @tool coordinate` etc. |
+| Life & Earth Science | `cell`, `solarSystem`, `galaxy`, `rocks`, `waterCycle`, `ecosystem` | `// @tool cell` etc. |
+| Physics & Chemistry | `wave`, `circuit`, `chemBalance`, `physics`, `dataPlot` | `// @tool wave` etc. |
+| Arts & Music | `musicSynth` | `// @tool musicSynth` |
 
-3. **`git diff`**: When `.gitattributes` normalizes line endings, `git diff` may show no changes
-   even if the working tree file has different byte content than the index. Conversely, it may
-   show phantom whitespace-only diffs.
+### Existing `#region` Blocks
 
-4. **Terminal output truncation**: Large file analysis in PowerShell/terminal truncates output
-   at buffer boundaries, cutting off audit results mid-line.
+Coarser section boundaries remain from the original structure:
 
-### Reliable Tooling
+| Region | Start | End |
+|---|---|---|
+| CONFIGURATION & SETUP | L66 | L546 |
+| LOCALIZATION STRINGS | L8832 | L8893 |
+| HELPERS & UTILITIES | L8894 | L9696 |
+| CONTEXTS & PROVIDERS | L9697 | L9737 |
+| UI COMPONENTS | L9738 | L24060 |
+| MAIN APPLICATION | L24061 | L67672 |
+| APP EXPORT | L67673 | L67699 |
+
+---
+
+## Encoding & Tooling Notes
+
+### File Characteristics (as of 2026-03-04)
+
+| Property | AlloFlowANTI.txt | stem_lab_module.js |
+|---|---|---|
+| Size | ~4.3 MB / ~67.7K lines | ~1.8 MB / ~23.6K lines |
+| Line endings | CRLF (pure) | CRLF (pure) |
+| BOM | None | None |
+| Non-ASCII | ~6,282 bytes (emoji) | ~13,935 bytes (emoji) |
+| Control bytes | **0** (fixed 2026-03-04) | 0 |
+
+### Tool Reliability
+
+> **⚠️ Do NOT use `grep_search` (ripgrep) on AlloFlowANTI.txt or stem_lab_module.js.**
+> These files contain non-ASCII bytes (emoji) that cause ripgrep to silently return zero results.
+> Use `Select-String`, Python scripts, or IDE `Ctrl+F` instead.
 
 | Tool | Reliability | Notes |
 |---|---|---|
-| PowerShell `Select-String` | ✅ High | Handles UTF-8 with emoji correctly |
+| PowerShell `Select-String` | ✅ High | Handles emoji correctly, best for `@section`/`@tool` search |
 | Python scripts (file-based) | ✅ High | Use `encoding='utf-8', errors='replace'` |
 | `view_file` (IDE) | ✅ High | Direct file reading |
-| ripgrep / `grep_search` | ❌ Unreliable | Skips lines with non-ASCII bytes |
+| IDE `Ctrl+F` / `Cmd+F` | ✅ High | Best for interactive navigation with `@section` markers |
+| ripgrep / `grep_search` | ⚠️ Unreliable | Fails on 4.3MB files with non-ASCII bytes. Works on <1MB subsets. |
 | Python `-c` one-liners | ❌ Unreliable | Shell escaping issues on Windows |
-| `git diff --stat` | ⚠️ Conditional | May hide encoding-only differences |
 
-### Recommendation
+### Recommended Search Workflow
 
-For any future diagnostics on large JS files with emoji:
-- **Always use Python script files**, never one-liners
-- **Use `Select-String`** instead of ripgrep for search
-- **Never trust a negative result** from ripgrep on these files
-- **Write output to files** instead of relying on terminal display (buffer truncation)
+```powershell
+# Find a section
+Select-String -Path AlloFlowANTI.txt -Pattern "@section ALLOBOT"
 
----
+# Find a STEM tool
+Select-String -Path stem_lab_module.js -Pattern "@tool galaxy"
 
-### jsDelivr CDN Caching
-
-The STEM Lab module is loaded at runtime via:
+# List all sections
+Select-String -Path AlloFlowANTI.txt -Pattern "@section "
 ```
-https://cdn.jsdelivr.net/gh/Apomera/AlloFlow@main/stem_lab_module.js
-```
-
-jsDelivr caches `@main` (branch) references **indefinitely** until explicitly purged.
-Pushing new commits to GitHub does NOT automatically refresh the CDN.
-
-**Purge URL**: `https://purge.jsdelivr.net/gh/Apomera/AlloFlow@main/stem_lab_module.js`
-
-This must be called after every push. The `/deploy` workflow should include this step.
-
-### Current STEM Lab Tool Inventory (Verified 2026-02-27)
-
-All tools below have **both** a registry entry AND a working IIFE:
-
-| Category | Tool ID | Line | Status |
-|---|---|---|---|
-| Math Fundamentals | `volume` | ~690 | ✅ |
-| Math Fundamentals | `numberline` | ~2127 | ✅ |
-| Math Fundamentals | `areamodel` | ~2450 | ✅ |
-| Math Fundamentals | `fractionViz` | ~2794 | ✅ |
-| Math Fundamentals | `base10` | ~2888 | ✅ |
-| Advanced Math | `coordinate` | ~3020 | ✅ |
-| Advanced Math | `protractor` | ~3289 | ✅ |
-| Advanced Math | `multtable` | ~3425 | ✅ |
-| Advanced Math | `funcGrapher` | ~3574 | ✅ |
-| Life & Earth Science | `cell` | ~4574 | ✅ |
-| Life & Earth Science | `solarSystem` | ~4842 | ✅ |
-| Life & Earth Science | `galaxy` | ~5773 | ✅ |
-| Life & Earth Science | `rocks` | ~6015 | ✅ |
-| Life & Earth Science | `waterCycle` | ~6242 | ✅ |
-| Life & Earth Science | `ecosystem` | ~6542 | ✅ |
-| Physics & Chemistry | `wave` | ~3742 | ✅ |
-| Physics & Chemistry | `circuit` | ~3892 | ✅ |
-| Physics & Chemistry | `chemBalance` | ~4142 | ✅ |
-| Physics & Chemistry | `physics` | ~3984 | ✅ |
-| Physics & Chemistry | `dataPlot` | ~4342 | ✅ |
-| Arts & Music | `musicSynth` | ~7451 | ✅ |
