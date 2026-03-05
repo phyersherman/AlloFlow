@@ -23111,8 +23111,261 @@
               ].join('\n');
               document.head.appendChild(style);
             }
-            var TANK_TYPES = [
-              { id: 'freshwater', name: '🐠 Freshwater Community', size: 20, temp: 76, salinity: 0, pH: 7.0, diff: 1, desc: 'Classic beginner setup with tetras, guppies, and corydoras.' },
+            // ═══ ANATOMY VIEWER SYSTEM ═══
+            var BODY_PLANS = {
+              fish: {
+                label: 'Bony Fish (Osteichthyes)',
+                svg: function(w,h,color) {
+                  return '<svg viewBox="0 0 400 220" xmlns="http://www.w3.org/2000/svg">' +
+                    '<defs><linearGradient id="fishG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="' + (color||'#22d3ee') + '"/><stop offset="100%" stop-color="' + (color||'#0891b2') + '"/></linearGradient></defs>' +
+                    '<ellipse cx="185" cy="110" rx="130" ry="55" fill="url(#fishG)" stroke="#0e7490" stroke-width="2"/>' +
+                    '<polygon points="315,110 375,60 375,160" fill="' + (color||'#06b6d4') + '" stroke="#0e7490" stroke-width="1.5" opacity="0.9"/>' +
+                    '<polygon points="150,58 185,18 225,58" fill="' + (color||'#06b6d4') + '" stroke="#0e7490" stroke-width="1.5" opacity="0.85"/>' +
+                    '<polygon points="180,160 200,185 220,160" fill="' + (color||'#06b6d4') + '" stroke="#0e7490" stroke-width="1.5" opacity="0.8"/>' +
+                    '<ellipse cx="140" cy="130" rx="28" ry="10" fill="' + (color||'#06b6d4') + '" stroke="#0e7490" stroke-width="1.5" transform="rotate(-20,140,130)" opacity="0.85"/>' +
+                    '<circle cx="105" cy="95" r="12" fill="white" stroke="#334155" stroke-width="1.5"/>' +
+                    '<circle cx="108" cy="95" r="6" fill="#1e293b"/>' +
+                    '<circle cx="110" cy="93" r="2" fill="white"/>' +
+                    '<path d="M127,85 Q122,110 127,135" stroke="#0e7490" fill="none" stroke-width="2.5" stroke-linecap="round"/>' +
+                    '<path d="M60,110 Q55,110 50,108" stroke="#0e7490" fill="none" stroke-width="2"/>' +
+                    '<line x1="130" y1="95" x2="130" y2="110" stroke="#64748b" stroke-width="0.5" stroke-dasharray="2,2" opacity="0.3"/>' +
+                    '</svg>';
+                },
+                parts: [
+                  { name: 'Dorsal Fin', x: 46, y: 8, desc: 'Stabilizes the fish during swimming, preventing rolling. Contains bony spines called rays.' },
+                  { name: 'Caudal Fin (Tail)', x: 88, y: 28, desc: 'Primary propulsion organ. Generates thrust by sweeping side-to-side through the water column.' },
+                  { name: 'Pectoral Fins', x: 33, y: 60, desc: 'Used for steering, braking, and hovering. Act like the wings of an airplane.' },
+                  { name: 'Pelvic/Anal Fin', x: 50, y: 84, desc: 'Provides stability and helps prevent the fish from pitching nose-down.' },
+                  { name: 'Gill Cover (Operculum)', x: 30, y: 42, desc: 'Protects the gills. Water flows in through the mouth, over the gills, and out here — extracting dissolved oxygen.' },
+                  { name: 'Lateral Line', x: 55, y: 50, desc: 'A sensory organ that detects vibrations and pressure changes in water. Allows fish to sense nearby movement.' },
+                  { name: 'Eye', x: 25, y: 42, desc: 'Most fish have excellent color vision. Positioned for wide field of view to spot predators.' },
+                  { name: 'Swim Bladder', x: 50, y: 45, desc: 'Internal gas-filled organ that controls buoyancy. Fish adjust gas volume to rise or sink without swimming.' },
+                  { name: 'Scales', x: 65, y: 55, desc: 'Overlapping armor made of bone and enamel. Covered in mucus that reduces drag and fights infection.' }
+                ]
+              },
+              shark: {
+                label: 'Cartilaginous Fish (Chondrichthyes)',
+                svg: function(w,h,color) {
+                  return '<svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg">' +
+                    '<defs><linearGradient id="sharkG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#64748b"/><stop offset="60%" stop-color="#475569"/><stop offset="100%" stop-color="#e2e8f0"/></linearGradient></defs>' +
+                    '<path d="M50,100 Q80,70 150,75 Q250,65 310,80 Q350,88 380,70 L380,130 Q350,112 310,120 Q250,135 150,125 Q80,130 50,100Z" fill="url(#sharkG)" stroke="#334155" stroke-width="2"/>' +
+                    '<polygon points="200,75 210,25 220,72" fill="#475569" stroke="#334155" stroke-width="1.5"/>' +
+                    '<polygon points="360,70 395,50 395,90 380,100 380,130 395,150 395,110 360,130" fill="#64748b" stroke="#334155" stroke-width="1.5"/>' +
+                    '<ellipse cx="100" cy="92" rx="8" ry="6" fill="white"/><circle cx="102" cy="92" r="3" fill="#0f172a"/>' +
+                    '<line x1="130" y1="85" x2="130" y2="78" stroke="#334155" stroke-width="1"/>' +
+                    '<line x1="138" y1="86" x2="138" y2="79" stroke="#334155" stroke-width="1"/>' +
+                    '<line x1="146" y1="87" x2="146" y2="80" stroke="#334155" stroke-width="1"/>' +
+                    '<line x1="154" y1="88" x2="154" y2="82" stroke="#334155" stroke-width="1"/>' +
+                    '<line x1="162" y1="89" x2="162" y2="83" stroke="#334155" stroke-width="1"/>' +
+                    '</svg>';
+                },
+                parts: [
+                  { name: 'Dorsal Fin', x: 52, y: 12, desc: 'The iconic triangular fin. Provides stability. Made of cartilage, not bone — sharks have no true bones.' },
+                  { name: 'Gill Slits (5-7)', x: 35, y: 42, desc: 'Unlike bony fish, sharks have 5-7 exposed gill slits. Water must flow continuously over them.' },
+                  { name: 'Ampullae of Lorenzini', x: 18, y: 48, desc: 'Electroreceptors on the snout that detect the faint electrical fields of prey heartbeats and muscle contractions.' },
+                  { name: 'Heterocercal Tail', x: 93, y: 25, desc: 'The upper lobe is longer than the lower, generating lift as the shark swims to counteract sinking.' },
+                  { name: 'Dermal Denticles', x: 60, y: 55, desc: 'Tooth-like scales that reduce drag. Biomimetic swimsuits were modeled on their texture.' },
+                  { name: 'Cartilage Skeleton', x: 45, y: 50, desc: 'Entire skeleton is cartilage — lighter than bone, giving sharks neutral buoyancy and flexibility.' },
+                  { name: 'Replaceable Teeth', x: 12, y: 50, desc: 'Sharks replace teeth throughout life — some go through 30,000+ teeth. Rows move forward like a conveyor belt.' }
+                ]
+              },
+              jellyfish: {
+                label: 'Cnidarian (Medusa Form)',
+                svg: function(w,h,color) {
+                  return '<svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">' +
+                    '<defs><radialGradient id="jellyG"><stop offset="0%" stop-color="' + (color||'#c4b5fd') + '" stop-opacity="0.4"/><stop offset="100%" stop-color="' + (color||'#8b5cf6') + '" stop-opacity="0.7"/></radialGradient></defs>' +
+                    '<ellipse cx="150" cy="90" rx="90" ry="60" fill="url(#jellyG)" stroke="#7c3aed" stroke-width="1.5"/>' +
+                    '<path d="M70,120 Q80,180 60,260" stroke="#a78bfa" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.7"/>' +
+                    '<path d="M110,135 Q120,195 100,275" stroke="#c4b5fd" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.6"/>' +
+                    '<path d="M150,140 Q155,200 140,280" stroke="#a78bfa" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.7"/>' +
+                    '<path d="M190,135 Q185,195 200,275" stroke="#c4b5fd" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.6"/>' +
+                    '<path d="M230,120 Q220,180 240,260" stroke="#a78bfa" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.7"/>' +
+                    '<path d="M90,130 Q110,155 90,170 Q110,185 90,210" stroke="#ddd6fe" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.5"/>' +
+                    '<path d="M210,130 Q190,155 210,170 Q190,185 210,210" stroke="#ddd6fe" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.5"/>' +
+                    '</svg>';
+                },
+                parts: [
+                  { name: 'Bell (Medusa)', x: 50, y: 18, desc: 'Contracts rhythmically for jet propulsion. Made of mesoglea — a jelly-like substance that is 95% water.' },
+                  { name: 'Tentacles', x: 75, y: 65, desc: 'Lined with cnidocytes — stinging cells that fire harpoon-like nematocysts at 700 nanoseconds, fastest in nature.' },
+                  { name: 'Oral Arms', x: 30, y: 50, desc: 'Frilly appendages near the mouth that guide captured prey. In some species, they also contain stinging cells.' },
+                  { name: 'Gastrovascular Cavity', x: 50, y: 35, desc: 'A single opening serves as both mouth and anus. Digestion and nutrient distribution happen in this cavity.' },
+                  { name: 'Nerve Net', x: 50, y: 50, desc: 'No brain! A diffuse nerve net coordinates swimming pulses. Some have light-sensing structures called rhopalia.' },
+                  { name: 'Radial Symmetry', x: 50, y: 30, desc: 'Body is symmetrical around a central axis — no left/right. This ancient body plan predates bilateral symmetry.' }
+                ]
+              },
+              crustacean: {
+                label: 'Crustacean (Arthropoda)',
+                svg: function(w,h,color) {
+                  return '<svg viewBox="0 0 350 250" xmlns="http://www.w3.org/2000/svg">' +
+                    '<defs><linearGradient id="crustG" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="' + (color||'#f97316') + '"/><stop offset="100%" stop-color="' + (color||'#dc2626') + '"/></linearGradient></defs>' +
+                    '<ellipse cx="175" cy="120" rx="80" ry="50" fill="url(#crustG)" stroke="#b91c1c" stroke-width="2"/>' +
+                    '<ellipse cx="100" cy="100" rx="35" ry="30" fill="' + (color||'#ef4444') + '" stroke="#b91c1c" stroke-width="2"/>' +
+                    '<path d="M70,90 Q30,50 20,40" stroke="' + (color||'#f97316') + '" stroke-width="3" fill="none" stroke-linecap="round"/>' +
+                    '<path d="M75,80 Q40,30 35,20" stroke="' + (color||'#f97316') + '" stroke-width="3" fill="none" stroke-linecap="round"/>' +
+                    '<circle cx="80" cy="85" r="6" fill="black"/><circle cx="81" cy="84" r="2" fill="white"/>' +
+                    '<line x1="130" y1="155" x2="120" y2="200" stroke="#b91c1c" stroke-width="3" stroke-linecap="round"/>' +
+                    '<line x1="160" y1="160" x2="155" y2="210" stroke="#b91c1c" stroke-width="3" stroke-linecap="round"/>' +
+                    '<line x1="190" y1="160" x2="195" y2="210" stroke="#b91c1c" stroke-width="3" stroke-linecap="round"/>' +
+                    '<line x1="220" y1="155" x2="230" y2="200" stroke="#b91c1c" stroke-width="3" stroke-linecap="round"/>' +
+                    '<ellipse cx="175" cy="120" rx="78" ry="48" fill="none" stroke="#fbbf24" stroke-width="1" stroke-dasharray="4,3" opacity="0.4"/>' +
+                    '</svg>';
+                },
+                parts: [
+                  { name: 'Carapace (Exoskeleton)', x: 50, y: 30, desc: 'Hard outer shell made of chitin and calcium carbonate. Must be shed (molted) to grow — a vulnerable period.' },
+                  { name: 'Antennae', x: 15, y: 15, desc: 'Two pairs: long antennae detect touch and chemicals, short antennules sense orientation and balance.' },
+                  { name: 'Compound Eyes', x: 22, y: 35, desc: 'Thousands of individual lenses (ommatidia) create a mosaic image. Excellent at detecting motion.' },
+                  { name: 'Walking Legs', x: 45, y: 80, desc: 'Typically 5 pairs of jointed walking legs. The first pair may be modified into claws (chelipeds) for defense.' },
+                  { name: 'Swimmerets (Pleopods)', x: 60, y: 65, desc: 'Small appendages under the abdomen used for swimming, carrying eggs, and circulating water over gills.' },
+                  { name: 'Gills', x: 35, y: 55, desc: 'Located under the carapace. Crustacean gills are bathed in water drawn in by specialized appendages.' }
+                ]
+              },
+              cephalopod: {
+                label: 'Cephalopod (Mollusca)',
+                svg: function(w,h,color) {
+                  return '<svg viewBox="0 0 300 320" xmlns="http://www.w3.org/2000/svg">' +
+                    '<defs><radialGradient id="cephG"><stop offset="0%" stop-color="' + (color||'#f472b6') + '"/><stop offset="100%" stop-color="' + (color||'#be185d') + '"/></radialGradient></defs>' +
+                    '<ellipse cx="150" cy="80" rx="60" ry="70" fill="url(#cephG)" stroke="#9d174d" stroke-width="2"/>' +
+                    '<circle cx="120" cy="65" r="15" fill="white" stroke="#1e293b" stroke-width="1.5"/><ellipse cx="122" cy="65" rx="5" ry="8" fill="#1e293b"/>' +
+                    '<circle cx="180" cy="65" r="15" fill="white" stroke="#1e293b" stroke-width="1.5"/><ellipse cx="182" cy="65" rx="5" ry="8" fill="#1e293b"/>' +
+                    '<path d="M110,150 Q100,220 80,290" stroke="#ec4899" stroke-width="5" fill="none" stroke-linecap="round"/>' +
+                    '<path d="M125,150 Q120,230 110,300" stroke="#f472b6" stroke-width="4" fill="none" stroke-linecap="round"/>' +
+                    '<path d="M140,152 Q140,235 130,305" stroke="#ec4899" stroke-width="5" fill="none" stroke-linecap="round"/>' +
+                    '<path d="M160,152 Q160,235 170,305" stroke="#f472b6" stroke-width="4" fill="none" stroke-linecap="round"/>' +
+                    '<path d="M175,150 Q180,230 190,300" stroke="#ec4899" stroke-width="5" fill="none" stroke-linecap="round"/>' +
+                    '<path d="M190,150 Q200,220 220,290" stroke="#f472b6" stroke-width="4" fill="none" stroke-linecap="round"/>' +
+                    '<circle cx="115" cy="90" r="4" fill="#f9a8d4" opacity="0.5"/>' +
+                    '<circle cx="150" cy="105" r="5" fill="#f9a8d4" opacity="0.4"/>' +
+                    '<circle cx="185" cy="88" r="4" fill="#f9a8d4" opacity="0.5"/>' +
+                    '</svg>';
+                },
+                parts: [
+                  { name: 'Mantle', x: 50, y: 12, desc: 'Muscular body that houses organs. Contracts to jet water through the siphon for high-speed escape.' },
+                  { name: 'Arms/Tentacles', x: 30, y: 70, desc: 'Eight arms lined with suckers containing chemoreceptors — they can taste what they touch.' },
+                  { name: 'Siphon (Funnel)', x: 55, y: 48, desc: 'Jet propulsion nozzle. Water is drawn into the mantle, then forcefully expelled for rapid movement.' },
+                  { name: 'Camera Eyes', x: 40, y: 20, desc: 'Remarkably similar to vertebrate eyes — evolved independently. Can see polarized light invisible to humans.' },
+                  { name: 'Chromatophores', x: 60, y: 30, desc: 'Pigment-filled cells that expand/contract in milliseconds, creating instant color changes and patterns for camouflage.' },
+                  { name: 'Three Hearts', x: 50, y: 35, desc: 'Two branchial hearts pump blood through gills. One systemic heart circulates blood to the body. Blood is copper-based (blue).' },
+                  { name: 'Beak', x: 50, y: 47, desc: 'A hard, parrot-like beak made of chitin. The only hard part of an octopus — it can squeeze through any hole its beak fits.' }
+                ]
+              },
+              echinoderm: {
+                label: 'Echinoderm',
+                svg: function(w,h,color) {
+                  return '<svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">' +
+                    '<defs><linearGradient id="echiG" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="' + (color||'#f97316') + '"/><stop offset="100%" stop-color="' + (color||'#ea580c') + '"/></linearGradient></defs>' +
+                    '<polygon points="150,20 170,100 250,100 185,145 210,225 150,175 90,225 115,145 50,100 130,100" fill="url(#echiG)" stroke="#c2410c" stroke-width="2" stroke-linejoin="round"/>' +
+                    '<circle cx="150" cy="130" r="20" fill="#fed7aa" stroke="#c2410c" stroke-width="1.5"/>' +
+                    '<circle cx="150" cy="130" r="5" fill="#c2410c"/>' +
+                    '<circle cx="150" cy="38" r="4" fill="#c2410c" opacity="0.7"/>' +
+                    '<circle cx="243" cy="105" r="4" fill="#c2410c" opacity="0.7"/>' +
+                    '<circle cx="205" cy="215" r="4" fill="#c2410c" opacity="0.7"/>' +
+                    '<circle cx="95" cy="215" r="4" fill="#c2410c" opacity="0.7"/>' +
+                    '<circle cx="57" cy="105" r="4" fill="#c2410c" opacity="0.7"/>' +
+                    '</svg>';
+                },
+                parts: [
+                  { name: 'Water Vascular System', x: 50, y: 43, desc: 'A unique hydraulic system. Seawater fills internal canals that power hundreds of small tube feet.' },
+                  { name: 'Tube Feet', x: 25, y: 50, desc: 'Tiny suction-cup appendages. Coordinated hydraulic pressure lets sea stars pry open clam shells.' },
+                  { name: 'Madreporite', x: 50, y: 12, desc: 'A sieve plate on top that lets seawater enter the water vascular system. Visible as a small dot.' },
+                  { name: 'Pentaradial Symmetry', x: 75, y: 35, desc: 'Five-fold body symmetry — no front or back. Adults develop this from bilateral larval forms.' },
+                  { name: 'Eyespots', x: 50, y: 8, desc: 'Simple light-sensing organs at each arm tip. Cannot form images but detect light and shadow.' },
+                  { name: 'Regeneration', x: 35, y: 70, desc: 'Can regrow entire arms. Some species can regenerate a whole new body from a single arm and central disc.' }
+                ]
+              },
+              cetacean: {
+                label: 'Marine Mammal (Cetacea)',
+                svg: function(w,h,color) {
+                  return '<svg viewBox="0 0 420 200" xmlns="http://www.w3.org/2000/svg">' +
+                    '<defs><linearGradient id="cetG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#64748b"/><stop offset="70%" stop-color="#94a3b8"/><stop offset="100%" stop-color="#e2e8f0"/></linearGradient></defs>' +
+                    '<path d="M40,100 Q60,60 120,70 Q200,55 280,75 Q340,85 380,85 Q400,70 410,55 L410,85 Q400,100 410,145 Q400,130 380,115 Q340,115 280,125 Q200,145 120,130 Q60,140 40,100Z" fill="url(#cetG)" stroke="#475569" stroke-width="2"/>' +
+                    '<circle cx="90" cy="95" r="6" fill="white"/><circle cx="92" cy="95" r="3" fill="#0f172a"/>' +
+                    '<ellipse cx="75" cy="75" rx="6" ry="3" fill="#64748b" stroke="#475569"/>' +
+                    '<ellipse cx="160" cy="118" rx="20" ry="8" fill="#94a3b8" stroke="#475569" stroke-width="1.5" transform="rotate(-15,160,118)"/>' +
+                    '</svg>';
+                },
+                parts: [
+                  { name: 'Blowhole', x: 17, y: 32, desc: 'Modified nostril on top of the head. Voluntary breathing — they must consciously surface. Closes watertight when diving.' },
+                  { name: 'Melon (Echolocation)', x: 25, y: 40, desc: 'Oil-filled structure in the forehead that focuses clicking sounds into a beam for echolocation (biosonar).' },
+                  { name: 'Dorsal Fin', x: 55, y: 28, desc: 'Helps with stability and thermoregulation. Made of dense connective tissue, not bone. Shape identifies species.' },
+                  { name: 'Fluke (Tail)', x: 95, y: 35, desc: 'Horizontal tail fin that moves up-and-down (not side-to-side like fish). Powered by massive back muscles.' },
+                  { name: 'Pectoral Flippers', x: 37, y: 58, desc: 'Modified forelimbs with the same bones as a human arm (humerus, radius, ulna, fingers). Used for steering.' },
+                  { name: 'Blubber Layer', x: 50, y: 55, desc: 'Thick fat layer providing insulation, energy storage, and buoyancy. Can be 50cm thick in Arctic whales.' }
+                ]
+              },
+              chelonian: {
+                label: 'Sea Turtle (Reptilia)',
+                svg: function(w,h,color) {
+                  return '<svg viewBox="0 0 350 250" xmlns="http://www.w3.org/2000/svg">' +
+                    '<defs><linearGradient id="turtG" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#65a30d"/><stop offset="100%" stop-color="#365314"/></linearGradient></defs>' +
+                    '<ellipse cx="175" cy="125" rx="95" ry="65" fill="url(#turtG)" stroke="#1a2e05" stroke-width="2.5"/>' +
+                    '<path d="M175,62 L215,70 L225,100 L210,125 L175,130 L140,125 L125,100 L135,70Z" fill="none" stroke="#3f6212" stroke-width="1.5" opacity="0.6"/>' +
+                    '<ellipse cx="90" cy="105" rx="30" ry="15" fill="#4d7c0f" stroke="#365314" stroke-width="2" transform="rotate(-30,90,105)"/>' +
+                    '<ellipse cx="260" cy="105" rx="30" ry="15" fill="#4d7c0f" stroke="#365314" stroke-width="2" transform="rotate(30,260,105)"/>' +
+                    '<ellipse cx="100" cy="170" rx="25" ry="12" fill="#4d7c0f" stroke="#365314" stroke-width="2" transform="rotate(20,100,170)"/>' +
+                    '<ellipse cx="250" cy="170" rx="25" ry="12" fill="#4d7c0f" stroke="#365314" stroke-width="2" transform="rotate(-20,250,170)"/>' +
+                    '<circle cx="70" cy="90" r="12" fill="#4d7c0f" stroke="#365314" stroke-width="2"/>' +
+                    '<circle cx="65" cy="87" r="4" fill="black"/><circle cx="64" cy="86" r="1.5" fill="white"/>' +
+                    '</svg>';
+                },
+                parts: [
+                  { name: 'Carapace (Shell)', x: 50, y: 25, desc: 'Fused ribs and vertebrae covered in keratinous scutes. Cannot retract into shell like land turtles.' },
+                  { name: 'Flippers', x: 22, y: 40, desc: 'Elongated forelimbs act as hydrofoils for underwater flight. Can swim up to 35 km/h in bursts.' },
+                  { name: 'Salt Glands', x: 20, y: 35, desc: 'Located near the eyes, they excrete concentrated salt — this is why sea turtles appear to cry.' },
+                  { name: 'Magnetic Navigation', x: 50, y: 50, desc: 'Magnetite crystals in the brain detect Earth\'s magnetic field. Hatchlings imprint their natal beach\'s magnetic signature.' },
+                  { name: 'Scutes', x: 55, y: 28, desc: 'Keratinous plates covering the shell. Growth rings on scutes can help estimate age in some species.' },
+                  { name: 'Plastron (Belly)', x: 50, y: 65, desc: 'The flat underside of the shell. More streamlined in sea turtles than land turtles for hydrodynamics.' }
+                ]
+              }
+            };
+
+            // Map each species to its body plan
+            var SPECIES_BODY_MAP = {
+              neon: 'fish', guppy: 'fish', cory: 'fish', angel: 'fish', platy: 'fish', molly: 'fish',
+              cardinal: 'fish', rummy: 'fish', oto: 'fish', betta: 'fish',
+              clown: 'fish', tang: 'fish', goby: 'fish',
+              oscar: 'fish', pike: 'fish', pleco: 'fish',
+              goldfish: 'fish', rockfish: 'fish',
+              archer: 'fish', puffer: 'fish', mudskip: 'fish',
+              anemone: 'jellyfish',
+              shrimp: 'crustacean', cleaner: 'crustacean', crab: 'crustacean', amphipod: 'crustacean',
+              starfish: 'echinoderm', seastar: 'echinoderm', urchin: 'echinoderm', seacucumber: 'echinoderm',
+              slider: 'chelonian', turtle: 'chelonian',
+              kelp: 'fish',
+              clownfish: 'fish', dolphin: 'cetacean', jellyfish: 'jellyfish', squid: 'cephalopod',
+              hatchetfish: 'fish', swordfish: 'fish', anglerfish: 'fish', gulpereel: 'fish',
+              giantsquid: 'cephalopod', tubeworms: 'jellyfish', snailfish: 'fish',
+              mantaray: 'shark', bluewhale: 'cetacean', seahorse: 'fish',
+              octopus: 'cephalopod', nautilus: 'cephalopod', coelacanth: 'fish'
+            };
+
+            // Species-specific anatomy overrides and extra info
+            var SPECIES_ANATOMY = {
+              mudskip: { override: 'Modified pectoral fins act as legs. Can breathe through skin and oral lining when on land.', locomotion: 'Uses pectoral fins to "walk" and "skip" across mud. Can also climb roots.' },
+              betta: { override: 'Has a labyrinth organ that allows breathing atmospheric air directly — can survive in low-oxygen water.', locomotion: 'Flowing fins create drag; bettas are slow but agile swimmers using sculling pectoral fins.' },
+              seahorse: { override: 'Swims upright using a tiny dorsal fin that beats 35 times per second. Prehensile tail grips substrates.', locomotion: 'The worst swimmer in the ocean — relies on rapid dorsal fin oscillation and steers with pectoral fins.' },
+              anglerfish: { override: 'The bioluminescent lure (esca) contains symbiotic bacteria. Males fuse permanently to females, sharing blood supply.', locomotion: 'Slow ambush predator. Uses modified pectoral fins to "walk" on the seafloor.' },
+              puffer: { override: 'Can inflate body by swallowing water rapidly. Many species contain tetrodotoxin — 1200x more toxic than cyanide.', locomotion: 'Slow swimmer using pectoral and dorsal fin sculling. Sacrifices speed for defensive inflation ability.' },
+              mantaray: { override: 'Cephalic fins funnel plankton into mouth. Largest brain-to-body ratio of any fish. Recognized individual humans.', locomotion: 'Underwater flight — flaps wing-like pectoral fins. Can breach completely out of the water.' },
+              coelacanth: { override: 'Lobed fins move in alternating pattern like tetrapod limbs — may represent step in fish-to-land transition.', locomotion: 'Slow drift feeder. Uses lobed fins in a unique "walking" pattern not seen in other living fish.' },
+              nautilus: { override: 'Shell chambers filled with gas for buoyancy control. Has 90+ tentacles with no suckers — uses sticky ridges.', locomotion: 'Jet propulsion via siphon. Can withdraw completely into shell and seal with a leathery hood.' },
+              clown: { override: 'Mucus coating prevents anemone stings. All born male — the dominant fish transitions to female (sequential hermaphroditism).', locomotion: 'Rapid pectoral fin waving for hovering near host anemone. Rarely strays far from home.' },
+              slider: { override: 'Basking behavior critical for thermoregulation and vitamin D synthesis. Can brumate (hibernate) underwater for months.', locomotion: 'Powerful rear leg kicks propel through water. On land, uses all four legs in a characteristic waddle.' }
+            };
+
+            // ── Anatomy viewer state ──
+            var viewingAnatomy = d.viewingAnatomy || null;
+            var anatomyHighlight = d.anatomyHighlight || null;
+
+            var openAnatomy = function(speciesId) {
+              updMulti({ viewingAnatomy: speciesId, anatomyHighlight: null });
+            };
+            var closeAnatomy = function() {
+              updMulti({ viewingAnatomy: null, anatomyHighlight: null });
+            };
+
+var TANK_TYPES = [
+
+                          { id: 'freshwater', name: '🐠 Freshwater Community', size: 20, temp: 76, salinity: 0, pH: 7.0, diff: 1, desc: 'Classic beginner setup with tetras, guppies, and corydoras.' },
               { id: 'planted', name: '🌿 Planted Tropical', size: 40, temp: 78, salinity: 0, pH: 6.8, diff: 2, desc: 'Lush aquascape with live plants and small schooling fish.' },
               { id: 'reef', name: '🐡 Saltwater Reef', size: 55, temp: 78, salinity: 35, pH: 8.2, diff: 3, desc: 'Vibrant coral reef with clownfish and anemones.' },
               { id: 'predator', name: '🦈 Predator Tank', size: 75, temp: 76, salinity: 0, pH: 7.2, diff: 3, desc: 'Oscars, pike cichlids, and other large predatory fish.' },
@@ -23479,6 +23732,149 @@
                 })
               ),
 
+
+              // ═══ ANATOMY VIEWER OVERLAY ═══
+              viewingAnatomy && (() => {
+                // Find species data from all sources
+                var allSpecies = [].concat(
+                  SPECIES_BY_TANK[selectedTank] || [],
+                  MARINE_SPECIES || []
+                );
+                var sp = allSpecies.find(function(s) { return s.id === viewingAnatomy; });
+                if (!sp) { closeAnatomy(); return null; }
+                var bodyPlanKey = SPECIES_BODY_MAP[viewingAnatomy] || 'fish';
+                var plan = BODY_PLANS[bodyPlanKey];
+                if (!plan) { closeAnatomy(); return null; }
+                var extraInfo = SPECIES_ANATOMY[viewingAnatomy] || {};
+
+                return React.createElement("div", { className: "bg-gradient-to-br from-slate-900/95 via-indigo-950/95 to-slate-900/95 rounded-2xl p-5 border-2 border-indigo-400/30 shadow-2xl animate-in fade-in duration-300 relative overflow-hidden" },
+                  // Subtle background pattern
+                  React.createElement("div", { style: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'radial-gradient(circle at 20% 80%, rgba(99,102,241,0.08) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(34,211,238,0.06) 0%, transparent 50%)', pointerEvents: 'none' } }),
+
+                  // Header
+                  React.createElement("div", { className: "flex items-center gap-3 mb-4 relative z-10" },
+                    React.createElement("div", { className: "text-3xl" }, sp.icon || '\uD83D\uDC1F'),
+                    React.createElement("div", null,
+                      React.createElement("h4", { className: "text-base font-bold text-white" }, sp.name),
+                      React.createElement("p", { className: "text-[11px] text-indigo-300/80" }, plan.label)
+                    ),
+                    React.createElement("button", {
+                      onClick: closeAnatomy,
+                      className: "ml-auto px-3 py-1 text-xs font-bold text-slate-400 bg-slate-800/60 hover:bg-slate-700/80 rounded-full transition-all border border-slate-600/30"
+                    }, "\u2715 Close")
+                  ),
+
+                  // ── SVG Diagram with interactive labels ──
+                  React.createElement("div", { className: "relative bg-gradient-to-b from-slate-800/50 to-slate-900/50 rounded-xl p-4 mb-4 border border-slate-700/30" },
+                    // Render SVG diagram
+                    React.createElement("div", {
+                      dangerouslySetInnerHTML: { __html: plan.svg(400, 250) },
+                      className: "max-w-sm mx-auto",
+                      style: { filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.3))' }
+                    }),
+                    // Clickable label dots overlaid on the diagram
+                    React.createElement("div", { style: { position: 'absolute', top: '16px', left: '16px', right: '16px', bottom: '16px' } },
+                      plan.parts.map(function(part, i) {
+                        var isHighlighted = anatomyHighlight === i;
+                        return React.createElement("div", {
+                          key: i,
+                          style: {
+                            position: 'absolute',
+                            left: part.x + '%', top: part.y + '%',
+                            transform: 'translate(-50%,-50%)',
+                            zIndex: isHighlighted ? 20 : 10,
+                            cursor: 'pointer'
+                          },
+                          onClick: function() { upd('anatomyHighlight', isHighlighted ? null : i); }
+                        },
+                          // Pulsing dot
+                          React.createElement("div", {
+                            className: "relative",
+                            style: { width: '16px', height: '16px' }
+                          },
+                            React.createElement("div", {
+                              style: {
+                                width: '16px', height: '16px', borderRadius: '50%',
+                                background: isHighlighted ? '#22d3ee' : 'rgba(255,255,255,0.9)',
+                                border: '2px solid ' + (isHighlighted ? '#06b6d4' : 'rgba(99,102,241,0.6)'),
+                                boxShadow: isHighlighted ? '0 0 12px rgba(34,211,238,0.6)' : '0 0 6px rgba(255,255,255,0.3)',
+                                animation: isHighlighted ? 'none' : 'pulse 2s ease-in-out infinite',
+                                transition: 'all 0.2s'
+                              }
+                            }),
+                            // Number label
+                            React.createElement("span", {
+                              style: { position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', fontSize: '8px', fontWeight: 'bold', color: isHighlighted ? '#164e63' : '#4338ca', lineHeight: 1 }
+                            }, String(i + 1))
+                          ),
+                          // Tooltip on highlight
+                          isHighlighted && React.createElement("div", {
+                            className: "absolute z-30",
+                            style: { top: '20px', left: '50%', transform: 'translateX(-50%)', minWidth: '200px' }
+                          },
+                            React.createElement("div", { className: "bg-slate-800/95 backdrop-blur-sm rounded-lg p-2.5 border border-cyan-500/30 shadow-xl" },
+                              React.createElement("p", { className: "text-[11px] font-bold text-cyan-300 mb-0.5" }, part.name),
+                              React.createElement("p", { className: "text-[10px] text-slate-300 leading-relaxed" }, part.desc)
+                            )
+                          )
+                        );
+                      })
+                    )
+                  ),
+
+                  // ── Parts Legend ──
+                  React.createElement("div", { className: "grid grid-cols-2 gap-1.5 mb-3 relative z-10" },
+                    plan.parts.map(function(part, i) {
+                      var isHighlighted = anatomyHighlight === i;
+                      return React.createElement("button", {
+                        key: i,
+                        onClick: function() { upd('anatomyHighlight', isHighlighted ? null : i); },
+                        className: "flex items-center gap-2 px-2 py-1.5 rounded-lg text-left transition-all " + (isHighlighted ? "bg-cyan-500/20 border border-cyan-400/40" : "bg-slate-800/40 border border-transparent hover:bg-slate-700/40")
+                      },
+                        React.createElement("span", { className: "w-4 h-4 flex items-center justify-center rounded-full text-[9px] font-bold flex-shrink-0 " + (isHighlighted ? "bg-cyan-400 text-slate-900" : "bg-slate-600 text-slate-300") }, String(i + 1)),
+                        React.createElement("span", { className: "text-[10px] font-bold " + (isHighlighted ? "text-cyan-300" : "text-slate-400") }, part.name)
+                      );
+                    })
+                  ),
+
+                  // ── Species-Specific Info ──
+                  React.createElement("div", { className: "space-y-2 relative z-10" },
+                    // Fun fact
+                    sp.fact && React.createElement("div", { className: "bg-indigo-500/10 rounded-xl p-3 border border-indigo-400/20" },
+                      React.createElement("p", { className: "text-[10px] font-bold text-indigo-300 mb-0.5" }, "\uD83D\uDCA1 Did You Know?"),
+                      React.createElement("p", { className: "text-[11px] text-indigo-200/80 leading-relaxed" }, sp.fact)
+                    ),
+                    // Anatomy override (species-specific)
+                    extraInfo.override && React.createElement("div", { className: "bg-cyan-500/10 rounded-xl p-3 border border-cyan-400/20" },
+                      React.createElement("p", { className: "text-[10px] font-bold text-cyan-300 mb-0.5" }, "\uD83E\uDDAC Unique Anatomy"),
+                      React.createElement("p", { className: "text-[11px] text-cyan-200/80 leading-relaxed" }, extraInfo.override)
+                    ),
+                    // Locomotion
+                    extraInfo.locomotion && React.createElement("div", { className: "bg-emerald-500/10 rounded-xl p-3 border border-emerald-400/20" },
+                      React.createElement("p", { className: "text-[10px] font-bold text-emerald-300 mb-0.5" }, "\uD83C\uDFCA How It Moves"),
+                      React.createElement("p", { className: "text-[11px] text-emerald-200/80 leading-relaxed" }, extraInfo.locomotion)
+                    ),
+                    // Habitat info from marine species
+                    sp.habitat && React.createElement("div", { className: "flex gap-2 flex-wrap" },
+                      React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-300 font-bold border border-blue-400/20" }, "\uD83C\uDF0A " + sp.habitat),
+                      sp.diet && React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 font-bold border border-amber-400/20" }, "\uD83C\uDF7D\uFE0F " + sp.diet),
+                      sp.status && React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full font-bold " + (sp.status === 'CR' ? 'bg-red-500/20 text-red-300 border border-red-400/20' : sp.status === 'EN' ? 'bg-red-500/15 text-red-300 border border-red-400/20' : sp.status === 'VU' ? 'bg-amber-500/15 text-amber-300 border border-amber-400/20' : 'bg-green-500/15 text-green-300 border border-green-400/20') },
+                        "\uD83D\uDEE1\uFE0F " + ({LC:'Least Concern',VU:'Vulnerable',EN:'Endangered',CR:'Critically Endangered'}[sp.status] || sp.status))
+                    ),
+
+                    // XP button
+                    React.createElement("button", {
+                      onClick: function() {
+                        awardXP(2, 'Studied anatomy of ' + sp.name);
+                        if (addToast) addToast('\uD83E\uDDAC +2 XP for studying ' + sp.name + ' anatomy!', 'success');
+                      },
+                      className: "w-full py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl hover:from-indigo-600 hover:to-purple-600 transition-all shadow-lg shadow-indigo-500/25 active:scale-[0.98]"
+                    }, "\uD83C\uDF93 I Studied This! (+2 XP)")
+                  )
+                );
+              })(),
+
+
               // ═══════════════ MODE 1: AQUARIUM LAB ═══════════════
               mode === 'tank' && !selectedTank && React.createElement("div", { className: "space-y-3" },
                 React.createElement("h4", { className: "text-sm font-bold text-cyan-700" }, "\uD83D\uDC1F Choose Your Tank"),
@@ -23655,7 +24051,7 @@
                         },
                         title: sp ? sp.name + ': ' + sp.fact : fId,
                         onClick: function () {
-                          if (addToast) addToast('\uD83D\uDC1F ' + (sp ? sp.name + ': ' + sp.fact : fId), 'info');
+                          openAnatomy(fId);
                         }
                       }, sp ? sp.icon : '\uD83D\uDC1F');
                     }),
@@ -23917,7 +24313,7 @@
                         zoneSpecies.map(function (sp) {
                           return React.createElement("button", {
                             key: sp.id,
-                            onClick: function (e) { e.stopPropagation(); upd('selectedSpecies', sp.id); },
+                            onClick: function (e) { e.stopPropagation(); upd('selectedSpecies', sp.id); openAnatomy(sp.id); },
                             className: "px-2.5 py-1 bg-white/25 rounded-full text-[11px] text-white font-bold hover:bg-white/40 hover:shadow-lg transition-all duration-200 backdrop-blur-sm border border-white/10"
                           }, sp.icon + " " + sp.name);
                         }),
