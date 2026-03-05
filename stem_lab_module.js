@@ -10647,16 +10647,18 @@
                   var dist = Math.pow(Math.random(), 0.6) * 0.8;
                   var windTight = gType.windTightness || 2.5;
                   var barLen = gType.barLength || 0;
-                  var angle = armAngle + dist * windTight + (Math.random() - 0.5) * 0.4 * (1 - dist * 0.5);
+                  var spread = 0.12 * dist + 0.04;
+                  var angle = armAngle + dist * windTight + (Math.random() - 0.5) * spread;
                   if (barLen > 0 && dist < barLen) {
                     var barAngle = (arm % 2 === 0) ? 0 : Math.PI;
-                    x = Math.cos(barAngle) * dist + (Math.random() - 0.5) * 0.03;
-                    z = Math.sin(barAngle) * dist * 0.15 + (Math.random() - 0.5) * 0.02;
+                    x = Math.cos(barAngle) * dist + (Math.random() - 0.5) * 0.04;
+                    z = Math.sin(barAngle) * dist * 0.15 + (Math.random() - 0.5) * 0.03;
                   } else {
-                    x = Math.cos(angle) * dist + (Math.random() - 0.5) * 0.03;
-                    z = Math.sin(angle) * dist + (Math.random() - 0.5) * 0.03;
+                    var armSpread = 0.02 + dist * 0.05;
+                    x = Math.cos(angle) * dist + (Math.random() - 0.5) * armSpread;
+                    z = Math.sin(angle) * dist + (Math.random() - 0.5) * armSpread;
                   }
-                  y = (Math.random() - 0.5) * 0.04 * (1 - dist);
+                  y = (Math.random() - 0.5) * 0.06 * (1 - dist * 0.7);
                 }
                 starPos[i * 3] = x; starPos[i * 3 + 1] = y; starPos[i * 3 + 2] = z;
                 var pcts = ageDist || [0.003, 0.13, 0.6, 3, 7.6, 12.1, 76.5];
@@ -10682,7 +10684,7 @@
               var camera = new THREE.PerspectiveCamera(60, W / H, 0.01, 100);
               camera.position.set(0, 0.5, 1.2); camera.lookAt(0, 0, 0);
               var renderer = new THREE.WebGLRenderer({ canvas: canvasEl, antialias: true, alpha: true });
-              renderer.setSize(W, H); renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); renderer.setClearColor(0x050510);
+              renderer.setSize(W, H); renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); renderer.setClearColor(0x020208);
 
               // ── Layer groups ──
               var bgGroup = new THREE.Group(); bgGroup.name = 'bgStars';
@@ -10699,7 +10701,7 @@
               var bgGeo = new THREE.BufferGeometry(), bgCount = 2000, bgPos = new Float32Array(bgCount * 3);
               for (var i = 0; i < bgCount; i++) { bgPos[i * 3] = (Math.random() - 0.5) * 20; bgPos[i * 3 + 1] = (Math.random() - 0.5) * 20; bgPos[i * 3 + 2] = (Math.random() - 0.5) * 20; }
               bgGeo.setAttribute('position', new THREE.BufferAttribute(bgPos, 3));
-              bgGroup.add(new THREE.Points(bgGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.02, transparent: true, opacity: 0.4 })));
+              bgGroup.add(new THREE.Points(bgGeo, new THREE.PointsMaterial({ color: 0xccccff, size: 0.015, transparent: true, opacity: 0.3, sizeAttenuation: true })));
 
               // Spiral galaxy stars
               var starResult = generateStars(THREE, starCount, gType, galaxyType);
@@ -10710,27 +10712,32 @@
                   'attribute float aPhase;',
                   'varying vec3 vSC;',
                   'varying float vA;',
+                  'varying float vType;',
                   'uniform float uTime;',
                   'uniform float uPR;',
                   'void main() {',
                   '  vSC = color;',
-                  '  float sz = 20.0 - aStarType * 3.0;',
-                  '  float twinkleSpeed = 1.2 + aStarType * 0.5;',
-                  '  vA = 0.5 + 0.5 * sin(uTime * twinkleSpeed + aPhase * 6.283);',
+                  '  vType = aStarType;',
+                  '  float sz = 8.0 - aStarType * 0.8;',
+                  '  float twinkleSpeed = 0.8 + aStarType * 0.3;',
+                  '  vA = 0.6 + 0.4 * sin(uTime * twinkleSpeed + aPhase * 6.283);',
                   '  vec4 mv = modelViewMatrix * vec4(position, 1.0);',
-                  '  gl_PointSize = sz * uPR * (200.0 / max(-mv.z, 0.1));',
+                  '  gl_PointSize = sz * uPR * (120.0 / max(-mv.z, 0.1));',
                   '  gl_Position = projectionMatrix * mv;',
                   '}'
                 ].join('\n'),
                 fragmentShader: [
                   'varying vec3 vSC;',
                   'varying float vA;',
+                  'varying float vType;',
                   'void main() {',
                   '  float d = length(gl_PointCoord - 0.5) * 2.0;',
                   '  if (d > 1.0) discard;',
-                  '  float glow = exp(-d * d * 3.0);',
+                  '  float glow = exp(-d * d * 4.5);',
                   '  float core = smoothstep(1.0, 0.0, d);',
-                  '  gl_FragColor = vec4(vSC * (0.3 + 0.7 * glow), core * vA * 0.9);',
+                  '  float brightness = mix(0.9, 0.35, vType / 6.0);',
+                  '  vec3 col = vSC * (0.2 + 0.8 * glow) * brightness;',
+                  '  gl_FragColor = vec4(col, core * vA * 0.85);',
                   '}'
                 ].join('\n'),
                 vertexColors: true,
@@ -10757,12 +10764,35 @@
               var bgCv = document.createElement('canvas'); bgCv.width = 128; bgCv.height = 128;
               var bgCtx = bgCv.getContext('2d');
               var bgGrad = bgCtx.createRadialGradient(64, 64, 0, 64, 64, 64);
-              bgGrad.addColorStop(0, 'rgba(255,220,150,0.5)'); bgGrad.addColorStop(0.3, 'rgba(255,180,100,0.2)');
+              bgGrad.addColorStop(0, 'rgba(255,220,150,0.35)'); bgGrad.addColorStop(0.3, 'rgba(255,180,100,0.12)');
               bgGrad.addColorStop(0.6, 'rgba(200,150,80,0.05)'); bgGrad.addColorStop(1, 'rgba(0,0,0,0)');
               bgCtx.fillStyle = bgGrad; bgCtx.fillRect(0, 0, 128, 128);
               var bulgeTex = new THREE.CanvasTexture(bgCv);
               var bulgeGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: bulgeTex, transparent: true, blending: THREE.AdditiveBlending }));
               bulgeGlow.scale.set(0.35, 0.15, 1); bulgeGroup.add(bulgeGlow);
+
+              // ── Dust lanes (dark absorption bands between arms) ──
+              var dustGroup = new THREE.Group(); dustGroup.name = 'dust';
+              scene.add(dustGroup);
+              (function () {
+                var dustCount = 400;
+                var dustGeo = new THREE.BufferGeometry();
+                var dustPos = new Float32Array(dustCount * 3);
+                for (var di = 0; di < dustCount; di++) {
+                  var dArm = di % (gType.arms || 4);
+                  var dArmAngle = (dArm / (gType.arms || 4)) * Math.PI * 2;
+                  var dDist = Math.pow(Math.random(), 0.5) * 0.7;
+                  var dWind = gType.windTightness || 2.5;
+                  var dOffset = 0.15 + Math.random() * 0.1;
+                  var dAngle = dArmAngle + dDist * dWind + dOffset;
+                  dustPos[di * 3] = Math.cos(dAngle) * dDist + (Math.random() - 0.5) * 0.02;
+                  dustPos[di * 3 + 1] = (Math.random() - 0.5) * 0.01;
+                  dustPos[di * 3 + 2] = Math.sin(dAngle) * dDist + (Math.random() - 0.5) * 0.02;
+                }
+                dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
+                var dustMat = new THREE.PointsMaterial({ color: 0x0a0a15, size: 0.015, transparent: true, opacity: 0.35 });
+                dustGroup.add(new THREE.Points(dustGeo, dustMat));
+              })();
 
               // Black hole + enhanced accretion disk
               bhGroup.add(new THREE.Mesh(new THREE.SphereGeometry(0.01, 24, 24), new THREE.MeshBasicMaterial({ color: 0x000000 })));
@@ -10820,7 +10850,7 @@
               });
 
               // Store layer references on canvas for toggle access
-              canvasEl._layers = { bgStars: bgGroup, arms: armGroup, bulge: bulgeGroup, blackHole: bhGroup, nebulae: nebGroup, grid: gridGroup, labels: labelGroup };
+              canvasEl._layers = { bgStars: bgGroup, arms: armGroup, bulge: bulgeGroup, blackHole: bhGroup, nebulae: nebGroup, grid: gridGroup, labels: labelGroup, dust: dustGroup };
 
               // Function to regenerate stars with new count
               canvasEl._setStarCount = function (count) {
@@ -10837,7 +10867,7 @@
               if (THREE.EffectComposer && THREE.RenderPass && THREE.UnrealBloomPass) {
                 composer = new THREE.EffectComposer(renderer);
                 composer.addPass(new THREE.RenderPass(scene, camera));
-                var bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(W, H), 1.0, 0.4, 0.8);
+                var bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(W, H), 0.6, 0.3, 0.85);
                 composer.addPass(bloomPass);
                 canvasEl._bloomPass = bloomPass;
               }
@@ -10934,7 +10964,8 @@
                 var elapsed = (Date.now() - startT) * 0.001;
                 starShaderMat.uniforms.uTime.value = elapsed;
                 if (armGroup.visible) armGroup.children.forEach(function (c) { c.rotation.y += 0.0003; });
-                nebulaSprites.forEach(function (s, i) { s.material.opacity = Math.max(0.1, s.material.opacity + 0.002 * Math.sin(elapsed + i * 1.5)); });
+                if (dustGroup.visible) dustGroup.children.forEach(function (c) { c.rotation.y += 0.0003; });
+                nebulaSprites.forEach(function (s, i) { s.material.opacity = 0.25 + 0.15 * Math.sin(elapsed * 0.5 + i * 1.8); });
                 if (bhGroup.visible) {
                   rings.forEach(function (r, ri) { r.rotation.z += 0.005 - ri * 0.001; r.material.opacity = ringColors[ri][3] * (0.8 + 0.2 * Math.sin(elapsed * 1.2 + ri)); });
                   bhGlow.material.opacity = 0.6 + 0.3 * Math.sin(elapsed * 0.8);
@@ -10989,7 +11020,8 @@
               { key: 'nebulae', icon: '\u2728', label: t('stem.galaxy.nebulae') },
               { key: 'bgStars', icon: '\uD83C\uDF0C', label: t('stem.galaxy.background') },
               { key: 'grid', icon: '\uD83D\uDCCF', label: t('stem.galaxy.scale_grid') },
-              { key: 'labels', icon: '\uD83C\uDFF7\uFE0F', label: t('stem.galaxy.labels') }
+              { key: 'labels', icon: '\uD83C\uDFF7\uFE0F', label: t('stem.galaxy.labels') },
+              { key: 'dust', icon: '\uD83C\uDF2B\uFE0F', label: 'Dust Lanes' }
             ];
 
             return React.createElement("div", { className: "max-w-4xl mx-auto animate-in fade-in duration-200", style: { position: 'relative' } },
@@ -11264,6 +11296,110 @@
               // ── Star Lifespan Simulation Mode ──
               // ══════════════════════════════════════════════
               !d.quizMode && simMode === 'star' && React.createElement("div", { className: "space-y-4 animate-in fade-in duration-300" },
+
+                // ── Animated Star Canvas ──
+                React.createElement("div", { className: "relative rounded-2xl overflow-hidden border-2 border-indigo-300/30 bg-[#020210]", style: { height: '200px' } },
+                  React.createElement("canvas", {
+                    "data-star-life-canvas": "true",
+                    ref: function (cvEl) {
+                      if (!cvEl || cvEl._starLifeInit) return;
+                      cvEl._starLifeInit = true;
+                      var ctx = cvEl.getContext('2d');
+                      var W = cvEl.offsetWidth, H = cvEl.offsetHeight;
+                      cvEl.width = W * 2; cvEl.height = H * 2; ctx.scale(2, 2);
+                      var tick = 0;
+                      function drawStar() {
+                        tick++;
+                        ctx.clearRect(0, 0, W, H);
+                        // Starfield background
+                        ctx.fillStyle = '#020210';
+                        ctx.fillRect(0, 0, W, H);
+                        for (var si = 0; si < 80; si++) {
+                          var sx = ((si * 137 + 29) % W);
+                          var sy = ((si * 211 + 17) % H);
+                          var sb = 0.2 + 0.3 * Math.sin(tick * 0.02 + si);
+                          ctx.globalAlpha = sb;
+                          ctx.fillStyle = '#fff';
+                          ctx.fillRect(sx, sy, 1, 1);
+                        }
+                        ctx.globalAlpha = 1;
+
+                        var mass = lifecycleMass;
+                        var cx = W * 0.5, cy = H * 0.5;
+                        var baseR = Math.max(12, Math.min(60, Math.pow(mass, 0.6) * 15));
+                        var pulse = 1 + 0.03 * Math.sin(tick * 0.04);
+                        var r = baseR * pulse;
+
+                        // Determine star color based on mass
+                        var coreColor, glowColor, coronaColor;
+                        if (mass < 0.5) { coreColor = '#ffaa44'; glowColor = '#ff7722'; coronaColor = '#ff550033'; }
+                        else if (mass < 0.8) { coreColor = '#ffcc6f'; glowColor = '#ff9944'; coronaColor = '#ff884422'; }
+                        else if (mass < 1.04) { coreColor = '#fff8e8'; glowColor = '#ffe4a8'; coronaColor = '#ffdd6622'; }
+                        else if (mass < 1.4) { coreColor = '#fff'; glowColor = '#f0f0ff'; coronaColor = '#dde4ff22'; }
+                        else if (mass < 2.1) { coreColor = '#e8eeff'; glowColor = '#cad7ff'; coronaColor = '#aabbff22'; }
+                        else if (mass < 16) { coreColor = '#d0ddff'; glowColor = '#aabfff'; coronaColor = '#8899ff33'; }
+                        else { coreColor = '#c0ccff'; glowColor = '#9bb0ff'; coronaColor = '#7788ff44'; }
+
+                        // Corona (outer glow)
+                        var corona = ctx.createRadialGradient(cx, cy, r * 0.5, cx, cy, r * 3.5);
+                        corona.addColorStop(0, coronaColor);
+                        corona.addColorStop(1, 'transparent');
+                        ctx.beginPath(); ctx.arc(cx, cy, r * 3.5, 0, Math.PI * 2);
+                        ctx.fillStyle = corona; ctx.fill();
+
+                        // Main glow
+                        var glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 1.8);
+                        glow.addColorStop(0, glowColor);
+                        glow.addColorStop(0.4, glowColor + '88');
+                        glow.addColorStop(1, 'transparent');
+                        ctx.beginPath(); ctx.arc(cx, cy, r * 1.8, 0, Math.PI * 2);
+                        ctx.fillStyle = glow; ctx.fill();
+
+                        // Star body
+                        var body = ctx.createRadialGradient(cx - r * 0.15, cy - r * 0.15, r * 0.1, cx, cy, r);
+                        body.addColorStop(0, '#ffffff');
+                        body.addColorStop(0.3, coreColor);
+                        body.addColorStop(1, glowColor);
+                        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                        ctx.fillStyle = body; ctx.fill();
+
+                        // Surface detail (subtle noise)
+                        for (var sp = 0; sp < 6; sp++) {
+                          var spAngle = (sp / 6) * Math.PI * 2 + tick * 0.005;
+                          var spR = r * 0.6;
+                          var spx = cx + Math.cos(spAngle) * spR;
+                          var spy = cy + Math.sin(spAngle) * spR;
+                          var spotG = ctx.createRadialGradient(spx, spy, 0, spx, spy, r * 0.3);
+                          spotG.addColorStop(0, 'rgba(255,255,255,0.08)');
+                          spotG.addColorStop(1, 'transparent');
+                          ctx.beginPath(); ctx.arc(spx, spy, r * 0.3, 0, Math.PI * 2);
+                          ctx.fillStyle = spotG; ctx.fill();
+                        }
+
+                        // Label
+                        ctx.font = 'bold 10px Inter, system-ui, sans-serif';
+                        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(mass + ' Solar Masses', cx, H - 12);
+
+                        // Classification label
+                        var cls = mass < 0.45 ? 'M-type Red Dwarf' : mass < 0.8 ? 'K-type Orange' : mass < 1.04 ? 'G-type (Sun-like)' : mass < 1.4 ? 'F-type Yellow-White' : mass < 2.1 ? 'A-type White' : mass < 16 ? 'B-type Blue-White' : 'O-type Blue Giant';
+                        ctx.font = '9px Inter, system-ui, sans-serif';
+                        ctx.fillStyle = 'rgba(255,255,255,0.35)';
+                        ctx.fillText(cls, cx, H - 2);
+
+                        cvEl._starLifeAnim = requestAnimationFrame(drawStar);
+                      };
+                      drawStar();
+                      var ro = new ResizeObserver(function () {
+                        W = cvEl.offsetWidth; H = cvEl.offsetHeight;
+                        cvEl.width = W * 2; cvEl.height = H * 2; ctx.scale(2, 2);
+                      });
+                      ro.observe(cvEl);
+                    },
+                    style: { width: '100%', height: '100%' }
+                  })
+                ),
 
                 // ── Mass Selector Hero ──
                 React.createElement("div", { className: "bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-2xl border-2 border-indigo-400/40 p-5 shadow-xl" },
