@@ -23116,204 +23116,288 @@
               fish: {
                 label: 'Bony Fish (Osteichthyes)',
                 svg: function(w,h,color) {
-                  return '<svg viewBox="0 0 400 220" xmlns="http://www.w3.org/2000/svg">' +
-                    '<defs><linearGradient id="fishG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="' + (color||'#22d3ee') + '"/><stop offset="100%" stop-color="' + (color||'#0891b2') + '"/></linearGradient></defs>' +
-                    '<ellipse cx="185" cy="110" rx="130" ry="55" fill="url(#fishG)" stroke="#0e7490" stroke-width="2"/>' +
-                    '<polygon points="315,110 375,60 375,160" fill="' + (color||'#06b6d4') + '" stroke="#0e7490" stroke-width="1.5" opacity="0.9"/>' +
-                    '<polygon points="150,58 185,18 225,58" fill="' + (color||'#06b6d4') + '" stroke="#0e7490" stroke-width="1.5" opacity="0.85"/>' +
-                    '<polygon points="180,160 200,185 220,160" fill="' + (color||'#06b6d4') + '" stroke="#0e7490" stroke-width="1.5" opacity="0.8"/>' +
-                    '<ellipse cx="140" cy="130" rx="28" ry="10" fill="' + (color||'#06b6d4') + '" stroke="#0e7490" stroke-width="1.5" transform="rotate(-20,140,130)" opacity="0.85"/>' +
-                    '<circle cx="105" cy="95" r="12" fill="white" stroke="#334155" stroke-width="1.5"/>' +
-                    '<circle cx="108" cy="95" r="6" fill="#1e293b"/>' +
-                    '<circle cx="110" cy="93" r="2" fill="white"/>' +
-                    '<path d="M127,85 Q122,110 127,135" stroke="#0e7490" fill="none" stroke-width="2.5" stroke-linecap="round"/>' +
-                    '<path d="M60,110 Q55,110 50,108" stroke="#0e7490" fill="none" stroke-width="2"/>' +
-                    '<line x1="130" y1="95" x2="130" y2="110" stroke="#64748b" stroke-width="0.5" stroke-dasharray="2,2" opacity="0.3"/>' +
+                  var c1 = color || '#22d3ee', c2 = color || '#0891b2';
+                  return '<svg viewBox="0 0 440 260" xmlns="http://www.w3.org/2000/svg">' +
+                    '<defs>' +
+                      '<linearGradient id="fishG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="' + c1 + '"/><stop offset="100%" stop-color="' + c2 + '"/></linearGradient>' +
+                      '<linearGradient id="fishBelly" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="' + c2 + '"/><stop offset="100%" stop-color="#e2e8f0"/></linearGradient>' +
+                    '</defs>' +
+                    '<path d="M55,130 Q65,75 110,65 Q160,50 210,55 Q270,58 310,75 Q340,85 355,110 Q360,130 355,150 Q340,175 310,185 Q270,200 210,205 Q160,210 110,195 Q65,185 55,130Z" fill="url(#fishG)" stroke="' + c2 + '" stroke-width="2.5"/>' +
+                    '<path d="M55,130 Q65,145 110,170 Q160,190 210,193 Q270,195 310,185 Q340,175 355,150 Q360,130 355,150" fill="url(#fishBelly)" opacity="0.4"/>' +
+                    '<path d="M350,125 Q370,115 400,90 Q415,80 420,85 L420,95 Q418,100 410,110 Q395,125 380,130 Q395,135 410,150 Q418,160 420,165 L420,175 Q415,180 400,170 Q370,145 350,135" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1.5" opacity="0.9"/>' +
+                    '<line x1="400" y1="93" x2="400" y2="167" stroke="' + c2 + '" stroke-width="0.8" opacity="0.5"/>' +
+                    '<line x1="390" y1="100" x2="390" y2="160" stroke="' + c2 + '" stroke-width="0.6" opacity="0.4"/>' +
+                    '<line x1="380" y1="107" x2="380" y2="153" stroke="' + c2 + '" stroke-width="0.5" opacity="0.3"/>' +
+                    '<path d="M180,58 Q185,38 195,20 Q210,5 225,10 Q235,15 240,25 Q248,40 250,60" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1.5" opacity="0.85"/>' +
+                    '<line x1="195" y1="55" x2="210" y2="18" stroke="' + c2 + '" stroke-width="0.6" opacity="0.4"/>' +
+                    '<line x1="210" y1="55" x2="220" y2="14" stroke="' + c2 + '" stroke-width="0.6" opacity="0.4"/>' +
+                    '<line x1="225" y1="56" x2="233" y2="17" stroke="' + c2 + '" stroke-width="0.6" opacity="0.4"/>' +
+                    '<path d="M215,200 Q220,220 225,235 Q230,245 240,248 Q245,245 248,235 Q250,220 250,200" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1.2" opacity="0.75"/>' +
+                    '<path d="M270,198 Q275,215 280,225 Q285,230 290,228 Q293,222 295,210 Q296,200 295,195" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1.2" opacity="0.7"/>' +
+                    '<path d="M120,165 Q105,178 92,188 Q85,192 88,195 Q95,195 108,188 Q125,178 135,170" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1.5" opacity="0.8" transform="rotate(-10,120,175)"/>' +
+                    '<path d="M138,170 Q128,182 118,190 Q112,193 115,196 Q120,196 130,190 Q142,182 148,175" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1.2" opacity="0.7" transform="rotate(-5,138,180)"/>' +
+                    '<circle cx="88" cy="118" r="16" fill="white" stroke="#334155" stroke-width="2"/>' +
+                    '<circle cx="92" cy="118" r="9" fill="#1e293b"/>' +
+                    '<circle cx="95" cy="115" r="3" fill="white" opacity="0.8"/>' +
+                    '<path d="M55,128 Q48,125 40,124" stroke="' + c2 + '" stroke-width="2" fill="none" stroke-linecap="round"/>' +
+                    '<path d="M118,90 Q113,120 118,150" stroke="' + c2 + '" fill="none" stroke-width="3" stroke-linecap="round" opacity="0.6"/>' +
+                    '<path d="M123,93 Q118,120 123,147" stroke="' + c2 + '" fill="none" stroke-width="2" stroke-linecap="round" opacity="0.4"/>' +
+                    '<path d="M130,110 L340,110" stroke="' + c2 + '" fill="none" stroke-width="1" stroke-dasharray="6,4" opacity="0.35"/>' +
+                    '<path d="M130,115 L340,115" stroke="' + c2 + '" fill="none" stroke-width="0.5" stroke-dasharray="3,3" opacity="0.2"/>' +
+                    '<ellipse cx="210" cy="100" rx="45" ry="12" fill="rgba(255,255,255,0.08)" stroke="' + c2 + '" stroke-width="0.5" stroke-dasharray="4,4" opacity="0.5"/>' +
                     '</svg>';
                 },
                 parts: [
-                  { name: 'Dorsal Fin', x: 46, y: 8, desc: 'Stabilizes the fish during swimming, preventing rolling. Contains bony spines called rays.' },
-                  { name: 'Caudal Fin (Tail)', x: 88, y: 28, desc: 'Primary propulsion organ. Generates thrust by sweeping side-to-side through the water column.' },
-                  { name: 'Pectoral Fins', x: 33, y: 60, desc: 'Used for steering, braking, and hovering. Act like the wings of an airplane.' },
-                  { name: 'Pelvic/Anal Fin', x: 50, y: 84, desc: 'Provides stability and helps prevent the fish from pitching nose-down.' },
-                  { name: 'Gill Cover (Operculum)', x: 30, y: 42, desc: 'Protects the gills. Water flows in through the mouth, over the gills, and out here — extracting dissolved oxygen.' },
-                  { name: 'Lateral Line', x: 55, y: 50, desc: 'A sensory organ that detects vibrations and pressure changes in water. Allows fish to sense nearby movement.' },
-                  { name: 'Eye', x: 25, y: 42, desc: 'Most fish have excellent color vision. Positioned for wide field of view to spot predators.' },
-                  { name: 'Swim Bladder', x: 50, y: 45, desc: 'Internal gas-filled organ that controls buoyancy. Fish adjust gas volume to rise or sink without swimming.' },
-                  { name: 'Scales', x: 65, y: 55, desc: 'Overlapping armor made of bone and enamel. Covered in mucus that reduces drag and fights infection.' }
+                  { name: 'Dorsal Fin', x: 48, y: 5, desc: 'Stabilizes the fish during swimming, preventing rolling. Contains bony spines (rays) connected by thin membrane. Erected when alarmed.' },
+                  { name: 'Caudal Fin (Tail)', x: 93, y: 48, desc: 'Primary propulsion organ. Shape determines swimming style — forked tails are built for speed, rounded for maneuverability.' },
+                  { name: 'Pectoral Fins', x: 26, y: 68, desc: 'Paired fins used for steering, braking, and hovering. Act like hydrofoils. Can be fanned out to appear larger to rivals.' },
+                  { name: 'Anal/Pelvic Fins', x: 53, y: 85, desc: 'Ventral stabilizers that prevent pitching and yawing. Pelvic fins evolved from ancestral limb buds.' },
+                  { name: 'Gill Cover (Operculum)', x: 27, y: 42, desc: 'Bony plate protecting delicate gill filaments. Pumps water over gills by rhythmically opening and closing.' },
+                  { name: 'Lateral Line', x: 58, y: 42, desc: 'A row of sensory pores detecting vibrations and pressure changes. Allows fish to sense movement, currents, and obstacles in total darkness.' },
+                  { name: 'Eye', x: 19, y: 44, desc: 'Spherical lens focuses light. Most fish see in color and some perceive UV light. No eyelids — cornea is bathed in water.' },
+                  { name: 'Swim Bladder (internal)', x: 48, y: 38, desc: 'Gas-filled organ for buoyancy control. Fish add or remove gas to hover at any depth without expending energy.' },
+                  { name: 'Scales & Mucus', x: 70, y: 55, desc: 'Overlapping cycloid or ctenoid scales covered in antibacterial mucus. Reduces hydrodynamic drag by up to 65%.' }
                 ]
               },
               shark: {
                 label: 'Cartilaginous Fish (Chondrichthyes)',
                 svg: function(w,h,color) {
-                  return '<svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg">' +
-                    '<defs><linearGradient id="sharkG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#64748b"/><stop offset="60%" stop-color="#475569"/><stop offset="100%" stop-color="#e2e8f0"/></linearGradient></defs>' +
-                    '<path d="M50,100 Q80,70 150,75 Q250,65 310,80 Q350,88 380,70 L380,130 Q350,112 310,120 Q250,135 150,125 Q80,130 50,100Z" fill="url(#sharkG)" stroke="#334155" stroke-width="2"/>' +
-                    '<polygon points="200,75 210,25 220,72" fill="#475569" stroke="#334155" stroke-width="1.5"/>' +
-                    '<polygon points="360,70 395,50 395,90 380,100 380,130 395,150 395,110 360,130" fill="#64748b" stroke="#334155" stroke-width="1.5"/>' +
-                    '<ellipse cx="100" cy="92" rx="8" ry="6" fill="white"/><circle cx="102" cy="92" r="3" fill="#0f172a"/>' +
-                    '<line x1="130" y1="85" x2="130" y2="78" stroke="#334155" stroke-width="1"/>' +
-                    '<line x1="138" y1="86" x2="138" y2="79" stroke="#334155" stroke-width="1"/>' +
-                    '<line x1="146" y1="87" x2="146" y2="80" stroke="#334155" stroke-width="1"/>' +
-                    '<line x1="154" y1="88" x2="154" y2="82" stroke="#334155" stroke-width="1"/>' +
-                    '<line x1="162" y1="89" x2="162" y2="83" stroke="#334155" stroke-width="1"/>' +
+                  return '<svg viewBox="0 0 460 230" xmlns="http://www.w3.org/2000/svg">' +
+                    '<defs>' +
+                      '<linearGradient id="sharkG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#64748b"/><stop offset="50%" stop-color="#475569"/><stop offset="100%" stop-color="#cbd5e1"/></linearGradient>' +
+                    '</defs>' +
+                    '<path d="M30,115 Q45,85 75,78 Q120,65 180,68 Q250,62 310,78 Q350,88 380,98 Q400,105 410,105 Q430,90 445,70 L448,72 Q445,85 440,100 Q438,110 440,118 Q445,135 448,148 L445,150 Q430,130 410,115 Q400,115 380,122 Q350,132 310,142 Q250,158 180,155 Q120,155 75,142 Q45,135 30,115Z" fill="url(#sharkG)" stroke="#334155" stroke-width="2.5"/>' +
+                    '<path d="M30,115 Q45,130 75,140 Q120,152 180,155 Q250,158 310,142 Q350,132 380,122 Q400,115 410,115" fill="#e2e8f0" opacity="0.4"/>' +
+                    '<path d="M230,68 Q232,42 238,22 Q244,8 252,5 Q258,8 260,18 Q264,35 264,68" fill="#475569" stroke="#334155" stroke-width="2"/>' +
+                    '<line x1="240" y1="65" x2="248" y2="12" stroke="#334155" stroke-width="0.6" opacity="0.4"/>' +
+                    '<line x1="250" y1="65" x2="255" y2="10" stroke="#334155" stroke-width="0.6" opacity="0.4"/>' +
+                    '<path d="M330,78 Q335,68 340,62 Q344,60 347,62 Q348,68 346,78" fill="#475569" stroke="#334155" stroke-width="1.2" opacity="0.7"/>' +
+                    '<path d="M120,145 Q108,160 98,170 Q92,172 93,168 Q97,158 108,145 Q115,140 120,142" fill="#64748b" stroke="#334155" stroke-width="1.2" opacity="0.7"/>' +
+                    '<path d="M135,148 Q128,160 122,168 Q118,170 119,166 Q122,158 130,148" fill="#64748b" stroke="#334155" stroke-width="1" opacity="0.6"/>' +
+                    '<ellipse cx="68" cy="105" r="8" ry="6" fill="white" stroke="#1e293b" stroke-width="1.5"/>' +
+                    '<circle cx="70" cy="105" r="3.5" fill="#0f172a"/>' +
+                    '<path d="M30,112 Q22,110 15,110" stroke="#64748b" stroke-width="2" fill="none" stroke-linecap="round"/>' +
+                    '<path d="M30,118 Q22,120 15,120" stroke="#64748b" stroke-width="2" fill="none" stroke-linecap="round"/>' +
+                    '<line x1="105" y1="90" x2="105" y2="80" stroke="#334155" stroke-width="1.8" stroke-linecap="round"/>' +
+                    '<line x1="115" y1="88" x2="115" y2="78" stroke="#334155" stroke-width="1.8" stroke-linecap="round"/>' +
+                    '<line x1="125" y1="86" x2="125" y2="77" stroke="#334155" stroke-width="1.6" stroke-linecap="round"/>' +
+                    '<line x1="135" y1="84" x2="135" y2="76" stroke="#334155" stroke-width="1.4" stroke-linecap="round"/>' +
+                    '<line x1="145" y1="82" x2="145" y2="75" stroke="#334155" stroke-width="1.2" stroke-linecap="round"/>' +
+                    '<circle cx="45" cy="108" r="2" fill="#475569" opacity="0.5"/>' +
+                    '<circle cx="40" cy="112" r="1.5" fill="#475569" opacity="0.4"/>' +
+                    '<circle cx="50" cy="105" r="1.5" fill="#475569" opacity="0.4"/>' +
+                    '<circle cx="38" cy="106" r="1" fill="#475569" opacity="0.3"/>' +
                     '</svg>';
                 },
                 parts: [
-                  { name: 'Dorsal Fin', x: 52, y: 12, desc: 'The iconic triangular fin. Provides stability. Made of cartilage, not bone — sharks have no true bones.' },
-                  { name: 'Gill Slits (5-7)', x: 35, y: 42, desc: 'Unlike bony fish, sharks have 5-7 exposed gill slits. Water must flow continuously over them.' },
-                  { name: 'Ampullae of Lorenzini', x: 18, y: 48, desc: 'Electroreceptors on the snout that detect the faint electrical fields of prey heartbeats and muscle contractions.' },
-                  { name: 'Heterocercal Tail', x: 93, y: 25, desc: 'The upper lobe is longer than the lower, generating lift as the shark swims to counteract sinking.' },
-                  { name: 'Dermal Denticles', x: 60, y: 55, desc: 'Tooth-like scales that reduce drag. Biomimetic swimsuits were modeled on their texture.' },
-                  { name: 'Cartilage Skeleton', x: 45, y: 50, desc: 'Entire skeleton is cartilage — lighter than bone, giving sharks neutral buoyancy and flexibility.' },
-                  { name: 'Replaceable Teeth', x: 12, y: 50, desc: 'Sharks replace teeth throughout life — some go through 30,000+ teeth. Rows move forward like a conveyor belt.' }
+                  { name: 'Dorsal Fin', x: 53, y: 3, desc: 'The iconic triangular fin provides stability. Made entirely of cartilage — sharks have no true bones anywhere in their body.' },
+                  { name: 'Gill Slits (5)', x: 27, y: 36, desc: 'Five exposed gill slits with no protective cover. Sharks must swim to push water over gills — they cannot pump water like bony fish.' },
+                  { name: 'Ampullae of Lorenzini', x: 9, y: 46, desc: 'Jelly-filled pores on the snout that detect electrical fields as weak as 5 nanovolts — enough to sense a prey heartbeat buried in sand.' },
+                  { name: 'Heterocercal Tail', x: 95, y: 32, desc: 'Upper lobe is longer, generating upward lift as the shark swims. This compensates for the lack of a swim bladder.' },
+                  { name: 'Pectoral Fins', x: 26, y: 62, desc: 'Rigid, wing-like fins that generate lift. Unlike bony fish, shark pectoral fins cannot fold flat — they act as airplane wings.' },
+                  { name: 'Dermal Denticles', x: 62, y: 55, desc: 'Tooth-like scales (placoid scales) that channel water flow. Surface texture reduces drag by 8% — inspired NASA swimsuit designs.' },
+                  { name: 'Cartilage Skeleton', x: 45, y: 50, desc: 'Skeleton is 100% cartilage — half the density of bone. This makes sharks lighter and more agile, but fossils only preserve teeth and spines.' },
+                  { name: 'Replaceable Teeth', x: 5, y: 50, desc: 'Teeth grow in rows on a conveyor-belt jaw. A single shark may produce 30,000+ teeth in its lifetime, replacing them every 1-2 weeks.' }
                 ]
               },
               jellyfish: {
                 label: 'Cnidarian (Medusa Form)',
                 svg: function(w,h,color) {
-                  return '<svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">' +
-                    '<defs><radialGradient id="jellyG"><stop offset="0%" stop-color="' + (color||'#c4b5fd') + '" stop-opacity="0.4"/><stop offset="100%" stop-color="' + (color||'#8b5cf6') + '" stop-opacity="0.7"/></radialGradient></defs>' +
-                    '<ellipse cx="150" cy="90" rx="90" ry="60" fill="url(#jellyG)" stroke="#7c3aed" stroke-width="1.5"/>' +
-                    '<path d="M70,120 Q80,180 60,260" stroke="#a78bfa" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.7"/>' +
-                    '<path d="M110,135 Q120,195 100,275" stroke="#c4b5fd" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.6"/>' +
-                    '<path d="M150,140 Q155,200 140,280" stroke="#a78bfa" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.7"/>' +
-                    '<path d="M190,135 Q185,195 200,275" stroke="#c4b5fd" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.6"/>' +
-                    '<path d="M230,120 Q220,180 240,260" stroke="#a78bfa" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.7"/>' +
-                    '<path d="M90,130 Q110,155 90,170 Q110,185 90,210" stroke="#ddd6fe" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.5"/>' +
-                    '<path d="M210,130 Q190,155 210,170 Q190,185 210,210" stroke="#ddd6fe" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.5"/>' +
+                  var c1 = color || '#c4b5fd', c2 = color || '#8b5cf6';
+                  return '<svg viewBox="0 0 320 340" xmlns="http://www.w3.org/2000/svg">' +
+                    '<defs>' +
+                      '<radialGradient id="jellyG" cx="50%" cy="40%"><stop offset="0%" stop-color="' + c1 + '" stop-opacity="0.3"/><stop offset="60%" stop-color="' + c1 + '" stop-opacity="0.5"/><stop offset="100%" stop-color="' + c2 + '" stop-opacity="0.7"/></radialGradient>' +
+                      '<radialGradient id="jellyInner" cx="50%" cy="50%"><stop offset="0%" stop-color="white" stop-opacity="0.15"/><stop offset="100%" stop-color="' + c2 + '" stop-opacity="0"/></radialGradient>' +
+                    '</defs>' +
+                    '<path d="M60,100 Q60,30 160,25 Q260,30 260,100 Q260,120 240,130 Q200,145 160,145 Q120,145 80,130 Q60,120 60,100Z" fill="url(#jellyG)" stroke="' + c2 + '" stroke-width="1.5"/>' +
+                    '<ellipse cx="160" cy="75" rx="55" ry="30" fill="url(#jellyInner)"/>' +
+                    '<path d="M100,100 Q95,95 100,90 Q105,85 110,87" stroke="' + c1 + '" stroke-width="0.8" fill="none" opacity="0.5"/>' +
+                    '<path d="M200,95 Q195,90 200,85 Q205,80 210,82" stroke="' + c1 + '" stroke-width="0.8" fill="none" opacity="0.5"/>' +
+                    '<path d="M160,100 L160,120 Q155,140 160,155 Q163,160 168,155 Q165,140 165,120" fill="' + c2 + '" opacity="0.3" stroke="' + c2 + '" stroke-width="0.5"/>' +
+                    '<path d="M80,130 Q85,180 75,230 Q70,260 65,290" stroke="' + c2 + '" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.65"/>' +
+                    '<path d="M115,140 Q118,200 110,260 Q108,280 105,310" stroke="' + c1 + '" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.55"/>' +
+                    '<path d="M145,145 Q148,210 142,275 Q140,295 137,320" stroke="' + c2 + '" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.6"/>' +
+                    '<path d="M175,145 Q172,210 178,275 Q180,295 183,320" stroke="' + c1 + '" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.55"/>' +
+                    '<path d="M205,140 Q202,200 210,260 Q212,280 215,310" stroke="' + c2 + '" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.65"/>' +
+                    '<path d="M240,130 Q235,180 245,230 Q250,260 255,290" stroke="' + c1 + '" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.5"/>' +
+                    '<path d="M90,132 Q100,155 88,175 Q100,190 90,210 Q100,225 92,245" stroke="' + c1 + '" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.35"/>' +
+                    '<path d="M230,132 Q220,155 232,175 Q220,190 230,210 Q220,225 228,245" stroke="' + c1 + '" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.35"/>' +
                     '</svg>';
                 },
                 parts: [
-                  { name: 'Bell (Medusa)', x: 50, y: 18, desc: 'Contracts rhythmically for jet propulsion. Made of mesoglea — a jelly-like substance that is 95% water.' },
-                  { name: 'Tentacles', x: 75, y: 65, desc: 'Lined with cnidocytes — stinging cells that fire harpoon-like nematocysts at 700 nanoseconds, fastest in nature.' },
-                  { name: 'Oral Arms', x: 30, y: 50, desc: 'Frilly appendages near the mouth that guide captured prey. In some species, they also contain stinging cells.' },
-                  { name: 'Gastrovascular Cavity', x: 50, y: 35, desc: 'A single opening serves as both mouth and anus. Digestion and nutrient distribution happen in this cavity.' },
-                  { name: 'Nerve Net', x: 50, y: 50, desc: 'No brain! A diffuse nerve net coordinates swimming pulses. Some have light-sensing structures called rhopalia.' },
-                  { name: 'Radial Symmetry', x: 50, y: 30, desc: 'Body is symmetrical around a central axis — no left/right. This ancient body plan predates bilateral symmetry.' }
+                  { name: 'Bell (Medusa)', x: 50, y: 10, desc: 'The dome-shaped body contracts rhythmically for jet propulsion. Made of mesoglea — 95% water with collagen fibers for elasticity.' },
+                  { name: 'Tentacles', x: 78, y: 60, desc: 'Trailing appendages lined with cnidocytes — stinging cells that fire nematocysts in 700 nanoseconds, among the fastest events in nature.' },
+                  { name: 'Oral Arms', x: 25, y: 50, desc: 'Frilly appendages near the mouth that capture food particles. In some species they fuse to form a feeding curtain.' },
+                  { name: 'Gastrovascular Cavity', x: 50, y: 33, desc: 'A central cavity serves as both stomach and circulatory system. One opening functions as both mouth and anus.' },
+                  { name: 'Nerve Net', x: 40, y: 22, desc: 'No brain, no central nervous system. A diffuse nerve net coordinates swimming contractions. Some species have rhopalia (light/gravity sensors).' },
+                  { name: 'Radial Canals', x: 65, y: 25, desc: 'Channels radiating from the central cavity to the bell margin, distributing nutrients. Their radial symmetry predates bilateral body plans by 200M+ years.' }
                 ]
               },
               crustacean: {
                 label: 'Crustacean (Arthropoda)',
                 svg: function(w,h,color) {
-                  return '<svg viewBox="0 0 350 250" xmlns="http://www.w3.org/2000/svg">' +
-                    '<defs><linearGradient id="crustG" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="' + (color||'#f97316') + '"/><stop offset="100%" stop-color="' + (color||'#dc2626') + '"/></linearGradient></defs>' +
-                    '<ellipse cx="175" cy="120" rx="80" ry="50" fill="url(#crustG)" stroke="#b91c1c" stroke-width="2"/>' +
-                    '<ellipse cx="100" cy="100" rx="35" ry="30" fill="' + (color||'#ef4444') + '" stroke="#b91c1c" stroke-width="2"/>' +
-                    '<path d="M70,90 Q30,50 20,40" stroke="' + (color||'#f97316') + '" stroke-width="3" fill="none" stroke-linecap="round"/>' +
-                    '<path d="M75,80 Q40,30 35,20" stroke="' + (color||'#f97316') + '" stroke-width="3" fill="none" stroke-linecap="round"/>' +
-                    '<circle cx="80" cy="85" r="6" fill="black"/><circle cx="81" cy="84" r="2" fill="white"/>' +
-                    '<line x1="130" y1="155" x2="120" y2="200" stroke="#b91c1c" stroke-width="3" stroke-linecap="round"/>' +
-                    '<line x1="160" y1="160" x2="155" y2="210" stroke="#b91c1c" stroke-width="3" stroke-linecap="round"/>' +
-                    '<line x1="190" y1="160" x2="195" y2="210" stroke="#b91c1c" stroke-width="3" stroke-linecap="round"/>' +
-                    '<line x1="220" y1="155" x2="230" y2="200" stroke="#b91c1c" stroke-width="3" stroke-linecap="round"/>' +
-                    '<ellipse cx="175" cy="120" rx="78" ry="48" fill="none" stroke="#fbbf24" stroke-width="1" stroke-dasharray="4,3" opacity="0.4"/>' +
+                  var c1 = color || '#f97316', c2 = color || '#dc2626';
+                  return '<svg viewBox="0 0 400 280" xmlns="http://www.w3.org/2000/svg">' +
+                    '<defs>' +
+                      '<linearGradient id="crustG" x1="0" y1="0" x2="0.5" y2="1"><stop offset="0%" stop-color="' + c1 + '"/><stop offset="100%" stop-color="' + c2 + '"/></linearGradient>' +
+                    '</defs>' +
+                    '<ellipse cx="200" cy="120" rx="100" ry="55" fill="url(#crustG)" stroke="#991b1b" stroke-width="2.5"/>' +
+                    '<path d="M200,67 Q200,75 195,85 Q190,90 200,90 Q210,90 205,85 Q200,75 200,67" fill="#991b1b" opacity="0.3"/>' +
+                    '<ellipse cx="200" cy="90" rx="60" ry="25" fill="none" stroke="#fbbf24" stroke-width="1" stroke-dasharray="5,3" opacity="0.4"/>' +
+                    '<ellipse cx="110" cy="105" rx="40" ry="32" fill="' + c1 + '" stroke="#991b1b" stroke-width="2"/>' +
+                    '<circle cx="82" cy="92" r="8" fill="black" stroke="#991b1b" stroke-width="1.5"/><circle cx="84" cy="90" r="3" fill="white" opacity="0.7"/>' +
+                    '<circle cx="95" cy="88" r="7" fill="black" stroke="#991b1b" stroke-width="1.5"/><circle cx="97" cy="86" r="2.5" fill="white" opacity="0.7"/>' +
+                    '<path d="M80,88 Q50,55 30,38 Q25,35 28,32 Q32,30 38,35 Q55,48 78,80" stroke="' + c1 + '" stroke-width="3.5" fill="none" stroke-linecap="round"/>' +
+                    '<path d="M85,82 Q60,40 48,22 Q45,18 48,15 Q52,13 55,18 Q65,35 82,75" stroke="' + c1 + '" stroke-width="3" fill="none" stroke-linecap="round"/>' +
+                    '<path d="M140,155 Q135,185 130,215 Q128,225 132,230 Q138,228 140,220 Q145,195 148,165" stroke="#991b1b" stroke-width="4" fill="none" stroke-linecap="round"/>' +
+                    '<path d="M170,162 Q168,192 165,225 Q163,235 168,238 Q174,236 175,228 Q178,198 178,168" stroke="#991b1b" stroke-width="4" fill="none" stroke-linecap="round"/>' +
+                    '<path d="M210,165 Q212,195 215,228 Q217,238 222,238 Q226,235 225,225 Q222,195 218,168" stroke="#991b1b" stroke-width="4" fill="none" stroke-linecap="round"/>' +
+                    '<path d="M245,162 Q248,190 252,218 Q254,226 258,225 Q262,222 260,215 Q255,188 250,160" stroke="#991b1b" stroke-width="3.5" fill="none" stroke-linecap="round"/>' +
+                    '<path d="M275,155 Q280,180 285,205 Q287,212 290,210 Q293,207 290,200 Q285,178 280,155" stroke="#991b1b" stroke-width="3" fill="none" stroke-linecap="round"/>' +
+                    '<path d="M285,100 Q310,95 335,100 Q340,108 335,115 Q310,108 290,115" fill="' + c1 + '" stroke="#991b1b" stroke-width="2" opacity="0.6"/>' +
                     '</svg>';
                 },
                 parts: [
-                  { name: 'Carapace (Exoskeleton)', x: 50, y: 30, desc: 'Hard outer shell made of chitin and calcium carbonate. Must be shed (molted) to grow — a vulnerable period.' },
-                  { name: 'Antennae', x: 15, y: 15, desc: 'Two pairs: long antennae detect touch and chemicals, short antennules sense orientation and balance.' },
-                  { name: 'Compound Eyes', x: 22, y: 35, desc: 'Thousands of individual lenses (ommatidia) create a mosaic image. Excellent at detecting motion.' },
-                  { name: 'Walking Legs', x: 45, y: 80, desc: 'Typically 5 pairs of jointed walking legs. The first pair may be modified into claws (chelipeds) for defense.' },
-                  { name: 'Swimmerets (Pleopods)', x: 60, y: 65, desc: 'Small appendages under the abdomen used for swimming, carrying eggs, and circulating water over gills.' },
-                  { name: 'Gills', x: 35, y: 55, desc: 'Located under the carapace. Crustacean gills are bathed in water drawn in by specialized appendages.' }
+                  { name: 'Carapace (Exoskeleton)', x: 50, y: 24, desc: 'Hardened shell of chitin and calcium carbonate. Must be molted (shed) to grow — the animal is soft and vulnerable for hours after.' },
+                  { name: 'Antennae (2 pairs)', x: 10, y: 11, desc: 'Long antennae detect touch, chemicals, and water currents. Short antennules sense gravity and balance via statocysts.' },
+                  { name: 'Compound Eyes', x: 22, y: 30, desc: 'Mounted on stalks with thousands of ommatidia (individual lenses). Excellent motion detection. Some species see polarized and UV light.' },
+                  { name: 'Walking Legs (Pereopods)', x: 42, y: 78, desc: 'Five pairs of jointed walking legs. First pair often modified into claws (chelipeds) for defense, feeding, and signaling.' },
+                  { name: 'Swimmerets (Pleopods)', x: 60, y: 60, desc: 'Small paddle-like appendages under the abdomen. Used for swimming, carrying eggs, and circulating water over abdominal gills.' },
+                  { name: 'Gills (under carapace)', x: 72, y: 38, desc: 'Feathery gills sit in chambers under the carapace. Appendages called scaphognathites act as pumps to draw water through.' }
                 ]
               },
               cephalopod: {
                 label: 'Cephalopod (Mollusca)',
                 svg: function(w,h,color) {
-                  return '<svg viewBox="0 0 300 320" xmlns="http://www.w3.org/2000/svg">' +
-                    '<defs><radialGradient id="cephG"><stop offset="0%" stop-color="' + (color||'#f472b6') + '"/><stop offset="100%" stop-color="' + (color||'#be185d') + '"/></radialGradient></defs>' +
-                    '<ellipse cx="150" cy="80" rx="60" ry="70" fill="url(#cephG)" stroke="#9d174d" stroke-width="2"/>' +
-                    '<circle cx="120" cy="65" r="15" fill="white" stroke="#1e293b" stroke-width="1.5"/><ellipse cx="122" cy="65" rx="5" ry="8" fill="#1e293b"/>' +
-                    '<circle cx="180" cy="65" r="15" fill="white" stroke="#1e293b" stroke-width="1.5"/><ellipse cx="182" cy="65" rx="5" ry="8" fill="#1e293b"/>' +
-                    '<path d="M110,150 Q100,220 80,290" stroke="#ec4899" stroke-width="5" fill="none" stroke-linecap="round"/>' +
-                    '<path d="M125,150 Q120,230 110,300" stroke="#f472b6" stroke-width="4" fill="none" stroke-linecap="round"/>' +
-                    '<path d="M140,152 Q140,235 130,305" stroke="#ec4899" stroke-width="5" fill="none" stroke-linecap="round"/>' +
-                    '<path d="M160,152 Q160,235 170,305" stroke="#f472b6" stroke-width="4" fill="none" stroke-linecap="round"/>' +
-                    '<path d="M175,150 Q180,230 190,300" stroke="#ec4899" stroke-width="5" fill="none" stroke-linecap="round"/>' +
-                    '<path d="M190,150 Q200,220 220,290" stroke="#f472b6" stroke-width="4" fill="none" stroke-linecap="round"/>' +
-                    '<circle cx="115" cy="90" r="4" fill="#f9a8d4" opacity="0.5"/>' +
-                    '<circle cx="150" cy="105" r="5" fill="#f9a8d4" opacity="0.4"/>' +
-                    '<circle cx="185" cy="88" r="4" fill="#f9a8d4" opacity="0.5"/>' +
+                  var c1 = color || '#f472b6', c2 = color || '#be185d';
+                  return '<svg viewBox="0 0 320 360" xmlns="http://www.w3.org/2000/svg">' +
+                    '<defs>' +
+                      '<radialGradient id="cephG" cx="50%" cy="35%"><stop offset="0%" stop-color="' + c1 + '" stop-opacity="0.8"/><stop offset="100%" stop-color="' + c2 + '"/></radialGradient>' +
+                    '</defs>' +
+                    '<path d="M100,130 Q80,70 100,30 Q130,5 160,5 Q190,5 220,30 Q240,70 220,130 Q210,145 200,150 Q160,158 120,150 Q110,145 100,130Z" fill="url(#cephG)" stroke="' + c2 + '" stroke-width="2"/>' +
+                    '<ellipse cx="160" cy="90" rx="40" ry="20" fill="rgba(255,255,255,0.06)"/>' +
+                    '<circle cx="125" cy="80" r="18" fill="white" stroke="#1e293b" stroke-width="2"/><ellipse cx="128" cy="80" rx="7" ry="11" fill="#1e293b"/><circle cx="130" cy="77" r="2.5" fill="white"/>' +
+                    '<circle cx="195" cy="80" r="18" fill="white" stroke="#1e293b" stroke-width="2"/><ellipse cx="198" cy="80" rx="7" ry="11" fill="#1e293b"/><circle cx="200" cy="77" r="2.5" fill="white"/>' +
+                    '<path d="M148,120 Q155,125 160,120 Q165,125 172,120" stroke="' + c2 + '" stroke-width="2" fill="none"/>' +
+                    '<path d="M160,130 Q158,140 155,148 Q160,155 165,148 Q162,140 160,130" fill="' + c2 + '" opacity="0.5"/>' +
+                    '<path d="M108,155 Q100,200 90,250 Q85,280 82,310 Q80,320 85,325 Q92,322 95,310 Q100,280 105,250 Q108,220 112,190" stroke="' + c1 + '" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.8"/>' +
+                    '<path d="M125,158 Q120,210 115,265 Q112,295 110,320 Q108,330 113,332 Q120,328 120,315 Q122,290 125,260 Q128,220 130,180" stroke="' + c2 + '" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.75"/>' +
+                    '<path d="M145,160 Q143,220 140,280 Q138,310 137,335 Q136,342 140,342 Q145,340 145,330 Q146,305 148,275 Q150,220 150,170" stroke="' + c1 + '" stroke-width="5.5" fill="none" stroke-linecap="round" opacity="0.8"/>' +
+                    '<path d="M175,160 Q177,220 180,280 Q182,310 183,335 Q184,342 180,342 Q175,340 175,330 Q174,305 172,275 Q170,220 170,170" stroke="' + c2 + '" stroke-width="5.5" fill="none" stroke-linecap="round" opacity="0.75"/>' +
+                    '<path d="M195,158 Q200,210 205,265 Q208,295 210,320 Q212,330 207,332 Q200,328 200,315 Q198,290 195,260 Q192,220 190,180" stroke="' + c1 + '" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.8"/>' +
+                    '<path d="M212,155 Q220,200 230,250 Q235,280 238,310 Q240,320 235,325 Q228,322 225,310 Q220,280 215,250 Q212,220 208,190" stroke="' + c2 + '" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.75"/>' +
+                    '<circle cx="95" cy="260" r="3" fill="rgba(255,255,255,0.3)"/>' +
+                    '<circle cx="115" cy="285" r="2.5" fill="rgba(255,255,255,0.25)"/>' +
+                    '<circle cx="145" cy="300" r="3" fill="rgba(255,255,255,0.3)"/>' +
+                    '<circle cx="180" cy="295" r="2.5" fill="rgba(255,255,255,0.25)"/>' +
+                    '<circle cx="210" cy="270" r="3" fill="rgba(255,255,255,0.3)"/>' +
+                    '<circle cx="225" cy="260" r="2" fill="rgba(255,255,255,0.2)"/>' +
+                    '<circle cx="130" cy="50" r="5" fill="' + c1 + '" opacity="0.25"/>' +
+                    '<circle cx="190" cy="45" r="6" fill="' + c1 + '" opacity="0.2"/>' +
+                    '<circle cx="160" cy="115" r="4" fill="' + c1 + '" opacity="0.15"/>' +
                     '</svg>';
                 },
                 parts: [
-                  { name: 'Mantle', x: 50, y: 12, desc: 'Muscular body that houses organs. Contracts to jet water through the siphon for high-speed escape.' },
-                  { name: 'Arms/Tentacles', x: 30, y: 70, desc: 'Eight arms lined with suckers containing chemoreceptors — they can taste what they touch.' },
-                  { name: 'Siphon (Funnel)', x: 55, y: 48, desc: 'Jet propulsion nozzle. Water is drawn into the mantle, then forcefully expelled for rapid movement.' },
-                  { name: 'Camera Eyes', x: 40, y: 20, desc: 'Remarkably similar to vertebrate eyes — evolved independently. Can see polarized light invisible to humans.' },
-                  { name: 'Chromatophores', x: 60, y: 30, desc: 'Pigment-filled cells that expand/contract in milliseconds, creating instant color changes and patterns for camouflage.' },
-                  { name: 'Three Hearts', x: 50, y: 35, desc: 'Two branchial hearts pump blood through gills. One systemic heart circulates blood to the body. Blood is copper-based (blue).' },
-                  { name: 'Beak', x: 50, y: 47, desc: 'A hard, parrot-like beak made of chitin. The only hard part of an octopus — it can squeeze through any hole its beak fits.' }
+                  { name: 'Mantle', x: 50, y: 8, desc: 'Muscular body housing all organs. Contracts forcefully to jet water through the siphon, achieving speeds up to 40 km/h in squids.' },
+                  { name: 'Arms (8) with Suckers', x: 25, y: 60, desc: 'Eight arms lined with suckers containing chemoreceptors — they can taste what they touch. Each sucker can exert tremendous grip force.' },
+                  { name: 'Siphon (Funnel)', x: 50, y: 40, desc: 'A muscular nozzle for jet propulsion. Water is drawn into the mantle cavity, then expelled forcefully. Also ejects ink for escape.' },
+                  { name: 'Camera Eyes', x: 38, y: 22, desc: 'Evolved independently from vertebrate eyes but are structurally similar. No blind spot (unlike human eyes). Can see polarized light.' },
+                  { name: 'Chromatophores', x: 60, y: 15, desc: 'Thousands of pigment-filled sacs that expand/contract in milliseconds. Controlled directly by the brain for instant camouflage, signaling, and hypnotic hunting displays.' },
+                  { name: 'Three Hearts', x: 50, y: 30, desc: 'Two branchial hearts push blood through the gills. One systemic heart circulates oxygenated blood. Blood is copper-based (hemocyanin) — it is blue.' },
+                  { name: 'Beak', x: 50, y: 36, desc: 'A hard, parrot-like beak of chitin — the only rigid structure. An octopus can squeeze through any gap larger than its beak.' }
                 ]
               },
               echinoderm: {
-                label: 'Echinoderm',
+                label: 'Echinoderm (Asteroidea)',
                 svg: function(w,h,color) {
-                  return '<svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">' +
-                    '<defs><linearGradient id="echiG" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="' + (color||'#f97316') + '"/><stop offset="100%" stop-color="' + (color||'#ea580c') + '"/></linearGradient></defs>' +
-                    '<polygon points="150,20 170,100 250,100 185,145 210,225 150,175 90,225 115,145 50,100 130,100" fill="url(#echiG)" stroke="#c2410c" stroke-width="2" stroke-linejoin="round"/>' +
-                    '<circle cx="150" cy="130" r="20" fill="#fed7aa" stroke="#c2410c" stroke-width="1.5"/>' +
-                    '<circle cx="150" cy="130" r="5" fill="#c2410c"/>' +
-                    '<circle cx="150" cy="38" r="4" fill="#c2410c" opacity="0.7"/>' +
-                    '<circle cx="243" cy="105" r="4" fill="#c2410c" opacity="0.7"/>' +
-                    '<circle cx="205" cy="215" r="4" fill="#c2410c" opacity="0.7"/>' +
-                    '<circle cx="95" cy="215" r="4" fill="#c2410c" opacity="0.7"/>' +
-                    '<circle cx="57" cy="105" r="4" fill="#c2410c" opacity="0.7"/>' +
+                  var c1 = color || '#f97316', c2 = color || '#ea580c';
+                  return '<svg viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg">' +
+                    '<defs>' +
+                      '<linearGradient id="echiG" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="' + c1 + '"/><stop offset="100%" stop-color="' + c2 + '"/></linearGradient>' +
+                      '<radialGradient id="echiCenter"><stop offset="0%" stop-color="#fed7aa"/><stop offset="100%" stop-color="' + c2 + '"/></radialGradient>' +
+                    '</defs>' +
+                    '<path d="M160,15 Q170,60 178,85 L195,95 Q240,80 275,68 Q285,68 285,75 Q280,82 240,105 L225,118 Q235,140 245,175 Q250,195 248,200 Q242,205 235,195 Q215,162 200,140 L185,138 Q170,155 160,175 Q150,155 135,138 L120,140 Q105,162 85,195 Q78,205 72,200 Q70,195 75,175 Q85,140 95,118 L80,105 Q40,82 35,75 Q35,68 45,68 Q80,80 125,95 L142,85 Q150,60 160,15Z" fill="url(#echiG)" stroke="#c2410c" stroke-width="2.5" stroke-linejoin="round"/>' +
+                    '<circle cx="160" cy="135" r="22" fill="url(#echiCenter)" stroke="#c2410c" stroke-width="2"/>' +
+                    '<circle cx="160" cy="135" r="5" fill="#c2410c"/>' +
+                    '<circle cx="160" cy="22" r="4" fill="#fbbf24" stroke="#c2410c" stroke-width="1" opacity="0.8"/>' +
+                    '<circle cx="278" cy="72" r="4" fill="#fbbf24" stroke="#c2410c" stroke-width="1" opacity="0.8"/>' +
+                    '<circle cx="245" cy="197" r="4" fill="#fbbf24" stroke="#c2410c" stroke-width="1" opacity="0.8"/>' +
+                    '<circle cx="75" cy="197" r="4" fill="#fbbf24" stroke="#c2410c" stroke-width="1" opacity="0.8"/>' +
+                    '<circle cx="42" cy="72" r="4" fill="#fbbf24" stroke="#c2410c" stroke-width="1" opacity="0.8"/>' +
+                    '<line x1="160" y1="113" x2="160" y2="25" stroke="#c2410c" stroke-width="0.8" stroke-dasharray="3,3" opacity="0.4"/>' +
+                    '<line x1="178" y1="122" x2="275" y2="72" stroke="#c2410c" stroke-width="0.8" stroke-dasharray="3,3" opacity="0.4"/>' +
+                    '<line x1="172" y1="152" x2="242" y2="195" stroke="#c2410c" stroke-width="0.8" stroke-dasharray="3,3" opacity="0.4"/>' +
+                    '<line x1="148" y1="152" x2="78" y2="195" stroke="#c2410c" stroke-width="0.8" stroke-dasharray="3,3" opacity="0.4"/>' +
+                    '<line x1="142" y1="122" x2="45" y2="72" stroke="#c2410c" stroke-width="0.8" stroke-dasharray="3,3" opacity="0.4"/>' +
+                    '<circle cx="155" cy="128" r="3" fill="#fde68a" opacity="0.6"/>' +
                     '</svg>';
                 },
                 parts: [
-                  { name: 'Water Vascular System', x: 50, y: 43, desc: 'A unique hydraulic system. Seawater fills internal canals that power hundreds of small tube feet.' },
-                  { name: 'Tube Feet', x: 25, y: 50, desc: 'Tiny suction-cup appendages. Coordinated hydraulic pressure lets sea stars pry open clam shells.' },
-                  { name: 'Madreporite', x: 50, y: 12, desc: 'A sieve plate on top that lets seawater enter the water vascular system. Visible as a small dot.' },
-                  { name: 'Pentaradial Symmetry', x: 75, y: 35, desc: 'Five-fold body symmetry — no front or back. Adults develop this from bilateral larval forms.' },
-                  { name: 'Eyespots', x: 50, y: 8, desc: 'Simple light-sensing organs at each arm tip. Cannot form images but detect light and shadow.' },
-                  { name: 'Regeneration', x: 35, y: 70, desc: 'Can regrow entire arms. Some species can regenerate a whole new body from a single arm and central disc.' }
+                  { name: 'Water Vascular System', x: 50, y: 42, desc: 'A hydraulic network unique to echinoderms. Seawater enters through the madreporite and fills radial canals powering hundreds of tube feet.' },
+                  { name: 'Tube Feet', x: 30, y: 42, desc: 'Tiny suction-cup appendages powered by hydraulic pressure. Coordinated movement can pry open clam shells with sustained force of 5+ kg.' },
+                  { name: 'Madreporite', x: 48, y: 38, desc: 'A small sieve plate (visible as a pale dot) that filters seawater into the water vascular system. Located off-center on the aboral surface.' },
+                  { name: 'Eyespots', x: 50, y: 5, desc: 'Simple photoreceptors at each arm tip — bright spots visible at extremities. Cannot form images but detect light direction and intensity.' },
+                  { name: 'Pentaradial Symmetry', x: 85, y: 22, desc: 'Five-fold body plan. Adults develop this from bilateral larvae — a unique metamorphosis among animals. No front, back, or sides.' },
+                  { name: 'Regeneration Zone', x: 24, y: 60, desc: 'Can regrow entire arms from the central disc. Some species regenerate a complete animal from a single arm. Process takes months to years.' }
                 ]
               },
               cetacean: {
                 label: 'Marine Mammal (Cetacea)',
                 svg: function(w,h,color) {
-                  return '<svg viewBox="0 0 420 200" xmlns="http://www.w3.org/2000/svg">' +
-                    '<defs><linearGradient id="cetG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#64748b"/><stop offset="70%" stop-color="#94a3b8"/><stop offset="100%" stop-color="#e2e8f0"/></linearGradient></defs>' +
-                    '<path d="M40,100 Q60,60 120,70 Q200,55 280,75 Q340,85 380,85 Q400,70 410,55 L410,85 Q400,100 410,145 Q400,130 380,115 Q340,115 280,125 Q200,145 120,130 Q60,140 40,100Z" fill="url(#cetG)" stroke="#475569" stroke-width="2"/>' +
-                    '<circle cx="90" cy="95" r="6" fill="white"/><circle cx="92" cy="95" r="3" fill="#0f172a"/>' +
-                    '<ellipse cx="75" cy="75" rx="6" ry="3" fill="#64748b" stroke="#475569"/>' +
-                    '<ellipse cx="160" cy="118" rx="20" ry="8" fill="#94a3b8" stroke="#475569" stroke-width="1.5" transform="rotate(-15,160,118)"/>' +
+                  return '<svg viewBox="0 0 480 220" xmlns="http://www.w3.org/2000/svg">' +
+                    '<defs>' +
+                      '<linearGradient id="cetG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#64748b"/><stop offset="55%" stop-color="#94a3b8"/><stop offset="100%" stop-color="#e2e8f0"/></linearGradient>' +
+                    '</defs>' +
+                    '<path d="M35,110 Q45,72 80,62 Q120,52 170,55 Q230,52 290,62 Q340,72 370,85 Q400,95 420,100 Q440,95 455,78 Q462,70 465,72 Q465,80 460,92 Q455,105 455,115 Q460,130 465,148 Q465,150 462,150 Q455,142 440,125 Q420,120 400,125 Q370,135 340,148 Q290,162 230,168 Q170,168 120,162 Q80,155 45,142 Q35,135 35,110Z" fill="url(#cetG)" stroke="#475569" stroke-width="2.5"/>' +
+                    '<path d="M35,112 Q45,135 80,150 Q120,160 170,165 Q230,168 290,162 Q340,148 370,135 Q400,125 420,120" fill="#e2e8f0" opacity="0.35"/>' +
+                    '<path d="M260,60 Q265,42 272,30 Q278,24 284,28 Q288,35 288,48 Q286,58 282,65" fill="#94a3b8" stroke="#475569" stroke-width="1.5" opacity="0.8"/>' +
+                    '<circle cx="65" cy="100" r="7" fill="white" stroke="#1e293b" stroke-width="1.5"/><circle cx="67" cy="100" r="3.5" fill="#0f172a"/>' +
+                    '<ellipse cx="58" cy="72" rx="8" ry="4" fill="#64748b" stroke="#475569" stroke-width="1.5" opacity="0.8"/>' +
+                    '<path d="M140,145 Q128,162 118,172 Q112,175 113,170 Q118,158 130,142" fill="#94a3b8" stroke="#475569" stroke-width="1.5" opacity="0.7"/>' +
+                    '<path d="M150,148 Q142,162 135,170 Q130,172 131,168 Q136,158 145,146" fill="#94a3b8" stroke="#475569" stroke-width="1.2" opacity="0.6"/>' +
+                    '<path d="M35,108 Q42,100 50,98 Q55,102 48,110" fill="#94a3b8" stroke="#475569" stroke-width="1" opacity="0.5"/>' +
+                    '<ellipse cx="100" cy="95" rx="25" ry="15" fill="rgba(255,255,255,0.05)" stroke="#475569" stroke-width="0.5" stroke-dasharray="4,4" />' +
                     '</svg>';
                 },
                 parts: [
-                  { name: 'Blowhole', x: 17, y: 32, desc: 'Modified nostril on top of the head. Voluntary breathing — they must consciously surface. Closes watertight when diving.' },
-                  { name: 'Melon (Echolocation)', x: 25, y: 40, desc: 'Oil-filled structure in the forehead that focuses clicking sounds into a beam for echolocation (biosonar).' },
-                  { name: 'Dorsal Fin', x: 55, y: 28, desc: 'Helps with stability and thermoregulation. Made of dense connective tissue, not bone. Shape identifies species.' },
-                  { name: 'Fluke (Tail)', x: 95, y: 35, desc: 'Horizontal tail fin that moves up-and-down (not side-to-side like fish). Powered by massive back muscles.' },
-                  { name: 'Pectoral Flippers', x: 37, y: 58, desc: 'Modified forelimbs with the same bones as a human arm (humerus, radius, ulna, fingers). Used for steering.' },
-                  { name: 'Blubber Layer', x: 50, y: 55, desc: 'Thick fat layer providing insulation, energy storage, and buoyancy. Can be 50cm thick in Arctic whales.' }
+                  { name: 'Blowhole', x: 12, y: 28, desc: 'Modified nostril(s) on top of skull. Breathing is voluntary — cetaceans must consciously surface. Only half the brain sleeps at a time (unihemispheric sleep).' },
+                  { name: 'Melon (Echolocation)', x: 20, y: 40, desc: 'A fatty, oil-filled lens in the forehead that focuses outgoing clicks into a directional beam. Returning echoes are received through the lower jaw.' },
+                  { name: 'Dorsal Fin', x: 57, y: 12, desc: 'Dense connective tissue (no bone). Used for thermoregulation — blood vessels release or retain heat. Shape and nicks identify individuals.' },
+                  { name: 'Fluke (Tail)', x: 95, y: 38, desc: 'Horizontal tail moved up-and-down by powerful back muscles (not side-to-side like fish). No bones — pure collagen and connective tissue.' },
+                  { name: 'Pectoral Flippers', x: 30, y: 68, desc: 'Modified forelimbs containing humerus, radius, ulna, and finger bones — the same skeletal plan as a human arm, adapted for steering and braking.' },
+                  { name: 'Blubber Layer', x: 50, y: 55, desc: 'Thick subcutaneous fat providing insulation, energy storage, buoyancy, and streamlining. Up to 50 cm thick in Arctic species like bowhead whales.' }
                 ]
               },
               chelonian: {
-                label: 'Sea Turtle (Reptilia)',
+                label: 'Sea Turtle (Testudines)',
                 svg: function(w,h,color) {
-                  return '<svg viewBox="0 0 350 250" xmlns="http://www.w3.org/2000/svg">' +
-                    '<defs><linearGradient id="turtG" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#65a30d"/><stop offset="100%" stop-color="#365314"/></linearGradient></defs>' +
-                    '<ellipse cx="175" cy="125" rx="95" ry="65" fill="url(#turtG)" stroke="#1a2e05" stroke-width="2.5"/>' +
-                    '<path d="M175,62 L215,70 L225,100 L210,125 L175,130 L140,125 L125,100 L135,70Z" fill="none" stroke="#3f6212" stroke-width="1.5" opacity="0.6"/>' +
-                    '<ellipse cx="90" cy="105" rx="30" ry="15" fill="#4d7c0f" stroke="#365314" stroke-width="2" transform="rotate(-30,90,105)"/>' +
-                    '<ellipse cx="260" cy="105" rx="30" ry="15" fill="#4d7c0f" stroke="#365314" stroke-width="2" transform="rotate(30,260,105)"/>' +
-                    '<ellipse cx="100" cy="170" rx="25" ry="12" fill="#4d7c0f" stroke="#365314" stroke-width="2" transform="rotate(20,100,170)"/>' +
-                    '<ellipse cx="250" cy="170" rx="25" ry="12" fill="#4d7c0f" stroke="#365314" stroke-width="2" transform="rotate(-20,250,170)"/>' +
-                    '<circle cx="70" cy="90" r="12" fill="#4d7c0f" stroke="#365314" stroke-width="2"/>' +
-                    '<circle cx="65" cy="87" r="4" fill="black"/><circle cx="64" cy="86" r="1.5" fill="white"/>' +
+                  return '<svg viewBox="0 0 400 280" xmlns="http://www.w3.org/2000/svg">' +
+                    '<defs>' +
+                      '<linearGradient id="turtG" x1="0.2" y1="0" x2="0.8" y2="1"><stop offset="0%" stop-color="#65a30d"/><stop offset="50%" stop-color="#3f6212"/><stop offset="100%" stop-color="#365314"/></linearGradient>' +
+                      '<linearGradient id="turtSkin" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#4d7c0f"/><stop offset="100%" stop-color="#365314"/></linearGradient>' +
+                    '</defs>' +
+                    '<ellipse cx="200" cy="140" rx="110" ry="72" fill="url(#turtG)" stroke="#1a2e05" stroke-width="3"/>' +
+                    '<path d="M200,70 L240,80 L260,105 L252,132 L220,148 L200,152 L180,148 L148,132 L140,105 L160,80Z" fill="none" stroke="#4d7c0f" stroke-width="2" opacity="0.5"/>' +
+                    '<line x1="200" y1="70" x2="200" y2="152" stroke="#4d7c0f" stroke-width="1.2" opacity="0.3"/>' +
+                    '<line x1="140" y1="105" x2="260" y2="105" stroke="#4d7c0f" stroke-width="1.2" opacity="0.3"/>' +
+                    '<line x1="160" y1="80" x2="220" y2="148" stroke="#4d7c0f" stroke-width="0.8" opacity="0.2"/>' +
+                    '<line x1="240" y1="80" x2="180" y2="148" stroke="#4d7c0f" stroke-width="0.8" opacity="0.2"/>' +
+                    '<path d="M94,105 Q62,90 38,85 Q25,85 22,92 Q22,100 30,105 Q40,110 55,112" fill="url(#turtSkin)" stroke="#365314" stroke-width="2" opacity="0.9"/>' +
+                    '<path d="M306,105 Q338,90 362,85 Q375,85 378,92 Q378,100 370,105 Q360,110 345,112" fill="url(#turtSkin)" stroke="#365314" stroke-width="2" opacity="0.9"/>' +
+                    '<path d="M115,190 Q95,210 82,225 Q78,230 82,232 Q88,230 100,218 Q112,202 120,192" fill="url(#turtSkin)" stroke="#365314" stroke-width="2" opacity="0.85"/>' +
+                    '<path d="M285,190 Q305,210 318,225 Q322,230 318,232 Q312,230 300,218 Q288,202 280,192" fill="url(#turtSkin)" stroke="#365314" stroke-width="2" opacity="0.85"/>' +
+                    '<circle cx="32" cy="92" r="14" fill="#4d7c0f" stroke="#365314" stroke-width="2"/>' +
+                    '<circle cx="28" cy="88" r="5" fill="black" stroke="#1a2e05" stroke-width="1"/><circle cx="27" cy="87" r="2" fill="white" opacity="0.6"/>' +
+                    '<circle cx="26" cy="95" r="3" fill="#e2e8f0" opacity="0.3" stroke="#365314" stroke-width="0.5"/>' +
                     '</svg>';
                 },
                 parts: [
-                  { name: 'Carapace (Shell)', x: 50, y: 25, desc: 'Fused ribs and vertebrae covered in keratinous scutes. Cannot retract into shell like land turtles.' },
-                  { name: 'Flippers', x: 22, y: 40, desc: 'Elongated forelimbs act as hydrofoils for underwater flight. Can swim up to 35 km/h in bursts.' },
-                  { name: 'Salt Glands', x: 20, y: 35, desc: 'Located near the eyes, they excrete concentrated salt — this is why sea turtles appear to cry.' },
-                  { name: 'Magnetic Navigation', x: 50, y: 50, desc: 'Magnetite crystals in the brain detect Earth\'s magnetic field. Hatchlings imprint their natal beach\'s magnetic signature.' },
-                  { name: 'Scutes', x: 55, y: 28, desc: 'Keratinous plates covering the shell. Growth rings on scutes can help estimate age in some species.' },
-                  { name: 'Plastron (Belly)', x: 50, y: 65, desc: 'The flat underside of the shell. More streamlined in sea turtles than land turtles for hydrodynamics.' }
+                  { name: 'Carapace (Shell)', x: 50, y: 25, desc: 'Fused vertebrae and ribs covered in keratinous scutes. Unlike land turtles, sea turtles cannot retract into their shell — it is streamlined for swimming.' },
+                  { name: 'Front Flippers', x: 8, y: 33, desc: 'Elongated forelimbs used for powerful underwater flight. Leatherbacks can dive to 1,280 meters. Front flippers generate all thrust.' },
+                  { name: 'Rear Flippers', x: 20, y: 80, desc: 'Shorter and rounder than front flippers. Used as rudders for steering. Females use them to dig egg chambers on nesting beaches.' },
+                  { name: 'Salt Glands', x: 7, y: 32, desc: 'Orbital glands near the eyes excrete concentrated salt — this is why sea turtles appear to cry. Excreted salt is twice as concentrated as seawater.' },
+                  { name: 'Scute Pattern', x: 40, y: 28, desc: 'Keratinous plates in species-specific arrangements. The pattern helps identify species. Growth rings on scutes record age like tree rings.' },
+                  { name: 'Magnetic Navigation', x: 50, y: 55, desc: 'Magnetite crystals in the brain create an internal compass. Hatchlings imprint their natal beach\'s unique magnetic signature and return decades later to nest.' }
                 ]
               }
             };
