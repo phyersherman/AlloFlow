@@ -18591,6 +18591,30 @@
             var searchTerm = (d.search || '').toLowerCase();
             var complexity = d.complexity || 3;
 
+            // ── Layer Transparency System ──
+            var LAYER_DEFS = [
+              { id: 'skin', icon: '\uD83E\uDDB4', name: 'Skin', color: '#f5e6d3', accent: '#c4aa94' },
+              { id: 'skeletal', icon: '\uD83E\uDDB4', name: 'Skeletal', color: '#e2e8f0', accent: '#94a3b8', systems: ['skeletal'] },
+              { id: 'muscular', icon: '\uD83D\uDCAA', name: 'Muscular', color: '#fecaca', accent: '#dc2626', systems: ['muscular'] },
+              { id: 'organs', icon: '\uD83E\uDEC1', name: 'Organs', color: '#d1fae5', accent: '#16a34a', systems: ['digestive', 'respiratory', 'endocrine', 'reproductive'] },
+              { id: 'circulatory', icon: '\u2764\uFE0F', name: 'Circulatory', color: '#fee2e2', accent: '#ef4444', systems: ['circulatory'] },
+              { id: 'nervous', icon: '\u26A1', name: 'Nervous', color: '#fef9c3', accent: '#eab308', systems: ['nervous'] },
+              { id: 'lymphatic', icon: '\uD83D\uDFE2', name: 'Lymphatic', color: '#d1fae5', accent: '#22c55e', systems: ['lymphatic', 'integumentary'] }
+            ];
+            var layers = d.visibleLayers || { skin: true };
+            var toggleLayer = function (lid) {
+              var newLayers = Object.assign({}, layers);
+              newLayers[lid] = !newLayers[lid];
+              upd('visibleLayers', newLayers);
+            };
+            // Auto-activate layer matching current system
+            var autoLayerId = null;
+            LAYER_DEFS.forEach(function (ld) {
+              if (ld.systems && ld.systems.indexOf(sysKey) !== -1) autoLayerId = ld.id;
+            });
+            var anyDeepLayer = LAYER_DEFS.some(function (ld) { return ld.id !== 'skin' && (layers[ld.id] || ld.id === autoLayerId); });
+            var skinOpacity = anyDeepLayer ? 0.20 : 1.0;
+
             // Complexity level lookup — structures shown at each tier
             var ELEMENTARY_IDS = ['skull', 'ribs', 'femur', 'humerus', 'vertebral', 'pelvis', 'biceps', 'quads', 'heart', 'brain', 'lungs', 'stomach', 'kidneys', 'spinal_cord', 'deltoid', 'hamstrings', 'gastrocnemius', 'aorta', 'carotid', 'sciatic', 'liver', 'diaphragm', 'spleen', 'thymus', 'epidermis', 'dermis', 'trachea', 'alveoli', 'pituitary', 'uterus', 'testes_repro', 'mammary'];
             var MIDDLE_IDS = ELEMENTARY_IDS.concat(['mandible', 'clavicle', 'sternum', 'scapula', 'radius', 'ulna', 'tibia', 'fibula', 'patella', 'tarsals', 'carpals', 'sacrum', 'pectoralis', 'triceps', 'rectus_ab', 'obliques', 'trapezius', 'lats', 'glutes', 'tibialis', 'soleus', 'sartorius', 'sup_vena', 'inf_vena', 'pulm_art', 'jugular', 'coronary', 'femoral_a', 'brachial', 'portal', 'vagus', 'brachial_plexus', 'median', 'ulnar_n', 'femoral_n', 'cranial_n', 'sympathetic', 'sm_intestine', 'lg_intestine', 'pancreas', 'gallbladder', 'bladder', 'thyroid', 'adrenals', 'cervical_ln', 'axillary_ln', 'inguinal_ln', 'thoracic_duct', 'bone_marrow', 'hyoid', 'atlas_axis', 'metatarsals', 'metacarpals', 'scaphoid_bone', 'rotator_cuff', 'iliopsoas', 'intercostals', 'pelvic_floor', 'diaphragm_m', 'circle_willis', 'saphenous', 'lymph_circ', 'hypodermis', 'hair_follicle', 'sweat_glands', 'sebaceous', 'nails', 'melanocytes', 'nasal_cavity', 'pharynx', 'larynx', 'bronchi', 'pleura', 'resp_muscles', 'pineal', 'parathyroid', 'islets', 'ovaries_endo', 'testes_endo', 'hypothal_endo', 'adrenal_endo', 'epididymis', 'prostate', 'ovaries_repro', 'fallopian', 'placenta']);
@@ -18629,7 +18653,9 @@
                 ctx.clearRect(0, 0, W, H);
 
                 // ── Enhanced Anatomical Figure ──
+                // Apply skin layer opacity
                 ctx.save();
+                ctx.globalAlpha = skinOpacity;
                 ctx.lineJoin = 'round';
                 ctx.lineCap = 'round';
 
@@ -18876,119 +18902,185 @@
                   c.moveTo(W * 0.70, H * 0.935); c.lineTo(W * 0.72, H * 0.955); c.quadraticCurveTo(W * 0.70, H * 0.965, W * 0.62, H * 0.96); c.lineTo(W * 0.61, H * 0.935); c.closePath();
                 });
 
-                // ── System-specific overlay ──
-                ctx.globalAlpha = 0.30;
-                if (sysKey === 'skeletal') {
-                  // Spine line
-                  ctx.beginPath();
-                  ctx.moveTo(W * 0.50, H * 0.10);
-                  for (var si = 0; si < 18; si++) {
-                    var sy = H * (0.11 + si * 0.018);
-                    ctx.lineTo(W * (0.50 + Math.sin(si * 0.3) * 0.003), sy);
-                  }
-                  ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 3; ctx.stroke();
-                  // Vertebra marks
-                  for (var vi2 = 0; vi2 < 18; vi2++) {
-                    var vy2 = H * (0.11 + vi2 * 0.018);
-                    ctx.beginPath();
-                    ctx.moveTo(W * 0.48, vy2); ctx.lineTo(W * 0.52, vy2);
-                    ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 1.5; ctx.stroke();
-                  }
-                  // Pelvis outline
-                  ctx.beginPath();
-                  ctx.moveTo(W * 0.40, H * 0.39); ctx.quadraticCurveTo(W * 0.36, H * 0.42, W * 0.38, H * 0.45);
-                  ctx.quadraticCurveTo(W * 0.44, H * 0.46, W * 0.50, H * 0.44);
-                  ctx.quadraticCurveTo(W * 0.56, H * 0.46, W * 0.62, H * 0.45);
-                  ctx.quadraticCurveTo(W * 0.64, H * 0.42, W * 0.60, H * 0.39);
-                  ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 2; ctx.stroke();
+                // ── Restore skin save & draw system-specific overlays (layer-aware) ──
+                ctx.restore(); // end skin opacity group
+                ctx.globalAlpha = 1.0;
+
+                // Helper: check if a layer should render
+                function layerOn(lid) { return layers[lid] || lid === autoLayerId; }
+
+                // ── SKELETAL LAYER ──
+                if (layerOn('skeletal')) {
+                  ctx.save(); ctx.globalAlpha = 0.45;
+                  // Spine
+                  ctx.beginPath(); ctx.moveTo(W * 0.50, H * 0.10);
+                  for (var si = 0; si < 18; si++) { var sy = H * (0.11 + si * 0.018); ctx.lineTo(W * (0.50 + Math.sin(si * 0.3) * 0.003), sy); }
+                  ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 3.5; ctx.stroke();
+                  for (var vi2 = 0; vi2 < 18; vi2++) { var vy2 = H * (0.11 + vi2 * 0.018); ctx.beginPath(); ctx.moveTo(W * 0.48, vy2); ctx.lineTo(W * 0.52, vy2); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2; ctx.stroke(); }
+                  // Skull outline
+                  ctx.beginPath(); ctx.arc(W * 0.50, H * 0.055, W * 0.046, 0, Math.PI * 2);
+                  ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2; ctx.stroke();
+                  // Rib cage
+                  for (var ri2 = 0; ri2 < 6; ri2++) { var ry2 = H * (0.175 + ri2 * 0.025); ctx.beginPath(); ctx.moveTo(W * 0.43, ry2); ctx.quadraticCurveTo(W * 0.38, ry2 + H * 0.01, W * 0.36, ry2 + H * 0.005); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.3; ctx.stroke(); ctx.beginPath(); ctx.moveTo(W * 0.57, ry2); ctx.quadraticCurveTo(W * 0.62, ry2 + H * 0.01, W * 0.64, ry2 + H * 0.005); ctx.stroke(); }
+                  // Pelvis
+                  ctx.beginPath(); ctx.moveTo(W * 0.40, H * 0.39); ctx.quadraticCurveTo(W * 0.36, H * 0.42, W * 0.38, H * 0.45); ctx.quadraticCurveTo(W * 0.44, H * 0.46, W * 0.50, H * 0.44); ctx.quadraticCurveTo(W * 0.56, H * 0.46, W * 0.62, H * 0.45); ctx.quadraticCurveTo(W * 0.64, H * 0.42, W * 0.60, H * 0.39);
+                  ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2.5; ctx.stroke();
                   // Clavicles
+                  ctx.beginPath(); ctx.moveTo(W * 0.42, H * 0.138); ctx.quadraticCurveTo(W * 0.36, H * 0.132, W * 0.30, H * 0.145); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2; ctx.stroke();
+                  ctx.beginPath(); ctx.moveTo(W * 0.58, H * 0.138); ctx.quadraticCurveTo(W * 0.64, H * 0.132, W * 0.70, H * 0.145); ctx.stroke();
+                  // Femur lines
+                  ctx.beginPath(); ctx.moveTo(W * 0.44, H * 0.46); ctx.lineTo(W * 0.40, H * 0.66); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2.5; ctx.stroke();
+                  ctx.beginPath(); ctx.moveTo(W * 0.56, H * 0.46); ctx.lineTo(W * 0.60, H * 0.66); ctx.stroke();
+                  // Tibia/fibula
+                  ctx.beginPath(); ctx.moveTo(W * 0.40, H * 0.68); ctx.lineTo(W * 0.37, H * 0.90); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2; ctx.stroke();
+                  ctx.beginPath(); ctx.moveTo(W * 0.41, H * 0.68); ctx.lineTo(W * 0.39, H * 0.90); ctx.strokeStyle = '#b0bec5'; ctx.lineWidth = 1.2; ctx.stroke();
+                  ctx.beginPath(); ctx.moveTo(W * 0.60, H * 0.68); ctx.lineTo(W * 0.63, H * 0.90); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2; ctx.stroke();
+                  ctx.beginPath(); ctx.moveTo(W * 0.59, H * 0.68); ctx.lineTo(W * 0.61, H * 0.90); ctx.strokeStyle = '#b0bec5'; ctx.lineWidth = 1.2; ctx.stroke();
+                  // Humerus
+                  ctx.beginPath(); ctx.moveTo(W * 0.30, H * 0.16); ctx.lineTo(W * 0.22, H * 0.34); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2; ctx.stroke();
+                  ctx.beginPath(); ctx.moveTo(W * 0.70, H * 0.16); ctx.lineTo(W * 0.78, H * 0.34); ctx.stroke();
+                  // Radius/ulna
+                  ctx.beginPath(); ctx.moveTo(W * 0.22, H * 0.35); ctx.lineTo(W * 0.17, H * 0.46); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5; ctx.stroke();
+                  ctx.beginPath(); ctx.moveTo(W * 0.23, H * 0.35); ctx.lineTo(W * 0.18, H * 0.46); ctx.strokeStyle = '#b0bec5'; ctx.lineWidth = 1; ctx.stroke();
+                  ctx.beginPath(); ctx.moveTo(W * 0.78, H * 0.35); ctx.lineTo(W * 0.83, H * 0.46); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5; ctx.stroke();
+                  ctx.beginPath(); ctx.moveTo(W * 0.77, H * 0.35); ctx.lineTo(W * 0.82, H * 0.46); ctx.strokeStyle = '#b0bec5'; ctx.lineWidth = 1; ctx.stroke();
+                  ctx.restore();
+                }
+
+                // ── MUSCULAR LAYER ──
+                if (layerOn('muscular')) {
+                  ctx.save(); ctx.globalAlpha = 0.40;
+                  // Pecs
+                  ctx.beginPath(); ctx.moveTo(W * 0.37, H * 0.14); ctx.quadraticCurveTo(W * 0.42, H * 0.20, W * 0.49, H * 0.20); ctx.quadraticCurveTo(W * 0.46, H * 0.17, W * 0.37, H * 0.14);
+                  ctx.fillStyle = '#fca5a5'; ctx.fill(); ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 1.2; ctx.stroke();
+                  ctx.beginPath(); ctx.moveTo(W * 0.63, H * 0.14); ctx.quadraticCurveTo(W * 0.58, H * 0.20, W * 0.51, H * 0.20); ctx.quadraticCurveTo(W * 0.54, H * 0.17, W * 0.63, H * 0.14);
+                  ctx.fillStyle = '#fca5a5'; ctx.fill(); ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 1.2; ctx.stroke();
+                  // Deltoids
+                  ctx.beginPath(); ctx.ellipse(W * 0.30, H * 0.16, W * 0.04, H * 0.022, -0.3, 0, Math.PI * 2);
+                  ctx.fillStyle = '#fecaca'; ctx.fill(); ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 0.8; ctx.stroke();
+                  ctx.beginPath(); ctx.ellipse(W * 0.70, H * 0.16, W * 0.04, H * 0.022, 0.3, 0, Math.PI * 2);
+                  ctx.fillStyle = '#fecaca'; ctx.fill(); ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 0.8; ctx.stroke();
+                  // Abs
+                  for (var mi = 0; mi < 4; mi++) { var my = H * (0.28 + mi * 0.03); ctx.beginPath(); ctx.moveTo(W * 0.45, my); ctx.lineTo(W * 0.55, my); ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 1; ctx.stroke(); }
+                  ctx.beginPath(); ctx.moveTo(W * 0.50, H * 0.22); ctx.lineTo(W * 0.50, H * 0.40); ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 0.8; ctx.stroke();
+                  // Quads
+                  ctx.beginPath(); ctx.ellipse(W * 0.41, H * 0.54, W * 0.028, H * 0.07, 0.08, 0, Math.PI * 2); ctx.fillStyle = '#fecaca'; ctx.fill(); ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 0.8; ctx.stroke();
+                  ctx.beginPath(); ctx.ellipse(W * 0.59, H * 0.54, W * 0.028, H * 0.07, -0.08, 0, Math.PI * 2); ctx.fillStyle = '#fecaca'; ctx.fill(); ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 0.8; ctx.stroke();
+                  // Biceps
+                  ctx.beginPath(); ctx.ellipse(W * 0.25, H * 0.27, W * 0.016, H * 0.035, 0.5, 0, Math.PI * 2); ctx.fillStyle = '#fecaca'; ctx.fill(); ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 0.8; ctx.stroke();
+                  ctx.beginPath(); ctx.ellipse(W * 0.75, H * 0.27, W * 0.016, H * 0.035, -0.5, 0, Math.PI * 2); ctx.fillStyle = '#fecaca'; ctx.fill(); ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 0.8; ctx.stroke();
+                  // Calves
+                  ctx.beginPath(); ctx.ellipse(W * 0.38, H * 0.77, W * 0.018, H * 0.04, 0.05, 0, Math.PI * 2); ctx.fillStyle = '#fecaca'; ctx.fill(); ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 0.8; ctx.stroke();
+                  ctx.beginPath(); ctx.ellipse(W * 0.62, H * 0.77, W * 0.018, H * 0.04, -0.05, 0, Math.PI * 2); ctx.fillStyle = '#fecaca'; ctx.fill(); ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 0.8; ctx.stroke();
+                  ctx.restore();
+                }
+
+                // ── ORGAN LAYER ──
+                if (layerOn('organs')) {
+                  ctx.save(); ctx.globalAlpha = 0.50;
+                  // Lungs
+                  ctx.beginPath(); ctx.ellipse(W * 0.42, H * 0.22, W * 0.055, H * 0.055, 0, 0, Math.PI * 2); ctx.fillStyle = '#bfdbfe'; ctx.fill(); ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 1; ctx.stroke();
+                  ctx.beginPath(); ctx.ellipse(W * 0.58, H * 0.22, W * 0.055, H * 0.055, 0, 0, Math.PI * 2); ctx.fillStyle = '#bfdbfe'; ctx.fill(); ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 1; ctx.stroke();
+                  // Heart (small, between lungs)
                   ctx.beginPath();
-                  ctx.moveTo(W * 0.42, H * 0.138); ctx.quadraticCurveTo(W * 0.36, H * 0.132, W * 0.30, H * 0.145);
-                  ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 1.5; ctx.stroke();
-                  ctx.beginPath();
-                  ctx.moveTo(W * 0.58, H * 0.138); ctx.quadraticCurveTo(W * 0.64, H * 0.132, W * 0.70, H * 0.145);
-                  ctx.stroke();
-                } else if (sysKey === 'muscular') {
-                  // Pectoral muscle outlines
-                  ctx.beginPath();
-                  ctx.moveTo(W * 0.37, H * 0.14); ctx.quadraticCurveTo(W * 0.42, H * 0.19, W * 0.49, H * 0.19);
-                  ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 1.2; ctx.stroke();
-                  ctx.beginPath();
-                  ctx.moveTo(W * 0.63, H * 0.14); ctx.quadraticCurveTo(W * 0.58, H * 0.19, W * 0.51, H * 0.19);
-                  ctx.stroke();
-                  // Abs lines (more visible)
-                  for (var mi = 0; mi < 4; mi++) {
-                    var my = H * (0.28 + mi * 0.03);
-                    ctx.beginPath(); ctx.moveTo(W * 0.45, my); ctx.lineTo(W * 0.55, my);
-                    ctx.strokeStyle = '#dc262680'; ctx.lineWidth = 0.8; ctx.stroke();
-                  }
-                  // Quad outlines
-                  ctx.beginPath();
-                  ctx.moveTo(W * 0.42, H * 0.44); ctx.quadraticCurveTo(W * 0.40, H * 0.54, W * 0.39, H * 0.64);
-                  ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 1; ctx.stroke();
-                  ctx.beginPath();
-                  ctx.moveTo(W * 0.58, H * 0.44); ctx.quadraticCurveTo(W * 0.60, H * 0.54, W * 0.61, H * 0.64);
-                  ctx.stroke();
-                } else if (sysKey === 'circulatory') {
+                  var hx = W * 0.50, hy = H * 0.24;
+                  ctx.moveTo(hx, hy + 6); ctx.bezierCurveTo(hx - 8, hy - 4, hx - 14, hy, hx - 14, hy + 6); ctx.bezierCurveTo(hx - 14, hy + 12, hx - 4, hy + 18, hx, hy + 22); ctx.bezierCurveTo(hx + 4, hy + 18, hx + 14, hy + 12, hx + 14, hy + 6); ctx.bezierCurveTo(hx + 14, hy, hx + 8, hy - 4, hx, hy + 6);
+                  ctx.fillStyle = '#fca5a5'; ctx.fill(); ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 1; ctx.stroke();
+                  // Liver
+                  ctx.beginPath(); ctx.ellipse(W * 0.56, H * 0.30, W * 0.045, H * 0.028, 0.2, 0, Math.PI * 2); ctx.fillStyle = '#a1887f'; ctx.fill(); ctx.strokeStyle = '#795548'; ctx.lineWidth = 0.8; ctx.stroke();
+                  // Stomach
+                  ctx.beginPath(); ctx.ellipse(W * 0.47, H * 0.31, W * 0.032, H * 0.028, -0.3, 0, Math.PI * 2); ctx.fillStyle = '#c8e6c9'; ctx.fill(); ctx.strokeStyle = '#43a047'; ctx.lineWidth = 0.8; ctx.stroke();
+                  // Kidneys
+                  ctx.beginPath(); ctx.ellipse(W * 0.43, H * 0.35, W * 0.015, H * 0.02, 0, 0, Math.PI * 2); ctx.fillStyle = '#ef9a9a'; ctx.fill(); ctx.strokeStyle = '#c62828'; ctx.lineWidth = 0.7; ctx.stroke();
+                  ctx.beginPath(); ctx.ellipse(W * 0.57, H * 0.35, W * 0.015, H * 0.02, 0, 0, Math.PI * 2); ctx.fillStyle = '#ef9a9a'; ctx.fill(); ctx.strokeStyle = '#c62828'; ctx.lineWidth = 0.7; ctx.stroke();
+                  // Intestines (coil)
+                  ctx.beginPath(); ctx.moveTo(W * 0.44, H * 0.35);
+                  for (var ii = 0; ii < 8; ii++) { ctx.lineTo(W * (0.44 + (ii % 2 === 0 ? 0.06 : 0)), H * (0.36 + ii * 0.01)); }
+                  ctx.strokeStyle = '#66bb6a'; ctx.lineWidth = 1.5; ctx.stroke();
+                  // Bladder
+                  ctx.beginPath(); ctx.ellipse(W * 0.50, H * 0.43, W * 0.02, H * 0.015, 0, 0, Math.PI * 2); ctx.fillStyle = '#ffe082'; ctx.fill(); ctx.strokeStyle = '#ffa000'; ctx.lineWidth = 0.7; ctx.stroke();
+                  ctx.restore();
+                }
+
+                // ── CIRCULATORY LAYER ──
+                if (layerOn('circulatory')) {
+                  ctx.save(); ctx.globalAlpha = 0.45;
                   // Pulsing heart
                   var heartPulse = 1.0 + Math.sin(anatTick * 0.08) * 0.08;
-                  ctx.save();
-                  ctx.translate(W * 0.52, H * 0.22);
-                  ctx.scale(heartPulse, heartPulse);
-                  ctx.beginPath();
-                  ctx.moveTo(0, 8);
-                  ctx.bezierCurveTo(-12, -6, -22, -2, -22, 8);
-                  ctx.bezierCurveTo(-22, 18, -5, 26, 0, 35);
-                  ctx.bezierCurveTo(5, 26, 22, 18, 22, 8);
-                  ctx.bezierCurveTo(22, -2, 12, -6, 0, 8);
-                  ctx.fillStyle = '#ef4444';
-                  ctx.globalAlpha = 0.5;
-                  ctx.fill();
-                  ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 1.5; ctx.stroke();
+                  ctx.save(); ctx.translate(W * 0.50, H * 0.23); ctx.scale(heartPulse, heartPulse);
+                  ctx.beginPath(); ctx.moveTo(0, 4); ctx.bezierCurveTo(-10, -5, -18, -1, -18, 6); ctx.bezierCurveTo(-18, 14, -4, 20, 0, 28); ctx.bezierCurveTo(4, 20, 18, 14, 18, 6); ctx.bezierCurveTo(18, -1, 10, -5, 0, 4);
+                  ctx.fillStyle = '#ef4444'; ctx.fill(); ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 1.5; ctx.stroke();
                   ctx.restore();
-                  ctx.globalAlpha = 0.30;
-                  // Major vessels
-                  ctx.beginPath(); ctx.moveTo(W * 0.50, H * 0.15); ctx.lineTo(W * 0.50, H * 0.42);
-                  ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 2; ctx.stroke();
-                  ctx.beginPath();
-                  ctx.moveTo(W * 0.50, H * 0.44); ctx.lineTo(W * 0.42, H * 0.65); ctx.moveTo(W * 0.50, H * 0.44); ctx.lineTo(W * 0.58, H * 0.65);
-                  ctx.stroke();
-                } else if (sysKey === 'nervous') {
-                  // Central spine/cord
-                  ctx.beginPath(); ctx.moveTo(W * 0.50, H * 0.08); ctx.lineTo(W * 0.50, H * 0.42);
-                  ctx.strokeStyle = '#eab308'; ctx.lineWidth = 2.5; ctx.stroke();
-                  // Neural branches
-                  var nervePts = [
-                    [0.50, 0.15, 0.30, 0.30], [0.50, 0.15, 0.70, 0.30],
-                    [0.50, 0.25, 0.35, 0.36], [0.50, 0.25, 0.65, 0.36],
-                    [0.50, 0.42, 0.40, 0.70], [0.50, 0.42, 0.60, 0.70]
-                  ];
-                  nervePts.forEach(function (np) {
-                    ctx.beginPath();
-                    ctx.moveTo(W * np[0], H * np[1]);
-                    ctx.quadraticCurveTo(W * (np[0] + np[2]) * 0.5, H * (np[1] + np[3]) * 0.5, W * np[2], H * np[3]);
-                    ctx.strokeStyle = '#eab30880'; ctx.lineWidth = 1; ctx.stroke();
-                  });
-                  // Brain glow
-                  ctx.beginPath(); ctx.arc(W * 0.50, H * 0.055, 18, 0, Math.PI * 2);
-                  ctx.fillStyle = '#eab30820'; ctx.fill();
-                } else if (sysKey === 'digestive') {
-                  // Esophagus
-                  ctx.beginPath(); ctx.moveTo(W * 0.50, H * 0.13); ctx.lineTo(W * 0.50, H * 0.26);
-                  ctx.strokeStyle = '#16a34a'; ctx.lineWidth = 2; ctx.stroke();
-                  // Stomach
-                  ctx.beginPath(); ctx.ellipse(W * 0.47, H * 0.29, W * 0.04, H * 0.035, -0.3, 0, Math.PI * 2);
-                  ctx.fillStyle = '#16a34a40'; ctx.fill(); ctx.strokeStyle = '#16a34a'; ctx.lineWidth = 1; ctx.stroke();
-                  // Intestines (coil hint)
-                  ctx.beginPath();
-                  ctx.moveTo(W * 0.44, H * 0.33);
-                  for (var ii = 0; ii < 8; ii++) {
-                    ctx.lineTo(W * (0.44 + (ii % 2 === 0 ? 0.06 : 0)), H * (0.34 + ii * 0.012));
-                  }
-                  ctx.strokeStyle = '#16a34a'; ctx.lineWidth = 1; ctx.stroke();
+                  // Aorta line
+                  ctx.beginPath(); ctx.moveTo(W * 0.50, H * 0.20); ctx.quadraticCurveTo(W * 0.52, H * 0.17, W * 0.54, H * 0.15); ctx.quadraticCurveTo(W * 0.53, H * 0.13, W * 0.50, H * 0.10);
+                  ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 3; ctx.stroke();
+                  // Descending aorta
+                  ctx.beginPath(); ctx.moveTo(W * 0.50, H * 0.23); ctx.lineTo(W * 0.50, H * 0.44);
+                  ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2.5; ctx.stroke();
+                  // Carotids
+                  ctx.beginPath(); ctx.moveTo(W * 0.48, H * 0.10); ctx.lineTo(W * 0.47, H * 0.06); ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 1.5; ctx.stroke();
+                  ctx.beginPath(); ctx.moveTo(W * 0.52, H * 0.10); ctx.lineTo(W * 0.53, H * 0.06); ctx.stroke();
+                  // Femoral arteries
+                  ctx.beginPath(); ctx.moveTo(W * 0.47, H * 0.44); ctx.lineTo(W * 0.41, H * 0.68); ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 1.8; ctx.stroke();
+                  ctx.beginPath(); ctx.moveTo(W * 0.53, H * 0.44); ctx.lineTo(W * 0.59, H * 0.68); ctx.stroke();
+                  // Tibial arteries
+                  ctx.beginPath(); ctx.moveTo(W * 0.41, H * 0.69); ctx.lineTo(W * 0.38, H * 0.90); ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 1.2; ctx.stroke();
+                  ctx.beginPath(); ctx.moveTo(W * 0.59, H * 0.69); ctx.lineTo(W * 0.62, H * 0.90); ctx.stroke();
+                  // Brachial/radial
+                  ctx.beginPath(); ctx.moveTo(W * 0.34, H * 0.16); ctx.lineTo(W * 0.22, H * 0.34); ctx.lineTo(W * 0.17, H * 0.46); ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 1.2; ctx.stroke();
+                  ctx.beginPath(); ctx.moveTo(W * 0.66, H * 0.16); ctx.lineTo(W * 0.78, H * 0.34); ctx.lineTo(W * 0.83, H * 0.46); ctx.stroke();
+                  // Veins (blue)
+                  ctx.beginPath(); ctx.moveTo(W * 0.52, H * 0.22); ctx.lineTo(W * 0.52, H * 0.15); ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 2; ctx.stroke();
+                  ctx.beginPath(); ctx.moveTo(W * 0.52, H * 0.28); ctx.lineTo(W * 0.52, H * 0.44); ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 2; ctx.stroke();
+                  ctx.beginPath(); ctx.moveTo(W * 0.49, H * 0.44); ctx.lineTo(W * 0.43, H * 0.68); ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 1.2; ctx.stroke();
+                  ctx.beginPath(); ctx.moveTo(W * 0.51, H * 0.44); ctx.lineTo(W * 0.57, H * 0.68); ctx.stroke();
+                  ctx.restore();
                 }
-                ctx.globalAlpha = 1.0;
-                ctx.restore();
+
+                // ── NERVOUS LAYER ──
+                if (layerOn('nervous')) {
+                  ctx.save(); ctx.globalAlpha = 0.45;
+                  // Brain glow
+                  var brGlow = ctx.createRadialGradient(W * 0.50, H * 0.055, 4, W * 0.50, H * 0.055, W * 0.05);
+                  brGlow.addColorStop(0, '#fef08a'); brGlow.addColorStop(1, '#fef08a00');
+                  ctx.beginPath(); ctx.arc(W * 0.50, H * 0.055, W * 0.05, 0, Math.PI * 2); ctx.fillStyle = brGlow; ctx.fill();
+                  ctx.beginPath(); ctx.arc(W * 0.50, H * 0.055, W * 0.042, 0, Math.PI * 2); ctx.strokeStyle = '#eab308'; ctx.lineWidth = 1.5; ctx.stroke();
+                  // Spinal cord
+                  ctx.beginPath(); ctx.moveTo(W * 0.50, H * 0.09); ctx.lineTo(W * 0.50, H * 0.44);
+                  ctx.strokeStyle = '#eab308'; ctx.lineWidth = 3; ctx.stroke();
+                  // Nerve branches
+                  var nervePts = [
+                    [0.50, 0.14, 0.30, 0.30], [0.50, 0.14, 0.70, 0.30],
+                    [0.50, 0.20, 0.28, 0.36], [0.50, 0.20, 0.72, 0.36],
+                    [0.50, 0.30, 0.20, 0.44], [0.50, 0.30, 0.80, 0.44],
+                    [0.50, 0.44, 0.39, 0.72], [0.50, 0.44, 0.61, 0.72],
+                    [0.39, 0.72, 0.37, 0.90], [0.61, 0.72, 0.63, 0.90]
+                  ];
+                  nervePts.forEach(function (np) { ctx.beginPath(); ctx.moveTo(W * np[0], H * np[1]); ctx.quadraticCurveTo(W * (np[0] + np[2]) * 0.5, H * (np[1] + np[3]) * 0.5, W * np[2], H * np[3]); ctx.strokeStyle = '#eab308'; ctx.lineWidth = 1.2; ctx.stroke(); });
+                  // Nerve nodes
+                  [[0.50, 0.14], [0.50, 0.20], [0.50, 0.30], [0.50, 0.38]].forEach(function (n) {
+                    ctx.beginPath(); ctx.arc(W * n[0], H * n[1], 2.5, 0, Math.PI * 2); ctx.fillStyle = '#eab308'; ctx.fill();
+                  });
+                  ctx.restore();
+                }
+
+                // ── LYMPHATIC LAYER ──
+                if (layerOn('lymphatic')) {
+                  ctx.save(); ctx.globalAlpha = 0.40;
+                  // Thoracic duct
+                  ctx.beginPath(); ctx.moveTo(W * 0.50, H * 0.14); ctx.quadraticCurveTo(W * 0.48, H * 0.30, W * 0.50, H * 0.44);
+                  ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 2; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
+                  // Lymph nodes (green dots)
+                  var lnPts = [[0.46, 0.13], [0.54, 0.13], [0.34, 0.20], [0.66, 0.20], [0.44, 0.30], [0.56, 0.30], [0.44, 0.44], [0.56, 0.44], [0.42, 0.58], [0.58, 0.58]];
+                  lnPts.forEach(function (ln) { ctx.beginPath(); ctx.arc(W * ln[0], H * ln[1], 4, 0, Math.PI * 2); ctx.fillStyle = '#86efac'; ctx.fill(); ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 1; ctx.stroke(); });
+                  // Spleen hint
+                  ctx.beginPath(); ctx.ellipse(W * 0.58, H * 0.32, W * 0.02, H * 0.018, 0, 0, Math.PI * 2); ctx.fillStyle = '#86efac80'; ctx.fill(); ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 1; ctx.stroke();
+                  // Thymus hint
+                  ctx.beginPath(); ctx.ellipse(W * 0.50, H * 0.18, W * 0.015, H * 0.012, 0, 0, Math.PI * 2); ctx.fillStyle = '#86efac80'; ctx.fill(); ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 1; ctx.stroke();
+                  // Connecting vessels
+                  for (var li = 0; li < lnPts.length - 2; li++) { ctx.beginPath(); ctx.moveTo(W * lnPts[li][0], H * lnPts[li][1]); ctx.lineTo(W * lnPts[li + 2][0], H * lnPts[li + 2][1]); ctx.strokeStyle = '#22c55e50'; ctx.lineWidth = 0.8; ctx.setLineDash([2, 3]); ctx.stroke(); ctx.setLineDash([]); }
+                  ctx.restore();
+                }
 
                 // ── Enhanced Structure Markers ──
                 filtered.forEach(function (st) {
@@ -19096,6 +19188,28 @@
                   }, s.icon + ' ' + s.name);
                 })
               ),
+              // Layer toggle bar
+              React.createElement("div", { className: "flex items-center gap-1.5 mb-3 flex-wrap bg-slate-50 rounded-xl px-3 py-2 border border-slate-200" },
+                React.createElement("span", { className: "text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1" }, "\uD83E\uDDE0 Layers"),
+                LAYER_DEFS.map(function (ld) {
+                  var isOn = layers[ld.id] || ld.id === autoLayerId;
+                  return React.createElement("button", {
+                    key: ld.id,
+                    onClick: function () { toggleLayer(ld.id); },
+                    title: (isOn ? 'Hide ' : 'Show ') + ld.name + ' layer',
+                    className: "px-2 py-1 rounded-lg text-[10px] font-bold transition-all border " +
+                      (isOn
+                        ? 'text-white shadow-sm border-transparent'
+                        : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300 hover:bg-slate-100'),
+                    style: isOn ? { background: ld.accent, borderColor: ld.accent } : {}
+                  }, ld.icon + ' ' + ld.name);
+                }),
+                React.createElement("button", {
+                  onClick: function () { upd('visibleLayers', { skin: true }); },
+                  title: 'Reset all layers to default (skin only)',
+                  className: "ml-auto px-2 py-1 rounded-lg text-[10px] font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all border border-transparent hover:border-slate-200"
+                }, "\u21BA Reset")
+              ),
               // Controls: view toggle, search, quiz
               React.createElement("div", { className: "flex items-center gap-2 mb-3 flex-wrap" },
                 React.createElement("div", { className: "flex rounded-lg border border-slate-200 overflow-hidden" },
@@ -19118,7 +19232,7 @@
                   className: "px-3 py-1.5 rounded-lg text-xs font-bold transition-all " + (d.quizMode ? 'bg-green-600 text-white' : 'bg-green-50 text-green-700 border border-green-200 hover:bg-green-100')
                 }, d.quizMode ? '\u2705 Quiz On' : '\uD83E\uDDEA Quiz'),
                 React.createElement("div", { className: "flex rounded-lg border border-slate-200 overflow-hidden" },
-                  [{ v: 1, label: t('stem.synth_ui.ku20135'), tip: 'Elementary' }, { v: 2, label: '6\u20138', tip: 'Middle' }, { v: 3, label: '9\u201312+', tip: 'Advanced' }].map(function (lv) {
+                  [{ v: 1, label: 'K\u20135', tip: 'Elementary' }, { v: 2, label: '6\u20138', tip: 'Middle' }, { v: 3, label: '9\u201312+', tip: 'Advanced' }].map(function (lv) {
                     return React.createElement("button", {
                       key: lv.v, title: lv.tip + ' level',
                       onClick: function () { upd('complexity', lv.v); upd('selectedStructure', null); },
