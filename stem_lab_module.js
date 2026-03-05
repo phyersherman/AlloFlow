@@ -1289,7 +1289,7 @@
         { text: 'Check the flight stats panel for max height, range, and flight time. Try challenge mode to predict landings!', top: '85%', left: '50%' }
       ];
       var _tutGalaxy = [
-        { text: 'Welcome to the Galaxy Simulator! Click and drag to orbit around the galaxy, scroll to zoom.', top: '25%', left: '50%' },
+        { text: 'Welcome to the Galaxy Explorer! Switch between Galaxy Simulation and Star Lifespan modes using the tabs. Click and drag to orbit the galaxy, scroll to zoom.', top: '25%', left: '50%' },
         { text: 'Adjust Star Count and Arm Count to change the galaxy\'s structure. Watch the spiral arms reform!', top: '45%', left: '50%' },
         { text: 'Click on any star to identify its spectral type (O, B, A, F, G, K, M) — the hottest stars are blue!', top: '65%', left: '50%' },
         { text: 'Use keyboard: Arrow keys to orbit, +/- to zoom, R to reset view. Try the quiz to test your knowledge!', top: '80%', left: '50%' }
@@ -10451,6 +10451,7 @@
             var lifecycleMass = d.lifecycleMass !== undefined ? d.lifecycleMass : 1;
             var showSNAnim = d.showSNAnim || false;
             var galaxyType = d.galaxyType || 'barredSpiral';
+            var simMode = d.simMode || 'galaxy';
 
             // ── Star type data (OBAFGKM Harvard classification) ──
             var STAR_TYPES = [
@@ -10509,7 +10510,12 @@
               { q: 'How wide is the Milky Way?', a: '~100,000 light-years', options: ['~1,000 light-years', '~10,000 light-years', '~100,000 light-years', '~1 million light-years'] },
               { q: 'What causes a supernova?', a: 'A massive star exploding', options: ['Two galaxies colliding', 'A massive star exploding', 'A nebula igniting', 'A black hole evaporating'] },
               { q: 'What is dark matter?', a: 'Invisible matter detected by gravity', options: ['Black holes', 'Invisible matter detected by gravity', 'Empty space', 'Antimatter'] },
-              { q: 'How long does it take light to cross the Milky Way?', a: '~100,000 years', options: ['~1,000 years', '~10,000 years', '~100,000 years', '~1 million years'] }
+              { q: 'How long does it take light to cross the Milky Way?', a: '~100,000 years', options: ['~1,000 years', '~10,000 years', '~100,000 years', '~1 million years'] },
+              { q: 'What will our Sun become at the end of its life?', a: 'White dwarf', options: ['Black hole', 'Neutron star', 'White dwarf', 'Red dwarf'] },
+              { q: 'What stage comes after a Red Giant for a massive star?', a: 'Supernova', options: ['White dwarf', 'Planetary nebula', 'Supernova', 'Protostar'] },
+              { q: 'How long does a star with 1 solar mass live?', a: '~10 billion years', options: ['~1 million years', '~100 million years', '~10 billion years', '~1 trillion years'] },
+              { q: 'What is a protostar?', a: 'A star forming from a collapsing gas cloud', options: ['A dying star', 'A star forming from a collapsing gas cloud', 'A type of neutron star', 'A binary star system'] },
+              { q: 'What determines a star\'s final fate?', a: 'Its mass', options: ['Its color', 'Its mass', 'Its age', 'Its distance from Earth'] }
             ];
 
             // ── Scale data ──
@@ -10992,18 +10998,21 @@
               React.createElement("div", { className: "flex items-center gap-3 mb-3" },
                 React.createElement("button", { onClick: function () { var cv = document.querySelector('[data-galaxy-canvas]'); if (cv && cv._galaxyCleanup) cv._galaxyCleanup(); setStemLabTool(null); }, className: "p-1.5 hover:bg-slate-100 rounded-lg" }, React.createElement(ArrowLeft, { size: 18, className: "text-slate-500" })),
                 React.createElement("h3", { className: "text-lg font-bold text-slate-800" }, "\uD83C\uDF0C Galaxy Explorer"),
-                React.createElement("div", { className: "flex gap-1 ml-auto" },
-                  ["explore", "quiz"].map(function (m) {
+                React.createElement("div", { className: "flex gap-1 ml-auto bg-slate-100 rounded-lg p-0.5" },
+                  [{ key: 'galaxy', icon: '\uD83C\uDF0C', label: 'Galaxy' }, { key: 'star', icon: '\u2B50', label: 'Star Life' }, { key: 'quiz', icon: '\uD83E\uDDE0', label: 'Quiz' }].map(function (m) {
+                    var isActive = m.key === 'quiz' ? d.quizMode : (!d.quizMode && simMode === m.key);
                     return React.createElement("button", {
-                      key: m, onClick: function () {
-                        if (m === 'quiz') { upd("quizMode", true); upd("quizIdx", 0); upd("quizScore", 0); upd("quizStreak", 0); upd("quizFeedback", null); }
-                        else { upd("quizMode", false); }
-                      }, className: "px-3 py-1 rounded-lg text-xs font-bold capitalize " + ((m === 'quiz' ? d.quizMode : !d.quizMode) ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200')
-                    }, m);
+                      key: m.key, onClick: function () {
+                        if (m.key === 'quiz') { upd("quizMode", true); upd("quizIdx", 0); upd("quizScore", 0); upd("quizStreak", 0); upd("quizFeedback", null); }
+                        else { upd("quizMode", false); upd("simMode", m.key); }
+                      }, className: "px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all " + (isActive ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-white')
+                    }, m.icon + ' ' + m.label);
                   })
                 )
               ),
 
+              // ── Galaxy Simulation Mode ──
+              !d.quizMode && simMode === 'galaxy' && React.createElement("div", null,
               // ── Galaxy type selector ──
               React.createElement("div", { className: "flex flex-wrap gap-1.5 mb-3" },
                 Object.keys(GALAXY_TYPES).map(function (key) {
@@ -11127,9 +11136,9 @@
                     className: "px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-white hover:bg-amber-600 transition-all"
                   }, "\uD83D\uDCA5 Supernova!"),
                   React.createElement("button", {
-                    onClick: function () { upd("showLifecycle", !showLifecycle); },
-                    className: "px-3 py-1.5 rounded-lg text-xs font-bold " + (showLifecycle ? "bg-indigo-600 text-white" : "bg-white text-indigo-600 border border-indigo-200") + " transition-all"
-                  }, "\u2B50 Star Lifecycle")
+                    onClick: function () { upd("quizMode", false); upd("simMode", "star"); },
+                    className: "px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-indigo-600 border border-indigo-200 transition-all hover:bg-indigo-50"
+                  }, "\u2B50 Star Life \u2192")
                 ),
                 // Milestone labels
                 React.createElement("div", { className: "flex justify-between mt-2 text-[8px] text-violet-400" },
@@ -11163,71 +11172,6 @@
                     )
                   );
                 })()
-              ),
-
-              // ── Stellar Lifecycle Panel ──
-              showLifecycle && React.createElement("div", { className: "mt-3 bg-slate-900 rounded-xl border-2 border-indigo-400 p-4 animate-in fade-in" },
-                React.createElement("div", { className: "flex items-center gap-2 mb-3" },
-                  React.createElement("h4", { className: "text-sm font-bold text-white" }, "\u2B50 Stellar Lifecycle"),
-                  React.createElement("button", { onClick: function () { upd("showLifecycle", false); }, className: "ml-auto text-xs text-slate-400 hover:text-white" }, "\u2715 Close")
-                ),
-                // Mass slider
-                React.createElement("div", { className: "flex items-center gap-2 mb-3" },
-                  React.createElement("span", { className: "text-[10px] text-slate-400 whitespace-nowrap" }, "\u2696 Mass:"),
-                  React.createElement("input", {
-                    type: "range", min: 0.5, max: 50, step: 0.5, value: lifecycleMass, "aria-label": "Star mass in solar masses",
-                    onChange: function (e) { upd("lifecycleMass", parseFloat(e.target.value)); },
-                    className: "flex-1 h-1.5 accent-amber-400"
-                  }),
-                  React.createElement("span", { className: "text-xs font-bold text-amber-400" }, lifecycleMass + " M\u2609")
-                ),
-                // Mass category
-                React.createElement("p", { className: "text-[10px] text-slate-500 mb-3 italic" },
-                  lifecycleMass < 0.5 ? "Brown dwarf \u2014 too small for hydrogen fusion." :
-                    lifecycleMass < 8 ? "\uD83C\uDF1F Low-mass star (like our Sun). Will become a white dwarf." :
-                      lifecycleMass < 25 ? "\uD83D\uDCA5 Massive star. Will explode as a supernova \u2192 neutron star." :
-                        "\uD83D\uDD73\uFE0F Hypermassive star. Supernova \u2192 black hole formation!"
-                ),
-                // Lifecycle stages
-                React.createElement("div", { className: "space-y-1.5" },
-                  LIFECYCLE.stages.map(function (s, idx) {
-                    return React.createElement("div", { key: s.name, className: "flex items-center gap-2 p-2 rounded-lg bg-slate-800/50 border border-slate-700" },
-                      React.createElement("span", { className: "text-lg" }, s.emoji),
-                      React.createElement("div", { className: "flex-1" },
-                        React.createElement("p", { className: "text-xs font-bold", style: { color: s.color } }, s.name),
-                        React.createElement("p", { className: "text-[9px] text-slate-400" }, s.desc)
-                      ),
-                      idx < LIFECYCLE.stages.length - 1 && React.createElement("span", { className: "text-slate-600 text-xs" }, "\u2192")
-                    );
-                  }),
-                  // Branch based on mass
-                  React.createElement("div", { className: "flex items-center gap-1 ml-6 mt-1" },
-                    React.createElement("span", { className: "text-slate-600 text-xs" }, lifecycleMass < 8 ? "\u2193 Gentle death" : "\u2193 Violent death")
-                  ),
-                  (lifecycleMass < 8 ? LIFECYCLE.lowMass : LIFECYCLE.highMass.filter(function (s) {
-                    if (s.minMass && lifecycleMass < s.minMass) return false;
-                    if (s.maxMass && lifecycleMass > s.maxMass) return false;
-                    return true;
-                  })).map(function (s) {
-                    return React.createElement("div", { key: s.name, className: "flex items-center gap-2 p-2 rounded-lg border ml-4", style: { borderColor: s.color + '44', background: s.color + '11' } },
-                      React.createElement("span", { className: "text-lg" }, s.emoji),
-                      React.createElement("div", { className: "flex-1" },
-                        React.createElement("p", { className: "text-xs font-bold", style: { color: s.color } }, s.name),
-                        React.createElement("p", { className: "text-[9px] text-slate-400" }, s.desc)
-                      )
-                    );
-                  })
-                ),
-                // Fun facts
-                React.createElement("div", { className: "mt-3 p-2 bg-indigo-900/50 rounded-lg border border-indigo-700" },
-                  React.createElement("p", { className: "text-[9px] text-indigo-300" },
-                    lifecycleMass < 0.5 ? "\uD83D\uDCA1 Brown dwarfs are sometimes called 'failed stars.' They glow faintly from gravitational contraction." :
-                      lifecycleMass < 2 ? "\uD83D\uDCA1 Stars like our Sun live ~10 billion years. Our Sun is about halfway through its life!" :
-                        lifecycleMass < 8 ? "\uD83D\uDCA1 Larger low-mass stars burn hotter and die sooner. A 2 M\u2609 star lives only ~1.5 billion years." :
-                          lifecycleMass < 25 ? "\uD83D\uDCA1 Neutron stars are so dense that a sugar-cube-sized piece weighs about 1 billion tons!" :
-                            "\uD83D\uDCA1 Stellar black holes form from stars >25 M\u2609. The Milky Way alone has ~100 million of them!"
-                  )
-                )
               ),
 
               // ── Warp points ──
@@ -11314,7 +11258,229 @@
               React.createElement("div", { className: "flex gap-3 mt-3 items-center" },
                 React.createElement("button", { onClick: function () { setToolSnapshots(function (prev) { return prev.concat([{ id: 'gx-' + Date.now(), tool: 'galaxy', label: t('stem.galaxy.galaxy') + (d.selectedStar ? ': ' + d.selectedStar : '') + ' (' + gType.label + ')', data: Object.assign({}, d), timestamp: Date.now() }]); }); addToast('\uD83D\uDCF8 Snapshot saved!', 'success'); }, className: "ml-auto px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
               )
-            )
+              ), // end Galaxy Simulation mode wrapper
+
+              // ══════════════════════════════════════════════
+              // ── Star Lifespan Simulation Mode ──
+              // ══════════════════════════════════════════════
+              !d.quizMode && simMode === 'star' && React.createElement("div", { className: "space-y-4 animate-in fade-in duration-300" },
+
+                // ── Mass Selector Hero ──
+                React.createElement("div", { className: "bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-2xl border-2 border-indigo-400/40 p-5 shadow-xl" },
+                  React.createElement("div", { className: "flex items-center gap-3 mb-4" },
+                    React.createElement("div", { className: "w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-xl shadow-lg" }, "\u2B50"),
+                    React.createElement("div", null,
+                      React.createElement("h4", { className: "text-sm font-bold text-white" }, "Star Mass & Classification"),
+                      React.createElement("p", { className: "text-[10px] text-slate-400" }, "Adjust mass to explore how different stars live and die")
+                    ),
+                    React.createElement("div", { className: "ml-auto px-3 py-1.5 rounded-full bg-amber-500/20 border border-amber-400/40" },
+                      React.createElement("span", { className: "text-sm font-black text-amber-300" }, lifecycleMass + " M\u2609")
+                    )
+                  ),
+                  React.createElement("div", { className: "flex items-center gap-3 mb-3" },
+                    React.createElement("span", { className: "text-[10px] text-amber-300/70 whitespace-nowrap w-8" }, "0.5"),
+                    React.createElement("input", {
+                      type: "range", min: 0.5, max: 50, step: 0.5, value: lifecycleMass, "aria-label": "Star mass in solar masses",
+                      onChange: function (e) { upd("lifecycleMass", parseFloat(e.target.value)); },
+                      className: "flex-1 h-2 accent-amber-400 cursor-pointer"
+                    }),
+                    React.createElement("span", { className: "text-[10px] text-amber-300/70 whitespace-nowrap w-8 text-right" }, "50")
+                  ),
+                  // Mass category badge
+                  React.createElement("div", { className: "flex items-center gap-2 flex-wrap" },
+                    React.createElement("span", { className: "px-3 py-1 rounded-full text-[10px] font-bold " +
+                      (lifecycleMass < 0.5 ? "bg-stone-800 text-stone-300 border border-stone-600" :
+                       lifecycleMass < 0.8 ? "bg-red-900/60 text-red-300 border border-red-700/50" :
+                       lifecycleMass < 2 ? "bg-amber-900/60 text-amber-300 border border-amber-600/50" :
+                       lifecycleMass < 8 ? "bg-blue-900/60 text-blue-300 border border-blue-600/50" :
+                       lifecycleMass < 25 ? "bg-violet-900/60 text-violet-300 border border-violet-600/50" :
+                       "bg-fuchsia-900/60 text-fuchsia-300 border border-fuchsia-600/50") },
+                      lifecycleMass < 0.5 ? "\uD83E\uDEA8 Brown Dwarf" :
+                       lifecycleMass < 0.8 ? "\uD83D\uDD34 Red Dwarf (M-type)" :
+                       lifecycleMass < 2 ? "\u2600\uFE0F Sun-like (G/K-type)" :
+                       lifecycleMass < 8 ? "\uD83D\uDD35 Hot Star (A/B-type)" :
+                       lifecycleMass < 25 ? "\uD83D\uDCA5 Massive Star" :
+                       "\uD83D\uDD73\uFE0F Hypermassive Star"
+                    ),
+                    React.createElement("span", { className: "text-[9px] text-slate-500 italic" },
+                      lifecycleMass < 0.5 ? "Too small for hydrogen fusion" :
+                       lifecycleMass < 0.8 ? "Lives 50\u2013100+ billion years" :
+                       lifecycleMass < 2 ? "Lives ~10 billion years" :
+                       lifecycleMass < 8 ? "Lives 1\u20134 billion years" :
+                       lifecycleMass < 25 ? "Lives 8\u201330 million years" :
+                       "Lives < 5 million years"
+                    )
+                  )
+                ),
+
+                // ── Lifecycle Flowchart ──
+                React.createElement("div", { className: "bg-gradient-to-br from-slate-900 to-indigo-950 rounded-2xl border border-indigo-400/30 p-5 shadow-lg" },
+                  React.createElement("div", { className: "flex items-center gap-2 mb-4" },
+                    React.createElement("h4", { className: "text-sm font-bold text-white" }, "\u2728 Stellar Lifecycle Journey"),
+                    React.createElement("span", { className: "ml-auto text-[9px] text-indigo-400 bg-indigo-900/50 px-2 py-0.5 rounded-full border border-indigo-700/50" },
+                      lifecycleMass < 8 ? "\u2193 Gentle path" : "\u2193 Violent path")
+                  ),
+                  // Common stages
+                  React.createElement("div", { className: "space-y-2" },
+                    LIFECYCLE.stages.map(function (s, idx) {
+                      return React.createElement("div", { key: s.name },
+                        React.createElement("div", { className: "flex items-center gap-3 p-3 rounded-xl border transition-all hover:scale-[1.01]", style: { borderColor: s.color + '55', background: s.color + '15' } },
+                          React.createElement("div", { className: "w-10 h-10 rounded-xl flex items-center justify-center text-2xl flex-shrink-0", style: { background: s.color + '25' } }, s.emoji),
+                          React.createElement("div", { className: "flex-1 min-w-0" },
+                            React.createElement("p", { className: "text-xs font-bold", style: { color: s.color } }, s.name),
+                            React.createElement("p", { className: "text-[10px] text-slate-400 leading-relaxed" }, s.desc)
+                          ),
+                          React.createElement("span", { className: "text-[9px] text-slate-600 flex-shrink-0" },
+                            idx === 0 ? "" :
+                            idx === 1 ? "~100K yr" :
+                            idx === 2 ? (lifecycleMass < 2 ? "~10 Gyr" : lifecycleMass < 8 ? "~1 Gyr" : lifecycleMass < 25 ? "~10 Myr" : "~3 Myr") :
+                            (lifecycleMass < 2 ? "~1 Gyr" : "~100 Myr"))
+                        ),
+                        idx < LIFECYCLE.stages.length - 1 ? React.createElement("div", { className: "flex justify-center py-1" },
+                          React.createElement("div", { className: "w-0.5 h-4 rounded-full", style: { background: 'linear-gradient(to bottom, ' + s.color + '60, ' + LIFECYCLE.stages[idx + 1].color + '60)' } })
+                        ) : null
+                      );
+                    })
+                  ),
+
+                  // Branch indicator
+                  React.createElement("div", { className: "flex justify-center py-2" },
+                    React.createElement("div", { className: "flex items-center gap-2 px-4 py-1.5 rounded-full border", style: { borderColor: lifecycleMass < 8 ? '#818cf855' : '#f59e0b55', background: lifecycleMass < 8 ? '#818cf815' : '#f59e0b15' } },
+                      React.createElement("span", { className: "text-sm" }, lifecycleMass < 8 ? "\u2B07\uFE0F" : "\uD83D\uDCA5"),
+                      React.createElement("span", { className: "text-[10px] font-bold", style: { color: lifecycleMass < 8 ? '#a5b4fc' : '#fbbf24' } },
+                        lifecycleMass < 8 ? "Gentle death — outer layers drift away" : "Violent death — core collapse!")
+                    )
+                  ),
+
+                  // End-state stages
+                  React.createElement("div", { className: "space-y-2" },
+                    (lifecycleMass < 8 ? LIFECYCLE.lowMass : LIFECYCLE.highMass.filter(function (s) {
+                      if (s.minMass && lifecycleMass < s.minMass) return false;
+                      if (s.maxMass && lifecycleMass > s.maxMass) return false;
+                      return true;
+                    })).map(function (s, idx) {
+                      return React.createElement("div", { key: s.name, className: "flex items-center gap-3 p-3 rounded-xl border ml-6 transition-all hover:scale-[1.01]", style: { borderColor: s.color + '55', background: s.color + '15' } },
+                        React.createElement("div", { className: "w-10 h-10 rounded-xl flex items-center justify-center text-2xl flex-shrink-0", style: { background: s.color + '25' } }, s.emoji),
+                        React.createElement("div", { className: "flex-1 min-w-0" },
+                          React.createElement("p", { className: "text-xs font-bold", style: { color: s.color } }, s.name),
+                          React.createElement("p", { className: "text-[10px] text-slate-400 leading-relaxed" }, s.desc)
+                        )
+                      );
+                    })
+                  )
+                ),
+
+                // ── OBAFGKM Star Classification Reference ──
+                React.createElement("div", { className: "bg-white rounded-2xl border border-slate-200 p-4 shadow-sm" },
+                  React.createElement("h4", { className: "text-sm font-bold text-slate-800 mb-3 flex items-center gap-2" },
+                    React.createElement("span", null, "\uD83C\uDF08"),
+                    "Harvard Spectral Classification (OBAFGKM)"
+                  ),
+                  React.createElement("div", { className: "grid grid-cols-7 gap-1" },
+                    STAR_TYPES.map(function (st) {
+                      var isMatch = (lifecycleMass < 0.45 && st.id === 'M') ||
+                                    (lifecycleMass >= 0.45 && lifecycleMass < 0.8 && st.id === 'K') ||
+                                    (lifecycleMass >= 0.8 && lifecycleMass < 1.04 && st.id === 'G') ||
+                                    (lifecycleMass >= 1.04 && lifecycleMass < 1.4 && st.id === 'F') ||
+                                    (lifecycleMass >= 1.4 && lifecycleMass < 2.1 && st.id === 'A') ||
+                                    (lifecycleMass >= 2.1 && lifecycleMass < 16 && st.id === 'B') ||
+                                    (lifecycleMass >= 16 && st.id === 'O');
+                      return React.createElement("div", {
+                        key: st.id,
+                        className: "text-center p-2 rounded-xl border-2 transition-all cursor-pointer hover:scale-105 " +
+                          (isMatch ? "border-indigo-400 shadow-md shadow-indigo-100 scale-105" : "border-transparent hover:border-slate-200"),
+                        style: isMatch ? { background: st.color + '20' } : {},
+                        onClick: function () { upd("selectedStar", st.id); upd("simMode", "galaxy"); upd("quizMode", false); }
+                      },
+                        React.createElement("div", { className: "text-2xl mb-1", style: { color: st.color } }, "\u2B50"),
+                        React.createElement("p", { className: "text-xs font-black", style: { color: st.color } }, st.id),
+                        React.createElement("p", { className: "text-[8px] text-slate-500 leading-tight" }, st.temp + "K"),
+                        isMatch ? React.createElement("div", { className: "mt-1 w-1.5 h-1.5 rounded-full bg-indigo-500 mx-auto animate-pulse" }) : null
+                      );
+                    })
+                  ),
+                  // Selected type info
+                  (function () {
+                    var matchType = lifecycleMass < 0.45 ? 'M' : lifecycleMass < 0.8 ? 'K' : lifecycleMass < 1.04 ? 'G' : lifecycleMass < 1.4 ? 'F' : lifecycleMass < 2.1 ? 'A' : lifecycleMass < 16 ? 'B' : 'O';
+                    var st = STAR_TYPES.find(function (s) { return s.id === matchType; });
+                    if (!st) return null;
+                    return React.createElement("div", { className: "mt-3 p-3 rounded-xl border", style: { borderColor: st.color + '40', background: st.color + '08' } },
+                      React.createElement("div", { className: "flex items-center gap-2 mb-1.5" },
+                        React.createElement("span", { className: "text-lg", style: { color: st.color } }, "\u2B50"),
+                        React.createElement("span", { className: "text-xs font-bold", style: { color: st.color } }, st.label + " (" + st.example + ")")
+                      ),
+                      React.createElement("p", { className: "text-[10px] text-slate-600 leading-relaxed mb-2" }, st.desc),
+                      React.createElement("div", { className: "grid grid-cols-3 gap-2 text-[9px]" },
+                        [{ l: "Luminosity", v: st.luminosity }, { l: "Mass Range", v: st.mass || '?' }, { l: "Lifetime", v: st.lifetime || '?' }].map(function (item) {
+                          return React.createElement("div", { key: item.l, className: "bg-white rounded-lg p-1.5 text-center border border-slate-100" },
+                            React.createElement("div", { className: "text-slate-400 font-bold" }, item.l),
+                            React.createElement("div", { className: "font-bold", style: { color: st.color } }, item.v)
+                          );
+                        })
+                      ),
+                      st.whyItMatters ? React.createElement("div", { className: "mt-2 p-2 bg-amber-50 rounded-lg border border-amber-200" },
+                        React.createElement("p", { className: "text-[9px] text-amber-700" }, "\uD83D\uDCA1 " + st.whyItMatters)
+                      ) : null
+                    );
+                  })()
+                ),
+
+                // ── Fun Facts ──
+                React.createElement("div", { className: "bg-gradient-to-r from-indigo-50 to-violet-50 rounded-2xl border border-indigo-200 p-4" },
+                  React.createElement("h4", { className: "text-sm font-bold text-indigo-700 mb-2 flex items-center gap-2" },
+                    React.createElement("span", null, "\uD83D\uDCA1"), "Did You Know?"
+                  ),
+                  React.createElement("p", { className: "text-[11px] text-indigo-800 leading-relaxed" },
+                    lifecycleMass < 0.5 ? "Brown dwarfs are sometimes called 'failed stars.' They glow faintly from gravitational contraction, but never achieve hydrogen fusion. Jupiter is almost big enough to be one!" :
+                     lifecycleMass < 2 ? "Stars like our Sun live ~10 billion years. Our Sun is about halfway through its life! When it dies, it will expand to engulf Mercury, Venus, and possibly Earth before shedding its outer layers into a beautiful planetary nebula." :
+                     lifecycleMass < 8 ? "Larger low-mass stars burn hotter and die sooner. A 2 M\u2609 star lives only ~1.5 billion years. The relationship between mass and lifetime follows an inverse cube law: double the mass, live 8x shorter!" :
+                     lifecycleMass < 25 ? "Neutron stars are so dense that a sugar-cube-sized piece weighs about 1 billion tons! They can spin up to 716 times per second and have magnetic fields trillions of times stronger than Earth's." :
+                     "Stellar black holes form from stars >25 M\u2609. The Milky Way alone has ~100 million of them! The most massive known stellar black hole, in the binary system LB-1, weighs about 70 solar masses."
+                  )
+                ),
+
+                // ── Size Comparison ──
+                React.createElement("div", { className: "bg-white rounded-2xl border border-slate-200 p-4 shadow-sm" },
+                  React.createElement("h4", { className: "text-sm font-bold text-slate-800 mb-3 flex items-center gap-2" },
+                    React.createElement("span", null, "\uD83D\uDD2D"), "Size Comparison"
+                  ),
+                  React.createElement("div", { className: "flex items-end justify-center gap-4 py-4" },
+                    // Sun reference
+                    React.createElement("div", { className: "flex flex-col items-center" },
+                      React.createElement("div", { className: "rounded-full bg-gradient-to-br from-amber-300 to-amber-500 shadow-lg shadow-amber-200", style: { width: '40px', height: '40px' } }),
+                      React.createElement("span", { className: "text-[9px] text-slate-500 mt-1 font-bold" }, "Sun (1 M\u2609)")
+                    ),
+                    // Current star
+                    React.createElement("div", { className: "flex flex-col items-center" },
+                      React.createElement("div", { className: "rounded-full shadow-lg transition-all duration-300", style: {
+                        width: Math.max(8, Math.min(120, Math.pow(lifecycleMass, 0.8) * 20)) + 'px',
+                        height: Math.max(8, Math.min(120, Math.pow(lifecycleMass, 0.8) * 20)) + 'px',
+                        background: lifecycleMass < 0.45 ? 'linear-gradient(135deg, #ffcc6f, #ff9944)' :
+                                    lifecycleMass < 0.8 ? 'linear-gradient(135deg, #ffd2a1, #ffaa66)' :
+                                    lifecycleMass < 1.04 ? 'linear-gradient(135deg, #fff4ea, #ffdd99)' :
+                                    lifecycleMass < 1.4 ? 'linear-gradient(135deg, #f8f7ff, #ddd)' :
+                                    lifecycleMass < 2.1 ? 'linear-gradient(135deg, #cad7ff, #99aaee)' :
+                                    lifecycleMass < 16 ? 'linear-gradient(135deg, #aabfff, #7799ff)' :
+                                    'linear-gradient(135deg, #9bb0ff, #6677ff)',
+                        boxShadow: '0 0 ' + Math.min(20, lifecycleMass * 2) + 'px ' + (lifecycleMass < 0.8 ? '#ffd2a166' : lifecycleMass < 2.1 ? '#fff4ea66' : '#aabfff66')
+                      } }),
+                      React.createElement("span", { className: "text-[9px] text-slate-500 mt-1 font-bold" }, lifecycleMass + " M\u2609")
+                    )
+                  ),
+                  React.createElement("p", { className: "text-center text-[10px] text-slate-500 italic mt-2" },
+                    "Main-sequence radius scales roughly as M" + "\u2070\u00B7\u2078" + ". " +
+                    (lifecycleMass < 1 ? "Your star is smaller and cooler than the Sun." :
+                     lifecycleMass < 2 ? "Your star is similar in size to the Sun." :
+                     lifecycleMass < 10 ? "Your star is significantly larger and hotter than the Sun!" :
+                     "Your star is a colossal giant \u2014 millions of times more luminous than the Sun!")
+                  )
+                ),
+
+                // ── Snapshot ──
+                React.createElement("div", { className: "flex justify-end" },
+                  React.createElement("button", { onClick: function () { setToolSnapshots(function (prev) { return prev.concat([{ id: 'sl-' + Date.now(), tool: 'galaxy', label: 'Star Life: ' + lifecycleMass + ' M\u2609', data: Object.assign({}, d), timestamp: Date.now() }]); }); addToast('\uD83D\uDCF8 Star life snapshot saved!', 'success'); }, className: "px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-amber-500 to-orange-500 rounded-full hover:from-amber-600 hover:to-orange-600 shadow-md hover:shadow-lg transition-all" }, "\uD83D\uDCF8 Snapshot")
+                )
+              ),
           })(),
 
 
