@@ -5422,17 +5422,115 @@
 
             // ── Organism definitions ──
             var ORGANISMS = [
-              { id: 'amoeba', label: t('stem.cell.amoeba'), icon: '\u{1F9A0}', color: '#8b5cf6', bodyColor: 'rgba(139,92,246,0.35)', desc: 'Single-celled protist that moves using pseudopods (false feet). Engulfs food by phagocytosis.', speed: 0.3, size: 28, activity: 'Phagocytosis', activityDesc: 'Engulf food particles!', xp: 5, facts: ['Amoebas reproduce by binary fission', 'Pseudopods are temporary projections of cytoplasm', 'Amoebas live in freshwater, soil, and as parasites', 'They have no fixed shape - constantly changing', 'Food vacuoles digest engulfed particles'] },
-              { id: 'paramecium', label: t('stem.cell.paramecium'), icon: '\u{1F9A0}', color: '#06b6d4', bodyColor: 'rgba(6,182,212,0.35)', desc: 'Ciliated protist that moves rapidly using thousands of tiny hair-like cilia.', speed: 1.2, size: 22, activity: 'Ciliary Sweep', activityDesc: 'Swim through food clouds!', xp: 3, facts: ['Cilia beat in coordinated waves', 'Has an oral groove for feeding', 'Contains contractile vacuoles to expel water', 'Reproduces by binary fission and conjugation', 'Can reverse ciliary beat to escape danger'] },
-              { id: 'euglena', label: t('stem.cell.euglena'), icon: '\u{1F33F}', color: '#22c55e', bodyColor: 'rgba(34,197,94,0.35)', desc: 'Unique protist with both plant and animal characteristics. Has chloroplasts AND can eat food.', speed: 0.7, size: 18, activity: t('stem.chem_balance.photosynthesis'), activityDesc: 'Move into light zones!', xp: 4, facts: ['Has a red eyespot (stigma) to detect light', 'Contains chloroplasts for photosynthesis', 'Has a flagellum for movement', 'Can switch between autotroph and heterotroph', 'No cell wall - has a flexible pellicle'] },
-              { id: 'wbc', label: t('stem.cell.white_blood_cell'), icon: '\u{1FA78}', color: '#ef4444', bodyColor: 'rgba(239,68,68,0.3)', desc: 'Immune cell (leukocyte) that patrols the body and destroys invading pathogens.', speed: 0.5, size: 24, activity: 'Immune Defense', activityDesc: 'Chase and engulf bacteria!', xp: 6, facts: ['Part of the immune system', 'Uses chemotaxis to find pathogens', 'Can squeeze through blood vessel walls', 'Neutrophils are most common type', 'Produces antibodies to tag invaders'] },
-              { id: 'bacterium', label: t('stem.cell.bacterium'), icon: '\u{1F9EB}', color: '#f59e0b', bodyColor: 'rgba(245,158,11,0.35)', desc: 'Prokaryotic cell - no nucleus. Has cell wall, flagella, and reproduces by binary fission.', speed: 0.9, size: 10, activity: 'Binary Fission', activityDesc: 'Grow and divide!', xp: 5, facts: ['No membrane-bound nucleus (prokaryote)', 'Cell wall made of peptidoglycan', 'Some have flagella for movement', 'Reproduce every 20 minutes in ideal conditions', 'Plasmids carry extra DNA for antibiotic resistance'] },
-              { id: 'plantcell', label: t('stem.cell.plant_cell'), icon: '\u{1F33B}', color: '#65a30d', bodyColor: 'rgba(101,163,13,0.25)', desc: 'Eukaryotic cell with cell wall, chloroplasts, and large central vacuole.', speed: 0, size: 35, activity: 'Organelle Tour', activityDesc: 'Zoom in to explore!', xp: 2, facts: ['Rigid cell wall made of cellulose', 'Large central vacuole stores water', 'Chloroplasts convert light to energy', 'Has all organelles found in animal cells plus more', 'Connected to neighbors via plasmodesmata'] },
-              { id: 'diatom', label: t('stem.cell.diatom'), icon: '\u{1F4A0}', color: '#0ea5e9', bodyColor: 'rgba(14,165,233,0.25)', desc: 'Unicellular algae with intricate glass-like cell walls made of silica. Responsible for ~20% of global oxygen.', speed: 0.15, size: 16, activity: 'Nutrient Collection', activityDesc: 'Drift through nutrient clouds!', xp: 3, facts: ['Cell walls are made of silica (glass)', 'Produce about 20% of Earth\'s oxygen', 'Over 100,000 species exist', 'Used in forensic science to determine drowning', 'Fossil diatoms form diatomaceous earth'] },
-              { id: 'volvox', label: t('stem.cell.volvox'), icon: '\u{1F7E2}', color: '#10b981', bodyColor: 'rgba(16,185,129,0.2)', desc: 'Colonial green algae forming hollow spheres of 500-50,000 cells. Each cell has two flagella.', speed: 0.4, size: 32, activity: 'Colony Coordination', activityDesc: 'Spin toward the light!', xp: 4, facts: ['Colonies can contain 500 to 50,000 cells', 'Daughter colonies form inside the parent', 'Each cell has two flagella and an eyespot', 'Demonstrates division of labor in evolution', 'Rotates like a planet — name means "fierce roller"'] },
-              { id: 'stentor', label: t('stem.cell.stentor'), icon: '\u{1F3BA}', color: '#a855f7', bodyColor: 'rgba(168,85,247,0.3)', desc: 'Trumpet-shaped ciliate, one of the largest single-celled organisms (up to 2mm). Can regenerate from fragments.', speed: 0.1, size: 30, activity: 'Filter Feeding', activityDesc: 'Anchor and sweep food!', xp: 5, facts: ['Can be up to 2mm long — visible to naked eye', 'Can regenerate from tiny fragments', 'Has a bead-like macronucleus', 'Creates vortex currents to capture food', 'Can change color: blue, green, or pink'] },
-              { id: 'tardigrade', label: t('stem.cell.tardigrade'), icon: '\u{1F43B}', color: '#d946ef', bodyColor: 'rgba(217,70,239,0.25)', desc: 'Microscopic "water bear" with 8 legs. Nearly indestructible — survives space, radiation, extreme temps.', speed: 0.2, size: 20, activity: 'Cryptobiosis', activityDesc: 'Survive extreme zones!', xp: 7, facts: ['Can survive temperatures from -272°C to 150°C', 'Survived exposure to outer space', 'Enter cryptobiosis — suspend all metabolism', 'Have 8 legs with tiny claws', 'Can live without water for over 10 years'] },
-              { id: 'spirillum', label: t('stem.cell.spirillum'), icon: '\u{1F300}', color: '#f97316', bodyColor: 'rgba(249,115,22,0.3)', desc: 'Spiral-shaped bacterium that moves with a distinctive corkscrew motion using bipolar flagella.', speed: 1.0, size: 12, activity: 'Helical Propulsion', activityDesc: 'Corkscrew through the medium!', xp: 4, facts: ['Rigid spiral shape (not flexible like spirochetes)', 'Uses bipolar tufts of flagella', 'Found in stagnant freshwater', 'Moves in a corkscrew pattern', 'One of the largest bacteria — up to 60μm'] }
+              {
+                id: 'amoeba', label: t('stem.cell.amoeba'), icon: '\u{1F9A0}', color: '#8b5cf6', bodyColor: 'rgba(139,92,246,0.35)', desc: 'Single-celled protist that moves using pseudopods (false feet). Engulfs food by phagocytosis.', speed: 0.3, size: 28, activity: 'Phagocytosis', activityDesc: 'Engulf food particles!', xp: 5, facts: ['Amoebas reproduce by binary fission', 'Pseudopods are temporary projections of cytoplasm', 'Amoebas live in freshwater, soil, and as parasites', 'They have no fixed shape - constantly changing', 'Food vacuoles digest engulfed particles'],
+                anatomy: [
+                  { name: 'Pseudopods', fn: 'Temporary cytoplasm extensions used for movement and engulfing food (phagocytosis). Formed by actin filament polymerization.', icon: '\uD83E\uDDB6' },
+                  { name: 'Food Vacuole', fn: 'Membrane-bound compartment containing engulfed food particles. Enzymes digest the contents, releasing nutrients into cytoplasm.', icon: '\uD83D\uDFE2' },
+                  { name: 'Contractile Vacuole', fn: 'Pumps excess water out of the cell to maintain osmotic balance. Fills and contracts rhythmically.', icon: '\uD83D\uDCA7' },
+                  { name: 'Nucleus', fn: 'Contains DNA and controls cell activities. Single large nucleus with visible nucleolus.', icon: '\uD83D\uDFE3' },
+                  { name: 'Cell Membrane', fn: 'Flexible phospholipid bilayer that allows shape changes. Selectively permeable \u2014 controls what enters and exits.', icon: '\u26AA' }
+                ]
+              },
+              {
+                id: 'paramecium', label: t('stem.cell.paramecium'), icon: '\u{1F9A0}', color: '#06b6d4', bodyColor: 'rgba(6,182,212,0.35)', desc: 'Ciliated protist that moves rapidly using thousands of tiny hair-like cilia.', speed: 1.2, size: 22, activity: 'Ciliary Sweep', activityDesc: 'Swim through food clouds!', xp: 3, facts: ['Cilia beat in coordinated waves', 'Has an oral groove for feeding', 'Contains contractile vacuoles to expel water', 'Reproduces by binary fission and conjugation', 'Can reverse ciliary beat to escape danger'],
+                anatomy: [
+                  { name: 'Cilia', fn: 'Thousands of short hair-like projections covering the cell. Beat in coordinated metachronal waves for rapid swimming (~3mm/sec).', icon: '\u{1F4A8}' },
+                  { name: 'Oral Groove', fn: 'Funnel-shaped depression that channels food particles into the cell mouth (cytostome). Cilia sweep food inward.', icon: '\uD83E\uDD44' },
+                  { name: 'Macronucleus', fn: 'Large kidney-shaped nucleus controlling daily cell functions (gene expression for proteins, metabolism).', icon: '\uD83D\uDFE3' },
+                  { name: 'Micronucleus', fn: 'Small round nucleus used only during sexual reproduction (conjugation). Contains complete genome.', icon: '\u26AA' },
+                  { name: 'Trichocysts', fn: 'Defensive organelles embedded in the pellicle. Fire tiny needle-like shafts when the cell is threatened.', icon: '\u26A1' }
+                ]
+              },
+              {
+                id: 'euglena', label: t('stem.cell.euglena'), icon: '\u{1F33F}', color: '#22c55e', bodyColor: 'rgba(34,197,94,0.35)', desc: 'Unique protist with both plant and animal characteristics. Has chloroplasts AND can eat food.', speed: 0.7, size: 18, activity: t('stem.chem_balance.photosynthesis'), activityDesc: 'Move into light zones!', xp: 4, facts: ['Has a red eyespot (stigma) to detect light', 'Contains chloroplasts for photosynthesis', 'Has a flagellum for movement', 'Can switch between autotroph and heterotroph', 'No cell wall - has a flexible pellicle'],
+                anatomy: [
+                  { name: 'Flagellum', fn: 'Long whip-like appendage emerging from anterior end. Rotates to pull the cell forward through water.', icon: '\u{1F4A8}' },
+                  { name: 'Eyespot (Stigma)', fn: 'Red-orange carotenoid pigment spot that shades a photoreceptor, allowing Euglena to detect light direction for phototaxis.', icon: '\uD83D\uDD34' },
+                  { name: 'Chloroplasts', fn: 'Green plastids containing chlorophyll for photosynthesis. Can be lost permanently if cell is kept in darkness.', icon: '\uD83D\uDFE2' },
+                  { name: 'Pellicle', fn: 'Flexible protein strips beneath the membrane (not a cell wall). Allows euglenoid movement \u2014 stretching and contracting.', icon: '\u26AA' },
+                  { name: 'Paramylon Body', fn: 'Unique carbohydrate storage granule (beta-1,3-glucan). Euglena\u2019s version of starch, used as energy reserve.', icon: '\u26AA' }
+                ]
+              },
+              {
+                id: 'wbc', label: t('stem.cell.white_blood_cell'), icon: '\u{1FA78}', color: '#ef4444', bodyColor: 'rgba(239,68,68,0.3)', desc: 'Immune cell (leukocyte) that patrols the body and destroys invading pathogens.', speed: 0.5, size: 24, activity: 'Immune Defense', activityDesc: 'Chase and engulf bacteria!', xp: 6, facts: ['Part of the immune system', 'Uses chemotaxis to find pathogens', 'Can squeeze through blood vessel walls', 'Neutrophils are most common type', 'Produces antibodies to tag invaders'],
+                anatomy: [
+                  { name: 'Lobed Nucleus', fn: 'Multi-lobed nucleus (neutrophils have 3-5 lobes). Allows the cell to squeeze through tight spaces between tissue cells.', icon: '\uD83D\uDFE3' },
+                  { name: 'Lysosomes', fn: 'Enzyme-filled vesicles that digest engulfed pathogens. Contain hydrolytic enzymes active at acidic pH.', icon: '\uD83D\uDFE1' },
+                  { name: 'Pseudopods', fn: 'Cytoplasmic extensions used for amoeboid movement and phagocytosis. Follow chemical gradients (chemotaxis) to find bacteria.', icon: '\uD83E\uDDB6' },
+                  { name: 'Phagosomes', fn: 'Membrane-bound vesicles formed when the cell engulfs a pathogen. Fuse with lysosomes to destroy the invader.', icon: '\uD83D\uDD34' },
+                  { name: 'Surface Receptors', fn: 'Toll-like receptors and antibody receptors recognize foreign molecules (antigens) on pathogen surfaces.', icon: '\u26A1' }
+                ]
+              },
+              {
+                id: 'bacterium', label: t('stem.cell.bacterium'), icon: '\u{1F9EB}', color: '#f59e0b', bodyColor: 'rgba(245,158,11,0.35)', desc: 'Prokaryotic cell - no nucleus. Has cell wall, flagella, and reproduces by binary fission.', speed: 0.9, size: 10, activity: 'Binary Fission', activityDesc: 'Grow and divide!', xp: 5, facts: ['No membrane-bound nucleus (prokaryote)', 'Cell wall made of peptidoglycan', 'Some have flagella for movement', 'Reproduce every 20 minutes in ideal conditions', 'Plasmids carry extra DNA for antibiotic resistance'],
+                anatomy: [
+                  { name: 'Nucleoid', fn: 'Region of circular DNA (not membrane-bound). Single chromosome contains ~4,000 genes. No histones in most bacteria.', icon: '\uD83D\uDFE1' },
+                  { name: 'Peptidoglycan Wall', fn: 'Rigid mesh of sugars and amino acids surrounding the membrane. Gram+ have thick walls; Gram- have thin walls + outer membrane.', icon: '\uD83D\uDFE7' },
+                  { name: 'Plasmids', fn: 'Small circular DNA molecules separate from the chromosome. Carry genes for antibiotic resistance; can transfer between bacteria.', icon: '\uD83D\uDD35' },
+                  { name: 'Flagellum', fn: 'Rotating protein filament driven by a molecular motor (proton gradient). Spins ~100 revolutions/second for swimming.', icon: '\u{1F4A8}' },
+                  { name: 'Ribosomes (70S)', fn: 'Smaller than eukaryotic ribosomes (70S vs 80S). This size difference is why antibiotics can target bacterial ribosomes specifically.', icon: '\u26AA' }
+                ]
+              },
+              {
+                id: 'plantcell', label: t('stem.cell.plant_cell'), icon: '\u{1F33B}', color: '#65a30d', bodyColor: 'rgba(101,163,13,0.25)', desc: 'Eukaryotic cell with cell wall, chloroplasts, and large central vacuole.', speed: 0, size: 35, activity: 'Organelle Tour', activityDesc: 'Zoom in to explore!', xp: 2, facts: ['Rigid cell wall made of cellulose', 'Large central vacuole stores water', 'Chloroplasts convert light to energy', 'Has all organelles found in animal cells plus more', 'Connected to neighbors via plasmodesmata'],
+                anatomy: [
+                  { name: 'Cell Wall', fn: 'Rigid outer layer of cellulose microfibrils. Provides structural support, prevents bursting from osmotic pressure, and gives plants their shape.', icon: '\uD83D\uDFE9' },
+                  { name: 'Central Vacuole', fn: 'Massive fluid-filled organelle occupying up to 90% of cell volume. Stores water, nutrients, and waste; maintains turgor pressure.', icon: '\uD83D\uDFE6' },
+                  { name: 'Chloroplast', fn: 'Double-membrane organelle with internal thylakoid membranes where photosynthesis occurs. Contains its own DNA (endosymbiotic origin).', icon: '\uD83D\uDFE2' },
+                  { name: 'Nucleus', fn: 'Contains chromosomal DNA enclosed by a double membrane (nuclear envelope) with pores. Controls gene expression and cell division.', icon: '\uD83D\uDFE3' },
+                  { name: 'Mitochondria', fn: 'Powerhouse of the cell \u2014 performs cellular respiration (glucose + O\u2082 \u2192 ATP + CO\u2082 + H\u2082O). Has its own circular DNA.', icon: '\uD83D\uDFE0' },
+                  { name: 'Endoplasmic Reticulum', fn: 'Network of membrane channels. Rough ER (with ribosomes) makes proteins; Smooth ER synthesizes lipids and detoxifies chemicals.', icon: '\u26AA' },
+                  { name: 'Plasmodesmata', fn: 'Tiny channels through the cell wall connecting adjacent plant cells. Allow transport of water, nutrients, and signaling molecules.', icon: '\uD83D\uDD35' }
+                ]
+              },
+              {
+                id: 'diatom', label: t('stem.cell.diatom'), icon: '\u{1F4A0}', color: '#0ea5e9', bodyColor: 'rgba(14,165,233,0.25)', desc: 'Unicellular algae with intricate glass-like cell walls made of silica. Responsible for ~20% of global oxygen.', speed: 0.15, size: 16, activity: 'Nutrient Collection', activityDesc: 'Drift through nutrient clouds!', xp: 3, facts: ['Cell walls are made of silica (glass)', 'Produce about 20% of Earth\'s oxygen', 'Over 100,000 species exist', 'Used in forensic science to determine drowning', 'Fossil diatoms form diatomaceous earth'],
+                anatomy: [
+                  { name: 'Frustule', fn: 'Two-part silica shell (epitheca + hypotheca) that fits together like a petri dish. Ornately patterned with pores (areolae) for gas exchange.', icon: '\uD83D\uDC8E' },
+                  { name: 'Raphe', fn: 'Slit along the frustule that secretes mucilage for gliding movement. Not all diatoms have one (pennate vs centric types).', icon: '\u27B0' },
+                  { name: 'Chloroplasts', fn: 'Golden-brown plastids containing chlorophylls a \u0026 c plus fucoxanthin pigment (gives diatoms their characteristic color).', icon: '\uD83D\uDFE2' },
+                  { name: 'Central Node', fn: 'Thickened area in the center of the frustule where the raphe splits. Controls mucilage secretion direction.', icon: '\u26AA' }
+                ]
+              },
+              {
+                id: 'volvox', label: t('stem.cell.volvox'), icon: '\u{1F7E2}', color: '#10b981', bodyColor: 'rgba(16,185,129,0.2)', desc: 'Colonial green algae forming hollow spheres of 500-50,000 cells. Each cell has two flagella.', speed: 0.4, size: 32, activity: 'Colony Coordination', activityDesc: 'Spin toward the light!', xp: 4, facts: ['Colonies can contain 500 to 50,000 cells', 'Daughter colonies form inside the parent', 'Each cell has two flagella and an eyespot', 'Demonstrates division of labor in evolution', 'Rotates like a planet \u2014 name means "fierce roller"'],
+                anatomy: [
+                  { name: 'Somatic Cells', fn: 'Thousands of biflagellate cells on the colony surface. Beat flagella in coordination for locomotion. Cannot reproduce.', icon: '\uD83D\uDFE2' },
+                  { name: 'Gonidia', fn: 'Large reproductive cells inside the colony. Divide repeatedly to form miniature daughter colonies (asexual reproduction).', icon: '\uD83C\uDF1F' },
+                  { name: 'Cytoplasmic Bridges', fn: 'Thin strands connecting adjacent somatic cells, enabling coordinated flagellar beating across the entire colony surface.', icon: '\uD83D\uDD17' },
+                  { name: 'Glycoprotein Matrix', fn: 'Extracellular gel matrix holding the colony together. Each cell sits in its own pocket within this transparent sphere.', icon: '\u26AA' }
+                ]
+              },
+              {
+                id: 'stentor', label: t('stem.cell.stentor'), icon: '\u{1F3BA}', color: '#a855f7', bodyColor: 'rgba(168,85,247,0.3)', desc: 'Trumpet-shaped ciliate, one of the largest single-celled organisms (up to 2mm). Can regenerate from fragments.', speed: 0.1, size: 30, activity: 'Filter Feeding', activityDesc: 'Anchor and sweep food!', xp: 5, facts: ['Can be up to 2mm long \u2014 visible to naked eye', 'Can regenerate from tiny fragments', 'Has a bead-like macronucleus', 'Creates vortex currents to capture food', 'Can change color: blue, green, or pink'],
+                anatomy: [
+                  { name: 'Membranellar Band', fn: 'Crown of fused cilia (membranelles) spiraling around the oral end. Creates water vortex currents that sweep food into the oral groove.', icon: '\uD83C\uDF00' },
+                  { name: 'Myonemes', fn: 'Contractile fibers running the length of the body like muscle fibers. Allow rapid contraction to 1/4 length in milliseconds.', icon: '\u26A1' },
+                  { name: 'Beaded Macronucleus', fn: 'Distinctive moniliform (bead-like chain) macronucleus. Can be fragmented during regeneration \u2014 each piece contains full genetic info.', icon: '\uD83D\uDFE3' },
+                  { name: 'Holdfast', fn: 'Attachment structure at the narrow (aboral) end. Anchors the cell to substrate while feeding. Can release for relocation.', icon: '\u2693' },
+                  { name: 'Body Cilia', fn: 'Short cilia covering the body surface. Used for swimming when detached, but primary function is tactile sensing.', icon: '\u{1F4A8}' }
+                ]
+              },
+              {
+                id: 'tardigrade', label: t('stem.cell.tardigrade'), icon: '\u{1F43B}', color: '#d946ef', bodyColor: 'rgba(217,70,239,0.25)', desc: 'Microscopic "water bear" with 8 legs. Nearly indestructible \u2014 survives space, radiation, extreme temps.', speed: 0.2, size: 20, activity: 'Cryptobiosis', activityDesc: 'Survive extreme zones!', xp: 7, facts: ['Can survive temperatures from -272\u00B0C to 150\u00B0C', 'Survived exposure to outer space', 'Enter cryptobiosis \u2014 suspend all metabolism', 'Have 8 legs with tiny claws', 'Can live without water for over 10 years'],
+                anatomy: [
+                  { name: 'Cuticle', fn: 'Tough external covering shed (molted) periodically. Made of chitin-like material. Provides protection and is permeable to gases.', icon: '\uD83D\uDEE1' },
+                  { name: 'Stylets', fn: 'Piercing mouthparts used to puncture plant cells or small invertebrates. Retracted during molting and re-synthesized.', icon: '\uD83D\uDD2A' },
+                  { name: 'Lobopod Legs', fn: 'Eight stubby legs ending in 4-8 claws each. Last pair faces backward. No joints \u2014 moved by individual muscle fibers.', icon: '\uD83E\uDDB6' },
+                  { name: 'Tun State', fn: 'Cryptobiosis form: body contracts into a ball (tun), loses 97% of water, metabolism drops to 0.01%. Can survive decades.', icon: '\uD83D\uDFE4' },
+                  { name: 'Dsup Protein', fn: 'Damage Suppressor protein unique to tardigrades. Binds to DNA and shields it from radiation damage (discovered 2016).', icon: '\u2B50' }
+                ]
+              },
+              {
+                id: 'spirillum', label: t('stem.cell.spirillum'), icon: '\u{1F300}', color: '#f97316', bodyColor: 'rgba(249,115,22,0.3)', desc: 'Spiral-shaped bacterium that moves with a distinctive corkscrew motion using bipolar flagella.', speed: 1.0, size: 12, activity: 'Helical Propulsion', activityDesc: 'Corkscrew through the medium!', xp: 4, facts: ['Rigid spiral shape (not flexible like spirochetes)', 'Uses bipolar tufts of flagella', 'Found in stagnant freshwater', 'Moves in a corkscrew pattern', 'One of the largest bacteria \u2014 up to 60\u03BCm'],
+                anatomy: [
+                  { name: 'Bipolar Flagella', fn: 'Tufts of flagella at both cell poles. Rotate in opposite directions to produce the characteristic corkscrew swimming motion.', icon: '\u{1F4A8}' },
+                  { name: 'Rigid Spiral Body', fn: 'Cell shape is a fixed helix (unlike flexible spirochetes). The peptidoglycan wall maintains this permanent corkscrew shape.', icon: '\uD83C\uDF00' },
+                  { name: 'Volutin Granules', fn: 'Intracellular phosphate storage bodies. Appear as dark spots under microscopy. Energy reserve for nutrient-poor conditions.', icon: '\u26AA' },
+                  { name: 'Polar Membrane', fn: 'Specialized membrane region at cell poles where flagellar motors are anchored. Contains chemoreceptor proteins for sensing environment.', icon: '\uD83D\uDD35' }
+                ]
+              }
             ];
 
             // ── Quiz questions (observation-based) ──
@@ -6566,15 +6664,30 @@
                   React.createElement("span", { className: "text-slate-500" }, selDef.activityDesc),
                   React.createElement("span", { className: "ml-2 font-bold", style: { color: selDef.color } }, "+" + selDef.xp + " XP")
                 ),
-                // Facts
+                // Facts — always visible
                 React.createElement("div", { className: "mt-2 grid grid-cols-1 gap-0.5" },
                   selDef.facts.map(function (fact, i) {
                     var discovered = (d.discoveries || []).includes(selDef.id + '_' + i);
-                    return React.createElement("div", { key: i, className: "flex items-center gap-2 text-[10px] py-0.5" },
-                      React.createElement("span", { className: discovered ? "text-green-600" : "text-slate-300" }, discovered ? "\u2713" : "\uD83D\uDD12"),
-                      React.createElement("span", { className: discovered ? "text-slate-600" : "text-slate-300 italic" }, discovered ? fact : "Discover through observation...")
+                    return React.createElement("div", { key: i, className: "flex items-start gap-2 text-[10px] py-0.5" },
+                      React.createElement("span", { className: discovered ? "text-green-600 flex-shrink-0" : "text-slate-400 flex-shrink-0" }, discovered ? "\u2713" : "\u2022"),
+                      React.createElement("span", { className: discovered ? "text-slate-700 font-semibold" : "text-slate-600" }, fact)
                     );
                   })
+                ),
+                // Anatomy & Organelles (if defined)
+                selDef.anatomy && React.createElement("div", { className: "mt-2 border-t border-slate-100 pt-2" },
+                  React.createElement("p", { className: "text-[10px] font-black text-slate-500 uppercase mb-1" }, "\uD83E\uDDEC Key Structures"),
+                  React.createElement("div", { className: "grid grid-cols-1 gap-1" },
+                    selDef.anatomy.map(function (a, i) {
+                      return React.createElement("div", { key: i, className: "flex items-start gap-1.5 text-[10px]" },
+                        React.createElement("span", { className: "flex-shrink-0", style: { color: selDef.color } }, a.icon || "\u25CF"),
+                        React.createElement("span", null,
+                          React.createElement("span", { className: "font-bold text-slate-700" }, a.name + ": "),
+                          React.createElement("span", { className: "text-slate-500" }, a.fn)
+                        )
+                      );
+                    })
+                  )
                 )
               ),
 
