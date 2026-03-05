@@ -14884,14 +14884,6 @@
             var quizMode = d.quizMode || false;
             var quizQ = d.quizQ || null;
 
-            // ── Enhanced sim state ──
-            var hungerLevels = d.hungerLevels || {};
-            var simSpeed = d.simSpeed || 1;
-            var simDay = d.simDay || 0;
-            var simHour = d.simHour || 8;
-            var feedingLog = d.feedingLog || null;
-            var chemTooltip = d.chemTooltip || null;
-            var fishStress = d.fishStress || {};
             var quizScore = d.quizScore || 0;
             var quizStreak = d.quizStreak || 0;
 
@@ -23124,12 +23116,12 @@
             var BODY_PLANS = {
               fish: {
                 label: 'Bony Fish (Osteichthyes)',
-                svg: function(w,h,color) {
+                svg: function (w, h, color) {
                   var c1 = color || '#22d3ee', c2 = color || '#0891b2';
                   return '<svg viewBox="0 0 440 260" xmlns="http://www.w3.org/2000/svg">' +
                     '<defs>' +
-                      '<linearGradient id="fishG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="' + c1 + '"/><stop offset="100%" stop-color="' + c2 + '"/></linearGradient>' +
-                      '<linearGradient id="fishBelly" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="' + c2 + '"/><stop offset="100%" stop-color="#e2e8f0"/></linearGradient>' +
+                    '<linearGradient id="fishG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="' + c1 + '"/><stop offset="100%" stop-color="' + c2 + '"/></linearGradient>' +
+                    '<linearGradient id="fishBelly" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="' + c2 + '"/><stop offset="100%" stop-color="#e2e8f0"/></linearGradient>' +
                     '</defs>' +
                     '<path d="M55,130 Q65,75 110,65 Q160,50 210,55 Q270,58 310,75 Q340,85 355,110 Q360,130 355,150 Q340,175 310,185 Q270,200 210,205 Q160,210 110,195 Q65,185 55,130Z" fill="url(#fishG)" stroke="' + c2 + '" stroke-width="2.5"/>' +
                     '<path d="M55,130 Q65,145 110,170 Q160,190 210,193 Q270,195 310,185 Q340,175 355,150 Q360,130 355,150" fill="url(#fishBelly)" opacity="0.4"/>' +
@@ -23170,10 +23162,10 @@
               },
               shark: {
                 label: 'Cartilaginous Fish (Chondrichthyes)',
-                svg: function(w,h,color) {
+                svg: function (w, h, color) {
                   return '<svg viewBox="0 0 460 230" xmlns="http://www.w3.org/2000/svg">' +
                     '<defs>' +
-                      '<linearGradient id="sharkG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#64748b"/><stop offset="50%" stop-color="#475569"/><stop offset="100%" stop-color="#cbd5e1"/></linearGradient>' +
+                    '<linearGradient id="sharkG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#64748b"/><stop offset="50%" stop-color="#475569"/><stop offset="100%" stop-color="#cbd5e1"/></linearGradient>' +
                     '</defs>' +
                     '<path d="M30,115 Q45,85 75,78 Q120,65 180,68 Q250,62 310,78 Q350,88 380,98 Q400,105 410,105 Q430,90 445,70 L448,72 Q445,85 440,100 Q438,110 440,118 Q445,135 448,148 L445,150 Q430,130 410,115 Q400,115 380,122 Q350,132 310,142 Q250,158 180,155 Q120,155 75,142 Q45,135 30,115Z" fill="url(#sharkG)" stroke="#334155" stroke-width="2.5"/>' +
                     '<path d="M30,115 Q45,130 75,140 Q120,152 180,155 Q250,158 310,142 Q350,132 380,122 Q400,115 410,115" fill="#e2e8f0" opacity="0.4"/>' +
@@ -23211,12 +23203,12 @@
               },
               jellyfish: {
                 label: 'Cnidarian (Medusa Form)',
-                svg: function(w,h,color) {
+                svg: function (w, h, color) {
                   var c1 = color || '#c4b5fd', c2 = color || '#8b5cf6';
                   return '<svg viewBox="0 0 320 340" xmlns="http://www.w3.org/2000/svg">' +
                     '<defs>' +
-                      '<radialGradient id="jellyG" cx="50%" cy="40%"><stop offset="0%" stop-color="' + c1 + '" stop-opacity="0.3"/><stop offset="60%" stop-color="' + c1 + '" stop-opacity="0.5"/><stop offset="100%" stop-color="' + c2 + '" stop-opacity="0.7"/></radialGradient>' +
-                      '<radialGradient id="jellyInner" cx="50%" cy="50%"><stop offset="0%" stop-color="white" stop-opacity="0.15"/><stop offset="100%" stop-color="' + c2 + '" stop-opacity="0"/></radialGradient>' +
+                    '<radialGradient id="jellyG" cx="50%" cy="40%"><stop offset="0%" stop-color="' + c1 + '" stop-opacity="0.3"/><stop offset="60%" stop-color="' + c1 + '" stop-opacity="0.5"/><stop offset="100%" stop-color="' + c2 + '" stop-opacity="0.7"/></radialGradient>' +
+                    '<radialGradient id="jellyInner" cx="50%" cy="50%"><stop offset="0%" stop-color="white" stop-opacity="0.15"/><stop offset="100%" stop-color="' + c2 + '" stop-opacity="0"/></radialGradient>' +
                     '</defs>' +
                     '<path d="M60,100 Q60,30 160,25 Q260,30 260,100 Q260,120 240,130 Q200,145 160,145 Q120,145 80,130 Q60,120 60,100Z" fill="url(#jellyG)" stroke="' + c2 + '" stroke-width="1.5"/>' +
                     '<ellipse cx="160" cy="75" rx="55" ry="30" fill="url(#jellyInner)"/>' +
@@ -23244,11 +23236,11 @@
               },
               crustacean: {
                 label: 'Crustacean (Arthropoda)',
-                svg: function(w,h,color) {
+                svg: function (w, h, color) {
                   var c1 = color || '#f97316', c2 = color || '#dc2626';
                   return '<svg viewBox="0 0 400 280" xmlns="http://www.w3.org/2000/svg">' +
                     '<defs>' +
-                      '<linearGradient id="crustG" x1="0" y1="0" x2="0.5" y2="1"><stop offset="0%" stop-color="' + c1 + '"/><stop offset="100%" stop-color="' + c2 + '"/></linearGradient>' +
+                    '<linearGradient id="crustG" x1="0" y1="0" x2="0.5" y2="1"><stop offset="0%" stop-color="' + c1 + '"/><stop offset="100%" stop-color="' + c2 + '"/></linearGradient>' +
                     '</defs>' +
                     '<ellipse cx="200" cy="120" rx="100" ry="55" fill="url(#crustG)" stroke="#991b1b" stroke-width="2.5"/>' +
                     '<path d="M200,67 Q200,75 195,85 Q190,90 200,90 Q210,90 205,85 Q200,75 200,67" fill="#991b1b" opacity="0.3"/>' +
@@ -23277,11 +23269,11 @@
               },
               cephalopod: {
                 label: 'Cephalopod (Mollusca)',
-                svg: function(w,h,color) {
+                svg: function (w, h, color) {
                   var c1 = color || '#f472b6', c2 = color || '#be185d';
                   return '<svg viewBox="0 0 320 360" xmlns="http://www.w3.org/2000/svg">' +
                     '<defs>' +
-                      '<radialGradient id="cephG" cx="50%" cy="35%"><stop offset="0%" stop-color="' + c1 + '" stop-opacity="0.8"/><stop offset="100%" stop-color="' + c2 + '"/></radialGradient>' +
+                    '<radialGradient id="cephG" cx="50%" cy="35%"><stop offset="0%" stop-color="' + c1 + '" stop-opacity="0.8"/><stop offset="100%" stop-color="' + c2 + '"/></radialGradient>' +
                     '</defs>' +
                     '<path d="M100,130 Q80,70 100,30 Q130,5 160,5 Q190,5 220,30 Q240,70 220,130 Q210,145 200,150 Q160,158 120,150 Q110,145 100,130Z" fill="url(#cephG)" stroke="' + c2 + '" stroke-width="2"/>' +
                     '<ellipse cx="160" cy="90" rx="40" ry="20" fill="rgba(255,255,255,0.06)"/>' +
@@ -23318,12 +23310,12 @@
               },
               echinoderm: {
                 label: 'Echinoderm (Asteroidea)',
-                svg: function(w,h,color) {
+                svg: function (w, h, color) {
                   var c1 = color || '#f97316', c2 = color || '#ea580c';
                   return '<svg viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg">' +
                     '<defs>' +
-                      '<linearGradient id="echiG" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="' + c1 + '"/><stop offset="100%" stop-color="' + c2 + '"/></linearGradient>' +
-                      '<radialGradient id="echiCenter"><stop offset="0%" stop-color="#fed7aa"/><stop offset="100%" stop-color="' + c2 + '"/></radialGradient>' +
+                    '<linearGradient id="echiG" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="' + c1 + '"/><stop offset="100%" stop-color="' + c2 + '"/></linearGradient>' +
+                    '<radialGradient id="echiCenter"><stop offset="0%" stop-color="#fed7aa"/><stop offset="100%" stop-color="' + c2 + '"/></radialGradient>' +
                     '</defs>' +
                     '<path d="M160,15 Q170,60 178,85 L195,95 Q240,80 275,68 Q285,68 285,75 Q280,82 240,105 L225,118 Q235,140 245,175 Q250,195 248,200 Q242,205 235,195 Q215,162 200,140 L185,138 Q170,155 160,175 Q150,155 135,138 L120,140 Q105,162 85,195 Q78,205 72,200 Q70,195 75,175 Q85,140 95,118 L80,105 Q40,82 35,75 Q35,68 45,68 Q80,80 125,95 L142,85 Q150,60 160,15Z" fill="url(#echiG)" stroke="#c2410c" stroke-width="2.5" stroke-linejoin="round"/>' +
                     '<circle cx="160" cy="135" r="22" fill="url(#echiCenter)" stroke="#c2410c" stroke-width="2"/>' +
@@ -23352,10 +23344,10 @@
               },
               cetacean: {
                 label: 'Marine Mammal (Cetacea)',
-                svg: function(w,h,color) {
+                svg: function (w, h, color) {
                   return '<svg viewBox="0 0 480 220" xmlns="http://www.w3.org/2000/svg">' +
                     '<defs>' +
-                      '<linearGradient id="cetG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#64748b"/><stop offset="55%" stop-color="#94a3b8"/><stop offset="100%" stop-color="#e2e8f0"/></linearGradient>' +
+                    '<linearGradient id="cetG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#64748b"/><stop offset="55%" stop-color="#94a3b8"/><stop offset="100%" stop-color="#e2e8f0"/></linearGradient>' +
                     '</defs>' +
                     '<path d="M35,110 Q45,72 80,62 Q120,52 170,55 Q230,52 290,62 Q340,72 370,85 Q400,95 420,100 Q440,95 455,78 Q462,70 465,72 Q465,80 460,92 Q455,105 455,115 Q460,130 465,148 Q465,150 462,150 Q455,142 440,125 Q420,120 400,125 Q370,135 340,148 Q290,162 230,168 Q170,168 120,162 Q80,155 45,142 Q35,135 35,110Z" fill="url(#cetG)" stroke="#475569" stroke-width="2.5"/>' +
                     '<path d="M35,112 Q45,135 80,150 Q120,160 170,165 Q230,168 290,162 Q340,148 370,135 Q400,125 420,120" fill="#e2e8f0" opacity="0.35"/>' +
@@ -23379,11 +23371,11 @@
               },
               chelonian: {
                 label: 'Sea Turtle (Testudines)',
-                svg: function(w,h,color) {
+                svg: function (w, h, color) {
                   return '<svg viewBox="0 0 400 280" xmlns="http://www.w3.org/2000/svg">' +
                     '<defs>' +
-                      '<linearGradient id="turtG" x1="0.2" y1="0" x2="0.8" y2="1"><stop offset="0%" stop-color="#65a30d"/><stop offset="50%" stop-color="#3f6212"/><stop offset="100%" stop-color="#365314"/></linearGradient>' +
-                      '<linearGradient id="turtSkin" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#4d7c0f"/><stop offset="100%" stop-color="#365314"/></linearGradient>' +
+                    '<linearGradient id="turtG" x1="0.2" y1="0" x2="0.8" y2="1"><stop offset="0%" stop-color="#65a30d"/><stop offset="50%" stop-color="#3f6212"/><stop offset="100%" stop-color="#365314"/></linearGradient>' +
+                    '<linearGradient id="turtSkin" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#4d7c0f"/><stop offset="100%" stop-color="#365314"/></linearGradient>' +
                     '</defs>' +
                     '<ellipse cx="200" cy="140" rx="110" ry="72" fill="url(#turtG)" stroke="#1a2e05" stroke-width="3"/>' +
                     '<path d="M200,70 L240,80 L260,105 L252,132 L220,148 L200,152 L180,148 L148,132 L140,105 L160,80Z" fill="none" stroke="#4d7c0f" stroke-width="2" opacity="0.5"/>' +
@@ -23449,16 +23441,16 @@
             var viewingAnatomy = d.viewingAnatomy || null;
             var anatomyHighlight = d.anatomyHighlight || null;
 
-            var openAnatomy = function(speciesId) {
+            var openAnatomy = function (speciesId) {
               updMulti({ viewingAnatomy: speciesId, anatomyHighlight: null });
             };
-            var closeAnatomy = function() {
+            var closeAnatomy = function () {
               updMulti({ viewingAnatomy: null, anatomyHighlight: null });
             };
 
-var TANK_TYPES = [
+            var TANK_TYPES = [
 
-                          { id: 'freshwater', name: '🐠 Freshwater Community', size: 20, temp: 76, salinity: 0, pH: 7.0, diff: 1, desc: 'Classic beginner setup with tetras, guppies, and corydoras.' },
+              { id: 'freshwater', name: '🐠 Freshwater Community', size: 20, temp: 76, salinity: 0, pH: 7.0, diff: 1, desc: 'Classic beginner setup with tetras, guppies, and corydoras.' },
               { id: 'planted', name: '🌿 Planted Tropical', size: 40, temp: 78, salinity: 0, pH: 6.8, diff: 2, desc: 'Lush aquascape with live plants and small schooling fish.' },
               { id: 'reef', name: '🐡 Saltwater Reef', size: 55, temp: 78, salinity: 35, pH: 8.2, diff: 3, desc: 'Vibrant coral reef with clownfish and anemones.' },
               { id: 'predator', name: '🦈 Predator Tank', size: 75, temp: 76, salinity: 0, pH: 7.2, diff: 3, desc: 'Oscars, pike cichlids, and other large predatory fish.' },
@@ -23470,50 +23462,50 @@ var TANK_TYPES = [
 
             var SPECIES_BY_TANK = {
               freshwater: [
-                { id: 'neon', name: 'Neon Tetra', icon: '🐟', load: 1, minTank: 10, tempRange: [72,80], pHRange: [6.0,7.5], compat: ['guppy','cory','platy'], fact: 'Their iridescent stripe is made of guanine crystals.' },
-                { id: 'guppy', name: 'Guppy', icon: '🐟', load: 1, minTank: 5, tempRange: [72,82], pHRange: [6.8,7.8], compat: ['neon','cory','platy','molly'], fact: 'Males display vibrant colors to attract females.' },
-                { id: 'cory', name: 'Corydoras', icon: '🐡', load: 2, minTank: 15, tempRange: [72,79], pHRange: [6.0,7.5], compat: ['neon','guppy','platy','angel'], fact: 'They breathe air by darting to the surface!' },
-                { id: 'angel', name: 'Angelfish', icon: '🐠', load: 4, minTank: 20, tempRange: [76,84], pHRange: [6.0,7.5], compat: ['cory'], fact: 'Angelfish are cichlids — they guard their eggs fiercely.' },
-                { id: 'platy', name: 'Platy', icon: '🐟', load: 1, minTank: 10, tempRange: [70,80], pHRange: [7.0,8.2], compat: ['neon','guppy','cory','molly'], fact: 'Platys are livebearers — they give birth to free-swimming fry.' },
-                { id: 'molly', name: 'Molly', icon: '🐟', load: 2, minTank: 15, tempRange: [72,82], pHRange: [7.0,8.5], compat: ['guppy','platy'], fact: 'Mollies can survive in both fresh and saltwater!' }
+                { id: 'neon', name: 'Neon Tetra', icon: '🐟', load: 1, minTank: 10, tempRange: [72, 80], pHRange: [6.0, 7.5], compat: ['guppy', 'cory', 'platy'], fact: 'Their iridescent stripe is made of guanine crystals.' },
+                { id: 'guppy', name: 'Guppy', icon: '🐟', load: 1, minTank: 5, tempRange: [72, 82], pHRange: [6.8, 7.8], compat: ['neon', 'cory', 'platy', 'molly'], fact: 'Males display vibrant colors to attract females.' },
+                { id: 'cory', name: 'Corydoras', icon: '🐡', load: 2, minTank: 15, tempRange: [72, 79], pHRange: [6.0, 7.5], compat: ['neon', 'guppy', 'platy', 'angel'], fact: 'They breathe air by darting to the surface!' },
+                { id: 'angel', name: 'Angelfish', icon: '🐠', load: 4, minTank: 20, tempRange: [76, 84], pHRange: [6.0, 7.5], compat: ['cory'], fact: 'Angelfish are cichlids — they guard their eggs fiercely.' },
+                { id: 'platy', name: 'Platy', icon: '🐟', load: 1, minTank: 10, tempRange: [70, 80], pHRange: [7.0, 8.2], compat: ['neon', 'guppy', 'cory', 'molly'], fact: 'Platys are livebearers — they give birth to free-swimming fry.' },
+                { id: 'molly', name: 'Molly', icon: '🐟', load: 2, minTank: 15, tempRange: [72, 82], pHRange: [7.0, 8.5], compat: ['guppy', 'platy'], fact: 'Mollies can survive in both fresh and saltwater!' }
               ],
               planted: [
-                { id: 'cardinal', name: 'Cardinal Tetra', icon: '🐟', load: 1, minTank: 10, tempRange: [73,81], pHRange: [5.5,7.0], compat: ['rummy','oto','shrimp'], fact: 'Cardinals have a deeper red stripe than neons.' },
-                { id: 'rummy', name: 'Rummynose Tetra', icon: '🐟', load: 1, minTank: 15, tempRange: [75,82], pHRange: [5.5,7.0], compat: ['cardinal','oto','shrimp'], fact: 'Their red nose fades when stressed — a living water quality indicator!' },
-                { id: 'oto', name: 'Otocinclus', icon: '🐡', load: 1, minTank: 10, tempRange: [72,79], pHRange: [6.0,7.5], compat: ['cardinal','rummy','shrimp','betta'], fact: 'These tiny catfish are the best algae cleaners in the hobby.' },
-                { id: 'shrimp', name: 'Cherry Shrimp', icon: '🦐', load: 0.5, minTank: 5, tempRange: [68,78], pHRange: [6.5,8.0], compat: ['cardinal','rummy','oto'], fact: 'A colony can double in size every 2-3 months.' },
-                { id: 'betta', name: 'Betta', icon: '🐠', load: 2, minTank: 5, tempRange: [76,82], pHRange: [6.5,7.5], compat: ['oto'], fact: 'Bettas build bubble nests at the surface for their eggs.' }
+                { id: 'cardinal', name: 'Cardinal Tetra', icon: '🐟', load: 1, minTank: 10, tempRange: [73, 81], pHRange: [5.5, 7.0], compat: ['rummy', 'oto', 'shrimp'], fact: 'Cardinals have a deeper red stripe than neons.' },
+                { id: 'rummy', name: 'Rummynose Tetra', icon: '🐟', load: 1, minTank: 15, tempRange: [75, 82], pHRange: [5.5, 7.0], compat: ['cardinal', 'oto', 'shrimp'], fact: 'Their red nose fades when stressed — a living water quality indicator!' },
+                { id: 'oto', name: 'Otocinclus', icon: '🐡', load: 1, minTank: 10, tempRange: [72, 79], pHRange: [6.0, 7.5], compat: ['cardinal', 'rummy', 'shrimp', 'betta'], fact: 'These tiny catfish are the best algae cleaners in the hobby.' },
+                { id: 'shrimp', name: 'Cherry Shrimp', icon: '🦐', load: 0.5, minTank: 5, tempRange: [68, 78], pHRange: [6.5, 8.0], compat: ['cardinal', 'rummy', 'oto'], fact: 'A colony can double in size every 2-3 months.' },
+                { id: 'betta', name: 'Betta', icon: '🐠', load: 2, minTank: 5, tempRange: [76, 82], pHRange: [6.5, 7.5], compat: ['oto'], fact: 'Bettas build bubble nests at the surface for their eggs.' }
               ],
               reef: [
-                { id: 'clown', name: 'Clownfish', icon: '🐠', load: 3, minTank: 20, tempRange: [75,82], pHRange: [8.0,8.4], compat: ['tang','goby','anemone'], fact: 'All clownfish are born male — the dominant one becomes female!' },
-                { id: 'tang', name: 'Blue Tang', icon: '🐟', load: 5, minTank: 55, tempRange: [75,82], pHRange: [8.0,8.4], compat: ['clown','goby'], fact: 'Blue tangs can "play dead" when stressed, lying on their side.' },
-                { id: 'goby', name: 'Watchman Goby', icon: '🐡', load: 2, minTank: 20, tempRange: [75,82], pHRange: [8.0,8.4], compat: ['clown','tang','anemone'], fact: 'Gobies form symbiotic partnerships with pistol shrimp.' },
-                { id: 'anemone', name: 'Sea Anemone', icon: '🪸', load: 3, minTank: 30, tempRange: [76,82], pHRange: [8.1,8.4], compat: ['clown','goby'], fact: 'Anemones can live over 100 years in the right conditions.' }
+                { id: 'clown', name: 'Clownfish', icon: '🐠', load: 3, minTank: 20, tempRange: [75, 82], pHRange: [8.0, 8.4], compat: ['tang', 'goby', 'anemone'], fact: 'All clownfish are born male — the dominant one becomes female!' },
+                { id: 'tang', name: 'Blue Tang', icon: '🐟', load: 5, minTank: 55, tempRange: [75, 82], pHRange: [8.0, 8.4], compat: ['clown', 'goby'], fact: 'Blue tangs can "play dead" when stressed, lying on their side.' },
+                { id: 'goby', name: 'Watchman Goby', icon: '🐡', load: 2, minTank: 20, tempRange: [75, 82], pHRange: [8.0, 8.4], compat: ['clown', 'tang', 'anemone'], fact: 'Gobies form symbiotic partnerships with pistol shrimp.' },
+                { id: 'anemone', name: 'Sea Anemone', icon: '🪸', load: 3, minTank: 30, tempRange: [76, 82], pHRange: [8.1, 8.4], compat: ['clown', 'goby'], fact: 'Anemones can live over 100 years in the right conditions.' }
               ],
               predator: [
-                { id: 'oscar', name: 'Oscar', icon: '🐠', load: 10, minTank: 55, tempRange: [74,81], pHRange: [6.0,8.0], compat: ['pleco'], fact: 'Oscars recognize their owners and can learn tricks.' },
-                { id: 'pike', name: 'Pike Cichlid', icon: '🐟', load: 8, minTank: 55, tempRange: [75,82], pHRange: [6.0,7.5], compat: ['pleco'], fact: 'Pike cichlids are ambush predators that strike in milliseconds.' },
-                { id: 'pleco', name: 'Plecostomus', icon: '🐡', load: 6, minTank: 40, tempRange: [72,82], pHRange: [6.5,7.5], compat: ['oscar','pike'], fact: 'Some plecos can grow over 2 feet long!' }
+                { id: 'oscar', name: 'Oscar', icon: '🐠', load: 10, minTank: 55, tempRange: [74, 81], pHRange: [6.0, 8.0], compat: ['pleco'], fact: 'Oscars recognize their owners and can learn tricks.' },
+                { id: 'pike', name: 'Pike Cichlid', icon: '🐟', load: 8, minTank: 55, tempRange: [75, 82], pHRange: [6.0, 7.5], compat: ['pleco'], fact: 'Pike cichlids are ambush predators that strike in milliseconds.' },
+                { id: 'pleco', name: 'Plecostomus', icon: '🐡', load: 6, minTank: 40, tempRange: [72, 82], pHRange: [6.5, 7.5], compat: ['oscar', 'pike'], fact: 'Some plecos can grow over 2 feet long!' }
               ],
               turtle: [
-                { id: 'slider', name: 'Red-Eared Slider', icon: '🐢', load: 15, minTank: 40, tempRange: [75,85], pHRange: [6.5,8.0], compat: ['goldfish'], fact: 'They can hold their breath for over 30 minutes!' },
-                { id: 'goldfish', name: 'Feeder Goldfish', icon: '🐟', load: 3, minTank: 20, tempRange: [65,75], pHRange: [7.0,8.4], compat: ['slider'], fact: 'Goldfish can live 20+ years with proper care.' }
+                { id: 'slider', name: 'Red-Eared Slider', icon: '🐢', load: 15, minTank: 40, tempRange: [75, 85], pHRange: [6.5, 8.0], compat: ['goldfish'], fact: 'They can hold their breath for over 30 minutes!' },
+                { id: 'goldfish', name: 'Feeder Goldfish', icon: '🐟', load: 3, minTank: 20, tempRange: [65, 75], pHRange: [7.0, 8.4], compat: ['slider'], fact: 'Goldfish can live 20+ years with proper care.' }
               ],
               invert: [
-                { id: 'cleaner', name: 'Cleaner Shrimp', icon: '🦐', load: 1, minTank: 10, tempRange: [75,82], pHRange: [8.0,8.4], compat: ['urchin','crab','starfish'], fact: 'They set up cleaning stations where fish line up to be groomed!' },
-                { id: 'urchin', name: 'Sea Urchin', icon: '🦔', load: 2, minTank: 20, tempRange: [72,78], pHRange: [8.0,8.4], compat: ['cleaner','crab','starfish'], fact: 'Urchin spines are actually modified teeth.' },
-                { id: 'crab', name: 'Hermit Crab', icon: '🦀', load: 2, minTank: 10, tempRange: [72,80], pHRange: [8.0,8.4], compat: ['cleaner','urchin','starfish'], fact: 'Hermit crabs form "vacancy chains" — swapping shells in order of size!' },
-                { id: 'starfish', name: 'Sea Star', icon: '⭐', load: 3, minTank: 20, tempRange: [72,78], pHRange: [8.0,8.4], compat: ['cleaner','urchin','crab'], fact: 'Sea stars can regenerate lost arms — and sometimes an entire body from one arm.' }
+                { id: 'cleaner', name: 'Cleaner Shrimp', icon: '🦐', load: 1, minTank: 10, tempRange: [75, 82], pHRange: [8.0, 8.4], compat: ['urchin', 'crab', 'starfish'], fact: 'They set up cleaning stations where fish line up to be groomed!' },
+                { id: 'urchin', name: 'Sea Urchin', icon: '🦔', load: 2, minTank: 20, tempRange: [72, 78], pHRange: [8.0, 8.4], compat: ['cleaner', 'crab', 'starfish'], fact: 'Urchin spines are actually modified teeth.' },
+                { id: 'crab', name: 'Hermit Crab', icon: '🦀', load: 2, minTank: 10, tempRange: [72, 80], pHRange: [8.0, 8.4], compat: ['cleaner', 'urchin', 'starfish'], fact: 'Hermit crabs form "vacancy chains" — swapping shells in order of size!' },
+                { id: 'starfish', name: 'Sea Star', icon: '⭐', load: 3, minTank: 20, tempRange: [72, 78], pHRange: [8.0, 8.4], compat: ['cleaner', 'urchin', 'crab'], fact: 'Sea stars can regenerate lost arms — and sometimes an entire body from one arm.' }
               ],
               coldwater: [
-                { id: 'rockfish', name: 'Rockfish', icon: '🐟', load: 5, minTank: 55, tempRange: [50,60], pHRange: [7.8,8.4], compat: ['seastar','kelp'], fact: 'Some rockfish live over 200 years!' },
-                { id: 'seastar', name: 'Sunflower Star', icon: '⭐', load: 4, minTank: 40, tempRange: [48,58], pHRange: [7.8,8.4], compat: ['rockfish','kelp'], fact: 'Sunflower stars have up to 24 arms and can move 1 meter per minute.' },
-                { id: 'kelp', name: 'Giant Kelp', icon: '🌿', load: 1, minTank: 30, tempRange: [50,65], pHRange: [7.5,8.5], compat: ['rockfish','seastar'], fact: 'Giant kelp can grow up to 2 feet per day!' }
+                { id: 'rockfish', name: 'Rockfish', icon: '🐟', load: 5, minTank: 55, tempRange: [50, 60], pHRange: [7.8, 8.4], compat: ['seastar', 'kelp'], fact: 'Some rockfish live over 200 years!' },
+                { id: 'seastar', name: 'Sunflower Star', icon: '⭐', load: 4, minTank: 40, tempRange: [48, 58], pHRange: [7.8, 8.4], compat: ['rockfish', 'kelp'], fact: 'Sunflower stars have up to 24 arms and can move 1 meter per minute.' },
+                { id: 'kelp', name: 'Giant Kelp', icon: '🌿', load: 1, minTank: 30, tempRange: [50, 65], pHRange: [7.5, 8.5], compat: ['rockfish', 'seastar'], fact: 'Giant kelp can grow up to 2 feet per day!' }
               ],
               brackish: [
-                { id: 'archer', name: 'Archerfish', icon: '🐟', load: 3, minTank: 20, tempRange: [72,82], pHRange: [7.0,8.5], compat: ['puffer','mudskip'], fact: 'Archerfish shoot jets of water to knock insects off branches!' },
-                { id: 'puffer', name: 'Figure-8 Puffer', icon: '🐡', load: 4, minTank: 15, tempRange: [72,79], pHRange: [7.5,8.5], compat: ['archer'], fact: 'Puffers need to crunch hard-shelled food to keep their beaks trimmed.' },
-                { id: 'mudskip', name: 'Mudskipper', icon: '🐸', load: 3, minTank: 20, tempRange: [75,86], pHRange: [7.0,8.5], compat: ['archer'], fact: 'Mudskippers are fish that can walk on land and breathe air!' }
+                { id: 'archer', name: 'Archerfish', icon: '🐟', load: 3, minTank: 20, tempRange: [72, 82], pHRange: [7.0, 8.5], compat: ['puffer', 'mudskip'], fact: 'Archerfish shoot jets of water to knock insects off branches!' },
+                { id: 'puffer', name: 'Figure-8 Puffer', icon: '🐡', load: 4, minTank: 15, tempRange: [72, 79], pHRange: [7.5, 8.5], compat: ['archer'], fact: 'Puffers need to crunch hard-shelled food to keep their beaks trimmed.' },
+                { id: 'mudskip', name: 'Mudskipper', icon: '🐸', load: 3, minTank: 20, tempRange: [75, 86], pHRange: [7.0, 8.5], compat: ['archer'], fact: 'Mudskippers are fish that can walk on land and breathe air!' }
               ]
             };
 
@@ -23525,6 +23517,15 @@ var TANK_TYPES = [
             var simRunning = d.simRunning || false;
             var fishHealth = d.fishHealth || {};
             var eventLog = d.eventLog || [];
+
+            // ── Enhanced sim state ──
+            var hungerLevels = d.hungerLevels || {};
+            var simSpeed = d.simSpeed || 1;
+            var simDay = d.simDay || 0;
+            var simHour = d.simHour || 8;
+            var feedingLog = d.feedingLog || null;
+            var chemTooltip = d.chemTooltip || null;
+            var fishStress = d.fishStress || {};
 
             // ── Ocean Ecology state ──
             var oceanPop = d.oceanPop || { sardines: 800, tuna: 200, sharks: 50 };
@@ -23555,7 +23556,7 @@ var TANK_TYPES = [
                 what: 'A measure of how acidic or basic the water is. The scale runs 0-14, where 7 is neutral. Each whole number change represents a 10x difference in hydrogen ion concentration.',
                 safeRange: 'Depends on species — freshwater: 6.5-7.5, African cichlids: 7.8-8.6, marine: 8.1-8.4',
                 danger: 'Rapid pH swings > 0.5 in 24h cause osmotic stress. Fish gills struggle to regulate ion exchange, leading to respiratory distress.',
-                math: function(wc, tank) {
+                math: function (wc, tank) {
                   var diff = Math.abs(wc.pH - tank.pH);
                   return 'Target: ' + tank.pH.toFixed(1) + ' | Current deviation: ' + diff.toFixed(2) + ' units\nA pH of ' + wc.pH.toFixed(1) + ' means [H\u207A] = 10\u207B' + wc.pH.toFixed(1) + ' mol/L';
                 },
@@ -23567,9 +23568,9 @@ var TANK_TYPES = [
                 what: 'Fish are ectotherms — their metabolism is controlled by water temperature. Higher temps increase metabolism, oxygen demand, and ammonia toxicity.',
                 safeRange: 'Tropical: 75-82\u00B0F (24-28\u00B0C), Coldwater: 60-72\u00B0F (16-22\u00B0C), Marine: 76-82\u00B0F (24-28\u00B0C)',
                 danger: 'Every 10\u00B0F increase roughly doubles metabolic rate. Ammonia toxicity increases 10x between 68\u00B0F and 86\u00B0F.',
-                math: function(wc, tank) {
+                math: function (wc, tank) {
                   var diff = Math.abs(wc.temp - tank.temp);
-                  var celsius = ((wc.temp - 32) * 5/9).toFixed(1);
+                  var celsius = ((wc.temp - 32) * 5 / 9).toFixed(1);
                   return 'Current: ' + wc.temp.toFixed(1) + '\u00B0F (' + celsius + '\u00B0C) | Target: ' + tank.temp + '\u00B0F\nDeviation: \u00B1' + diff.toFixed(1) + '\u00B0F';
                 },
                 fix: 'Adjust heater gradually — no more than 2\u00B0F per hour. Rapid changes cause thermal shock.'
@@ -23580,7 +23581,7 @@ var TANK_TYPES = [
                 what: 'The primary waste product from fish gills and decomposing food. In its un-ionized form (NH\u2083), it is extremely toxic to fish even at low concentrations.',
                 safeRange: '0 ppm ideal | < 0.25 ppm tolerable | 0.25-1.0 ppm stressful | > 1.0 ppm lethal',
                 danger: 'Ammonia burns gill tissue, causing fish to gasp at the surface. At > 1 ppm, irreversible gill damage occurs within hours.',
-                math: function(wc, tank, bioload, fishCount) {
+                math: function (wc, tank, bioload, fishCount) {
                   var gen = bioload * 0.02;
                   var converted = wc.ammonia * 0.15;
                   return 'Generation: ' + fishCount + ' fish \u00D7 bioload = ' + gen.toFixed(3) + ' ppm/tick\nBacteria (Nitrosomonas) convert: ' + wc.ammonia.toFixed(2) + ' \u00D7 15% = ' + converted.toFixed(3) + ' ppm \u2192 NO\u2082\nNet change: +' + (gen - wc.ammonia * 0.05).toFixed(3) + ' ppm/tick';
@@ -23593,7 +23594,7 @@ var TANK_TYPES = [
                 what: 'Produced by Nitrosomonas bacteria converting ammonia. Still toxic — it binds to hemoglobin, reducing oxygen-carrying capacity (brown blood disease).',
                 safeRange: '0 ppm ideal | < 0.25 ppm tolerable | 0.25-1.0 ppm dangerous | > 1.0 ppm critical',
                 danger: 'Nitrite replaces oxygen on hemoglobin molecules. Fish blood turns brown and cannot carry O\u2082. Gills appear dark/chocolate colored.',
-                math: function(wc, tank) {
+                math: function (wc, tank) {
                   var fromAmmonia = wc.ammonia * 0.15;
                   var converted = wc.nitrite * 0.08;
                   var toNitrate = wc.nitrite * 0.2;
@@ -23607,7 +23608,7 @@ var TANK_TYPES = [
                 what: 'The end product of the nitrogen cycle. Much less toxic than ammonia or nitrite, but accumulates over time. Live plants absorb nitrate as fertilizer.',
                 safeRange: '< 20 ppm excellent | < 40 ppm acceptable | 40-80 ppm high | > 80 ppm water change needed',
                 danger: 'Chronic high nitrate (> 40 ppm) suppresses immune function and stunts growth. Promotes algae blooms that consume oxygen at night.',
-                math: function(wc) {
+                math: function (wc) {
                   var fromNitrite = wc.nitrite * 0.2;
                   return 'Input from NO\u2082: ' + fromNitrite.toFixed(3) + ' ppm/tick\nAccumulation: ' + wc.nitrate.toFixed(1) + ' ppm total\nOnly removed by: water changes or live plants';
                 },
@@ -23619,7 +23620,7 @@ var TANK_TYPES = [
                 what: 'The concentration of dissolved salts (primarily NaCl). Freshwater fish maintain internal salt levels higher than their environment; marine fish do the opposite.',
                 safeRange: 'Freshwater: 0 ppt | Brackish: 5-15 ppt | Marine: 34-36 ppt',
                 danger: 'Incorrect salinity disrupts osmoregulation. Fish cells either swell (too fresh) or shrink (too salty), damaging organs.',
-                math: function(wc) {
+                math: function (wc) {
                   return 'Current: ' + wc.salinity + ' ppt (parts per thousand)\n1 ppt = 1g salt per 1000g water\nSeawater: ~35 ppt = 3.5% salt by weight';
                 },
                 fix: 'Adjust slowly through water changes with correctly mixed water. Never change > 2 ppt per day.'
@@ -23769,18 +23770,18 @@ var TANK_TYPES = [
               else if (waterChem.nitrate > 40) { score -= 8; tips.push({ icon: '\uD83C\uDF3F', text: 'Nitrate at ' + waterChem.nitrate.toFixed(0) + ' ppm \u2014 a water change will bring this down.', color: 'text-amber-600' }); }
               // pH penalty
               var phSt = getChemStatus('pH', waterChem.pH);
-              if (phSt === 'warn') { score -= 10; tips.push({ icon: '\u2697\uFE0F', text: 'pH drifting (' + waterChem.pH.toFixed(1) + '). Fish prefer stable pH near ' + (TANK_TYPES.find(function(t){return t.id===selectedTank;}) || {pH:7}).pH + '.', color: 'text-amber-600' }); }
+              if (phSt === 'warn') { score -= 10; tips.push({ icon: '\u2697\uFE0F', text: 'pH drifting (' + waterChem.pH.toFixed(1) + '). Fish prefer stable pH near ' + (TANK_TYPES.find(function (t) { return t.id === selectedTank; }) || { pH: 7 }).pH + '.', color: 'text-amber-600' }); }
               if (phSt === 'danger') { score -= 25; tips.push({ icon: '\u2697\uFE0F', text: 'pH dangerously off-target (' + waterChem.pH.toFixed(1) + ')! Osmotic stress is likely.', color: 'text-red-600' }); }
               // Bioload check
               var species = SPECIES_BY_TANK[selectedTank] || [];
-              var currentLoad = tankFish.reduce(function(s,f){ var sp = species.find(function(x){return x.id===f;}); return s+(sp?sp.load:0); }, 0);
-              var maxLoad = Math.floor((TANK_TYPES.find(function(t){return t.id===selectedTank;}) || {size:20}).size / 2);
+              var currentLoad = tankFish.reduce(function (s, f) { var sp = species.find(function (x) { return x.id === f; }); return s + (sp ? sp.load : 0); }, 0);
+              var maxLoad = Math.floor((TANK_TYPES.find(function (t) { return t.id === selectedTank; }) || { size: 20 }).size / 2);
               var loadPct = Math.round(currentLoad / maxLoad * 100);
               if (loadPct > 80) { score -= 10; tips.push({ icon: '\uD83D\uDC1F', text: 'Bioload at ' + loadPct + '% capacity. High bioload = more waste = faster ammonia buildup.', color: 'text-amber-600' }); }
               // Hunger check
               var avgHunger = 0;
               var hungerCount = 0;
-              tankFish.forEach(function(fId) { var h = hungerLevels[fId]; if (h !== undefined) { avgHunger += h; hungerCount++; } });
+              tankFish.forEach(function (fId) { var h = hungerLevels[fId]; if (h !== undefined) { avgHunger += h; hungerCount++; } });
               if (hungerCount > 0) avgHunger = avgHunger / hungerCount;
               if (avgHunger > 75) { score -= 12; tips.push({ icon: '\uD83C\uDF7D\uFE0F', text: 'Fish are very hungry (avg ' + Math.round(avgHunger) + '%). Feed soon to reduce stress!', color: 'text-amber-600' }); }
               // All good!
@@ -23849,11 +23850,11 @@ var TANK_TYPES = [
 
             // ── Marine Science data ──
             var OCEAN_ZONES = [
-              { id: 'sunlight', name: 'Sunlight Zone (Epipelagic)', depth: '0-200m', light: '100%', temp: '20-25°C', color: '#38bdf8', species: ['clownfish','dolphin','jellyfish','turtle'] },
-              { id: 'twilight', name: 'Twilight Zone (Mesopelagic)', depth: '200-1000m', light: '1%', temp: '5-20°C', color: '#1e40af', species: ['squid','hatchetfish','swordfish'] },
-              { id: 'midnight', name: 'Midnight Zone (Bathypelagic)', depth: '1000-4000m', light: '0%', temp: '2-5°C', color: '#1e1b4b', species: ['anglerfish','gulpereel','giantsquid'] },
-              { id: 'abyssal', name: 'Abyssal Zone (Abyssopelagic)', depth: '4000-6000m', light: '0%', temp: '1-2°C', color: '#0f0a2e', species: ['tubeworms','seacucumber'] },
-              { id: 'hadal', name: 'Hadal Zone (Trenches)', depth: '6000-11000m', light: '0%', temp: '1-4°C', color: '#050210', species: ['amphipod','snailfish'] }
+              { id: 'sunlight', name: 'Sunlight Zone (Epipelagic)', depth: '0-200m', light: '100%', temp: '20-25°C', color: '#38bdf8', species: ['clownfish', 'dolphin', 'jellyfish', 'turtle'] },
+              { id: 'twilight', name: 'Twilight Zone (Mesopelagic)', depth: '200-1000m', light: '1%', temp: '5-20°C', color: '#1e40af', species: ['squid', 'hatchetfish', 'swordfish'] },
+              { id: 'midnight', name: 'Midnight Zone (Bathypelagic)', depth: '1000-4000m', light: '0%', temp: '2-5°C', color: '#1e1b4b', species: ['anglerfish', 'gulpereel', 'giantsquid'] },
+              { id: 'abyssal', name: 'Abyssal Zone (Abyssopelagic)', depth: '4000-6000m', light: '0%', temp: '1-2°C', color: '#0f0a2e', species: ['tubeworms', 'seacucumber'] },
+              { id: 'hadal', name: 'Hadal Zone (Trenches)', depth: '6000-11000m', light: '0%', temp: '1-4°C', color: '#050210', species: ['amphipod', 'snailfish'] }
             ];
 
             var MARINE_SPECIES = [
@@ -23953,7 +23954,7 @@ var TANK_TYPES = [
                   SPECIES_BY_TANK[selectedTank] || [],
                   MARINE_SPECIES || []
                 );
-                var sp = allSpecies.find(function(s) { return s.id === viewingAnatomy; });
+                var sp = allSpecies.find(function (s) { return s.id === viewingAnatomy; });
                 if (!sp) { closeAnatomy(); return null; }
                 var bodyPlanKey = SPECIES_BODY_MAP[viewingAnatomy] || 'fish';
                 var plan = BODY_PLANS[bodyPlanKey];
@@ -23987,7 +23988,7 @@ var TANK_TYPES = [
                     }),
                     // Clickable label dots overlaid on the diagram
                     React.createElement("div", { style: { position: 'absolute', top: '16px', left: '16px', right: '16px', bottom: '16px' } },
-                      plan.parts.map(function(part, i) {
+                      plan.parts.map(function (part, i) {
                         var isHighlighted = anatomyHighlight === i;
                         return React.createElement("div", {
                           key: i,
@@ -23998,7 +23999,7 @@ var TANK_TYPES = [
                             zIndex: isHighlighted ? 20 : 10,
                             cursor: 'pointer'
                           },
-                          onClick: function() { upd('anatomyHighlight', isHighlighted ? null : i); }
+                          onClick: function () { upd('anatomyHighlight', isHighlighted ? null : i); }
                         },
                           // Pulsing dot
                           React.createElement("div", {
@@ -24037,11 +24038,11 @@ var TANK_TYPES = [
 
                   // ── Parts Legend ──
                   React.createElement("div", { className: "grid grid-cols-2 gap-1.5 mb-3 relative z-10" },
-                    plan.parts.map(function(part, i) {
+                    plan.parts.map(function (part, i) {
                       var isHighlighted = anatomyHighlight === i;
                       return React.createElement("button", {
                         key: i,
-                        onClick: function() { upd('anatomyHighlight', isHighlighted ? null : i); },
+                        onClick: function () { upd('anatomyHighlight', isHighlighted ? null : i); },
                         className: "flex items-center gap-2 px-2 py-1.5 rounded-lg text-left transition-all " + (isHighlighted ? "bg-cyan-500/20 border border-cyan-400/40" : "bg-slate-800/40 border border-transparent hover:bg-slate-700/40")
                       },
                         React.createElement("span", { className: "w-4 h-4 flex items-center justify-center rounded-full text-[9px] font-bold flex-shrink-0 " + (isHighlighted ? "bg-cyan-400 text-slate-900" : "bg-slate-600 text-slate-300") }, String(i + 1)),
@@ -24072,12 +24073,12 @@ var TANK_TYPES = [
                       React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-300 font-bold border border-blue-400/20" }, "\uD83C\uDF0A " + sp.habitat),
                       sp.diet && React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 font-bold border border-amber-400/20" }, "\uD83C\uDF7D\uFE0F " + sp.diet),
                       sp.status && React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full font-bold " + (sp.status === 'CR' ? 'bg-red-500/20 text-red-300 border border-red-400/20' : sp.status === 'EN' ? 'bg-red-500/15 text-red-300 border border-red-400/20' : sp.status === 'VU' ? 'bg-amber-500/15 text-amber-300 border border-amber-400/20' : 'bg-green-500/15 text-green-300 border border-green-400/20') },
-                        "\uD83D\uDEE1\uFE0F " + ({LC:'Least Concern',VU:'Vulnerable',EN:'Endangered',CR:'Critically Endangered'}[sp.status] || sp.status))
+                        "\uD83D\uDEE1\uFE0F " + ({ LC: 'Least Concern', VU: 'Vulnerable', EN: 'Endangered', CR: 'Critically Endangered' }[sp.status] || sp.status))
                     ),
 
                     // XP button
                     React.createElement("button", {
-                      onClick: function() {
+                      onClick: function () {
                         awardXP(2, 'Studied anatomy of ' + sp.name);
                         if (addToast) addToast('\uD83E\uDDAC +2 XP for studying ' + sp.name + ' anatomy!', 'success');
                       },
@@ -24180,7 +24181,7 @@ var TANK_TYPES = [
                         var isActive = chemTooltip === p.key;
                         return React.createElement("div", {
                           key: p.key,
-                          onClick: function() { upd('chemTooltip', isActive ? null : p.key); },
+                          onClick: function () { upd('chemTooltip', isActive ? null : p.key); },
                           className: "rounded-lg p-2 text-center cursor-pointer transition-all hover:scale-105 " + (isActive ? "bg-white ring-2 ring-cyan-400 shadow-lg" : "bg-white/70 hover:bg-white/90")
                         },
                           React.createElement("div", { className: "text-[10px] text-slate-500 font-bold" }, (CHEM_INFO[p.key] || {}).icon || '', ' ', p.label),
@@ -24191,13 +24192,13 @@ var TANK_TYPES = [
                     // ── Chemistry Tooltip Overlay ──
                     chemTooltip && CHEM_INFO[chemTooltip] && (() => {
                       var info = CHEM_INFO[chemTooltip];
-                      var t = TANK_TYPES.find(function(x){return x.id===selectedTank;}) || {};
-                      var bio = tankFish.reduce(function(s,f){ var sp = (SPECIES_BY_TANK[selectedTank]||[]).find(function(x){return x.id===f;}); return s+(sp?sp.load:0); }, 0);
+                      var t = TANK_TYPES.find(function (x) { return x.id === selectedTank; }) || {};
+                      var bio = tankFish.reduce(function (s, f) { var sp = (SPECIES_BY_TANK[selectedTank] || []).find(function (x) { return x.id === f; }); return s + (sp ? sp.load : 0); }, 0);
                       var mathStr = info.math ? info.math(waterChem, t, bio, tankFish.length) : '';
                       return React.createElement("div", { className: "mt-3 bg-white rounded-xl p-3 border-2 border-cyan-300/60 shadow-lg animate-in fade-in duration-200" },
                         React.createElement("div", { className: "flex items-center justify-between mb-2" },
                           React.createElement("h5", { className: "text-xs font-bold text-cyan-800" }, info.icon + " " + info.name),
-                          React.createElement("button", { onClick: function() { upd('chemTooltip', null); }, className: "text-[10px] text-slate-400 hover:text-slate-600" }, "\u2715")
+                          React.createElement("button", { onClick: function () { upd('chemTooltip', null); }, className: "text-[10px] text-slate-400 hover:text-slate-600" }, "\u2715")
                         ),
                         React.createElement("div", { className: "space-y-2 text-[11px] leading-relaxed" },
                           React.createElement("div", { className: "bg-cyan-50 rounded-lg p-2" },
@@ -24259,7 +24260,7 @@ var TANK_TYPES = [
                       style: { position: 'absolute', top: 0, left: 0, right: 0, height: '30px', background: 'linear-gradient(180deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.1) 40%, transparent 100%)', zIndex: 5 }
                     }),
                     // Light rays
-                    [0,1,2].map(function (i) {
+                    [0, 1, 2].map(function (i) {
                       return React.createElement("div", {
                         key: 'ray-' + i,
                         style: {
@@ -24271,7 +24272,7 @@ var TANK_TYPES = [
                       });
                     }),
                     // Decorative plants
-                    (selectedTank === 'planted' || selectedTank === 'freshwater' || selectedTank === 'brackish') && [0,1,2,3].map(function (i) {
+                    (selectedTank === 'planted' || selectedTank === 'freshwater' || selectedTank === 'brackish') && [0, 1, 2, 3].map(function (i) {
                       var heights = [50, 35, 60, 40];
                       return React.createElement("div", {
                         key: 'plant-' + i,
@@ -24285,7 +24286,7 @@ var TANK_TYPES = [
                       });
                     }),
                     // Coral for reef tanks
-                    (selectedTank === 'reef' || selectedTank === 'invert') && [0,1,2].map(function (i) {
+                    (selectedTank === 'reef' || selectedTank === 'invert') && [0, 1, 2].map(function (i) {
                       var colors = ['#f472b6', '#fb923c', '#a78bfa'];
                       return React.createElement("div", {
                         key: 'coral-' + i,
@@ -24302,7 +24303,7 @@ var TANK_TYPES = [
                       style: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '28px', borderRadius: '0 0 12px 12px', zIndex: 3, background: selectedTank === 'reef' || selectedTank === 'invert' ? 'linear-gradient(0deg, #92400e 0%, #b45309 40%, transparent 100%)' : 'linear-gradient(0deg, #92400e 0%, #d97706 40%, transparent 100%)' }
                     }),
                     // Pebbles on substrate
-                    [0,1,2,3,4,5,6].map(function (i) {
+                    [0, 1, 2, 3, 4, 5, 6].map(function (i) {
                       return React.createElement("div", {
                         key: 'pebble-' + i,
                         style: {
@@ -24336,22 +24337,22 @@ var TANK_TYPES = [
                           openAnatomy(fId);
                         }
                       }, sp ? sp.icon : '\uD83D\uDC1F',
-                          // Hunger bar under fish
-                          (() => {
-                            var hunger = hungerLevels[fId] !== undefined ? hungerLevels[fId] : 50;
-                            var stress = fishStress[fId] || 0;
-                            var barColor = hunger >= 80 ? '#ef4444' : hunger >= 50 ? '#f59e0b' : '#22c55e';
-                            return React.createElement("div", {
-                              style: { position: 'absolute', bottom: '-6px', left: '50%', transform: 'translateX(-50%)', width: '24px', height: '3px', background: 'rgba(0,0,0,0.2)', borderRadius: '2px', overflow: 'hidden' }
-                            },
-                              React.createElement("div", { style: { width: (100 - hunger) + '%', height: '100%', background: barColor, borderRadius: '2px', transition: 'width 0.5s, background 0.3s' } })
-                            );
-                          })()
-                        );
+                        // Hunger bar under fish
+                        (() => {
+                          var hunger = hungerLevels[fId] !== undefined ? hungerLevels[fId] : 50;
+                          var stress = fishStress[fId] || 0;
+                          var barColor = hunger >= 80 ? '#ef4444' : hunger >= 50 ? '#f59e0b' : '#22c55e';
+                          return React.createElement("div", {
+                            style: { position: 'absolute', bottom: '-6px', left: '50%', transform: 'translateX(-50%)', width: '24px', height: '3px', background: 'rgba(0,0,0,0.2)', borderRadius: '2px', overflow: 'hidden' }
+                          },
+                            React.createElement("div", { style: { width: (100 - hunger) + '%', height: '100%', background: barColor, borderRadius: '2px', transition: 'width 0.5s, background 0.3s' } })
+                          );
+                        })()
+                      );
                     }),
                     // Animated bubbles
-                    [0,1,2,3,4,5,6,7].map(function (i) {
-                      var sizes = [3,5,4,6,3,7,4,5];
+                    [0, 1, 2, 3, 4, 5, 6, 7].map(function (i) {
+                      var sizes = [3, 5, 4, 6, 3, 7, 4, 5];
                       return React.createElement("div", {
                         key: 'bubble-' + i,
                         style: {
@@ -24438,7 +24439,7 @@ var TANK_TYPES = [
                       React.createElement("div", { className: "flex items-center gap-2 mb-1.5" },
                         React.createElement("span", { className: "text-sm" }, "\uD83C\uDF7D\uFE0F"),
                         React.createElement("span", { className: "text-xs font-bold text-amber-800" }, "Feeding Report"),
-                        React.createElement("button", { onClick: function(){upd('feedingLog',null);}, className: "ml-auto text-[10px] text-slate-400" }, "\u2715")
+                        React.createElement("button", { onClick: function () { upd('feedingLog', null); }, className: "ml-auto text-[10px] text-slate-400" }, "\u2715")
                       ),
                       React.createElement("div", { className: "grid grid-cols-3 gap-2 text-center mb-2" },
                         React.createElement("div", { className: "bg-white/70 rounded-lg p-1.5" },
@@ -24477,7 +24478,7 @@ var TANK_TYPES = [
                         React.createElement("div", { style: { width: health.score + '%', transition: 'width 0.5s' }, className: "h-full rounded-full " + barColor })
                       ),
                       React.createElement("div", { className: "space-y-1" },
-                        health.tips.map(function(tip, i) {
+                        health.tips.map(function (tip, i) {
                           return React.createElement("p", { key: i, className: "text-[10px] " + tip.color + " font-bold leading-relaxed" }, tip.icon + " " + tip.text);
                         })
                       )
@@ -24490,8 +24491,8 @@ var TANK_TYPES = [
                     React.createElement("div", { className: "grid grid-cols-2 gap-1.5" },
                       (() => {
                         var seen = {};
-                        return tankFish.map(function(fId, idx) {
-                          var sp = (SPECIES_BY_TANK[selectedTank]||[]).find(function(s){return s.id===fId;});
+                        return tankFish.map(function (fId, idx) {
+                          var sp = (SPECIES_BY_TANK[selectedTank] || []).find(function (s) { return s.id === fId; });
                           var hunger = hungerLevels[fId] !== undefined ? hungerLevels[fId] : 50;
                           var stress = fishStress[fId] || 0;
                           var hungerColor = hunger >= 80 ? 'bg-red-500' : hunger >= 50 ? 'bg-amber-400' : 'bg-green-500';
