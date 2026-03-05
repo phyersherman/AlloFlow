@@ -14883,6 +14883,15 @@
             var decomposed = d.decomposed || false;
             var quizMode = d.quizMode || false;
             var quizQ = d.quizQ || null;
+
+            // ── Enhanced sim state ──
+            var hungerLevels = d.hungerLevels || {};
+            var simSpeed = d.simSpeed || 1;
+            var simDay = d.simDay || 0;
+            var simHour = d.simHour || 8;
+            var feedingLog = d.feedingLog || null;
+            var chemTooltip = d.chemTooltip || null;
+            var fishStress = d.fishStress || {};
             var quizScore = d.quizScore || 0;
             var quizStreak = d.quizStreak || 0;
 
@@ -23537,6 +23546,85 @@ var TANK_TYPES = [
             var quizScore = d.quizScore || { correct: 0, total: 0 };
             var quizQ = d.quizQ || null;
 
+
+            // ── Chemistry educational data ──
+            var CHEM_INFO = {
+              pH: {
+                name: 'pH (Power of Hydrogen)',
+                icon: '\u2697\uFE0F',
+                what: 'A measure of how acidic or basic the water is. The scale runs 0-14, where 7 is neutral. Each whole number change represents a 10x difference in hydrogen ion concentration.',
+                safeRange: 'Depends on species — freshwater: 6.5-7.5, African cichlids: 7.8-8.6, marine: 8.1-8.4',
+                danger: 'Rapid pH swings > 0.5 in 24h cause osmotic stress. Fish gills struggle to regulate ion exchange, leading to respiratory distress.',
+                math: function(wc, tank) {
+                  var diff = Math.abs(wc.pH - tank.pH);
+                  return 'Target: ' + tank.pH.toFixed(1) + ' | Current deviation: ' + diff.toFixed(2) + ' units\nA pH of ' + wc.pH.toFixed(1) + ' means [H\u207A] = 10\u207B' + wc.pH.toFixed(1) + ' mol/L';
+                },
+                fix: 'Partial water changes gradually bring pH toward target. Never adjust more than 0.2 units per day.'
+              },
+              temp: {
+                name: 'Temperature',
+                icon: '\uD83C\uDF21\uFE0F',
+                what: 'Fish are ectotherms — their metabolism is controlled by water temperature. Higher temps increase metabolism, oxygen demand, and ammonia toxicity.',
+                safeRange: 'Tropical: 75-82\u00B0F (24-28\u00B0C), Coldwater: 60-72\u00B0F (16-22\u00B0C), Marine: 76-82\u00B0F (24-28\u00B0C)',
+                danger: 'Every 10\u00B0F increase roughly doubles metabolic rate. Ammonia toxicity increases 10x between 68\u00B0F and 86\u00B0F.',
+                math: function(wc, tank) {
+                  var diff = Math.abs(wc.temp - tank.temp);
+                  var celsius = ((wc.temp - 32) * 5/9).toFixed(1);
+                  return 'Current: ' + wc.temp.toFixed(1) + '\u00B0F (' + celsius + '\u00B0C) | Target: ' + tank.temp + '\u00B0F\nDeviation: \u00B1' + diff.toFixed(1) + '\u00B0F';
+                },
+                fix: 'Adjust heater gradually — no more than 2\u00B0F per hour. Rapid changes cause thermal shock.'
+              },
+              ammonia: {
+                name: 'Ammonia (NH\u2083/NH\u2084\u207A)',
+                icon: '\u2620\uFE0F',
+                what: 'The primary waste product from fish gills and decomposing food. In its un-ionized form (NH\u2083), it is extremely toxic to fish even at low concentrations.',
+                safeRange: '0 ppm ideal | < 0.25 ppm tolerable | 0.25-1.0 ppm stressful | > 1.0 ppm lethal',
+                danger: 'Ammonia burns gill tissue, causing fish to gasp at the surface. At > 1 ppm, irreversible gill damage occurs within hours.',
+                math: function(wc, tank, bioload, fishCount) {
+                  var gen = bioload * 0.02;
+                  var converted = wc.ammonia * 0.15;
+                  return 'Generation: ' + fishCount + ' fish \u00D7 bioload = ' + gen.toFixed(3) + ' ppm/tick\nBacteria (Nitrosomonas) convert: ' + wc.ammonia.toFixed(2) + ' \u00D7 15% = ' + converted.toFixed(3) + ' ppm \u2192 NO\u2082\nNet change: +' + (gen - wc.ammonia * 0.05).toFixed(3) + ' ppm/tick';
+                },
+                fix: 'Immediate 25% water change. Reduce feeding. Add beneficial bacteria supplement. Do NOT add more fish.'
+              },
+              nitrite: {
+                name: 'Nitrite (NO\u2082\u207B)',
+                icon: '\u26A0\uFE0F',
+                what: 'Produced by Nitrosomonas bacteria converting ammonia. Still toxic — it binds to hemoglobin, reducing oxygen-carrying capacity (brown blood disease).',
+                safeRange: '0 ppm ideal | < 0.25 ppm tolerable | 0.25-1.0 ppm dangerous | > 1.0 ppm critical',
+                danger: 'Nitrite replaces oxygen on hemoglobin molecules. Fish blood turns brown and cannot carry O\u2082. Gills appear dark/chocolate colored.',
+                math: function(wc, tank) {
+                  var fromAmmonia = wc.ammonia * 0.15;
+                  var converted = wc.nitrite * 0.08;
+                  var toNitrate = wc.nitrite * 0.2;
+                  return 'Input from NH\u2083: ' + fromAmmonia.toFixed(3) + ' ppm/tick\nNatural decay: ' + converted.toFixed(3) + ' ppm/tick\nConverted to NO\u2083 by Nitrobacter: ' + toNitrate.toFixed(3) + ' ppm/tick';
+                },
+                fix: 'Water change + add aquarium salt (1 tsp/gal) to block nitrite absorption through gills.'
+              },
+              nitrate: {
+                name: 'Nitrate (NO\u2083\u207B)',
+                icon: '\uD83C\uDF3F',
+                what: 'The end product of the nitrogen cycle. Much less toxic than ammonia or nitrite, but accumulates over time. Live plants absorb nitrate as fertilizer.',
+                safeRange: '< 20 ppm excellent | < 40 ppm acceptable | 40-80 ppm high | > 80 ppm water change needed',
+                danger: 'Chronic high nitrate (> 40 ppm) suppresses immune function and stunts growth. Promotes algae blooms that consume oxygen at night.',
+                math: function(wc) {
+                  var fromNitrite = wc.nitrite * 0.2;
+                  return 'Input from NO\u2082: ' + fromNitrite.toFixed(3) + ' ppm/tick\nAccumulation: ' + wc.nitrate.toFixed(1) + ' ppm total\nOnly removed by: water changes or live plants';
+                },
+                fix: 'Regular 25% weekly water changes. Add fast-growing plants (hornwort, pothos). Reduce fish load.'
+              },
+              salinity: {
+                name: 'Salinity',
+                icon: '\uD83E\uDDC2',
+                what: 'The concentration of dissolved salts (primarily NaCl). Freshwater fish maintain internal salt levels higher than their environment; marine fish do the opposite.',
+                safeRange: 'Freshwater: 0 ppt | Brackish: 5-15 ppt | Marine: 34-36 ppt',
+                danger: 'Incorrect salinity disrupts osmoregulation. Fish cells either swell (too fresh) or shrink (too salty), damaging organs.',
+                math: function(wc) {
+                  return 'Current: ' + wc.salinity + ' ppt (parts per thousand)\n1 ppt = 1g salt per 1000g water\nSeawater: ~35 ppt = 3.5% salt by weight';
+                },
+                fix: 'Adjust slowly through water changes with correctly mixed water. Never change > 2 ppt per day.'
+              }
+            };
             // ── Tank setup helpers ──
             var initTank = function (tankId) {
               var tank = TANK_TYPES.find(function (t) { return t.id === tankId; });
@@ -23565,6 +23653,8 @@ var TANK_TYPES = [
               var newFish = tankFish.concat([speciesId]);
               var newHealth = Object.assign({}, fishHealth);
               newHealth[speciesId] = (newHealth[speciesId] || 0) + 1;
+              var newHunger = Object.assign({}, hungerLevels);
+              if (newHunger[speciesId] === undefined) newHunger[speciesId] = 50;
               updMulti({ tankFish: newFish, fishHealth: newHealth, eventLog: eventLog.concat([{ tick: simTick, msg: '🐟 Added ' + species.name + ' to tank' }]) });
             };
 
@@ -23660,6 +23750,45 @@ var TANK_TYPES = [
               updMulti({ waterChem: newChem, simTick: newTick, eventLog: newLog.slice(-20) });
             };
 
+
+            // ── Tank Health Score & Strategy Tips ──
+            var getTankHealth = function () {
+              if (!waterChem || tankFish.length === 0) return { score: 100, tips: [{ icon: '\uD83D\uDC1F', text: 'Add some fish to get started!', color: 'text-cyan-600' }] };
+              var score = 100;
+              var tips = [];
+              // Ammonia penalty
+              var ammSt = getChemStatus('ammonia', waterChem.ammonia);
+              if (ammSt === 'warn') { score -= 15; tips.push({ icon: '\u26A0\uFE0F', text: 'Ammonia at ' + waterChem.ammonia.toFixed(2) + ' ppm \u2014 approaching toxic levels. Consider a water change.', color: 'text-amber-600' }); }
+              if (ammSt === 'danger') { score -= 35; tips.push({ icon: '\u2620\uFE0F', text: 'CRITICAL: Ammonia at ' + waterChem.ammonia.toFixed(2) + ' ppm! Immediate water change needed. Fish are suffering gill damage.', color: 'text-red-600' }); }
+              // Nitrite penalty
+              var nitSt = getChemStatus('nitrite', waterChem.nitrite);
+              if (nitSt === 'warn') { score -= 12; tips.push({ icon: '\u26A0\uFE0F', text: 'Nitrite rising (' + waterChem.nitrite.toFixed(2) + ' ppm). Your nitrogen cycle may not be established yet.', color: 'text-amber-600' }); }
+              if (nitSt === 'danger') { score -= 30; tips.push({ icon: '\u2620\uFE0F', text: 'CRITICAL: Nitrite at ' + waterChem.nitrite.toFixed(2) + ' ppm! Brown blood disease risk. Emergency water change!', color: 'text-red-600' }); }
+              // Nitrate penalty
+              if (waterChem.nitrate > 80) { score -= 15; tips.push({ icon: '\uD83D\uDE2C', text: 'Nitrate very high (' + waterChem.nitrate.toFixed(0) + ' ppm). Schedule regular water changes or add live plants.', color: 'text-amber-600' }); }
+              else if (waterChem.nitrate > 40) { score -= 8; tips.push({ icon: '\uD83C\uDF3F', text: 'Nitrate at ' + waterChem.nitrate.toFixed(0) + ' ppm \u2014 a water change will bring this down.', color: 'text-amber-600' }); }
+              // pH penalty
+              var phSt = getChemStatus('pH', waterChem.pH);
+              if (phSt === 'warn') { score -= 10; tips.push({ icon: '\u2697\uFE0F', text: 'pH drifting (' + waterChem.pH.toFixed(1) + '). Fish prefer stable pH near ' + (TANK_TYPES.find(function(t){return t.id===selectedTank;}) || {pH:7}).pH + '.', color: 'text-amber-600' }); }
+              if (phSt === 'danger') { score -= 25; tips.push({ icon: '\u2697\uFE0F', text: 'pH dangerously off-target (' + waterChem.pH.toFixed(1) + ')! Osmotic stress is likely.', color: 'text-red-600' }); }
+              // Bioload check
+              var species = SPECIES_BY_TANK[selectedTank] || [];
+              var currentLoad = tankFish.reduce(function(s,f){ var sp = species.find(function(x){return x.id===f;}); return s+(sp?sp.load:0); }, 0);
+              var maxLoad = Math.floor((TANK_TYPES.find(function(t){return t.id===selectedTank;}) || {size:20}).size / 2);
+              var loadPct = Math.round(currentLoad / maxLoad * 100);
+              if (loadPct > 80) { score -= 10; tips.push({ icon: '\uD83D\uDC1F', text: 'Bioload at ' + loadPct + '% capacity. High bioload = more waste = faster ammonia buildup.', color: 'text-amber-600' }); }
+              // Hunger check
+              var avgHunger = 0;
+              var hungerCount = 0;
+              tankFish.forEach(function(fId) { var h = hungerLevels[fId]; if (h !== undefined) { avgHunger += h; hungerCount++; } });
+              if (hungerCount > 0) avgHunger = avgHunger / hungerCount;
+              if (avgHunger > 75) { score -= 12; tips.push({ icon: '\uD83C\uDF7D\uFE0F', text: 'Fish are very hungry (avg ' + Math.round(avgHunger) + '%). Feed soon to reduce stress!', color: 'text-amber-600' }); }
+              // All good!
+              if (tips.length === 0) {
+                tips.push({ icon: '\uD83C\uDF1F', text: 'Excellent tank management! All parameters in safe range. Your nitrogen cycle is established.', color: 'text-green-600' });
+              }
+              return { score: Math.max(0, score), tips: tips };
+            };
             // ── Ocean Ecology helpers ──
             var OCEAN_SPECIES = [
               { id: 'sardines', name: 'Sardines', icon: '🐟', r: 0.4, K: 1000, value: 1, desc: 'Fast-reproducing small fish. Foundation of the marine food web.' },
@@ -24000,19 +24129,44 @@ var TANK_TYPES = [
                 var loadPct = Math.min(100, Math.round(currentLoad / maxLoad * 100));
 
                 return React.createElement("div", { className: "space-y-3" },
-                  // Tank header
-                  React.createElement("div", { className: "flex items-center gap-2" },
-                    React.createElement("button", {
-                      onClick: function () { updMulti({ selectedTank: null, simRunning: false }); },
-                      className: "text-xs text-cyan-600 hover:text-cyan-800 font-bold"
-                    }, "\u2190 Change Tank"),
-                    React.createElement("span", { className: "text-sm font-bold text-cyan-800" }, tank.name),
-                    React.createElement("span", { className: "text-[10px] text-slate-400" }, "Tick: " + simTick)
+                  // Tank header with time & speed
+                  React.createElement("div", { className: "bg-gradient-to-r from-cyan-50 to-sky-50 rounded-xl p-3 border border-cyan-200/50" },
+                    React.createElement("div", { className: "flex items-center gap-2 mb-2" },
+                      React.createElement("button", {
+                        onClick: function () { updMulti({ selectedTank: null, simRunning: false }); },
+                        className: "text-xs text-cyan-600 hover:text-cyan-800 font-bold"
+                      }, "\u2190 Back"),
+                      React.createElement("span", { className: "text-sm font-bold text-cyan-800" }, tank.name),
+                      React.createElement("span", { className: "ml-auto text-xs font-mono text-slate-500" },
+                        "\uD83D\uDCC5 Day " + simDay + ", " + (simHour < 10 ? '0' : '') + simHour + ":00" + (simHour >= 20 || simHour < 6 ? ' \uD83C\uDF19' : ' \u2600\uFE0F')
+                      )
+                    ),
+                    // Speed controls
+                    React.createElement("div", { className: "flex items-center gap-1.5" },
+                      React.createElement("span", { className: "text-[10px] font-bold text-slate-500 mr-1" }, "\u23F1 Speed:"),
+                      [
+                        { spd: 0, label: '\u23F8', tip: 'Pause' },
+                        { spd: 1, label: '\u25B6', tip: 'Normal (2s/tick)' },
+                        { spd: 2, label: '\u23E9', tip: 'Fast (1s/tick)' },
+                        { spd: 5, label: '\u23ED', tip: 'Turbo (0.4s/tick)' }
+                      ].map(function (s) {
+                        return React.createElement("button", {
+                          key: s.spd,
+                          onClick: function () { upd('simSpeed', s.spd); },
+                          title: s.tip,
+                          className: "px-2 py-1 text-xs font-bold rounded-lg transition-all " + (simSpeed === s.spd ? "bg-cyan-500 text-white shadow-md shadow-cyan-500/25" : "bg-white text-slate-500 hover:bg-cyan-100 border border-slate-200")
+                        }, s.label);
+                      }),
+                      React.createElement("span", { className: "ml-auto text-[10px] text-slate-400 font-mono" }, "T:" + simTick)
+                    )
                   ),
 
-                  // Water Chemistry Panel
+                  // Water Chemistry Panel (clickable tooltips)
                   waterChem && React.createElement("div", { className: "bg-gradient-to-br from-cyan-50 via-sky-50 to-blue-50 rounded-2xl p-4 border border-cyan-200/60 shadow-sm" },
-                    React.createElement("h4", { className: "text-xs font-bold text-cyan-700 mb-2" }, "\uD83E\uDDEA Water Chemistry"),
+                    React.createElement("div", { className: "flex items-center justify-between mb-2" },
+                      React.createElement("h4", { className: "text-xs font-bold text-cyan-700" }, "\uD83E\uDDEA Water Chemistry"),
+                      React.createElement("span", { className: "text-[9px] text-slate-400 italic" }, "Tap any card for details")
+                    ),
                     React.createElement("div", { className: "grid grid-cols-3 gap-2" },
                       [
                         { key: 'pH', label: 'pH', val: waterChem.pH.toFixed(1) },
@@ -24023,20 +24177,64 @@ var TANK_TYPES = [
                         { key: 'salinity', label: 'Salt', val: waterChem.salinity + ' ppt' }
                       ].map(function (p) {
                         var st = getChemStatus(p.key, waterChem[p.key]);
-                        return React.createElement("div", { key: p.key, className: "bg-white/70 rounded-lg p-2 text-center" },
-                          React.createElement("div", { className: "text-[10px] text-slate-500 font-bold" }, p.label),
+                        var isActive = chemTooltip === p.key;
+                        return React.createElement("div", {
+                          key: p.key,
+                          onClick: function() { upd('chemTooltip', isActive ? null : p.key); },
+                          className: "rounded-lg p-2 text-center cursor-pointer transition-all hover:scale-105 " + (isActive ? "bg-white ring-2 ring-cyan-400 shadow-lg" : "bg-white/70 hover:bg-white/90")
+                        },
+                          React.createElement("div", { className: "text-[10px] text-slate-500 font-bold" }, (CHEM_INFO[p.key] || {}).icon || '', ' ', p.label),
                           React.createElement("div", { className: "text-sm font-bold " + statusColor(st) }, statusIcon(st) + " " + p.val)
                         );
                       })
                     ),
+                    // ── Chemistry Tooltip Overlay ──
+                    chemTooltip && CHEM_INFO[chemTooltip] && (() => {
+                      var info = CHEM_INFO[chemTooltip];
+                      var t = TANK_TYPES.find(function(x){return x.id===selectedTank;}) || {};
+                      var bio = tankFish.reduce(function(s,f){ var sp = (SPECIES_BY_TANK[selectedTank]||[]).find(function(x){return x.id===f;}); return s+(sp?sp.load:0); }, 0);
+                      var mathStr = info.math ? info.math(waterChem, t, bio, tankFish.length) : '';
+                      return React.createElement("div", { className: "mt-3 bg-white rounded-xl p-3 border-2 border-cyan-300/60 shadow-lg animate-in fade-in duration-200" },
+                        React.createElement("div", { className: "flex items-center justify-between mb-2" },
+                          React.createElement("h5", { className: "text-xs font-bold text-cyan-800" }, info.icon + " " + info.name),
+                          React.createElement("button", { onClick: function() { upd('chemTooltip', null); }, className: "text-[10px] text-slate-400 hover:text-slate-600" }, "\u2715")
+                        ),
+                        React.createElement("div", { className: "space-y-2 text-[11px] leading-relaxed" },
+                          React.createElement("div", { className: "bg-cyan-50 rounded-lg p-2" },
+                            React.createElement("p", { className: "font-bold text-cyan-700 mb-0.5" }, "\uD83D\uDCD6 What is it?"),
+                            React.createElement("p", { className: "text-slate-600" }, info.what)
+                          ),
+                          React.createElement("div", { className: "bg-green-50 rounded-lg p-2" },
+                            React.createElement("p", { className: "font-bold text-green-700 mb-0.5" }, "\u2705 Safe Range"),
+                            React.createElement("p", { className: "text-slate-600" }, info.safeRange)
+                          ),
+                          React.createElement("div", { className: "bg-red-50 rounded-lg p-2" },
+                            React.createElement("p", { className: "font-bold text-red-700 mb-0.5" }, "\u26A0\uFE0F Why It's Dangerous"),
+                            React.createElement("p", { className: "text-slate-600" }, info.danger)
+                          ),
+                          mathStr && React.createElement("div", { className: "bg-indigo-50 rounded-lg p-2" },
+                            React.createElement("p", { className: "font-bold text-indigo-700 mb-0.5" }, "\uD83E\uDDEE Current Math"),
+                            React.createElement("pre", { className: "text-[10px] text-slate-600 font-mono whitespace-pre-wrap" }, mathStr)
+                          ),
+                          React.createElement("div", { className: "bg-amber-50 rounded-lg p-2" },
+                            React.createElement("p", { className: "font-bold text-amber-700 mb-0.5" }, "\uD83D\uDCA1 How to Fix"),
+                            React.createElement("p", { className: "text-slate-600" }, info.fix)
+                          )
+                        )
+                      );
+                    })(),
                     // Nitrogen cycle mini-diagram
-                    React.createElement("div", { className: "mt-3 flex items-center justify-center gap-1 text-[10px] text-slate-500 bg-gradient-to-r from-red-50/50 via-orange-50/50 to-green-50/50 rounded-xl p-2.5 border border-slate-100" },
+                    !chemTooltip && React.createElement("div", { className: "mt-3 flex items-center justify-center gap-1 text-[10px] text-slate-500 bg-gradient-to-r from-red-50/50 via-orange-50/50 to-green-50/50 rounded-xl p-2.5 border border-slate-100" },
                       React.createElement("span", { className: "font-bold text-red-500" }, "NH\u2083"),
+                      React.createElement("span", null, " \u2192 "),
+                      React.createElement("span", { className: "text-[9px] text-slate-400" }, "Nitrosomonas"),
                       React.createElement("span", null, " \u2192 "),
                       React.createElement("span", { className: "font-bold text-orange-500" }, "NO\u2082"),
                       React.createElement("span", null, " \u2192 "),
+                      React.createElement("span", { className: "text-[9px] text-slate-400" }, "Nitrobacter"),
+                      React.createElement("span", null, " \u2192 "),
                       React.createElement("span", { className: "font-bold text-green-500" }, "NO\u2083"),
-                      React.createElement("span", { className: "ml-2 text-slate-400" }, "(Nitrogen Cycle)")
+                      React.createElement("span", { className: "ml-1 text-slate-400" }, "(Nitrogen Cycle)")
                     )
                   ),
 
@@ -24137,7 +24335,19 @@ var TANK_TYPES = [
                         onClick: function () {
                           openAnatomy(fId);
                         }
-                      }, sp ? sp.icon : '\uD83D\uDC1F');
+                      }, sp ? sp.icon : '\uD83D\uDC1F',
+                          // Hunger bar under fish
+                          (() => {
+                            var hunger = hungerLevels[fId] !== undefined ? hungerLevels[fId] : 50;
+                            var stress = fishStress[fId] || 0;
+                            var barColor = hunger >= 80 ? '#ef4444' : hunger >= 50 ? '#f59e0b' : '#22c55e';
+                            return React.createElement("div", {
+                              style: { position: 'absolute', bottom: '-6px', left: '50%', transform: 'translateX(-50%)', width: '24px', height: '3px', background: 'rgba(0,0,0,0.2)', borderRadius: '2px', overflow: 'hidden' }
+                            },
+                              React.createElement("div", { style: { width: (100 - hunger) + '%', height: '100%', background: barColor, borderRadius: '2px', transition: 'width 0.5s, background 0.3s' } })
+                            );
+                          })()
+                        );
                     }),
                     // Animated bubbles
                     [0,1,2,3,4,5,6,7].map(function (i) {
@@ -24153,10 +24363,17 @@ var TANK_TYPES = [
                         }
                       });
                     }),
+                    // Day/night overlay
+                    (simHour >= 20 || simHour < 6) && React.createElement("div", {
+                      style: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'linear-gradient(180deg, rgba(15,23,42,0.3) 0%, rgba(30,41,59,0.25) 50%, rgba(15,23,42,0.35) 100%)', zIndex: 7, pointerEvents: 'none', borderRadius: '16px', transition: 'opacity 0.5s' }
+                    }),
                     // Tank label overlay
                     React.createElement("div", {
-                      style: { position: 'absolute', top: '8px', right: '10px', zIndex: 10, padding: '2px 8px', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', backdropFilter: 'blur(4px)' }
-                    }, React.createElement("span", { style: { fontSize: '10px', color: 'rgba(255,255,255,0.8)', fontWeight: 'bold' } }, tank.name))
+                      style: { position: 'absolute', top: '8px', right: '10px', zIndex: 10, padding: '2px 8px', borderRadius: '8px', background: 'rgba(0,0,0,0.25)', backdropFilter: 'blur(4px)' }
+                    },
+                      React.createElement("span", { style: { fontSize: '10px', color: 'rgba(255,255,255,0.8)', fontWeight: 'bold' } }, tank.name),
+                      React.createElement("span", { style: { fontSize: '9px', color: 'rgba(255,255,255,0.5)', marginLeft: '6px' } }, (simHour >= 20 || simHour < 6) ? '\uD83C\uDF19 Night' : '\u2600\uFE0F Day')
+                    )
                   ),
 
 
@@ -24187,36 +24404,122 @@ var TANK_TYPES = [
                   ),
 
                   // Action buttons
-                  React.createElement("div", { className: "flex gap-2" },
-                    React.createElement("button", {
-                      onClick: function () {
-                        if (simRunning) {
-                          upd('simRunning', false);
-                        } else {
-                          upd('simRunning', true);
-                          var iv = setInterval(function () {
-                            simStep();
-                          }, 2000);
-                          setTimeout(function () { clearInterval(iv); upd('simRunning', false); }, 60000);
-                        }
-                      },
-                      className: "flex-1 py-2 font-bold rounded-lg text-sm transition-all shadow-md " + (simRunning ? "bg-red-500 text-white hover:bg-red-600" : "bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-600 hover:to-blue-600")
-                    }, simRunning ? "\u23F8 Pause Sim" : "\u25B6 Run Simulation"),
-                    React.createElement("button", {
-                      onClick: doWaterChange,
-                      className: "px-4 py-2 bg-blue-100 text-blue-700 font-bold rounded-lg text-sm hover:bg-blue-200 transition-all"
-                    }, "\uD83D\uDCA7 Water Change"),
-                    React.createElement("button", {
-                      onClick: feedFish,
-                      className: "px-4 py-2 bg-amber-100 text-amber-700 font-bold rounded-lg text-sm hover:bg-amber-200 transition-all"
-                    }, "\uD83C\uDF7D\uFE0F Feed")
+                  React.createElement("div", { className: "space-y-2" },
+                    React.createElement("div", { className: "flex gap-2" },
+                      React.createElement("button", {
+                        onClick: function () {
+                          if (simRunning) {
+                            upd('simRunning', false);
+                          } else {
+                            upd('simRunning', true);
+                            var speed = simSpeed || 1;
+                            var interval = speed === 0 ? 99999 : speed === 1 ? 2000 : speed === 2 ? 1000 : 400;
+                            var iv = setInterval(function () {
+                              simStep();
+                            }, interval);
+                            setTimeout(function () { clearInterval(iv); upd('simRunning', false); }, 120000);
+                          }
+                        },
+                        className: "flex-1 py-2.5 font-bold rounded-xl text-sm transition-all shadow-md " + (simRunning ? "bg-red-500 text-white hover:bg-red-600 shadow-red-500/25" : "bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-600 hover:to-blue-600 shadow-cyan-500/25")
+                      }, simRunning ? "\u23F8 Pause" : "\u25B6 Run Simulation"),
+                      React.createElement("button", {
+                        onClick: doWaterChange,
+                        className: "px-4 py-2.5 bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 font-bold rounded-xl text-sm hover:from-blue-100 hover:to-blue-200 transition-all border border-blue-200/60"
+                      }, "\uD83D\uDCA7 Water Change"),
+                      React.createElement("button", {
+                        onClick: feedFish,
+                        disabled: tankFish.length === 0,
+                        className: "px-4 py-2.5 font-bold rounded-xl text-sm transition-all border " + (tankFish.length === 0 ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed" : "bg-gradient-to-r from-amber-50 to-amber-100 text-amber-700 hover:from-amber-100 hover:to-amber-200 border-amber-200/60")
+                      }, "\uD83C\uDF7D\uFE0F Feed")
+                    ),
+
+                    // ── Feeding Impact Panel (slides in after feeding) ──
+                    feedingLog && React.createElement("div", { className: "bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-3 border border-amber-200/60 animate-in slide-in-from-top duration-300" },
+                      React.createElement("div", { className: "flex items-center gap-2 mb-1.5" },
+                        React.createElement("span", { className: "text-sm" }, "\uD83C\uDF7D\uFE0F"),
+                        React.createElement("span", { className: "text-xs font-bold text-amber-800" }, "Feeding Report"),
+                        React.createElement("button", { onClick: function(){upd('feedingLog',null);}, className: "ml-auto text-[10px] text-slate-400" }, "\u2715")
+                      ),
+                      React.createElement("div", { className: "grid grid-cols-3 gap-2 text-center mb-2" },
+                        React.createElement("div", { className: "bg-white/70 rounded-lg p-1.5" },
+                          React.createElement("div", { className: "text-[9px] text-slate-500" }, "Fish Fed"),
+                          React.createElement("div", { className: "text-sm font-bold text-amber-700" }, feedingLog.fishCount)
+                        ),
+                        React.createElement("div", { className: "bg-white/70 rounded-lg p-1.5" },
+                          React.createElement("div", { className: "text-[9px] text-slate-500" }, "Hunger \u2193"),
+                          React.createElement("div", { className: "text-sm font-bold text-green-600" }, "-" + feedingLog.avgHungerDrop + " avg")
+                        ),
+                        React.createElement("div", { className: "bg-white/70 rounded-lg p-1.5" },
+                          React.createElement("div", { className: "text-[9px] text-slate-500" }, "NH\u2083 \u2191"),
+                          React.createElement("div", { className: "text-sm font-bold text-red-600" }, "+" + feedingLog.ammoniaAdded.toFixed(2))
+                        )
+                      ),
+                      feedingLog.overfedCount > 0 && React.createElement("div", { className: "bg-red-50 rounded-lg p-1.5 text-[10px] text-red-700 font-bold mb-1" },
+                        "\u26A0\uFE0F " + feedingLog.overfedCount + " fish already full! Excess food = extra ammonia waste."
+                      ),
+                      React.createElement("p", { className: "text-[10px] text-amber-700 italic" }, "\uD83D\uDCA1 " + feedingLog.tip)
+                    )
+                  ),
+
+                  // ── Tank Health Score & Strategy Tips ──
+                  (() => {
+                    var health = getTankHealth();
+                    var scoreColor = health.score >= 80 ? 'text-green-600' : health.score >= 50 ? 'text-amber-600' : 'text-red-600';
+                    var scoreBg = health.score >= 80 ? 'from-green-50 to-emerald-50 border-green-200/60' : health.score >= 50 ? 'from-amber-50 to-orange-50 border-amber-200/60' : 'from-red-50 to-rose-50 border-red-200/60';
+                    var barColor = health.score >= 80 ? 'bg-green-500' : health.score >= 50 ? 'bg-amber-500' : 'bg-red-500';
+                    return React.createElement("div", { className: "bg-gradient-to-r " + scoreBg + " rounded-xl p-3 border shadow-sm" },
+                      React.createElement("div", { className: "flex items-center gap-2 mb-2" },
+                        React.createElement("span", { className: "text-sm" }, health.score >= 80 ? '\uD83C\uDF1F' : health.score >= 50 ? '\u26A0\uFE0F' : '\uD83D\uDEA8'),
+                        React.createElement("span", { className: "text-xs font-bold " + scoreColor }, "Tank Health"),
+                        React.createElement("span", { className: "text-lg font-bold ml-auto " + scoreColor }, health.score + "/100")
+                      ),
+                      React.createElement("div", { className: "h-2.5 bg-white/50 rounded-full overflow-hidden mb-2" },
+                        React.createElement("div", { style: { width: health.score + '%', transition: 'width 0.5s' }, className: "h-full rounded-full " + barColor })
+                      ),
+                      React.createElement("div", { className: "space-y-1" },
+                        health.tips.map(function(tip, i) {
+                          return React.createElement("p", { key: i, className: "text-[10px] " + tip.color + " font-bold leading-relaxed" }, tip.icon + " " + tip.text);
+                        })
+                      )
+                    );
+                  })(),
+
+                  // ── Hunger Overview ──
+                  tankFish.length > 0 && React.createElement("div", { className: "bg-white rounded-xl p-3 border border-slate-200" },
+                    React.createElement("h4", { className: "text-xs font-bold text-slate-600 mb-2" }, "\uD83C\uDF7D\uFE0F Fish Hunger Status"),
+                    React.createElement("div", { className: "grid grid-cols-2 gap-1.5" },
+                      (() => {
+                        var seen = {};
+                        return tankFish.map(function(fId, idx) {
+                          var sp = (SPECIES_BY_TANK[selectedTank]||[]).find(function(s){return s.id===fId;});
+                          var hunger = hungerLevels[fId] !== undefined ? hungerLevels[fId] : 50;
+                          var stress = fishStress[fId] || 0;
+                          var hungerColor = hunger >= 80 ? 'bg-red-500' : hunger >= 50 ? 'bg-amber-400' : 'bg-green-500';
+                          var hungerText = hunger >= 80 ? 'Starving!' : hunger >= 50 ? 'Hungry' : hunger >= 20 ? 'Satisfied' : 'Full';
+                          var hungerTextColor = hunger >= 80 ? 'text-red-600' : hunger >= 50 ? 'text-amber-600' : 'text-green-600';
+                          return React.createElement("div", { key: idx, className: "flex items-center gap-2 bg-slate-50 rounded-lg p-1.5" },
+                            React.createElement("span", { className: "text-sm" }, sp ? sp.icon : '\uD83D\uDC1F'),
+                            React.createElement("div", { className: "flex-1 min-w-0" },
+                              React.createElement("div", { className: "flex items-center justify-between mb-0.5" },
+                                React.createElement("span", { className: "text-[9px] font-bold text-slate-600 truncate" }, sp ? sp.name : fId),
+                                React.createElement("span", { className: "text-[9px] font-bold " + hungerTextColor }, hungerText)
+                              ),
+                              React.createElement("div", { className: "h-1.5 bg-slate-200 rounded-full overflow-hidden" },
+                                React.createElement("div", { style: { width: (100 - hunger) + '%', transition: 'width 0.5s' }, className: "h-full rounded-full " + hungerColor })
+                              )
+                            ),
+                            stress > 30 && React.createElement("span", { className: "text-[9px] text-red-500", title: 'Stress: ' + Math.round(stress) + '%' }, '\u26A0\uFE0F')
+                          );
+                        });
+                      })()
+                    )
                   ),
 
                   // Event log
                   eventLog.length > 0 && React.createElement("div", { className: "bg-slate-50 rounded-xl p-2 border border-slate-200 max-h-32 overflow-y-auto" },
-                    React.createElement("h4", { className: "text-[10px] font-bold text-slate-400 mb-1" }, "\uD83D\uDCDC Event Log"),
-                    eventLog.slice().reverse().slice(0, 8).map(function (evt, i) {
-                      return React.createElement("p", { key: i, className: "text-[10px] text-slate-500" }, "[" + evt.tick + "] " + evt.msg);
+                    React.createElement("h4", { className: "text-[10px] font-bold text-slate-400 mb-1" }, "\uD83D\uDCDC Event Log (Day " + simDay + ")"),
+                    eventLog.slice().reverse().slice(0, 10).map(function (evt, i) {
+                      return React.createElement("p", { key: i, className: "text-[10px] text-slate-500" }, "[T" + evt.tick + "] " + evt.msg);
                     })
                   )
                 );
