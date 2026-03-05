@@ -18404,7 +18404,7 @@
                   var r = isSel ? 9 : 5;
                   // Animated pulsing ring for selected
                   if (isSel) {
-                    var pulse = 1.0 + Math.sin(tick * 0.06) * 0.3;
+                    var pulse = 1.0 + Math.sin(anatTick * 0.06) * 0.3;
                     ctx.save();
                     ctx.globalAlpha = 0.3 - pulse * 0.1;
                     ctx.beginPath(); ctx.arc(px, py, r + 6 + pulse * 4, 0, Math.PI * 2);
@@ -24896,7 +24896,7 @@
                           ),
                           React.createElement("p", { className: "text-[9px] text-slate-500 truncate" }, entry.choice + ' → ' + (entry.outcome || '').substring(0, 60) + '...')
                         ),
-                        entry.xp > 0 && React.createElement("span", { className: "text-[8px] font-bold px-1 py-0.5 rounded bg-amber-100 text-amber-600 flex-shrink-0" }, '+' + entry.xp)
+                        entry.xp > 0 ? React.createElement("span", { className: "text-[8px] font-bold px-1 py-0.5 rounded bg-amber-100 text-amber-600 flex-shrink-0" }, '+' + entry.xp) : null
                       );
                     })
                   ),
