@@ -23108,7 +23108,14 @@
                 '@keyframes aquaBubble { 0% { bottom: 30px; opacity: 0.6; } 50% { opacity: 0.8; } 100% { bottom: 220px; opacity: 0; } }',
                 '@keyframes aquaWave { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }',
                 '@keyframes oceanPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }',
-                '.aqua-fish:hover { transform: scale(1.3) !important; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3)) !important; }'
+                '.aqua-fish:hover { transform: scale(1.3) !important; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3)) !important; }',
+                '@keyframes aiEventSlideIn { 0% { opacity: 0; transform: translateY(-20px) scale(0.95); } 100% { opacity: 1; transform: translateY(0) scale(1); } }',
+                '@keyframes aiEventPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(59,130,246,0.3); } 50% { box-shadow: 0 0 20px 4px rgba(59,130,246,0.15); } }',
+                '@keyframes aiEventFadeOut { 0% { opacity: 1; } 100% { opacity: 0; transform: translateY(-10px); } }',
+                '@keyframes xpPop { 0% { transform: scale(0.5); opacity: 0; } 50% { transform: scale(1.2); } 100% { transform: scale(1); opacity: 1; } }',
+                '.ai-event-card { animation: aiEventSlideIn 0.4s ease-out, aiEventPulse 3s ease-in-out 0.5s infinite; }',
+                '.ai-event-choice:hover { transform: translateY(-2px) !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; }',
+                '.ai-event-choice { transition: all 0.2s ease; }'
               ].join('\n');
               document.head.appendChild(style);
             }
@@ -23590,6 +23597,243 @@
             var chemTooltip = d.chemTooltip || null;
             var fishStress = d.fishStress || {};
 
+            // ── AI Event state ──
+            var aiEvent = d.aiEvent || null;
+            var aiEventHistory = d.aiEventHistory || [];
+            var aiEventLoading = d.aiEventLoading || false;
+            var lastAIEventDay = d.lastAIEventDay || 0;
+
+            // ── Fallback Event Bank (fires when Gemini unavailable) ──
+            var FALLBACK_EVENTS = [
+              // Disease
+              {
+                id: 'ich', title: 'White Spot Disease (Ich)', icon: '\u26A0\uFE0F', desc: 'You notice tiny white spots on your fish\u2019s fins and body. Ichthyophthirius multifiliis is highly contagious and can be fatal if untreated.', category: 'disease',
+                educational: 'Ich is caused by a ciliated protozoan parasite. It burrows under the skin, creating white cysts. The parasite has a 3-stage life cycle \u2014 it\u2019s only vulnerable to treatment during the free-swimming stage.',
+                choices: [
+                  { label: '\uD83C\uDF21\uFE0F Raise temperature to 86\u00B0F', effect: { temp: 86, ammonia: 0.1 }, outcome: 'The higher temperature speeds up the parasite\u2019s life cycle, making treatment more effective. Fish are slightly stressed by the heat but the ich is clearing.', xp: 5 },
+                  { label: '\uD83E\uDDEA Add aquarium salt (1 tsp/gal)', effect: { ammonia: 0.05 }, outcome: 'Salt disrupts the parasite\u2019s osmotic balance. After 3 days, the white spots are fading. Scaleless fish like corydoras may be slightly irritated.', xp: 4 },
+                  { label: '\u274C Do nothing and observe', effect: { ammonia: 0.3 }, outcome: 'The ich spreads rapidly. Two fish are now heavily infected and showing labored breathing. Immediate action is now critical.', xp: 1 }
+                ]
+              },
+              {
+                id: 'finrot', title: 'Fin Rot Detected', icon: '\uD83E\uDE78', desc: 'One of your fish has ragged, discolored fin edges \u2014 a sign of bacterial fin rot. Poor water quality is usually the root cause.', category: 'disease',
+                educational: 'Fin rot is caused by gram-negative bacteria (Aeromonas, Pseudomonas) that thrive in dirty water. Clean water is the #1 treatment \u2014 medications are secondary.',
+                choices: [
+                  { label: '\uD83D\uDCA7 25% water change + clean filter', effect: { ammonia: -0.2, nitrite: -0.1 }, outcome: 'Excellent choice! The water quality improves dramatically. Over the next week, the damaged fins begin regenerating with clear tissue.', xp: 6 },
+                  { label: '\uD83D\uDC8A Dose antibiotics immediately', effect: { ammonia: 0.15 }, outcome: 'The antibiotics help, but also kill beneficial bacteria in your filter. Next time, try clean water first \u2014 it\u2019s usually sufficient.', xp: 3 },
+                  { label: '\u274C Ignore it', effect: { ammonia: 0.4 }, outcome: 'The fin rot progresses to body rot. The fish\u2019s immune system is now compromised. This could have been prevented with a water change.', xp: 0 }
+                ]
+              },
+              // Equipment
+              {
+                id: 'heater_fail', title: 'Heater Malfunction!', icon: '\uD83C\uDF21\uFE0F', desc: 'Your heater thermostat is stuck on high! Water temperature is climbing rapidly toward 88\u00B0F. Your fish are showing signs of thermal stress.', category: 'equipment',
+                educational: 'Heater malfunctions are one of the most dangerous aquarium emergencies. Above 86\u00B0F, dissolved oxygen drops significantly. Many fish can tolerate brief temperature spikes but prolonged exposure causes organ damage.',
+                choices: [
+                  { label: '\u26A1 Unplug heater + add ice bag', effect: { temp: -6 }, outcome: 'Quick thinking! The ice bag slowly cools the water back to safe range. You\u2019ll need to monitor and replace the heater.', xp: 6 },
+                  { label: '\uD83D\uDCA8 Point a fan across water surface', effect: { temp: -3 }, outcome: 'Evaporative cooling helps reduce temperature gradually. The water drops a few degrees but may not be enough. Good emergency measure!', xp: 4 },
+                  { label: '\u274C Unplug heater only', effect: { temp: -1 }, outcome: 'The temperature will slowly drift down, but tropical fish need some heat. Monitor closely and get a replacement heater soon.', xp: 2 }
+                ]
+              },
+              {
+                id: 'filter_clog', title: 'Filter Flow Reduced', icon: '\u2699\uFE0F', desc: 'Your filter output is barely trickling. Debris has built up in the intake and media. Without filtration, ammonia will spike quickly.', category: 'equipment',
+                educational: 'Filters house your nitrogen cycle bacteria (Nitrosomonas + Nitrospira). Never clean filter media in tap water \u2014 the chlorine kills the beneficial bacteria. Always rinse in old tank water!',
+                choices: [
+                  { label: '\uD83D\uDCA7 Rinse media in old tank water', effect: { ammonia: -0.1 }, outcome: 'Perfect technique! The filter flow is restored while preserving the bacterial colony. Your nitrogen cycle stays intact.', xp: 6 },
+                  { label: '\uD83D\uDDD1\uFE0F Replace all filter media', effect: { ammonia: 0.3 }, outcome: 'The filter runs great, but you\u2019ve lost ALL your beneficial bacteria. Expect an ammonia spike in 2-3 days as the cycle restarts.', xp: 2 },
+                  { label: '\u274C Deal with it later', effect: { ammonia: 0.5 }, outcome: 'Without proper filtration, ammonia and waste build up rapidly. Your fish are gasping at the surface for oxygen.', xp: 0 }
+                ]
+              },
+              // Ecology
+              {
+                id: 'algae_bloom', title: 'Green Algae Bloom!', icon: '\uD83C\uDF3F', desc: 'Your tank water has turned pea-soup green overnight. A massive algae bloom has erupted, likely from excess nutrients and light.', category: 'ecology',
+                educational: 'Algae blooms are caused by excess phosphates and nitrates combined with too much light (>10 hours/day). They\u2019re not immediately dangerous but reduce oxygen at night and look unsightly.',
+                choices: [
+                  { label: '\uD83D\uDD26 Blackout for 3 days (cover tank)', effect: { nitrate: -5 }, outcome: 'Without light, the algae dies off. After 3 days of darkness, the water clears. Reduce your light schedule to prevent recurrence.', xp: 5 },
+                  { label: '\uD83E\uDDA0 Add algae-eating fish (Oto)', effect: { nitrate: -2 }, outcome: 'The otocinclus help with surface algae, but green water algae is too small for them. Partial improvement, but a blackout would be more effective.', xp: 3 },
+                  { label: '\uD83D\uDCA7 50% water change', effect: { ammonia: -0.1, nitrate: -10 }, outcome: 'The water change dilutes nutrients and clears some algae, but it may return if the root cause (excess light/nutrients) isn\u2019t addressed.', xp: 4 }
+                ]
+              },
+              {
+                id: 'snail_invasion', title: 'Snail Population Explosion!', icon: '\uD83D\uDC0C', desc: 'Tiny snails are everywhere! They hitchhiked in on a plant and have multiplied rapidly. While not harmful, they\u2019re covering your glass.', category: 'ecology',
+                educational: 'Pest snails (bladder snails, Malaysian trumpet snails) reproduce asexually \u2014 one snail can become hundreds. They\u2019re actually beneficial detritivores but can indicate overfeeding.',
+                choices: [
+                  { label: '\uD83C\uDF7D\uFE0F Reduce feeding (snails eat leftovers)', effect: { ammonia: -0.15 }, outcome: 'Smart approach! With less excess food, the snail population naturally declines over 2-3 weeks. Bonus: your water quality improves too.', xp: 6 },
+                  { label: '\uD83E\uDD9E Add an assassin snail', effect: {}, outcome: 'The assassin snail is a natural predator. Over time, it hunts down the pest snails. A biological control approach \u2014 very elegant!', xp: 5 },
+                  { label: '\uD83D\uDEAB Remove them manually', effect: {}, outcome: 'You pick out dozens, but miss the tiny ones and eggs. They\u2019ll be back. This is a never-ending battle without addressing the root cause.', xp: 2 }
+                ]
+              },
+              {
+                id: 'plant_melt', title: 'Aquatic Plants Melting', icon: '\uD83C\uDF42', desc: 'Several of your live plants are turning brown and dissolving. The leaves are becoming translucent and falling apart.', category: 'ecology',
+                educational: 'New aquatic plants often \"melt\" as they transition from emersed (above-water) to submersed growth. This is normal! Iron and CO2 deficiency can also cause melting in established plants.',
+                choices: [
+                  { label: '\uD83E\uDDEA Add root tabs + liquid fertilizer', effect: { nitrate: 3 }, outcome: 'The iron and micronutrients give the plants what they need. New, submersed-growth leaves begin sprouting within a week.', xp: 5 },
+                  { label: '\u2702\uFE0F Trim dead leaves, leave roots', effect: {}, outcome: 'Good practice! Removing dead material prevents it from decaying and spiking ammonia. Healthy roots will send up new growth.', xp: 4 },
+                  { label: '\uD83D\uDDD1\uFE0F Remove all dying plants', effect: { ammonia: 0.1, nitrate: 5 }, outcome: 'Without plants absorbing nitrate, your water quality may suffer. Plants also provide hiding spots that reduce fish stress.', xp: 1 }
+                ]
+              },
+              // Water
+              {
+                id: 'ph_crash', title: 'Sudden pH Crash!', icon: '\u2697\uFE0F', desc: 'Your pH has dropped from 7.2 to 6.0 overnight! Fish are showing signs of acidosis: clamped fins, rapid gill movement, and lethargy.', category: 'water',
+                educational: 'pH crashes happen when KH (carbonate hardness) is depleted. KH acts as a buffer \u2014 without it, pH becomes unstable. Adding crushed coral or baking soda restores buffering capacity.',
+                choices: [
+                  { label: '\uD83E\uDDF1 Add crushed coral to filter', effect: { pH: 1.0 }, outcome: 'The crushed coral slowly dissolves, raising KH and stabilizing pH around 7.2. This provides long-term buffering. Excellent choice!', xp: 6 },
+                  { label: '\uD83E\uDDEA Add baking soda (1 tsp/5 gal)', effect: { pH: 0.6 }, outcome: 'The pH rises quickly back toward neutral. Be careful \u2014 sudden pH changes can be as stressful as the crash itself. Slow and steady wins.', xp: 4 },
+                  { label: '\uD83D\uDCA7 Large water change (50%)', effect: { pH: 0.4, ammonia: -0.2 }, outcome: 'The fresh water brings pH up somewhat, but without addressing the low KH, the pH will crash again within days.', xp: 3 }
+                ]
+              },
+              {
+                id: 'cloudy_water', title: 'Mysterious Cloudiness', icon: '\uD83C\uDF2B\uFE0F', desc: 'Your crystal-clear water has become milky white. It happened within hours and the fish seem unaffected so far.', category: 'water',
+                educational: 'Milky white cloudiness is a bacterial bloom \u2014 millions of free-floating heterotrophic bacteria. This is common in new tanks or after a major disturbance. It\u2019s usually harmless and self-resolving.',
+                choices: [
+                  { label: '\u23F3 Wait it out (bacterial bloom)', effect: { ammonia: 0.1 }, outcome: 'Correct diagnosis! The bloom runs out of food after 2-3 days and clears on its own. Your tank\u2019s ecosystem is simply rebalancing.', xp: 5 },
+                  { label: '\uD83D\uDCA7 Small daily water changes (10%)', effect: { ammonia: -0.05 }, outcome: 'The gentle water changes remove some bacteria without disrupting the cycle. Combined with patience, the water clears in a few days.', xp: 5 },
+                  { label: '\uD83E\uDDEA Add water clarifier chemical', effect: { ammonia: 0.05 }, outcome: 'The clarifier clumps particles for the filter to catch. It works visually but doesn\u2019t address why the bloom happened. A band-aid solution.', xp: 2 }
+                ]
+              },
+              // Behavioral
+              {
+                id: 'aggression', title: 'Fish Aggression Alert!', icon: '\uD83D\uDCA2', desc: 'One of your larger fish is chasing and nipping at the others. You can see torn fins on the smaller fish. Tank harmony is disrupted.', category: 'behavioral',
+                educational: 'Aggression often stems from territorial behavior, breeding instincts, or overcrowding. Rearranging decorations breaks established territories and can reset the social hierarchy.',
+                choices: [
+                  { label: '\uD83C\uDFE0 Rearrange decorations', effect: {}, outcome: 'Brilliant strategy! Moving the decor disrupts the bully\u2019s claimed territory. All fish have to re-establish boundaries, reducing aggression.', xp: 5 },
+                  { label: '\uD83C\uDF3F Add more hiding spots', effect: {}, outcome: 'More plants and caves give smaller fish escape routes. Line-of-sight breaks are key to peaceful tanks. The nipping decreases significantly.', xp: 5 },
+                  { label: '\uD83D\uDCD0 Check if tank is overcrowded', effect: {}, outcome: 'You review your stocking \u2014 the bioload is high. Sometimes the only solution is to rehome the aggressive individual.', xp: 4 }
+                ]
+              },
+              {
+                id: 'breeding', title: 'Breeding Behavior Spotted!', icon: '\uD83D\uDC95', desc: 'Two fish are performing an elaborate courtship dance! The male is displaying vibrant colors and the female appears to have a rounded belly.', category: 'behavioral',
+                educational: 'Successful breeding requires stable water chemistry, proper temperature, and adequate nutrition. Many livebearers (guppies, mollies, platys) breed readily. Egg-layers need specific conditions.',
+                choices: [
+                  { label: '\uD83C\uDF31 Add breeding box / plants', effect: {}, outcome: 'The dense plants provide cover for fry. Within days, you spot tiny baby fish hiding among the leaves! Your population may grow.', xp: 5 },
+                  { label: '\uD83C\uDF21\uFE0F Optimize conditions for spawning', effect: { temp: 1 }, outcome: 'The slightly warmer water and good nutrition encourage spawning. Nature takes its course \u2014 this is natural population dynamics!', xp: 4 },
+                  { label: '\uD83D\uDC40 Just observe and enjoy', effect: {}, outcome: 'You watch the beautiful natural behavior unfold. Even if fry don\u2019t survive, witnessing courtship displays is one of the joys of fishkeeping.', xp: 3 }
+                ]
+              },
+              {
+                id: 'new_cycle', title: 'Nitrogen Cycle Kick-starting', icon: '\uD83D\uDD04', desc: 'You notice ammonia is rising but nitrite is still zero. Your tank is in the early stages of cycling \u2014 beneficial bacteria haven\u2019t colonized yet.', category: 'water',
+                educational: 'The nitrogen cycle is the single most important concept in fishkeeping. Ammonia \u2192 Nitrite \u2192 Nitrate. It takes 4-6 weeks to fully establish. Patience is the key.',
+                choices: [
+                  { label: '\uD83E\uDDA0 Add bottled bacteria starter', effect: { ammonia: -0.2 }, outcome: 'The commercial bacteria boost jump-starts colonization. You should see nitrite appear within a week as the first bacteria convert ammonia.', xp: 5 },
+                  { label: '\uD83D\uDCA7 Small daily water changes', effect: { ammonia: -0.15 }, outcome: 'Keeping ammonia below 2 ppm protects your fish while the cycle establishes. This is the gold standard for fish-in cycling.', xp: 6 },
+                  { label: '\u274C Add more fish to speed it up', effect: { ammonia: 0.6 }, outcome: 'More fish = more ammonia. But your bacteria can\u2019t keep up yet! This overloads the system and puts all fish at risk. Less is more during cycling.', xp: 0 }
+                ]
+              },
+              {
+                id: 'power_outage', title: 'Power Outage Simulation', icon: '\u26A1', desc: 'The power goes out! Your heater, filter, and lights all stop. Without filtration, oxygen levels will drop. Without the heater, temperature will fall.', category: 'equipment',
+                educational: 'During power outages, oxygen is the #1 concern. Battery-powered air pumps are essential emergency gear. Most tropical fish can survive 4-6 hours without heat but suffocate faster without water movement.',
+                choices: [
+                  { label: '\uD83E\uDEAB Battery air pump + blanket on tank', effect: { temp: -2 }, outcome: 'The air pump maintains oxygen while the blanket insulates heat. Your fish barely notice the outage. You were prepared!', xp: 6 },
+                  { label: '\uD83D\uDCA8 Manually agitate water surface', effect: { temp: -3, ammonia: 0.1 }, outcome: 'Stirring the water with a cup adds oxygen. It\u2019s labor-intensive but effective short-term. Temperature slowly drops.', xp: 4 },
+                  { label: '\u274C Wait for power to return', effect: { temp: -5, ammonia: 0.3 }, outcome: 'After 3 hours, oxygen drops critically. Some fish are gasping at the surface. The temperature is falling steadily. An emergency kit would have prevented this.', xp: 1 }
+                ]
+              },
+              {
+                id: 'test_results', title: 'Unexpected Water Test Results', icon: '\uD83E\uDDEA', desc: 'Your weekly water test shows nitrate at 80+ ppm! Your fish seem fine now, but this level of nitrate suppresses immune function over time.', category: 'water',
+                educational: 'High nitrate is the "silent killer." Fish acclimate gradually and seem fine, but chronic exposure stunts growth, fades color, and weakens immunity. Regular water changes are the #1 prevention.',
+                choices: [
+                  { label: '\uD83D\uDCA7 50% water change + gravel vacuum', effect: { nitrate: -30, ammonia: -0.1 }, outcome: 'A thorough water change and gravel vacuum removes trapped detritus. Nitrate drops to safe levels. Schedule weekly changes to prevent buildup.', xp: 6 },
+                  { label: '\uD83C\uDF3F Add fast-growing live plants', effect: { nitrate: -15 }, outcome: 'Floating plants like duckweed and hornwort are nitrogen-absorbing machines. They\u2019ll help keep nitrate in check between water changes.', xp: 5 },
+                  { label: '\u274C It will come down on its own', effect: { nitrate: 10 }, outcome: 'Nitrate doesn\u2019t decrease on its own \u2014 only water changes, plants, or special media remove it. Your fish\u2019s long-term health is at risk.', xp: 0 }
+                ]
+              }
+            ];
+
+            // ── AI Event Generator (Gemini-powered with fallback) ──
+            var generateAIEvent = function () {
+              if (aiEventLoading || !selectedTank || tankFish.length === 0) return;
+
+              // Try Gemini first, fall back to curated bank
+              if (callGemini) {
+                upd('aiEventLoading', true);
+                var fishNames = tankFish.map(function (fId) {
+                  var sp = (SPECIES_BY_TANK[selectedTank] || []).find(function (s) { return s.id === fId; });
+                  return sp ? sp.name : fId;
+                }).join(', ');
+                var tankInfo = TANK_TYPES.find(function (t) { return t.id === selectedTank; });
+                var prompt = 'You are an aquarium science educator generating an interactive learning event for a tank simulation. Current tank state:\n' +
+                  '- Tank type: ' + (tankInfo ? tankInfo.name : selectedTank) + '\n' +
+                  '- Fish: ' + fishNames + ' (' + tankFish.length + ' total)\n' +
+                  '- Water: pH ' + (waterChem ? waterChem.pH.toFixed(1) : '?') + ', Temp ' + (waterChem ? waterChem.temp.toFixed(0) : '?') + 'F, NH3 ' + (waterChem ? waterChem.ammonia.toFixed(2) : '?') + ', NO2 ' + (waterChem ? waterChem.nitrite.toFixed(2) : '?') + ', NO3 ' + (waterChem ? waterChem.nitrate.toFixed(0) : '?') + '\n' +
+                  '- Day: ' + simDay + '\n' +
+                  '- Recent events: ' + (aiEventHistory.length > 0 ? aiEventHistory.slice(-3).map(function (e) { return e.title; }).join(', ') : 'none') + '\n\n' +
+                  'Generate ONE realistic aquarium event that requires a student decision. Return ONLY valid JSON:\n' +
+                  '{"title":"short title","icon":"single emoji","desc":"2-3 sentence scenario description","educational":"1-2 sentence science explanation","choices":[{"label":"emoji + action","effect_desc":"brief consequence preview","ammonia_delta":0,"ph_delta":0,"temp_delta":0,"nitrate_delta":0,"xp":5,"outcome":"what happens after choosing this"},{"label":"emoji + alternative action","effect_desc":"brief consequence","ammonia_delta":0,"ph_delta":0,"temp_delta":0,"nitrate_delta":0,"xp":3,"outcome":"result"}]}\n' +
+                  'Rules: 2-3 choices, effects realistic, one choice should be clearly educational/best, include a wrong/risky choice. Make it specific to the current fish and water conditions. Do NOT repeat recent events.';
+
+                callGemini(prompt, true, false, 0.9).then(function (response) {
+                  try {
+                    var parsed = typeof response === 'string' ? JSON.parse(response) : response;
+                    if (parsed && parsed.title && parsed.choices && parsed.choices.length >= 2) {
+                      // Convert AI response to standard event format
+                      var aiEvt = {
+                        id: 'ai_' + Date.now(),
+                        title: parsed.title,
+                        icon: parsed.icon || '\uD83E\uDD16',
+                        desc: parsed.desc,
+                        educational: parsed.educational,
+                        category: 'ai_generated',
+                        choices: parsed.choices.map(function (c) {
+                          return {
+                            label: c.label,
+                            effect: {
+                              ammonia: c.ammonia_delta || 0,
+                              pH: c.ph_delta || 0,
+                              temp: c.temp_delta || 0,
+                              nitrate: c.nitrate_delta || 0
+                            },
+                            outcome: c.outcome,
+                            xp: c.xp || 3
+                          };
+                        })
+                      };
+                      updMulti({ aiEvent: aiEvt, aiEventLoading: false, lastAIEventDay: simDay });
+                      return;
+                    }
+                  } catch (e) { /* fall through to fallback */ }
+                  // Fallback on parse failure
+                  var fb = FALLBACK_EVENTS[Math.floor(Math.random() * FALLBACK_EVENTS.length)];
+                  updMulti({ aiEvent: Object.assign({}, fb), aiEventLoading: false, lastAIEventDay: simDay });
+                }).catch(function () {
+                  var fb = FALLBACK_EVENTS[Math.floor(Math.random() * FALLBACK_EVENTS.length)];
+                  updMulti({ aiEvent: Object.assign({}, fb), aiEventLoading: false, lastAIEventDay: simDay });
+                });
+              } else {
+                // No callGemini available — use fallback
+                var fb = FALLBACK_EVENTS[Math.floor(Math.random() * FALLBACK_EVENTS.length)];
+                updMulti({ aiEvent: Object.assign({}, fb), aiEventLoading: false, lastAIEventDay: simDay });
+              }
+            };
+
+            // ── Resolve AI Event (apply chosen consequence) ──
+            var resolveAIEvent = function (choiceIdx) {
+              if (!aiEvent || !aiEvent.choices || !aiEvent.choices[choiceIdx]) return;
+              var choice = aiEvent.choices[choiceIdx];
+              var updates = {};
+              // Apply effects to water chemistry
+              if (waterChem && choice.effect) {
+                var newChem = Object.assign({}, waterChem);
+                if (choice.effect.ammonia) newChem.ammonia = Math.max(0, newChem.ammonia + choice.effect.ammonia);
+                if (choice.effect.pH) newChem.pH = Math.max(5.5, Math.min(9.0, newChem.pH + choice.effect.pH));
+                if (choice.effect.temp) {
+                  if (Math.abs(choice.effect.temp) > 10) newChem.temp = choice.effect.temp; // Absolute temp set
+                  else newChem.temp = Math.max(40, Math.min(95, newChem.temp + choice.effect.temp));
+                }
+                if (choice.effect.nitrate) newChem.nitrate = Math.max(0, newChem.nitrate + choice.effect.nitrate);
+                if (choice.effect.nitrite) newChem.nitrite = Math.max(0, newChem.nitrite + choice.effect.nitrite);
+                updates.waterChem = newChem;
+              }
+              // Award XP
+              if (choice.xp && typeof awardXP === 'function') awardXP(choice.xp, 'AI Event: ' + aiEvent.title);
+              // Log the resolved event
+              var historyEntry = { title: aiEvent.title, icon: aiEvent.icon, choice: choice.label, outcome: choice.outcome, day: simDay, xp: choice.xp || 0 };
+              updates.aiEventHistory = aiEventHistory.concat([historyEntry]).slice(-20);
+              // Mark event as resolved (show outcome)
+              updates.aiEvent = Object.assign({}, aiEvent, { resolved: true, chosenIdx: choiceIdx, chosenOutcome: choice.outcome, chosenXp: choice.xp || 0 });
+              updMulti(updates);
+              // Auto-dismiss outcome after 8 seconds
+              setTimeout(function () { upd('aiEvent', null); }, 8000);
+            };
+
             // ── Ocean Ecology state ──
             var oceanPop = d.oceanPop || { sardines: 800, tuna: 200, sharks: 50 };
             var harvestRate = d.harvestRate != null ? d.harvestRate : 20;
@@ -23796,13 +24040,11 @@
               };
               var newTick = simTick + 1;
               var newLog = eventLog.slice();
-              // Random events
-              if (newTick % 10 === 0 && Math.random() < 0.3) {
-                var events = ['🌿 Algae bloom detected!', '🌡️ Heater fluctuation!', '💀 Ammonia spike from overfeeding!'];
-                var evt = events[Math.floor(Math.random() * events.length)];
-                if (evt.includes('Ammonia')) newChem.ammonia += 0.5;
-                if (evt.includes('Heater')) newChem.temp += (Math.random() > 0.5 ? 3 : -3);
-                newLog.push({ tick: newTick, msg: evt });
+              // AI-powered random events (every ~5 sim-days, 60% chance)
+              var daysSinceLastEvent = simDay - lastAIEventDay;
+              if (daysSinceLastEvent >= 5 && Math.random() < 0.6 && !aiEvent && !aiEventLoading) {
+                generateAIEvent();
+                newLog.push({ tick: newTick, msg: '🤖 An event is developing in your tank...' });
               }
               // XP for maintaining healthy parameters
               var allOk = getChemStatus('ammonia', newChem.ammonia) === 'ok' &&
@@ -24577,6 +24819,86 @@
                         });
                       })()
                     )
+                  ),
+
+                  // ── AI Event Decision Modal ──
+                  aiEvent && !aiEvent.resolved && React.createElement("div", { className: "ai-event-card rounded-2xl overflow-hidden border-2 border-blue-300/60 shadow-xl shadow-blue-500/10" },
+                    // Header bar with category color
+                    React.createElement("div", { className: "bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 px-4 py-2.5 flex items-center gap-2" },
+                      React.createElement("span", { className: "text-lg" }, aiEvent.icon || '\uD83E\uDD16'),
+                      React.createElement("span", { className: "text-sm font-bold text-white flex-1" }, aiEvent.title),
+                      aiEvent.category && React.createElement("span", { className: "text-[9px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-white/20 text-white/80" }, aiEvent.category === 'ai_generated' ? '\uD83E\uDD16 AI' : aiEvent.category),
+                      React.createElement("button", { onClick: function () { upd('aiEvent', null); }, className: "text-white/60 hover:text-white text-sm ml-1" }, '\u2715')
+                    ),
+                    // Description
+                    React.createElement("div", { className: "px-4 py-3 bg-gradient-to-b from-blue-50 to-white" },
+                      React.createElement("p", { className: "text-xs text-slate-700 leading-relaxed mb-2" }, aiEvent.desc),
+                      // Educational note
+                      aiEvent.educational && React.createElement("div", { className: "bg-indigo-50 rounded-lg p-2.5 mb-3 border border-indigo-100" },
+                        React.createElement("div", { className: "flex items-start gap-1.5" },
+                          React.createElement("span", { className: "text-xs" }, '\uD83C\uDF93'),
+                          React.createElement("p", { className: "text-[10px] text-indigo-700 leading-relaxed italic" }, aiEvent.educational)
+                        )
+                      ),
+                      // Choice buttons
+                      React.createElement("div", { className: "space-y-2" },
+                        React.createElement("p", { className: "text-[10px] font-bold text-slate-500 uppercase tracking-wider" }, '\u2696\uFE0F What do you do?'),
+                        (aiEvent.choices || []).map(function (choice, idx) {
+                          return React.createElement("button", {
+                            key: idx,
+                            onClick: function () { resolveAIEvent(idx); },
+                            className: "ai-event-choice w-full text-left px-3 py-2.5 rounded-xl border-2 border-slate-200 hover:border-blue-400 bg-white hover:bg-blue-50/50 group"
+                          },
+                            React.createElement("div", { className: "flex items-center justify-between" },
+                              React.createElement("span", { className: "text-xs font-bold text-slate-700 group-hover:text-blue-700" }, choice.label),
+                              choice.xp > 0 && React.createElement("span", { className: "text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700" }, '+' + choice.xp + ' XP')
+                            )
+                          );
+                        })
+                      )
+                    )
+                  ),
+
+                  // ── AI Event Outcome Display ──
+                  aiEvent && aiEvent.resolved && React.createElement("div", { className: "ai-event-card rounded-2xl overflow-hidden border-2 shadow-lg " + (aiEvent.chosenXp >= 5 ? 'border-green-300 shadow-green-500/10' : aiEvent.chosenXp >= 3 ? 'border-blue-300 shadow-blue-500/10' : 'border-amber-300 shadow-amber-500/10') },
+                    React.createElement("div", { className: "px-4 py-2.5 flex items-center gap-2 " + (aiEvent.chosenXp >= 5 ? 'bg-gradient-to-r from-green-500 to-emerald-500' : aiEvent.chosenXp >= 3 ? 'bg-gradient-to-r from-blue-500 to-cyan-500' : 'bg-gradient-to-r from-amber-500 to-orange-500') },
+                      React.createElement("span", { className: "text-lg" }, aiEvent.chosenXp >= 5 ? '\u2705' : aiEvent.chosenXp >= 3 ? '\uD83D\uDCA1' : '\u26A0\uFE0F'),
+                      React.createElement("span", { className: "text-sm font-bold text-white flex-1" }, aiEvent.title + ' — Outcome'),
+                      React.createElement("span", { style: { animation: 'xpPop 0.5s ease-out' }, className: "text-sm font-bold px-2 py-0.5 rounded-full bg-white/25 text-white" }, '+' + (aiEvent.chosenXp || 0) + ' XP'),
+                      React.createElement("button", { onClick: function () { upd('aiEvent', null); }, className: "text-white/60 hover:text-white text-sm ml-1" }, '\u2715')
+                    ),
+                    React.createElement("div", { className: "px-4 py-3 bg-gradient-to-b from-slate-50 to-white" },
+                      React.createElement("p", { className: "text-xs text-slate-700 leading-relaxed" }, aiEvent.chosenOutcome)
+                    )
+                  ),
+
+                  // ── AI Event Loading Indicator ──
+                  aiEventLoading && React.createElement("div", { className: "ai-event-card rounded-2xl border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 text-center" },
+                    React.createElement("div", { className: "flex items-center justify-center gap-2" },
+                      React.createElement("div", { className: "w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full", style: { animation: 'spin 1s linear infinite' } }),
+                      React.createElement("span", { className: "text-xs font-bold text-blue-600" }, '\uD83E\uDD16 AI is analyzing your tank conditions...')
+                    )
+                  ),
+
+                  // ── AI Event History (Learning Journal) ──
+                  aiEventHistory.length > 0 && React.createElement("div", { className: "bg-gradient-to-b from-indigo-50 to-slate-50 rounded-xl p-2.5 border border-indigo-200/60 max-h-36 overflow-y-auto" },
+                    React.createElement("h4", { className: "text-[10px] font-bold text-indigo-500 mb-1.5 flex items-center gap-1" },
+                      React.createElement("span", null, '\uD83D\uDCD3'),
+                      'Event Journal (' + aiEventHistory.length + ' events)'
+                    ),
+                    aiEventHistory.slice().reverse().slice(0, 8).map(function (entry, i) {
+                      return React.createElement("div", { key: i, className: "flex items-start gap-1.5 py-1 border-b border-indigo-100/60 last:border-0" },
+                        React.createElement("span", { className: "text-xs flex-shrink-0" }, entry.icon || '\uD83D\uDCCC'),
+                        React.createElement("div", { className: "flex-1 min-w-0" },
+                          React.createElement("div", { className: "flex items-center gap-1" },
+                            React.createElement("span", { className: "text-[10px] font-bold text-slate-600 truncate" }, entry.title),
+                            React.createElement("span", { className: "text-[8px] text-slate-400 flex-shrink-0" }, 'Day ' + entry.day)
+                          ),
+                          React.createElement("p", { className: "text-[9px] text-slate-500 truncate" }, entry.choice + ' → ' + (entry.outcome || '').substring(0, 60) + '...')
+                        ),
+                        entry.xp > 0 && React.createElement("span", { className: "text-[8px] font-bold px-1 py-0.5 rounded bg-amber-100 text-amber-600 flex-shrink-0" }, '+' + entry.xp)
+                      );
+                    })
                   ),
 
                   // Event log
