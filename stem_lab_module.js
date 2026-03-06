@@ -24326,13 +24326,23 @@
                 '@keyframes aquaWave { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }',
                 '@keyframes oceanPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }',
                 '.aqua-fish:hover { transform: scale(1.3) !important; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3)) !important; }',
+                '@keyframes aquaBodySway { 0%, 100% { transform: scaleY(1) scaleX(1); } 30% { transform: scaleY(0.97) scaleX(1.02); } 70% { transform: scaleY(1.02) scaleX(0.98); } }',
+                '.aqua-fish-svg svg { width: 100%; height: 100%; overflow: visible; }',
+                '.aqua-fish-svg:hover { transform: scale(1.4) !important; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.35)) !important; }',
                 '@keyframes aiEventSlideIn { 0% { opacity: 0; transform: translateY(-20px) scale(0.95); } 100% { opacity: 1; transform: translateY(0) scale(1); } }',
                 '@keyframes aiEventPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(59,130,246,0.3); } 50% { box-shadow: 0 0 20px 4px rgba(59,130,246,0.15); } }',
                 '@keyframes aiEventFadeOut { 0% { opacity: 1; } 100% { opacity: 0; transform: translateY(-10px); } }',
                 '@keyframes xpPop { 0% { transform: scale(0.5); opacity: 0; } 50% { transform: scale(1.2); } 100% { transform: scale(1); opacity: 1; } }',
                 '.ai-event-card { animation: aiEventSlideIn 0.4s ease-out, aiEventPulse 3s ease-in-out 0.5s infinite; }',
                 '.ai-event-choice:hover { transform: translateY(-2px) !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; }',
-                '.ai-event-choice { transition: all 0.2s ease; }'
+                '.ai-event-choice { transition: all 0.2s ease; }',
+                '@keyframes aquaBobble { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }',
+                '@keyframes aquaScuttle { 0% { transform: translateX(0) translateY(0); } 20% { transform: translateX(8px) translateY(-2px); } 40% { transform: translateX(-5px) translateY(1px); } 60% { transform: translateX(10px) translateY(-1px); } 80% { transform: translateX(-3px) translateY(2px); } 100% { transform: translateX(0) translateY(0); } }',
+                '@keyframes aquaDrift { 0%, 100% { transform: translateX(0) rotate(0deg); } 50% { transform: translateX(3px) rotate(2deg); } }',
+                '@keyframes aquaUndulate { 0% { transform: translateX(0) skewX(0deg); } 25% { transform: translateX(8px) skewX(4deg); } 50% { transform: translateX(-6px) skewX(-3deg); } 75% { transform: translateX(5px) skewX(2deg); } 100% { transform: translateX(0) skewX(0deg); } }',
+                '@keyframes aquaPulse { 0%, 100% { transform: scale(1) translateY(0); } 35% { transform: scale(0.92, 1.06) translateY(-6px); } 65% { transform: scale(1.04, 0.95) translateY(3px); } }',
+                '@keyframes aquaSeaweed { 0%, 100% { transform: rotate(-3deg) scaleY(1); } 50% { transform: rotate(3deg) scaleY(1.03); } }',
+                '.aqua-sick-overlay { position: absolute; top: -4px; right: -4px; font-size: 10px; z-index: 8; animation: xpPop 0.4s ease-out; pointer-events: none; }'
               ].join('\n');
               document.head.appendChild(style);
             }
@@ -24893,7 +24903,7 @@
               eel: {
                 label: 'Deep-Sea Eel (Saccopharyngiformes)',
                 svg: function (w, h, color) {
-                  var c1 = color || '#292524', c2 = color || '#0c0a09';
+                  var c1 = color || '#57534e', c2 = color || '#3f3f46';
                   return '<svg viewBox="0 0 460 200" xmlns="http://www.w3.org/2000/svg">' +
                     '<defs>' +
                     '<linearGradient id="eelG" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="' + c1 + '"/><stop offset="100%" stop-color="' + c2 + '" stop-opacity="0.6"/></linearGradient>' +
@@ -25003,24 +25013,198 @@
                   { name: 'Vestimentiferan Body', x: 35, y: 50, desc: 'Segmented body plan divided into distinct regions. Anchors in the tube using tiny hooks called chaetae. Can grow at rates of 85cm per year — the fastest of any invertebrate.' },
                   { name: 'Hydrothermal Vent Base', x: 50, y: 92, desc: 'Lives exclusively at hydrothermal vents where superheated water (up to 400°C) meets near-freezing ocean. Thrives in water containing lethal levels of hydrogen sulfide.' }
                 ]
+              },
+              clownfish_body: {
+                label: 'Clownfish (Amphiprioninae)',
+                svg: function (w, h, color) {
+                  var c1 = color || '#f97316', c2 = color || '#c2410c';
+                  return '<svg viewBox="0 0 360 260" xmlns="http://www.w3.org/2000/svg">' +
+                    '<defs>' +
+                    '<linearGradient id="clnG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="' + c1 + '"/><stop offset="100%" stop-color="' + c2 + '"/></linearGradient>' +
+                    '</defs>' +
+                    '<path d="M65,130 Q70,75 115,55 Q155,42 200,45 Q245,42 275,62 Q300,82 310,130 Q300,178 275,198 Q245,218 200,215 Q155,218 115,205 Q70,185 65,130Z" fill="url(#clnG)" stroke="' + c2 + '" stroke-width="2.5"/>' +
+                    '<path d="M120,55 Q118,115 120,205" stroke="white" stroke-width="8" fill="none" stroke-linecap="round" opacity="0.9"/>' +
+                    '<path d="M120,55 Q118,115 120,205" stroke="#1e293b" stroke-width="11" fill="none" stroke-linecap="round" opacity="0.2"/>' +
+                    '<path d="M230,60 Q228,115 230,200" stroke="white" stroke-width="7" fill="none" stroke-linecap="round" opacity="0.85"/>' +
+                    '<path d="M230,60 Q228,115 230,200" stroke="#1e293b" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.18"/>' +
+                    '<path d="M310,120 Q335,108 352,95 Q360,92 360,100 Q355,112 340,122 Q355,132 360,145 Q360,152 352,150 Q335,138 310,128" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1.5" opacity="0.9"/>' +
+                    '<path d="M175,45 Q180,25 190,15 Q198,12 200,18 Q198,28 192,40" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1.2" opacity="0.8"/>' +
+                    '<path d="M200,215 Q205,230 210,238 Q212,242 208,240 Q200,235 200,225" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1" opacity="0.7"/>' +
+                    '<path d="M95,175 Q80,190 70,198 Q66,200 68,194 Q75,182 88,170" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1.2" opacity="0.8"/>' +
+                    '<circle cx="88" cy="115" r="15" fill="white" stroke="#334155" stroke-width="2"/>' +
+                    '<circle cx="92" cy="115" r="8" fill="#1e293b"/>' +
+                    '<circle cx="95" cy="112" r="3" fill="white" opacity="0.8"/>' +
+                    '</svg>';
+                },
+                parts: [
+                  { name: 'White Bands', x: 33, y: 22, desc: 'Distinctive vertical white bands bordered by black margins. Band pattern varies by species — 0 to 3 bands. Produced by iridophore cells containing guanine crystals.' },
+                  { name: 'Rounded Body', x: 50, y: 50, desc: 'Compact, laterally compressed body adapted for quick turns among anemone tentacles. Shape allows rapid darting rather than sustained swimming.' },
+                  { name: 'Mucus Coating', x: 20, y: 48, desc: 'Special mucus layer prevents anemone stings. Built up gradually through careful acclimation touching. Composition includes sugars that inhibit nematocyst discharge.' },
+                  { name: 'Rounded Tail', x: 92, y: 48, desc: 'Small, rounded caudal fin for quick maneuvers near host anemone. Clownfish rarely venture far from their home anemone — typically within 1 meter.' },
+                  { name: 'Protandrous Sex', x: 55, y: 35, desc: 'All clownfish are born male. The dominant individual transitions to female. If the female dies, the next-largest male becomes female.' },
+                  { name: 'Pectoral Hovering', x: 22, y: 65, desc: 'Rapid pectoral fin waving creates the characteristic hovering motion near the anemone. The constant fluttering also aerates the anemone.' }
+                ]
+              },
+              cichlid: {
+                label: 'Cichlid (Cichlidae)',
+                svg: function (w, h, color) {
+                  var c1 = color || '#b45309', c2 = color || '#78350f';
+                  return '<svg viewBox="0 0 420 280" xmlns="http://www.w3.org/2000/svg">' +
+                    '<defs>' +
+                    '<linearGradient id="cicG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="' + c1 + '"/><stop offset="60%" stop-color="' + c2 + '"/><stop offset="100%" stop-color="#e7e5e4"/></linearGradient>' +
+                    '</defs>' +
+                    '<path d="M60,140 Q65,80 105,58 Q150,38 210,40 Q270,38 310,58 Q340,75 355,110 Q365,140 355,170 Q340,205 310,222 Q270,240 210,240 Q150,242 105,222 Q65,200 60,140Z" fill="url(#cicG)" stroke="' + c2 + '" stroke-width="2.5"/>' +
+                    '<path d="M60,140 Q65,180 105,208 Q150,230 210,235 Q270,235 310,218 Q340,200 355,170" fill="' + c2 + '" opacity="0.25"/>' +
+                    '<path d="M160,40 Q155,18 165,5 Q180,-5 200,5 Q218,15 230,8 Q240,5 245,12 Q248,22 245,38" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1.8"/>' +
+                    '<line x1="170" y1="38" x2="175" y2="10" stroke="' + c2 + '" stroke-width="1" opacity="0.4"/>' +
+                    '<line x1="190" y1="38" x2="192" y2="8" stroke="' + c2 + '" stroke-width="1" opacity="0.4"/>' +
+                    '<line x1="210" y1="38" x2="210" y2="8" stroke="' + c2 + '" stroke-width="1" opacity="0.4"/>' +
+                    '<line x1="230" y1="38" x2="235" y2="12" stroke="' + c2 + '" stroke-width="1" opacity="0.4"/>' +
+                    '<path d="M355,130 Q380,118 400,100 Q412,92 414,100 Q410,112 395,125 Q410,135 414,148 Q412,156 400,150 Q380,138 355,130" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1.5" opacity="0.9"/>' +
+                    '<path d="M355,150 Q380,162 400,180 Q412,188 414,180 Q410,168 395,155" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1.2" opacity="0.7"/>' +
+                    '<path d="M210,238 Q215,258 220,268 Q222,275 218,272 Q210,265 210,252" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1.2" opacity="0.7"/>' +
+                    '<path d="M250,235 Q255,252 260,260 Q262,265 258,262 Q252,256 250,248" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1" opacity="0.6"/>' +
+                    '<path d="M100,195 Q85,210 75,220 Q70,224 72,218 Q80,205 92,192" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1.5" opacity="0.8"/>' +
+                    '<path d="M115,200 Q105,215 95,225 Q90,228 92,222 Q100,210 110,198" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1.2" opacity="0.7"/>' +
+                    '<circle cx="85" cy="120" r="16" fill="white" stroke="#334155" stroke-width="2"/>' +
+                    '<circle cx="90" cy="120" r="9" fill="#1e293b"/>' +
+                    '<circle cx="93" cy="117" r="3" fill="white" opacity="0.8"/>' +
+                    '<path d="M60,136 Q50,132 42,132" stroke="' + c2 + '" stroke-width="2.5" fill="none" stroke-linecap="round"/>' +
+                    '<path d="M60,144 Q52,148 45,150" stroke="' + c2 + '" stroke-width="2" fill="none" stroke-linecap="round"/>' +
+                    '<path d="M130,120 L330,120" stroke="' + c2 + '" fill="none" stroke-width="1" stroke-dasharray="6,4" opacity="0.3"/>' +
+                    '<circle cx="160" cy="100" r="6" fill="' + c1 + '" opacity="0.15"/>' +
+                    '<circle cx="220" cy="90" r="8" fill="' + c1 + '" opacity="0.12"/>' +
+                    '<circle cx="280" cy="95" r="7" fill="' + c1 + '" opacity="0.1"/>' +
+                    '</svg>';
+                },
+                parts: [
+                  { name: 'Spiny Dorsal Fin', x: 48, y: 3, desc: 'Long dorsal fin with sharp anterior spines and soft posterior rays. Spines lock erect for defense. Cichlids raise their dorsal to signal aggression.' },
+                  { name: 'Thick Oval Body', x: 50, y: 50, desc: 'Deep, laterally compressed body provides power for territorial defense. Cichlids are among the most diverse vertebrate families — over 2,000 species.' },
+                  { name: 'Protrusible Jaw', x: 12, y: 48, desc: 'Pharyngeal jaws in the throat grind food independently of the outer jaw. This dual-jaw system enabled explosive adaptive radiation in African rift lakes.' },
+                  { name: 'Lateral Line', x: 55, y: 42, desc: 'Sensory canal running head to tail detects water pressure changes. Enables cichlids to sense approaching rivals and fine-tune territorial spacing.' },
+                  { name: 'Pelvic Fans', x: 25, y: 72, desc: 'Modified pelvic fins used for fanning eggs and signaling. Many cichlids are mouthbrooders — carrying fertilized eggs inside their mouth.' },
+                  { name: 'Color Patches', x: 40, y: 35, desc: 'Chromatophore-driven color patterns signal mood, dominance, and breeding readiness. Colors intensify during courtship and territorial displays.' }
+                ]
+              },
+              goldfish_body: {
+                label: 'Goldfish (Carassius auratus)',
+                svg: function (w, h, color) {
+                  var c1 = color || '#f59e0b', c2 = color || '#d97706';
+                  return '<svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">' +
+                    '<defs>' +
+                    '<radialGradient id="gfG" cx="45%" cy="40%"><stop offset="0%" stop-color="' + c1 + '"/><stop offset="100%" stop-color="' + c2 + '"/></radialGradient>' +
+                    '<radialGradient id="gfBelly" cx="50%" cy="70%"><stop offset="0%" stop-color="#fef3c7"/><stop offset="100%" stop-color="' + c1 + '"/></radialGradient>' +
+                    '</defs>' +
+                    '<path d="M80,148 Q85,88 120,65 Q160,45 210,48 Q260,45 290,70 Q312,92 318,148 Q312,205 290,228 Q260,250 210,252 Q160,252 120,232 Q85,210 80,148Z" fill="url(#gfG)" stroke="' + c2 + '" stroke-width="2.5"/>' +
+                    '<path d="M80,150 Q85,195 120,220 Q160,242 210,248 Q260,248 290,228 Q312,205 318,150" fill="url(#gfBelly)" opacity="0.35"/>' +
+                    '<path d="M318,135 Q345,115 365,90 Q375,78 380,82 Q382,92 375,108 Q362,128 345,140 Q358,148 372,165 Q382,182 380,188 Q375,192 365,180 Q345,158 318,145" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1.5" opacity="0.9"/>' +
+                    '<path d="M318,148 Q350,130 370,108" stroke="' + c2 + '" stroke-width="0.6" fill="none" opacity="0.3"/>' +
+                    '<path d="M318,148 Q348,158 368,178" stroke="' + c2 + '" stroke-width="0.6" fill="none" opacity="0.3"/>' +
+                    '<path d="M180,48 Q178,28 185,15 Q192,8 198,12 Q202,22 198,38" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1.2" opacity="0.8"/>' +
+                    '<path d="M210,248 Q215,268 220,278 Q222,285 218,282 Q210,275 210,262" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1.2" opacity="0.75"/>' +
+                    '<path d="M240,245 Q248,265 252,275 Q254,280 250,278 Q244,272 242,260" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1" opacity="0.65"/>' +
+                    '<path d="M115,205 Q100,220 88,230 Q82,234 84,228 Q90,218 105,205" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1.2" opacity="0.8"/>' +
+                    '<path d="M130,212 Q120,225 110,232 Q105,234 107,228 Q115,218 125,210" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1" opacity="0.7"/>' +
+                    '<circle cx="105" cy="125" r="18" fill="white" stroke="#334155" stroke-width="2"/>' +
+                    '<circle cx="110" cy="125" r="10" fill="#1e293b"/>' +
+                    '<circle cx="113" cy="122" r="3.5" fill="white" opacity="0.8"/>' +
+                    '<path d="M80,144 Q70,140 62,140" stroke="' + c2 + '" stroke-width="2" fill="none" stroke-linecap="round"/>' +
+                    '<ellipse cx="210" cy="120" rx="40" ry="10" fill="rgba(255,255,255,0.08)" stroke="' + c2 + '" stroke-width="0.5" stroke-dasharray="4,4" opacity="0.4"/>' +
+                    '</svg>';
+                },
+                parts: [
+                  { name: 'Rounded Body', x: 50, y: 48, desc: 'Selectively bred for 1,000+ years to achieve the deep, egg-shaped body. Wild-type carp have streamlined bodies — the round shape is entirely artificial selection.' },
+                  { name: 'Double Tail Fin', x: 92, y: 45, desc: 'Flowing double or triple caudal fin with delicate membrane. Fancy varieties include butterfly, veil, and fantail. Creates drag but enhances display.' },
+                  { name: 'Dorsal Fin', x: 45, y: 6, desc: 'Single dorsal fin — absent in some fancy breeds like ranchu. When present, it provides stability during the slow, waddling swim of round-bodied varieties.' },
+                  { name: 'Pharyngeal Teeth', x: 18, y: 48, desc: 'Teeth in the throat (not the mouth) crush food. Goldfish are omnivorous bottom-feeders that naturally root through substrate for insect larvae.' },
+                  { name: 'Lateral Line', x: 55, y: 40, desc: 'Pressure-sensing canal line. Goldfish have excellent senses — they can distinguish individual humans and learn to respond to feeding cues within days.' },
+                  { name: 'Operculum', x: 22, y: 52, desc: 'Bony gill cover pumps water over the gills. Goldfish are cold-water fish with a remarkable temperature range (2-30°C) and can survive brief oxygen deprivation.' }
+                ]
+              },
+              swordfish_body: {
+                label: 'Billfish (Xiphiidae)',
+                svg: function (w, h, color) {
+                  var c1 = color || '#475569', c2 = color || '#1e293b';
+                  return '<svg viewBox="0 0 500 220" xmlns="http://www.w3.org/2000/svg">' +
+                    '<defs>' +
+                    '<linearGradient id="swdG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="' + c1 + '"/><stop offset="55%" stop-color="' + c2 + '"/><stop offset="100%" stop-color="#cbd5e1"/></linearGradient>' +
+                    '</defs>' +
+                    '<path d="M15,108 L85,102" stroke="' + c2 + '" stroke-width="4" stroke-linecap="round"/>' +
+                    '<path d="M15,112 L85,112" stroke="' + c1 + '" stroke-width="3" stroke-linecap="round" opacity="0.6"/>' +
+                    '<path d="M80,110 Q90,78 120,65 Q160,50 220,52 Q290,50 340,60 Q375,72 395,90 Q410,105 412,110 Q410,118 395,132 Q375,148 340,160 Q290,170 220,168 Q160,170 120,155 Q90,142 80,110Z" fill="url(#swdG)" stroke="' + c2 + '" stroke-width="2.5"/>' +
+                    '<path d="M80,110 Q90,135 120,150 Q160,165 220,168 Q290,168 340,158 Q375,148 395,132" fill="#cbd5e1" opacity="0.3"/>' +
+                    '<path d="M240,52 Q238,30 245,15 Q252,5 260,8 Q265,15 264,30 Q262,45 258,55" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1.5" opacity="0.85"/>' +
+                    '<path d="M412,105 Q435,92 455,75 Q465,68 468,72 Q468,82 458,95 Q445,108 435,112 Q445,115 458,128 Q468,142 468,148 Q465,152 455,145 Q435,130 412,118" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1.5" opacity="0.9"/>' +
+                    '<line x1="445" y1="82" x2="445" y2="140" stroke="' + c2 + '" stroke-width="0.6" opacity="0.4"/>' +
+                    '<line x1="455" y1="78" x2="455" y2="142" stroke="' + c2 + '" stroke-width="0.5" opacity="0.3"/>' +
+                    '<path d="M220,168 Q225,182 228,190 Q230,195 226,194 Q220,188 220,178" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1" opacity="0.65"/>' +
+                    '<path d="M130,148 Q118,162 108,170 Q104,172 106,166 Q112,156 125,145" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1.2" opacity="0.7"/>' +
+                    '<circle cx="95" cy="102" r="10" fill="white" stroke="#334155" stroke-width="1.5"/>' +
+                    '<circle cx="98" cy="102" r="5.5" fill="#1e293b"/>' +
+                    '<circle cx="100" cy="100" r="2" fill="white" opacity="0.7"/>' +
+                    '<path d="M130,85 L350,85" stroke="' + c2 + '" fill="none" stroke-width="0.8" stroke-dasharray="5,4" opacity="0.25"/>' +
+                    '</svg>';
+                },
+                parts: [
+                  { name: 'Bill / Rostrum', x: 5, y: 48, desc: 'Elongated upper jaw forms a flat, sword-like bill. Used to slash through schools of fish, stunning prey. Can reach speeds of 100 km/h — one of the fastest fish.' },
+                  { name: 'Streamlined Torpedo', x: 50, y: 50, desc: 'Supremely hydrodynamic body with minimal drag coefficient. Skin secretes an oil that further reduces friction. Built for sustained high-speed pursuit.' },
+                  { name: 'Crescent Tail', x: 92, y: 42, desc: 'Deeply forked, crescent-shaped (lunate) caudal fin is the hallmark of high-speed pelagic fish. Generates maximum thrust with minimal turbulence.' },
+                  { name: 'Tall Dorsal', x: 52, y: 5, desc: 'Large, sail-like first dorsal fin folds into a groove for speed. When raised, it stabilizes turns and can be used to herd prey fish.' },
+                  { name: 'Lateral Keel', x: 30, y: 38, desc: 'Bony ridge on the caudal peduncle reduces drag during tail beats. Combined with counter-current heat exchangers, allows warm-blooded muscle operation.' },
+                  { name: 'Large Eye', x: 20, y: 45, desc: 'Enormous eyes with specialized heating organs keep them warm. Heated eyes process visual information faster — critical for high-speed pursuit in cold deep water.' }
+                ]
+              },
+              corydoras: {
+                label: 'Corydoras Catfish (Callichthyidae)',
+                svg: function (w, h, color) {
+                  var c1 = color || '#a78bfa', c2 = color || '#7c3aed';
+                  return '<svg viewBox="0 0 400 240" xmlns="http://www.w3.org/2000/svg">' +
+                    '<defs>' +
+                    '<linearGradient id="coryG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="' + c1 + '"/><stop offset="100%" stop-color="' + c2 + '"/></linearGradient>' +
+                    '</defs>' +
+                    '<path d="M70,120 Q75,78 115,60 Q155,48 205,50 Q255,48 290,62 Q315,78 325,105 Q330,120 325,142 Q315,168 290,182 Q255,195 205,195 Q155,198 115,185 Q75,168 70,120Z" fill="url(#coryG)" stroke="' + c2 + '" stroke-width="2.5"/>' +
+                    '<path d="M70,125 Q75,155 115,175 Q155,190 205,192 Q255,192 290,180 Q315,165 325,140" fill="' + c2 + '" opacity="0.25"/>' +
+                    '<path d="M100,90 Q120,85 160,82 Q200,80 240,82 Q280,85 300,90" fill="none" stroke="' + c2 + '" stroke-width="3" stroke-linecap="round" opacity="0.35"/>' +
+                    '<path d="M105,98 Q130,92 170,90 Q210,88 250,90 Q280,92 295,98" fill="none" stroke="' + c2 + '" stroke-width="2" stroke-linecap="round" opacity="0.25"/>' +
+                    '<path d="M80,112 Q55,108 35,112 Q28,116 32,120 Q38,122 52,118" stroke="' + c2 + '" stroke-width="2.5" fill="none" stroke-linecap="round"/>' +
+                    '<path d="M78,120 Q58,118 42,122 Q36,126 40,130 Q48,130 58,126" stroke="' + c2 + '" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.8"/>' +
+                    '<path d="M80,128 Q62,128 48,132 Q42,136 46,138 Q52,138 62,134" stroke="' + c2 + '" stroke-width="1.8" fill="none" stroke-linecap="round" opacity="0.6"/>' +
+                    '<path d="M185,50 Q182,30 188,18 Q195,12 200,16 Q202,24 198,38" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1.5" opacity="0.8"/>' +
+                    '<line x1="190" y1="48" x2="193" y2="20" stroke="' + c2 + '" stroke-width="0.8" opacity="0.4"/>' +
+                    '<path d="M325,115 Q345,108 358,98 Q365,95 365,102 Q360,112 348,118 Q358,125 365,135 Q365,142 358,140 Q345,132 325,125" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1.5" opacity="0.85"/>' +
+                    '<path d="M205,195 Q208,210 212,218 Q214,222 210,220 Q205,215 205,205" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1" opacity="0.65"/>' +
+                    '<path d="M120,178 Q108,192 98,200 Q94,202 96,196 Q102,186 115,175" fill="' + c1 + '" stroke="' + c2 + '" stroke-width="1.2" opacity="0.7"/>' +
+                    '<ellipse cx="95" cy="105" rx="12" ry="10" fill="white" stroke="#334155" stroke-width="1.5"/>' +
+                    '<circle cx="98" cy="104" r="5.5" fill="#1e293b"/>' +
+                    '<circle cx="100" cy="102" r="2" fill="white" opacity="0.8"/>' +
+                    '</svg>';
+                },
+                parts: [
+                  { name: 'Barbels (3 pairs)', x: 10, y: 48, desc: 'Sensitive whisker-like organs around the mouth packed with taste buds. Used to probe substrate for buried worms, larvae, and detritus in murky Amazonian streams.' },
+                  { name: 'Bony Scute Armor', x: 30, y: 35, desc: 'Two rows of overlapping bony plates (scutes) instead of scales. Provides excellent armor — most predators avoid them. Plates are visible as ridged lines along the flanks.' },
+                  { name: 'Dorsal Spine', x: 47, y: 5, desc: 'Sharp, lockable dorsal spine that can pierce predator mouths. Some species secrete a mild venom. The spine locks rigid with a ratchet mechanism.' },
+                  { name: 'Flat Belly', x: 50, y: 78, desc: 'Ventrally flattened body profile for bottom-dwelling. Corydoras spend most of their time rooting through substrate — they are the cleanup crew of freshwater tanks.' },
+                  { name: 'Intestinal Breathing', x: 65, y: 55, desc: 'Can gulp air at the surface and absorb oxygen through a modified intestine. This adaptation allows survival in warm, stagnant Amazonian pools with near-zero dissolved oxygen.' },
+                  { name: 'Adipose Fin', x: 80, y: 30, desc: 'A small, fleshy fin between dorsal and tail — a telltale sign shared with tetras, catfish, and salmon. Its function remains debated among ichthyologists.' }
+                ]
               }
             };
 
             // Map each species to its body plan
             var SPECIES_BODY_MAP = {
-              neon: 'tetra', guppy: 'guppy_body', cory: 'fish', angel: 'angelfish', platy: 'guppy_body', molly: 'guppy_body',
+              neon: 'tetra', guppy: 'guppy_body', cory: 'corydoras', angel: 'angelfish', platy: 'guppy_body', molly: 'guppy_body',
               cardinal: 'tetra', rummy: 'tetra', oto: 'flatfish', betta: 'betta',
-              clown: 'fish', tang: 'fish', goby: 'fish',
-              oscar: 'fish', pike: 'fish', pleco: 'flatfish',
-              goldfish: 'fish', rockfish: 'fish',
-              archer: 'fish', puffer: 'pufferfish', mudskip: 'fish',
+              clown: 'clownfish_body', tang: 'cichlid', goby: 'clownfish_body',
+              oscar: 'cichlid', pike: 'swordfish_body', pleco: 'flatfish',
+              goldfish: 'goldfish_body', rockfish: 'cichlid',
+              archer: 'swordfish_body', puffer: 'pufferfish', mudskip: 'fish',
               anemone: 'jellyfish',
               shrimp: 'crustacean', cleaner: 'crustacean', crab: 'crustacean', amphipod: 'crustacean',
               starfish: 'echinoderm', seastar: 'echinoderm', urchin: 'echinoderm', seacucumber: 'echinoderm',
               slider: 'chelonian', turtle: 'chelonian',
               kelp: 'fish',
-              clownfish: 'fish', dolphin: 'cetacean', jellyfish: 'jellyfish', squid: 'cephalopod',
-              hatchetfish: 'fish', swordfish: 'fish', anglerfish: 'anglerfish_plan', gulpereel: 'eel',
+              clownfish: 'clownfish_body', dolphin: 'cetacean', jellyfish: 'jellyfish', squid: 'cephalopod',
+              hatchetfish: 'fish', swordfish: 'swordfish_body', anglerfish: 'anglerfish_plan', gulpereel: 'eel',
               giantsquid: 'cephalopod', tubeworms: 'worm', snailfish: 'fish',
               mantaray: 'ray', bluewhale: 'whale', seahorse: 'seahorse',
               octopus: 'cephalopod', nautilus: 'cephalopod', coelacanth: 'fish'
@@ -25101,6 +25285,15 @@
               nautilus: { override: 'Shell chambers filled with gas for buoyancy control. Has 90+ tentacles with no suckers — uses sticky ridges.', locomotion: 'Jet propulsion via siphon. Can withdraw completely into shell and seal with a leathery hood.' },
               clown: { override: 'Mucus coating prevents anemone stings. All born male — the dominant fish transitions to female (sequential hermaphroditism).', locomotion: 'Rapid pectoral fin waving for hovering near host anemone. Rarely strays far from home.' },
               slider: { override: 'Basking behavior critical for thermoregulation and vitamin D synthesis. Can brumate (hibernate) underwater for months.', locomotion: 'Powerful rear leg kicks propel through water. On land, uses all four legs in a characteristic waddle.' }
+            };
+
+            // ── Tank SVG mini-renderer — uses close-up body plan SVGs as miniatures in the tank ──
+            var getTankSvg = function (speciesId) {
+              var bodyKey = SPECIES_BODY_MAP[speciesId];
+              var plan = bodyKey && BODY_PLANS[bodyKey];
+              if (!plan || !plan.svg) return null;
+              var color = SPECIES_COLORS[speciesId] || null;
+              return plan.svg(60, 40, color);
             };
 
             // ── Anatomy viewer state ──
@@ -25193,7 +25386,60 @@
             var chemTooltip = d.chemTooltip || null;
             var fishStress = d.fishStress || {};
 
-            // ── AI Event state ──
+            // ── New gameplay state ──
+            var lightsOn = d.lightsOn !== undefined ? d.lightsOn : true;
+            var fishSickness = d.fishSickness || {}; // { speciesId: { disease: 'ich', severity: 1-3, tick: when } }
+            var algaeLevel = d.algaeLevel || 0; // 0-100
+
+            // ── Species animation behaviors ──
+            var SPECIES_ANIM = {
+              seahorse: { anim: 'aquaBobble', yZone: 'mid', speed: [4, 6] },
+              crab: { anim: 'aquaScuttle', yZone: 'bottom', speed: [1.5, 3] },
+              shrimp: { anim: 'aquaScuttle', yZone: 'bottom', speed: [2, 3.5] },
+              cleaner: { anim: 'aquaScuttle', yZone: 'bottom', speed: [2, 4] },
+              amphipod: { anim: 'aquaScuttle', yZone: 'bottom', speed: [1, 2.5] },
+              starfish: { anim: 'aquaDrift', yZone: 'bottom', speed: [8, 12] },
+              seastar: { anim: 'aquaDrift', yZone: 'bottom', speed: [8, 12] },
+              urchin: { anim: 'aquaDrift', yZone: 'bottom', speed: [10, 15] },
+              seacucumber: { anim: 'aquaDrift', yZone: 'bottom', speed: [12, 18] },
+              anemone: { anim: 'aquaPulse', yZone: 'bottom', speed: [4, 7] },
+              jellyfish: { anim: 'aquaPulse', yZone: 'top', speed: [3, 5] },
+              gulpereel: { anim: 'aquaUndulate', yZone: 'mid', speed: [3, 5] },
+              tubeworms: { anim: 'aquaPulse', yZone: 'bottom', speed: [5, 8] },
+              cory: { anim: 'aquaScuttle', yZone: 'bottom', speed: [2.5, 4] },
+              pleco: { anim: 'aquaDrift', yZone: 'bottom', speed: [6, 10] },
+              oto: { anim: 'aquaDrift', yZone: 'bottom', speed: [5, 8] },
+              goby: { anim: 'aquaScuttle', yZone: 'bottom', speed: [2, 4] },
+              mudskip: { anim: 'aquaScuttle', yZone: 'bottom', speed: [2, 3] },
+              octopus: { anim: 'aquaUndulate', yZone: 'mid', speed: [3, 5] },
+              squid: { anim: 'aquaPulse', yZone: 'mid', speed: [2.5, 4] },
+              giantsquid: { anim: 'aquaPulse', yZone: 'mid', speed: [3, 5] },
+              nautilus: { anim: 'aquaBobble', yZone: 'mid', speed: [5, 8] },
+              slider: { anim: 'aquaBobble', yZone: 'top', speed: [4, 7] },
+              turtle: { anim: 'aquaBobble', yZone: 'top', speed: [4, 7] },
+              mantaray: { anim: 'aquaBobble', yZone: 'mid', speed: [3, 5] },
+              bluewhale: { anim: 'aquaBobble', yZone: 'mid', speed: [5, 8] },
+              dolphin: { anim: 'aquaBobble', yZone: 'top', speed: [2, 4] },
+              snailfish: { anim: 'aquaDrift', yZone: 'bottom', speed: [6, 10] }
+            };
+
+            // ── Species diet types ──
+            var SPECIES_DIET = {
+              pike: 'carnivore', swordfish: 'carnivore', anglerfish: 'carnivore',
+              oscar: 'carnivore', betta: 'carnivore',
+              octopus: 'carnivore', squid: 'carnivore', giantsquid: 'carnivore',
+              nautilus: 'carnivore', dolphin: 'carnivore', bluewhale: 'filter',
+              anemone: 'filter', jellyfish: 'filter', tubeworms: 'filter',
+              seacucumber: 'detritivore', urchin: 'herbivore',
+              shrimp: 'omnivore', cleaner: 'omnivore', crab: 'omnivore',
+              amphipod: 'detritivore', cory: 'omnivore', pleco: 'herbivore',
+              oto: 'herbivore', goby: 'omnivore', starfish: 'omnivore',
+              seastar: 'omnivore', snailfish: 'carnivore',
+              slider: 'omnivore', turtle: 'omnivore', mantaray: 'carnivore'
+              // everything else defaults to 'omnivore'
+            };
+
+
             var aiEvent = d.aiEvent || null;
             var aiEventHistory = d.aiEventHistory || [];
             var aiEventLoading = d.aiEventLoading || false;
@@ -25635,6 +25881,92 @@
               });
             };
 
+            // ── Live Feed (for carnivores) ──
+            var feedLive = function () {
+              if (!waterChem) return;
+              var newChem = Object.assign({}, waterChem, {
+                ammonia: waterChem.ammonia + 0.22 * (tankFish.length || 1)
+              });
+              var newHunger = Object.assign({}, hungerLevels);
+              var fedCarnivores = 0;
+              var ignoredHerbivores = 0;
+              tankFish.forEach(function (fId) {
+                var diet = SPECIES_DIET[fId] || 'omnivore';
+                var cur = newHunger[fId] !== undefined ? newHunger[fId] : 50;
+                if (diet === 'carnivore') {
+                  newHunger[fId] = Math.max(0, cur - 45);
+                  fedCarnivores++;
+                } else if (diet === 'omnivore') {
+                  newHunger[fId] = Math.max(0, cur - 20);
+                } else {
+                  ignoredHerbivores++;
+                }
+              });
+              var tipText = fedCarnivores > 0
+                ? '\uD83E\uDD69 Live food satisfies carnivores like pike and oscar. Herbivores like plecos ignore it — they need algae wafers!'
+                : '\uD83E\uDD14 No carnivores in tank! Live food was wasted. Try flake/pellet feed instead.';
+              updMulti({
+                waterChem: newChem,
+                hungerLevels: newHunger,
+                feedingLog: { fishCount: tankFish.length, avgHungerDrop: fedCarnivores > 0 ? 45 : 0, ammoniaAdded: 0.22 * (tankFish.length || 1), overfedCount: 0, tip: tipText },
+                eventLog: eventLog.concat([{ tick: simTick, msg: '\uD83E\uDD90 Live feed added — ' + fedCarnivores + ' carnivores fed' + (ignoredHerbivores > 0 ? ', ' + ignoredHerbivores + ' ignored it' : '') }])
+              });
+            };
+
+            // ── Toggle Lights ──
+            var toggleLights = function () {
+              var newState = !lightsOn;
+              var msg = newState ? '\uD83D\uDCA1 Lights turned ON' : '\uD83C\uDF19 Lights turned OFF — fish will rest';
+              updMulti({
+                lightsOn: newState,
+                eventLog: eventLog.concat([{ tick: simTick, msg: msg }])
+              });
+              if (addToast) addToast(msg, 'info');
+            };
+
+            // ── Medicate Fish ──
+            var medicateFish = function () {
+              if (!waterChem) return;
+              var sickCount = Object.keys(fishSickness).length;
+              if (sickCount === 0) {
+                if (addToast) addToast('\uD83D\uDC8A No sick fish detected. Unnecessary medication harms beneficial bacteria!', 'warning');
+                return;
+              }
+              // Medication clears mild/moderate, reduces severe to moderate
+              var newSickness = Object.assign({}, fishSickness);
+              var cured = 0;
+              Object.keys(newSickness).forEach(function (fId) {
+                if (newSickness[fId].severity <= 2) {
+                  delete newSickness[fId];
+                  cured++;
+                } else {
+                  newSickness[fId] = Object.assign({}, newSickness[fId], { severity: 2 });
+                }
+              });
+              // Medication kills some beneficial bacteria — ammonia spike
+              var newChem = Object.assign({}, waterChem, {
+                ammonia: waterChem.ammonia + 0.25
+              });
+              updMulti({
+                fishSickness: newSickness,
+                waterChem: newChem,
+                eventLog: eventLog.concat([{ tick: simTick, msg: '\uD83D\uDC8A Medication applied — ' + cured + ' fish cured. Beneficial bacteria reduced.' }])
+              });
+              if (addToast) addToast('\uD83D\uDC8A Treated ' + cured + ' fish. Watch ammonia — medication disrupts the nitrogen cycle.', cured > 0 ? 'success' : 'warning');
+            };
+
+            // ── Clean Glass ──
+            var cleanGlass = function () {
+              var newAlgae = Math.max(0, algaeLevel - 40);
+              var newChem = waterChem ? Object.assign({}, waterChem, { nitrate: Math.max(0, waterChem.nitrate - 3) }) : waterChem;
+              updMulti({
+                algaeLevel: newAlgae,
+                waterChem: newChem,
+                eventLog: eventLog.concat([{ tick: simTick, msg: '\uD83E\uDDF9 Glass cleaned — algae removed' }])
+              });
+              if (addToast) addToast('\uD83E\uDDF9 Glass cleaned! Algae level: ' + newAlgae + '%', 'success');
+            };
+
             // ── Simulation tick (water chemistry drift) ──
             var simStep = function () {
               if (!waterChem || !selectedTank) return;
@@ -25680,6 +26012,39 @@
                 newHunger[fId] = Math.min(100, cur + 2);
               });
               updMulti({ waterChem: newChem, simTick: newTick, hungerLevels: newHunger, eventLog: newLog.slice(-20) });
+
+              // ── Disease progression ──
+              var newSickness = Object.assign({}, fishSickness);
+              var sickChanged = false;
+              // Chance of new illness if water quality is bad
+              if (waterChem.ammonia > 0.8 && Math.random() < 0.15 && tankFish.length > 0) {
+                var victim = tankFish[Math.floor(Math.random() * tankFish.length)];
+                if (!newSickness[victim]) {
+                  var diseases = ['ich', 'fin_rot', 'velvet', 'dropsy'];
+                  newSickness[victim] = { disease: diseases[Math.floor(Math.random() * diseases.length)], severity: 1, tick: newTick };
+                  sickChanged = true;
+                  newLog.push({ tick: newTick, msg: '\u26A0\uFE0F A fish is showing signs of illness! Check the Medicate button.' });
+                }
+              }
+              // Existing diseases progress if untreated
+              Object.keys(newSickness).forEach(function (fId) {
+                if (newSickness[fId] && newTick - newSickness[fId].tick > 10 && newSickness[fId].severity < 3) {
+                  newSickness[fId] = Object.assign({}, newSickness[fId], { severity: newSickness[fId].severity + 1, tick: newTick });
+                  sickChanged = true;
+                }
+              });
+
+              // ── Algae growth ──
+              var newAlgae = algaeLevel;
+              if (lightsOn) {
+                newAlgae = Math.min(100, newAlgae + 0.5 + (waterChem.nitrate > 40 ? 1 : 0));
+              } else {
+                newAlgae = Math.max(0, newAlgae - 0.3);
+              }
+
+              var tickUpdate = { waterChem: newChem, simTick: newTick, hungerLevels: newHunger, eventLog: newLog.slice(-20), algaeLevel: Math.round(newAlgae * 10) / 10 };
+              if (sickChanged) tickUpdate.fishSickness = newSickness;
+              updMulti(tickUpdate);
             };
 
 
@@ -26211,8 +26576,8 @@
                           position: 'absolute', bottom: '24px', left: (8 + i * 25) + '%',
                           width: '8px', height: heights[i] + 'px', borderRadius: '4px 4px 0 0',
                           background: 'linear-gradient(180deg, #22c55e 0%, #15803d 100%)',
-                          opacity: 0.7, zIndex: 2,
-                          animation: 'pulse 4s ease-in-out ' + (i * 0.8) + 's infinite'
+                          opacity: 0.7, zIndex: 2, transformOrigin: 'bottom center',
+                          animation: 'aquaSeaweed ' + (3 + i * 0.6) + 's ease-in-out ' + (i * 0.8) + 's infinite'
                         }
                       });
                     }),
@@ -26245,33 +26610,67 @@
                         }
                       });
                     }),
-                    // Fish with smooth swimming animation
+                    // Fish with species-specific swimming animation
                     tankFish.map(function (fId, idx) {
                       var sp = species.find(function (s) { return s.id === fId; });
-                      var yPos = 30 + (idx * 29 + idx * 7) % 150;
+                      var animInfo = SPECIES_ANIM[fId] || null;
+                      // Y-positioning based on zone
+                      var yPos;
+                      if (animInfo && animInfo.yZone === 'bottom') {
+                        yPos = 160 + (idx * 7) % 35; // near substrate
+                      } else if (animInfo && animInfo.yZone === 'top') {
+                        yPos = 15 + (idx * 11) % 40; // near surface
+                      } else {
+                        yPos = 40 + (idx * 29 + idx * 7) % 120; // mid-water
+                      }
                       var xPos = 5 + (idx * 31 + idx * idx * 11) % 85;
-                      var swimDuration = 3 + (idx % 3) * 1.5;
-                      var swimDelay = (idx * 0.9) % 4;
                       var direction = idx % 2 === 0 ? 1 : -1;
+                      var svgHtml = getTankSvg(fId);
+                      // Species-specific or default animation
+                      var swimAnim, swimDuration;
+                      if (animInfo) {
+                        swimAnim = animInfo.anim;
+                        swimDuration = animInfo.speed[0] + (idx % 3) * ((animInfo.speed[1] - animInfo.speed[0]) / 3);
+                      } else {
+                        swimAnim = 'aquaSwim';
+                        swimDuration = 3 + (idx % 3) * 1.5;
+                      }
+                      var swimDelay = (idx * 0.9) % 4;
+                      var swayDuration = 2.5 + (idx % 4) * 0.7;
+                      var swayDelay = (idx * 0.6) % 3;
+                      // Slow down animations when lights are off
+                      if (!lightsOn) { swimDuration *= 2; swayDuration *= 2; }
+                      var isSick = fishSickness[fId] ? true : false;
                       return React.createElement("div", {
                         key: idx,
+                        className: svgHtml ? 'aqua-fish-svg' : 'aqua-fish',
                         style: {
                           position: 'absolute', top: yPos + 'px', left: xPos + '%',
-                          cursor: 'pointer', fontSize: '28px', zIndex: 6, userSelect: 'none',
+                          cursor: 'pointer', zIndex: 6, userSelect: 'none',
+                          width: svgHtml ? '52px' : 'auto', height: svgHtml ? '38px' : 'auto',
+                          fontSize: svgHtml ? undefined : '28px',
                           transform: direction < 0 ? 'scaleX(-1)' : 'none',
-                          animation: 'aquaSwim ' + swimDuration + 's ease-in-out ' + swimDelay + 's infinite alternate',
-                          filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))',
-                          transition: 'transform 0.3s'
+                          animation: swimAnim + ' ' + swimDuration + 's ease-in-out ' + swimDelay + 's infinite alternate' + (svgHtml ? ', aquaBodySway ' + swayDuration + 's ease-in-out ' + swayDelay + 's infinite' : ''),
+                          filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.25))' + (isSick ? ' saturate(0.6) brightness(0.85)' : ''),
+                          transition: 'transform 0.3s, filter 0.3s',
+                          opacity: lightsOn ? 1 : 0.7
                         },
-                        title: sp ? sp.name + ': ' + sp.fact : fId,
+                        title: sp ? sp.name + (isSick ? ' \u26A0\uFE0F SICK: ' + fishSickness[fId].disease : '') + ': ' + sp.fact : fId,
                         onClick: function () {
                           openAnatomy(fId);
                         }
-                      }, sp ? sp.icon : '\uD83D\uDC1F',
+                      },
+                        // Render SVG body plan or fallback to emoji
+                        svgHtml
+                          ? React.createElement("div", { dangerouslySetInnerHTML: { __html: svgHtml }, style: { width: '100%', height: '100%', pointerEvents: 'none' } })
+                          : (sp ? sp.icon : '\uD83D\uDC1F'),
+                        // Sickness indicator
+                        isSick && React.createElement("div", { className: 'aqua-sick-overlay' },
+                          fishSickness[fId].severity >= 3 ? '\uD83D\uDCA9' : fishSickness[fId].severity >= 2 ? '\uD83E\uDE78' : '\u26A0\uFE0F'
+                        ),
                         // Hunger bar under fish
                         (() => {
                           var hunger = hungerLevels[fId] !== undefined ? hungerLevels[fId] : 50;
-                          var stress = fishStress[fId] || 0;
                           var barColor = hunger >= 80 ? '#ef4444' : hunger >= 50 ? '#f59e0b' : '#22c55e';
                           return React.createElement("div", {
                             style: { position: 'absolute', bottom: '-6px', left: '50%', transform: 'translateX(-50%)', width: '24px', height: '3px', background: 'rgba(0,0,0,0.2)', borderRadius: '2px', overflow: 'hidden' }
@@ -26295,9 +26694,13 @@
                         }
                       });
                     }),
-                    // Day/night overlay
-                    (simHour >= 20 || simHour < 6) && React.createElement("div", {
-                      style: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'linear-gradient(180deg, rgba(15,23,42,0.3) 0%, rgba(30,41,59,0.25) 50%, rgba(15,23,42,0.35) 100%)', zIndex: 7, pointerEvents: 'none', borderRadius: '16px', transition: 'opacity 0.5s' }
+                    // Day/night + lights-off overlay
+                    (!lightsOn || simHour >= 20 || simHour < 6) && React.createElement("div", {
+                      style: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: !lightsOn ? 'linear-gradient(180deg, rgba(15,23,42,0.5) 0%, rgba(30,41,59,0.45) 50%, rgba(15,23,42,0.55) 100%)' : 'linear-gradient(180deg, rgba(15,23,42,0.3) 0%, rgba(30,41,59,0.25) 50%, rgba(15,23,42,0.35) 100%)', zIndex: 7, pointerEvents: 'none', borderRadius: '16px', transition: 'opacity 0.5s' }
+                    }),
+                    // Algae tint overlay
+                    algaeLevel > 15 && React.createElement("div", {
+                      style: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(34,197,94,' + Math.min(0.25, algaeLevel / 400) + ')', zIndex: 7, pointerEvents: 'none', borderRadius: '16px', transition: 'background 1s' }
                     }),
                     // Tank label overlay
                     React.createElement("div", {
@@ -26356,13 +26759,33 @@
                       }, simRunning ? "\u23F8 Pause" : "\u25B6 Run Simulation"),
                       React.createElement("button", {
                         onClick: doWaterChange,
-                        className: "px-4 py-2.5 bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 font-bold rounded-xl text-sm hover:from-blue-100 hover:to-blue-200 transition-all border border-blue-200/60"
-                      }, "\uD83D\uDCA7 Water Change"),
+                        className: "px-3 py-2.5 bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 font-bold rounded-xl text-xs hover:from-blue-100 hover:to-blue-200 transition-all border border-blue-200/60"
+                      }, "\uD83D\uDCA7 Water"),
                       React.createElement("button", {
                         onClick: feedFish,
                         disabled: tankFish.length === 0,
-                        className: "px-4 py-2.5 font-bold rounded-xl text-sm transition-all border " + (tankFish.length === 0 ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed" : "bg-gradient-to-r from-amber-50 to-amber-100 text-amber-700 hover:from-amber-100 hover:to-amber-200 border-amber-200/60")
-                      }, "\uD83C\uDF7D\uFE0F Feed")
+                        className: "px-3 py-2.5 font-bold rounded-xl text-xs transition-all border " + (tankFish.length === 0 ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed" : "bg-gradient-to-r from-amber-50 to-amber-100 text-amber-700 hover:from-amber-100 hover:to-amber-200 border-amber-200/60")
+                      }, "\uD83C\uDF7D\uFE0F Flake"),
+                      React.createElement("button", {
+                        onClick: feedLive,
+                        disabled: tankFish.length === 0,
+                        className: "px-3 py-2.5 font-bold rounded-xl text-xs transition-all border " + (tankFish.length === 0 ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed" : "bg-gradient-to-r from-red-50 to-red-100 text-red-700 hover:from-red-100 hover:to-red-200 border-red-200/60")
+                      }, "\uD83E\uDD90 Live")
+                    ),
+                    // ── Second action row ──
+                    React.createElement("div", { className: "flex gap-2" },
+                      React.createElement("button", {
+                        onClick: toggleLights,
+                        className: "flex-1 px-3 py-2 font-bold rounded-xl text-xs transition-all border " + (lightsOn ? "bg-gradient-to-r from-yellow-50 to-amber-50 text-amber-700 hover:from-yellow-100 hover:to-amber-100 border-amber-200/60" : "bg-gradient-to-r from-indigo-100 to-slate-100 text-indigo-700 hover:from-indigo-200 hover:to-slate-200 border-indigo-200/60")
+                      }, lightsOn ? "\uD83D\uDCA1 Lights On" : "\uD83C\uDF19 Lights Off"),
+                      React.createElement("button", {
+                        onClick: medicateFish,
+                        className: "flex-1 px-3 py-2 font-bold rounded-xl text-xs transition-all border " + (Object.keys(fishSickness).length > 0 ? "bg-gradient-to-r from-pink-50 to-rose-50 text-rose-700 hover:from-pink-100 hover:to-rose-100 border-rose-200/60 animate-pulse" : "bg-gradient-to-r from-slate-50 to-slate-100 text-slate-500 border-slate-200/60")
+                      }, "\uD83D\uDC8A Medicate" + (Object.keys(fishSickness).length > 0 ? " (" + Object.keys(fishSickness).length + ")" : "")),
+                      React.createElement("button", {
+                        onClick: cleanGlass,
+                        className: "flex-1 px-3 py-2 font-bold rounded-xl text-xs transition-all border " + (algaeLevel > 30 ? "bg-gradient-to-r from-lime-50 to-green-50 text-green-700 hover:from-lime-100 hover:to-green-100 border-green-200/60" : "bg-gradient-to-r from-slate-50 to-slate-100 text-slate-500 border-slate-200/60")
+                      }, "\uD83E\uDDF9 Clean" + (algaeLevel > 15 ? " (" + Math.round(algaeLevel) + "%)" : ""))
                     ),
 
                     // ── Feeding Impact Panel (slides in after feeding) ──
