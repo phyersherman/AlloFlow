@@ -472,8 +472,8 @@
       React.useEffect(function () {
         if (stemLabTab !== 'explore' || stemLabTool !== 'graphCalc') return;
         var _gcd = (labToolData && labToolData.graphCalc) || {};
-        var _funcs = _gcd.funcs || [{ expr: '', color: '#38bdf8' }, { expr: '', color: '#f472b6' }, { expr: '', color: '#34d399' }, { expr: '', color: '#fbbf24' }, { expr: '', color: '#a78bfa' }, { expr: '', color: '#fb923c' }];
-        var _win = _gcd.window || { xmin: -10, xmax: 10, ymin: -10, ymax: 10 };
+        var _funcs = _gcd.funcs || [{ expr: 'sin(x)', color: '#38bdf8' }, { expr: '', color: '#f472b6' }, { expr: '', color: '#34d399' }, { expr: '', color: '#fbbf24' }, { expr: '', color: '#a78bfa' }, { expr: '', color: '#fb923c' }];
+        var _win = _gcd.window || { xmin: -6, xmax: 6, ymin: -4, ymax: 4 };
         var cv = document.getElementById('graph-calc-canvas');
         if (!cv || !window.math) return;
         var ctx = cv.getContext('2d');
@@ -656,18 +656,26 @@
         if (stemLabTab !== 'explore' || (stemLabTool !== 'geoSandbox' && stemLabTool !== 'archStudio')) return;
         if (window.THREE) { setLabToolData(function (p) { return Object.assign({}, p, { _threeLoaded: true }); }); return; }
         var s = document.createElement('script');
-        s.src = 'https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.min.js';
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
         s.async = true;
         s.onload = function () {
           // Load OrbitControls after Three.js is ready
           var s2 = document.createElement('script');
-          s2.src = 'https://cdn.jsdelivr.net/npm/three@0.155.0/examples/js/controls/OrbitControls.js';
+          s2.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js';
           s2.async = true;
           s2.onload = function () {
             if (typeof addToast === 'function') addToast('\uD83D\uDD37 3D engine loaded', 'info');
             setLabToolData(function (p) { return Object.assign({}, p, { _threeLoaded: true }); });
           };
+          s2.onerror = function () {
+            console.warn('[StemLab] OrbitControls failed to load, proceeding without orbit controls');
+            setLabToolData(function (p) { return Object.assign({}, p, { _threeLoaded: true }); });
+          };
           document.head.appendChild(s2);
+        };
+        s.onerror = function () {
+          console.error('[StemLab] Three.js failed to load');
+          if (typeof addToast === 'function') addToast('\u274c 3D engine failed to load', 'error');
         };
         document.head.appendChild(s);
       }, [stemLabTab, stemLabTool]);
@@ -13868,12 +13876,12 @@
                 var activeId = canvasEl.dataset.activeStage || 'evaporation';
                 ctx.textAlign = 'left';
                 var labels = [
-                  { id: 'evaporation', text: '\u2191 Evaporation', x: 8, y: cH * 0.54 / dpr, color: '#fbbf24' },
-                  { id: 'condensation', text: '\u2601 Condensation', x: cW * 0.28 / dpr, y: cH * 0.06 / dpr, color: '#94a3b8' },
-                  { id: 'precipitation', text: '\u2193 Precipitation', x: cW * 0.08 / dpr, y: cH * 0.28 / dpr, color: '#60a5fa' },
-                  { id: 'transpiration', text: '\uD83C\uDF3F Transpiration', x: cW * 0.56 / dpr, y: cH * 0.42 / dpr, color: '#4ade80' },
-                  { id: 'collection', text: '\uD83C\uDF0A Collection', x: 8, y: cH * 0.68 / dpr, color: '#38bdf8' },
-                  { id: 'infiltration', text: '\uD83E\uDEB4 Infiltration', x: cW * 0.35 / dpr, y: cH * 0.76 / dpr, color: '#d97706' }
+                  { id: 'evaporation', text: '\u2191 Evaporation', x: 8, y: cH * 0.54, color: '#fbbf24' },
+                  { id: 'condensation', text: '\u2601 Condensation', x: cW * 0.28, y: cH * 0.06, color: '#94a3b8' },
+                  { id: 'precipitation', text: '\u2193 Precipitation', x: cW * 0.08, y: cH * 0.28, color: '#60a5fa' },
+                  { id: 'collection', text: '\uD83C\uDF0A Collection', x: cW * 0.55, y: cH * 0.72, color: '#0ea5e9' },
+                  { id: 'transpiration', text: '\uD83C\uDF3F Transpiration', x: cW * 0.70, y: cH * 0.42, color: '#22c55e' },
+                  { id: 'infiltration', text: '\uD83E\uDEB4 Infiltration', x: cW * 0.42, y: cH * 0.80, color: '#92400e' }
                 ];
                 labels.forEach(function (lbl) {
                   var isActive = activeId === lbl.id;
@@ -21844,7 +21852,7 @@
                     var sfx = ((tick * 0.5 + sfi * 53) % cW);
                     var sfy = ((tick * 0.8 + sfi * 97) % (cH * 0.45));
                     ctx.beginPath();
-                    ctx.arc(sfx / dpr, sfy / dpr, 1.5, 0, Math.PI * 2);
+                    ctx.arc(sfx, sfy, 1.5, 0, Math.PI * 2);
                     ctx.fill();
                   }
                 }
@@ -21893,8 +21901,8 @@
                 // ── Draw garden mound(s) ──
                 if (_compare) {
                   // Split view
-                  drawMound(cW * 0.27 / dpr, cH * 0.55 / dpr, 70, 25, 'Three Sisters (Milpa)', _corn, _beans, _squash, _gt, false);
-                  drawMound(cW * 0.73 / dpr, cH * 0.55 / dpr, 70, 25, 'Monoculture Corn', true, false, false, _gt, true);
+                  drawMound(cW * 0.27, cH * 0.55, 70, 25, 'Three Sisters (Milpa)', _corn, _beans, _squash, _gt, false);
+                  drawMound(cW * 0.73, cH * 0.55, 70, 25, 'Monoculture Corn', true, false, false, _gt, true);
 
                   // Divider
                   ctx.strokeStyle = 'rgba(255,255,255,0.3)';
@@ -21910,10 +21918,10 @@
                   ctx.fillStyle = 'rgba(255,255,255,0.7)';
                   ctx.font = 'bold 10px system-ui';
                   ctx.textAlign = 'center';
-                  ctx.fillText('COMPANION PLANTING', cW * 0.27 / dpr, cH * 0.92 / dpr);
-                  ctx.fillText('MONOCULTURE', cW * 0.73 / dpr, cH * 0.92 / dpr);
+                  ctx.fillText('COMPANION PLANTING', cW * 0.27, cH * 0.92);
+                  ctx.fillText('MONOCULTURE', cW * 0.73, cH * 0.92);
                 } else {
-                  drawMound(cW * 0.5 / dpr, cH * 0.58 / dpr, 100, 35, '', _corn, _beans, _squash, _gt, false);
+                  drawMound(cW * 0.5, cH * 0.58, 100, 35, '', _corn, _beans, _squash, _gt, false);
                 }
 
                 // ── Floating particles (pollen, pollinators, N₂ symbols) ──
@@ -21994,14 +22002,14 @@
                     var ryStart = ((tick * 3 + ri * 137) % (cH * 0.4));
                     var ryLen = 6 + rainIntensity * 8;
                     ctx.beginPath();
-                    ctx.moveTo(rx / dpr, ryStart / dpr);
-                    ctx.lineTo((rx - 1) / dpr, (ryStart + ryLen) / dpr);
+                    ctx.moveTo(rx, ryStart);
+                    ctx.lineTo(rx - 1, ryStart + ryLen);
                     ctx.stroke();
                     // Splash at ground level
                     if (ryStart + ryLen > cH * 0.38) {
                       ctx.fillStyle = 'rgba(100,180,255,' + (0.1 + rainIntensity * 0.15) + ')';
                       ctx.beginPath();
-                      ctx.arc(rx / dpr, cH * 0.4 / dpr, 2, 0, Math.PI * 2);
+                      ctx.arc(rx, cH * 0.4, 2, 0, Math.PI * 2);
                       ctx.fill();
                     }
                   }
@@ -22012,8 +22020,8 @@
                   var pestAlpha = Math.min(0.6, (_pestLvl - 40) / 100);
                   ctx.fillStyle = 'rgba(180,50,30,' + pestAlpha + ')';
                   for (var pi2 = 0; pi2 < Math.floor(_pestLvl / 8); pi2++) {
-                    var px = ((tick * 1.5 + pi2 * 67) % cW) / dpr;
-                    var py = ((tick * 0.8 + pi2 * 89) % (cH * 0.35)) / dpr + cH * 0.1 / dpr;
+                    var px = ((tick * 1.5 + pi2 * 67) % cW);
+                    var py = ((tick * 0.8 + pi2 * 89) % (cH * 0.35)) + cH * 0.1;
                     ctx.beginPath();
                     ctx.arc(px, py, 2 + Math.sin(tick * 0.05 + pi2) * 1, 0, Math.PI * 2);
                     ctx.fill();
@@ -22026,8 +22034,8 @@
                   ctx.strokeStyle = 'rgba(60,120,40,' + weedAlpha + ')';
                   ctx.lineWidth = 1.5;
                   for (var wi2 = 0; wi2 < Math.floor(_weedLvl / 10); wi2++) {
-                    var wx = ((wi2 * 83 + 30) % cW) / dpr;
-                    var wy = cH * 0.42 / dpr;
+                    var wx = ((wi2 * 83 + 30) % cW);
+                    var wy = cH * 0.42;
                     var wSway = Math.sin(tick * 0.02 + wi2) * 4;
                     ctx.beginPath();
                     ctx.moveTo(wx, wy);
