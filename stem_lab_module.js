@@ -22739,10 +22739,10 @@
               ),
 
               // Main layout: sidebar + viewport
-              React.createElement('div', { className: 'flex flex-col md:flex-row gap-3', style: { minHeight: '480px' } },
+              React.createElement('div', { className: 'flex gap-3', style: { minHeight: '480px', flexDirection: 'row' } },
 
                 // === LEFT SIDEBAR ===
-                React.createElement('div', { className: 'w-full md:w-64 flex-shrink-0 flex flex-col gap-3' },
+                React.createElement('div', { style: { width: '260px', maxHeight: '520px', overflowY: 'auto', flexShrink: 0 }, className: 'flex flex-col gap-3' },
 
                   // Shape palette
                   React.createElement('div', { className: 'bg-slate-800/60 backdrop-blur-md rounded-xl p-3 border border-slate-700/50' },
@@ -23448,147 +23448,148 @@
                     React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '3px' } },
                       ...ZOOM_PRESETS.map(z => React.createElement('button', { key: z.name, onClick: () => upd('window', { xmin: z.xmin, xmax: z.xmax, ymin: z.ymin, ymax: z.ymax }), style: { padding: '3px 7px', borderRadius: '4px', background: 'rgba(99,102,241,0.1)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.2)', fontSize: '9px', cursor: 'pointer' } }, z.name))
                     )
-                  )
-                ),
-                // ── Arithmetic Calculator ──
-                showArith && React.createElement('div', { style: { padding: '8px 12px', borderTop: '1px solid rgba(99,102,241,0.1)', background: 'rgba(96,165,250,0.06)' } },
-                  React.createElement('div', { style: { fontSize: '9px', color: '#60a5fa', fontWeight: 'bold', marginBottom: '4px' } }, '\uD83E\uDDEE CALCULATOR'),
-                  React.createElement('div', { style: { display: 'flex', gap: '4px', marginBottom: '4px' } },
-                    React.createElement('input', { type: 'text', value: arithExpr, placeholder: 'e.g. sqrt(144) + 3^2', onChange: function (e) { upd('arithExpr', e.target.value); }, onKeyDown: function (e) { if (e.key === 'Enter' && window.math) { try { var res = math.evaluate(arithExpr); upd('arithResult', typeof res === 'number' ? String(Number(res.toPrecision(10))) : String(res)); } catch (er) { upd('arithResult', 'Error'); } } }, style: { flex: 1, padding: '5px 8px', borderRadius: '6px', border: '1px solid rgba(96,165,250,0.3)', background: 'rgba(96,165,250,0.08)', color: '#e2e8f0', fontFamily: 'monospace', fontSize: '12px', outline: 'none' }, 'aria-label': 'Calculator expression' }),
-                    React.createElement('button', { onClick: function () { if (!window.math) return; try { var res = math.evaluate(arithExpr); upd('arithResult', typeof res === 'number' ? String(Number(res.toPrecision(10))) : String(res)); } catch (er) { upd('arithResult', 'Error'); } }, style: { padding: '5px 10px', borderRadius: '6px', background: '#3b82f6', color: '#fff', border: 'none', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' } }, '=')
                   ),
-                  arithResult && React.createElement('div', { style: { padding: '5px 8px', borderRadius: '6px', background: 'rgba(96,165,250,0.15)', border: '1px solid rgba(96,165,250,0.25)', fontFamily: 'monospace', fontSize: '13px', fontWeight: 'bold', color: '#93c5fd', marginBottom: '4px' } }, '= ' + arithResult),
-                  React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '2px' } },
-                    ['7', '8', '9', '/', '+', '4', '5', '6', '*', '-', '1', '2', '3', '(', ')', '0', '.', 'pi', 'e', '^'].map(function (b) {
-                      return React.createElement('button', { key: b, onClick: function () { upd('arithExpr', arithExpr + b); }, style: { width: '18%', padding: '4px', borderRadius: '4px', background: 'rgba(99,102,241,0.1)', color: '#c7d2fe', border: '1px solid rgba(99,102,241,0.15)', fontSize: '10px', fontFamily: 'monospace', fontWeight: 'bold', cursor: 'pointer' } }, b);
-                    }),
-                    React.createElement('button', { onClick: function () { upd('arithExpr', ''); upd('arithResult', ''); }, style: { width: '18%', padding: '4px', borderRadius: '4px', background: 'rgba(239,68,68,0.15)', color: '#f87171', border: '1px solid rgba(239,68,68,0.2)', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' } }, 'C'),
-                    React.createElement('button', { onClick: function () { upd('arithExpr', arithExpr.slice(0, -1)); }, style: { width: '18%', padding: '4px', borderRadius: '4px', background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.2)', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' } }, '\u232B'),
-                    ['sin(', 'cos(', 'tan(', 'log(', 'ln(', 'sqrt(', 'abs(', '!', '%'].map(function (b) {
-                      return React.createElement('button', { key: 'fn_' + b, onClick: function () { upd('arithExpr', arithExpr + b); }, style: { width: '18%', padding: '4px', borderRadius: '4px', background: 'rgba(167,139,250,0.12)', color: '#c4b5fd', border: '1px solid rgba(167,139,250,0.2)', fontSize: '9px', fontFamily: 'monospace', fontWeight: 'bold', cursor: 'pointer' } }, b.replace('(', ''));
-                    })
-                  )
-                ),
-                // ── Slider Parameters ──
-                showSliders && React.createElement('div', { style: { padding: '8px 12px', borderTop: '1px solid rgba(99,102,241,0.1)', background: 'rgba(167,139,250,0.06)' } },
-                  React.createElement('div', { style: { fontSize: '9px', color: '#a78bfa', fontWeight: 'bold', marginBottom: '6px' } }, '\uD83C\uDFA8 PARAMETER SLIDERS \u2014 Use a, b, c in your equations'),
-                  ['a', 'b', 'c'].map(function (p) {
-                    var key = 'slider' + p.toUpperCase();
-                    var val = d[key] != null ? d[key] : (p === 'a' ? 1 : 0);
-                    return React.createElement('div', { key: p, style: { display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' } },
-                      React.createElement('span', { style: { fontFamily: 'monospace', fontWeight: 'bold', color: '#c4b5fd', fontSize: '12px', width: '16px' } }, p),
-                      React.createElement('input', { type: 'range', min: -10, max: 10, step: 0.1, value: val, onChange: function (e) { upd(key, parseFloat(e.target.value)); }, style: { flex: 1, accentColor: '#a78bfa' }, 'aria-label': 'Parameter ' + p }),
-                      React.createElement('span', { style: { fontFamily: 'monospace', fontSize: '11px', color: '#e2e8f0', minWidth: '36px', textAlign: 'right', fontWeight: 'bold' } }, Number(val.toFixed(1)))
-                    );
-                  })
-                ),
-                // ── Derivative ──
-                d.showDeriv && React.createElement('div', { style: { padding: '8px 12px', borderTop: '1px solid rgba(99,102,241,0.1)', background: 'rgba(251,146,60,0.06)' } },
-                  React.createElement('div', { style: { fontSize: '9px', color: '#fb923c', fontWeight: 'bold', marginBottom: '4px' } }, '\u2202 DERIVATIVE \u2014 Tangent line to y\u2081'),
-                  React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '6px' } },
-                    React.createElement('span', { style: { fontSize: '10px', color: '#94a3b8' } }, 'x ='),
-                    React.createElement('input', { type: 'range', min: win.xmin, max: win.xmax, step: (win.xmax - win.xmin) / 200, value: d.derivX != null ? d.derivX : 0, onChange: function (e) { upd('derivX', parseFloat(e.target.value)); }, style: { flex: 1, accentColor: '#fb923c' }, 'aria-label': 'Derivative x value' }),
-                    React.createElement('span', { style: { fontFamily: 'monospace', fontSize: '11px', color: '#fb923c', fontWeight: 'bold', minWidth: '40px', textAlign: 'right' } }, d.derivX != null ? Number(d.derivX.toPrecision(4)) : '0'),
-                    (function () {
-                      if (!window.math || !funcs[0] || !funcs[0].expr) return null;
-                      try {
-                        var de = funcs[0].expr.replace(/^y\s*=\s*/i, '').replace(/^f\s*\(x\)\s*=\s*/i, '');
-                        de = de.replace(/(\d)([x])/gi, '$1*$2').replace(/([x])(\d)/gi, '$1*$2');
-                        var dc = math.compile(de); var dx = d.derivX != null ? d.derivX : 0; var dh2 = 0.0001;
-                        var dsc = { x: dx }; if (d.sliderA != null) dsc.a = d.sliderA; if (d.sliderB != null) dsc.b = d.sliderB; if (d.sliderC != null) dsc.c = d.sliderC;
-                        var dscp = Object.assign({}, dsc, { x: dx + dh2 }); var dscm = Object.assign({}, dsc, { x: dx - dh2 });
-                        var slope = (dc.evaluate(dscp) - dc.evaluate(dscm)) / (2 * dh2);
-                        return React.createElement('span', { style: { fontFamily: 'monospace', fontSize: '11px', color: '#fbbf24', fontWeight: 'bold', background: 'rgba(251,191,36,0.15)', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(251,191,36,0.3)' } }, "f'=" + Number(slope.toPrecision(5)));
-                      } catch (e) { return null; }
-                    })()
-                  )
-                ),
-                // ── Analysis Results ──
-                d.showAnalysis && React.createElement('div', { style: { padding: '8px 12px', borderTop: '1px solid rgba(99,102,241,0.1)', background: 'rgba(52,211,153,0.06)' } },
-                  React.createElement('div', { style: { fontSize: '9px', color: '#34d399', fontWeight: 'bold', marginBottom: '4px' } }, '\u26A1 ANALYSIS RESULTS'),
-                  React.createElement('div', { style: { display: 'flex', gap: '8px', flexWrap: 'wrap' } },
-                    React.createElement('div', { style: { flex: 1, minWidth: '80px' } },
-                      React.createElement('div', { style: { fontSize: '9px', color: '#34d399', fontWeight: 'bold', marginBottom: '2px' } }, 'Zeros (y\u2081 = 0)'),
-                      (d._zeros && d._zeros.length > 0) ? d._zeros.map(function (z, zi) {
-                        return React.createElement('div', { key: zi, style: { fontSize: '10px', fontFamily: 'monospace', color: '#a7f3d0', padding: '1px 0' } }, 'x = ' + Number(z.x.toPrecision(5)));
-                      }) : React.createElement('div', { style: { fontSize: '10px', color: '#64748b', fontStyle: 'italic' } }, 'No zeros found')
+
+                  // ── Arithmetic Calculator ──
+                  showArith && React.createElement('div', { style: { padding: '8px 12px', borderTop: '1px solid rgba(99,102,241,0.1)', background: 'rgba(96,165,250,0.06)' } },
+                    React.createElement('div', { style: { fontSize: '9px', color: '#60a5fa', fontWeight: 'bold', marginBottom: '4px' } }, '\uD83E\uDDEE CALCULATOR'),
+                    React.createElement('div', { style: { display: 'flex', gap: '4px', marginBottom: '4px' } },
+                      React.createElement('input', { type: 'text', value: arithExpr, placeholder: 'e.g. sqrt(144) + 3^2', onChange: function (e) { upd('arithExpr', e.target.value); }, onKeyDown: function (e) { if (e.key === 'Enter' && window.math) { try { var res = math.evaluate(arithExpr); upd('arithResult', typeof res === 'number' ? String(Number(res.toPrecision(10))) : String(res)); } catch (er) { upd('arithResult', 'Error'); } } }, style: { flex: 1, padding: '5px 8px', borderRadius: '6px', border: '1px solid rgba(96,165,250,0.3)', background: 'rgba(96,165,250,0.08)', color: '#e2e8f0', fontFamily: 'monospace', fontSize: '12px', outline: 'none' }, 'aria-label': 'Calculator expression' }),
+                      React.createElement('button', { onClick: function () { if (!window.math) return; try { var res = math.evaluate(arithExpr); upd('arithResult', typeof res === 'number' ? String(Number(res.toPrecision(10))) : String(res)); } catch (er) { upd('arithResult', 'Error'); } }, style: { padding: '5px 10px', borderRadius: '6px', background: '#3b82f6', color: '#fff', border: 'none', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' } }, '=')
                     ),
-                    React.createElement('div', { style: { flex: 1, minWidth: '80px' } },
-                      React.createElement('div', { style: { fontSize: '9px', color: '#f472b6', fontWeight: 'bold', marginBottom: '2px' } }, 'Intersections'),
-                      (d._intersections && d._intersections.length > 0) ? d._intersections.map(function (pt, pi) {
-                        return React.createElement('div', { key: pi, style: { fontSize: '10px', fontFamily: 'monospace', color: '#f9a8d4', padding: '1px 0' } }, '(' + Number(pt.x.toPrecision(4)) + ', ' + Number(pt.y.toPrecision(4)) + ')');
-                      }) : React.createElement('div', { style: { fontSize: '10px', color: '#64748b', fontStyle: 'italic' } }, 'Enter 2+ functions')
-                    )
-                  )
-                )
-              ),
-
-              React.createElement('div', {
-                style: { flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }
-              },
-                React.createElement('canvas', {
-                  id: 'graph-calc-canvas', width: 600, height: 420,
-                  style: { width: '100%', flex: 1, background: '#0f172a', borderRadius: '0', cursor: d.traceMode ? 'crosshair' : 'default' },
-                  'aria-label': 'Graphing calculator coordinate plane',
-                  onMouseMove: function (e) {
-                    if (!d.traceMode) return;
-                    var rect = e.currentTarget.getBoundingClientRect();
-                    var px = (e.clientX - rect.left) / rect.width * 600;
-                    var cv2 = e.currentTarget;
-                    if (cv2._toMathX) upd('traceX', cv2._toMathX(px));
-                  },
-                  onMouseLeave: function () { if (d.traceMode) upd('traceX', null); }
-                }),
-
-                showWindow && React.createElement('div', { style: { padding: '8px 12px', background: 'rgba(30,27,75,0.9)', borderTop: '1px solid rgba(99,102,241,0.2)', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' } },
-                  React.createElement('span', { style: { fontSize: '10px', color: '#818cf8', fontWeight: 'bold' } }, 'WINDOW:'),
-                  ...['xmin', 'xmax', 'ymin', 'ymax'].map(k => React.createElement('label', { key: k, style: { display: 'flex', alignItems: 'center', gap: '3px', fontSize: '10px', color: '#94a3b8' } },
-                    k + ':', React.createElement('input', { type: 'number', value: win[k], onChange: e => upd('window', { ...win, [k]: parseFloat(e.target.value) || 0 }), style: { width: '50px', padding: '2px 4px', borderRadius: '4px', border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.1)', color: '#e2e8f0', fontFamily: 'monospace', fontSize: '10px' }, 'aria-label': k })
-                  ))
-                ),
-
-                showTable && React.createElement('div', { style: { maxHeight: '150px', overflowY: 'auto', borderTop: '1px solid rgba(99,102,241,0.2)', background: 'rgba(15,23,42,0.95)' } },
-                  React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', borderBottom: '1px solid rgba(99,102,241,0.1)' } },
-                    React.createElement('span', { style: { fontSize: '10px', fontWeight: 'bold', color: '#818cf8' } }, '\uD83D\uDCCA TABLE'),
-                    React.createElement('label', { style: { fontSize: '9px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '3px' } }, 'Start:', React.createElement('input', { type: 'number', value: tableX, onChange: e => upd('tableX', parseFloat(e.target.value) || 0), style: { width: '40px', padding: '1px 3px', borderRadius: '3px', border: '1px solid rgba(99,102,241,0.2)', background: 'rgba(99,102,241,0.1)', color: '#e2e8f0', fontFamily: 'monospace', fontSize: '9px' } })),
-                    React.createElement('label', { style: { fontSize: '9px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '3px' } }, 'Step:', React.createElement('input', { type: 'number', value: tableStep, onChange: e => upd('tableStep', parseFloat(e.target.value) || 1), style: { width: '40px', padding: '1px 3px', borderRadius: '3px', border: '1px solid rgba(99,102,241,0.2)', background: 'rgba(99,102,241,0.1)', color: '#e2e8f0', fontFamily: 'monospace', fontSize: '9px' } }))
-                  ),
-                  React.createElement('table', { style: { width: '100%', fontSize: '11px', fontFamily: 'monospace', borderCollapse: 'collapse' } },
-                    React.createElement('thead', null, React.createElement('tr', null,
-                      React.createElement('th', { style: { padding: '3px 10px', textAlign: 'right', color: '#818cf8', fontWeight: 'bold', borderBottom: '1px solid rgba(99,102,241,0.15)' } }, 'x'),
-                      React.createElement('th', { style: { padding: '3px 10px', textAlign: 'right', color: funcs[0] ? funcs[0].color : '#38bdf8', fontWeight: 'bold', borderBottom: '1px solid rgba(99,102,241,0.15)' } }, 'y\u2081')
-                    )),
-                    React.createElement('tbody', null, ...tableRows.map((r, ri) => React.createElement('tr', { key: ri, style: { background: ri % 2 === 0 ? 'transparent' : 'rgba(99,102,241,0.04)' } },
-                      React.createElement('td', { style: { padding: '2px 10px', textAlign: 'right', color: '#94a3b8' } }, r.x),
-                      React.createElement('td', { style: { padding: '2px 10px', textAlign: 'right', color: '#e2e8f0' } }, r.y)
-                    )))
-                  )
-                )
-              ),
-
-              React.createElement('div', {
-                style: { width: '230px', borderLeft: '1px solid rgba(99,102,241,0.15)', display: 'flex', flexDirection: 'column', background: 'rgba(15,23,42,0.8)' }
-              },
-                React.createElement('div', { style: { padding: '10px 12px', borderBottom: '1px solid rgba(99,102,241,0.1)', fontSize: '11px', fontWeight: 'bold', color: '#818cf8', letterSpacing: '1px' } }, showChallenge ? '\uD83C\uDFAF CHALLENGES' : '\uD83D\uDCA1 COACH'),
-                !showChallenge && React.createElement('div', { style: { flex: 1, overflowY: 'auto', padding: '8px' } },
-                  ...currentTips.map((tip, i) => React.createElement('div', { key: i, style: { padding: '10px', marginBottom: '6px', borderRadius: '10px', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.12)' } },
-                    React.createElement('div', { style: { fontWeight: 'bold', fontSize: '12px', marginBottom: '4px', color: '#a5b4fc' } }, tip.icon + ' ' + tip.title),
-                    React.createElement('div', { style: { fontSize: '11px', lineHeight: '1.5', color: '#cbd5e1' } }, tip.text)
-                  ))
-                ),
-
-                showChallenge && React.createElement('div', { style: { flex: 1, overflowY: 'auto', padding: '8px' } },
-                  React.createElement('div', { style: { marginBottom: '10px' } },
-                    React.createElement('div', { style: { display: 'flex', gap: '4px', marginBottom: '8px' } },
-                      React.createElement('button', { onClick: () => upd('challengeSource', 'premade'), style: { flex: 1, padding: '5px', borderRadius: '6px', background: (d.challengeSource || 'premade') === 'premade' ? '#818cf8' : 'rgba(255,255,255,0.05)', color: (d.challengeSource || 'premade') === 'premade' ? '#fff' : '#94a3b8', border: 'none', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' } }, '\uD83D\uDCDA Pre-made'),
-                      React.createElement('button', { onClick: () => { upd('challengeSource', 'ai'); if (typeof addToast === 'function') addToast('AI challenges use Gemini to generate custom problems', 'info'); }, style: { flex: 1, padding: '5px', borderRadius: '6px', background: d.challengeSource === 'ai' ? '#a78bfa' : 'rgba(255,255,255,0.05)', color: d.challengeSource === 'ai' ? '#fff' : '#94a3b8', border: 'none', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' } }, '\uD83E\uDD16 AI Generated')
+                    arithResult && React.createElement('div', { style: { padding: '5px 8px', borderRadius: '6px', background: 'rgba(96,165,250,0.15)', border: '1px solid rgba(96,165,250,0.25)', fontFamily: 'monospace', fontSize: '13px', fontWeight: 'bold', color: '#93c5fd', marginBottom: '4px' } }, '= ' + arithResult),
+                    React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '2px' } },
+                      ['7', '8', '9', '/', '+', '4', '5', '6', '*', '-', '1', '2', '3', '(', ')', '0', '.', 'pi', 'e', '^'].map(function (b) {
+                        return React.createElement('button', { key: b, onClick: function () { upd('arithExpr', arithExpr + b); }, style: { width: '18%', padding: '4px', borderRadius: '4px', background: 'rgba(99,102,241,0.1)', color: '#c7d2fe', border: '1px solid rgba(99,102,241,0.15)', fontSize: '10px', fontFamily: 'monospace', fontWeight: 'bold', cursor: 'pointer' } }, b);
+                      }),
+                      React.createElement('button', { onClick: function () { upd('arithExpr', ''); upd('arithResult', ''); }, style: { width: '18%', padding: '4px', borderRadius: '4px', background: 'rgba(239,68,68,0.15)', color: '#f87171', border: '1px solid rgba(239,68,68,0.2)', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' } }, 'C'),
+                      React.createElement('button', { onClick: function () { upd('arithExpr', arithExpr.slice(0, -1)); }, style: { width: '18%', padding: '4px', borderRadius: '4px', background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.2)', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' } }, '\u232B'),
+                      ['sin(', 'cos(', 'tan(', 'log(', 'ln(', 'sqrt(', 'abs(', '!', '%'].map(function (b) {
+                        return React.createElement('button', { key: 'fn_' + b, onClick: function () { upd('arithExpr', arithExpr + b); }, style: { width: '18%', padding: '4px', borderRadius: '4px', background: 'rgba(167,139,250,0.12)', color: '#c4b5fd', border: '1px solid rgba(167,139,250,0.2)', fontSize: '9px', fontFamily: 'monospace', fontWeight: 'bold', cursor: 'pointer' } }, b.replace('(', ''));
+                      })
                     )
                   ),
-                  ...availableChallenges.map((ch, ci) => React.createElement('div', { key: ci, style: { padding: '10px', marginBottom: '6px', borderRadius: '10px', background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.15)', cursor: 'pointer' }, onClick: () => upd('activeChallenge', d.activeChallenge === ci ? -1 : ci) },
-                    React.createElement('div', { style: { fontSize: '9px', color: '#a78bfa', fontWeight: 'bold', marginBottom: '3px' } }, ch.topic),
-                    React.createElement('div', { style: { fontSize: '11px', lineHeight: '1.5', color: '#e2e8f0', marginBottom: '4px' } }, ch.prompt),
-                    d.activeChallenge === ci && React.createElement('div', { style: { fontSize: '10px', color: '#fbbf24', background: 'rgba(251,191,36,0.1)', padding: '6px 8px', borderRadius: '6px', marginTop: '4px', lineHeight: '1.4' } }, '\uD83D\uDCA1 Hint: ' + ch.hint)
-                  ))
+                  // ── Slider Parameters ──
+                  showSliders && React.createElement('div', { style: { padding: '8px 12px', borderTop: '1px solid rgba(99,102,241,0.1)', background: 'rgba(167,139,250,0.06)' } },
+                    React.createElement('div', { style: { fontSize: '9px', color: '#a78bfa', fontWeight: 'bold', marginBottom: '6px' } }, '\uD83C\uDFA8 PARAMETER SLIDERS \u2014 Use a, b, c in your equations'),
+                    ['a', 'b', 'c'].map(function (p) {
+                      var key = 'slider' + p.toUpperCase();
+                      var val = d[key] != null ? d[key] : (p === 'a' ? 1 : 0);
+                      return React.createElement('div', { key: p, style: { display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' } },
+                        React.createElement('span', { style: { fontFamily: 'monospace', fontWeight: 'bold', color: '#c4b5fd', fontSize: '12px', width: '16px' } }, p),
+                        React.createElement('input', { type: 'range', min: -10, max: 10, step: 0.1, value: val, onChange: function (e) { upd(key, parseFloat(e.target.value)); }, style: { flex: 1, accentColor: '#a78bfa' }, 'aria-label': 'Parameter ' + p }),
+                        React.createElement('span', { style: { fontFamily: 'monospace', fontSize: '11px', color: '#e2e8f0', minWidth: '36px', textAlign: 'right', fontWeight: 'bold' } }, Number(val.toFixed(1)))
+                      );
+                    })
+                  ),
+                  // ── Derivative ──
+                  d.showDeriv && React.createElement('div', { style: { padding: '8px 12px', borderTop: '1px solid rgba(99,102,241,0.1)', background: 'rgba(251,146,60,0.06)' } },
+                    React.createElement('div', { style: { fontSize: '9px', color: '#fb923c', fontWeight: 'bold', marginBottom: '4px' } }, '\u2202 DERIVATIVE \u2014 Tangent line to y\u2081'),
+                    React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '6px' } },
+                      React.createElement('span', { style: { fontSize: '10px', color: '#94a3b8' } }, 'x ='),
+                      React.createElement('input', { type: 'range', min: win.xmin, max: win.xmax, step: (win.xmax - win.xmin) / 200, value: d.derivX != null ? d.derivX : 0, onChange: function (e) { upd('derivX', parseFloat(e.target.value)); }, style: { flex: 1, accentColor: '#fb923c' }, 'aria-label': 'Derivative x value' }),
+                      React.createElement('span', { style: { fontFamily: 'monospace', fontSize: '11px', color: '#fb923c', fontWeight: 'bold', minWidth: '40px', textAlign: 'right' } }, d.derivX != null ? Number(d.derivX.toPrecision(4)) : '0'),
+                      (function () {
+                        if (!window.math || !funcs[0] || !funcs[0].expr) return null;
+                        try {
+                          var de = funcs[0].expr.replace(/^y\s*=\s*/i, '').replace(/^f\s*\(x\)\s*=\s*/i, '');
+                          de = de.replace(/(\d)([x])/gi, '$1*$2').replace(/([x])(\d)/gi, '$1*$2');
+                          var dc = math.compile(de); var dx = d.derivX != null ? d.derivX : 0; var dh2 = 0.0001;
+                          var dsc = { x: dx }; if (d.sliderA != null) dsc.a = d.sliderA; if (d.sliderB != null) dsc.b = d.sliderB; if (d.sliderC != null) dsc.c = d.sliderC;
+                          var dscp = Object.assign({}, dsc, { x: dx + dh2 }); var dscm = Object.assign({}, dsc, { x: dx - dh2 });
+                          var slope = (dc.evaluate(dscp) - dc.evaluate(dscm)) / (2 * dh2);
+                          return React.createElement('span', { style: { fontFamily: 'monospace', fontSize: '11px', color: '#fbbf24', fontWeight: 'bold', background: 'rgba(251,191,36,0.15)', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(251,191,36,0.3)' } }, "f'=" + Number(slope.toPrecision(5)));
+                        } catch (e) { return null; }
+                      })()
+                    )
+                  ),
+                  // ── Analysis Results ──
+                  d.showAnalysis && React.createElement('div', { style: { padding: '8px 12px', borderTop: '1px solid rgba(99,102,241,0.1)', background: 'rgba(52,211,153,0.06)' } },
+                    React.createElement('div', { style: { fontSize: '9px', color: '#34d399', fontWeight: 'bold', marginBottom: '4px' } }, '\u26A1 ANALYSIS RESULTS'),
+                    React.createElement('div', { style: { display: 'flex', gap: '8px', flexWrap: 'wrap' } },
+                      React.createElement('div', { style: { flex: 1, minWidth: '80px' } },
+                        React.createElement('div', { style: { fontSize: '9px', color: '#34d399', fontWeight: 'bold', marginBottom: '2px' } }, 'Zeros (y\u2081 = 0)'),
+                        (d._zeros && d._zeros.length > 0) ? d._zeros.map(function (z, zi) {
+                          return React.createElement('div', { key: zi, style: { fontSize: '10px', fontFamily: 'monospace', color: '#a7f3d0', padding: '1px 0' } }, 'x = ' + Number(z.x.toPrecision(5)));
+                        }) : React.createElement('div', { style: { fontSize: '10px', color: '#64748b', fontStyle: 'italic' } }, 'No zeros found')
+                      ),
+                      React.createElement('div', { style: { flex: 1, minWidth: '80px' } },
+                        React.createElement('div', { style: { fontSize: '9px', color: '#f472b6', fontWeight: 'bold', marginBottom: '2px' } }, 'Intersections'),
+                        (d._intersections && d._intersections.length > 0) ? d._intersections.map(function (pt, pi) {
+                          return React.createElement('div', { key: pi, style: { fontSize: '10px', fontFamily: 'monospace', color: '#f9a8d4', padding: '1px 0' } }, '(' + Number(pt.x.toPrecision(4)) + ', ' + Number(pt.y.toPrecision(4)) + ')');
+                        }) : React.createElement('div', { style: { fontSize: '10px', color: '#64748b', fontStyle: 'italic' } }, 'Enter 2+ functions')
+                      )
+                    )
+                  )
+                ),
+
+                React.createElement('div', {
+                  style: { flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }
+                },
+                  React.createElement('canvas', {
+                    id: 'graph-calc-canvas', width: 600, height: 420,
+                    style: { width: '100%', flex: 1, background: '#0f172a', borderRadius: '0', cursor: d.traceMode ? 'crosshair' : 'default' },
+                    'aria-label': 'Graphing calculator coordinate plane',
+                    onMouseMove: function (e) {
+                      if (!d.traceMode) return;
+                      var rect = e.currentTarget.getBoundingClientRect();
+                      var px = (e.clientX - rect.left) / rect.width * 600;
+                      var cv2 = e.currentTarget;
+                      if (cv2._toMathX) upd('traceX', cv2._toMathX(px));
+                    },
+                    onMouseLeave: function () { if (d.traceMode) upd('traceX', null); }
+                  }),
+
+                  showWindow && React.createElement('div', { style: { padding: '8px 12px', background: 'rgba(30,27,75,0.9)', borderTop: '1px solid rgba(99,102,241,0.2)', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' } },
+                    React.createElement('span', { style: { fontSize: '10px', color: '#818cf8', fontWeight: 'bold' } }, 'WINDOW:'),
+                    ...['xmin', 'xmax', 'ymin', 'ymax'].map(k => React.createElement('label', { key: k, style: { display: 'flex', alignItems: 'center', gap: '3px', fontSize: '10px', color: '#94a3b8' } },
+                      k + ':', React.createElement('input', { type: 'number', value: win[k], onChange: e => upd('window', { ...win, [k]: parseFloat(e.target.value) || 0 }), style: { width: '50px', padding: '2px 4px', borderRadius: '4px', border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.1)', color: '#e2e8f0', fontFamily: 'monospace', fontSize: '10px' }, 'aria-label': k })
+                    ))
+                  ),
+
+                  showTable && React.createElement('div', { style: { maxHeight: '150px', overflowY: 'auto', borderTop: '1px solid rgba(99,102,241,0.2)', background: 'rgba(15,23,42,0.95)' } },
+                    React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', borderBottom: '1px solid rgba(99,102,241,0.1)' } },
+                      React.createElement('span', { style: { fontSize: '10px', fontWeight: 'bold', color: '#818cf8' } }, '\uD83D\uDCCA TABLE'),
+                      React.createElement('label', { style: { fontSize: '9px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '3px' } }, 'Start:', React.createElement('input', { type: 'number', value: tableX, onChange: e => upd('tableX', parseFloat(e.target.value) || 0), style: { width: '40px', padding: '1px 3px', borderRadius: '3px', border: '1px solid rgba(99,102,241,0.2)', background: 'rgba(99,102,241,0.1)', color: '#e2e8f0', fontFamily: 'monospace', fontSize: '9px' } })),
+                      React.createElement('label', { style: { fontSize: '9px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '3px' } }, 'Step:', React.createElement('input', { type: 'number', value: tableStep, onChange: e => upd('tableStep', parseFloat(e.target.value) || 1), style: { width: '40px', padding: '1px 3px', borderRadius: '3px', border: '1px solid rgba(99,102,241,0.2)', background: 'rgba(99,102,241,0.1)', color: '#e2e8f0', fontFamily: 'monospace', fontSize: '9px' } }))
+                    ),
+                    React.createElement('table', { style: { width: '100%', fontSize: '11px', fontFamily: 'monospace', borderCollapse: 'collapse' } },
+                      React.createElement('thead', null, React.createElement('tr', null,
+                        React.createElement('th', { style: { padding: '3px 10px', textAlign: 'right', color: '#818cf8', fontWeight: 'bold', borderBottom: '1px solid rgba(99,102,241,0.15)' } }, 'x'),
+                        React.createElement('th', { style: { padding: '3px 10px', textAlign: 'right', color: funcs[0] ? funcs[0].color : '#38bdf8', fontWeight: 'bold', borderBottom: '1px solid rgba(99,102,241,0.15)' } }, 'y\u2081')
+                      )),
+                      React.createElement('tbody', null, ...tableRows.map((r, ri) => React.createElement('tr', { key: ri, style: { background: ri % 2 === 0 ? 'transparent' : 'rgba(99,102,241,0.04)' } },
+                        React.createElement('td', { style: { padding: '2px 10px', textAlign: 'right', color: '#94a3b8' } }, r.x),
+                        React.createElement('td', { style: { padding: '2px 10px', textAlign: 'right', color: '#e2e8f0' } }, r.y)
+                      )))
+                    )
+                  )
+                ),
+
+                React.createElement('div', {
+                  style: { width: '230px', borderLeft: '1px solid rgba(99,102,241,0.15)', display: 'flex', flexDirection: 'column', background: 'rgba(15,23,42,0.8)' }
+                },
+                  React.createElement('div', { style: { padding: '10px 12px', borderBottom: '1px solid rgba(99,102,241,0.1)', fontSize: '11px', fontWeight: 'bold', color: '#818cf8', letterSpacing: '1px' } }, showChallenge ? '\uD83C\uDFAF CHALLENGES' : '\uD83D\uDCA1 COACH'),
+                  !showChallenge && React.createElement('div', { style: { flex: 1, overflowY: 'auto', padding: '8px' } },
+                    ...currentTips.map((tip, i) => React.createElement('div', { key: i, style: { padding: '10px', marginBottom: '6px', borderRadius: '10px', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.12)' } },
+                      React.createElement('div', { style: { fontWeight: 'bold', fontSize: '12px', marginBottom: '4px', color: '#a5b4fc' } }, tip.icon + ' ' + tip.title),
+                      React.createElement('div', { style: { fontSize: '11px', lineHeight: '1.5', color: '#cbd5e1' } }, tip.text)
+                    ))
+                  ),
+
+                  showChallenge && React.createElement('div', { style: { flex: 1, overflowY: 'auto', padding: '8px' } },
+                    React.createElement('div', { style: { marginBottom: '10px' } },
+                      React.createElement('div', { style: { display: 'flex', gap: '4px', marginBottom: '8px' } },
+                        React.createElement('button', { onClick: () => upd('challengeSource', 'premade'), style: { flex: 1, padding: '5px', borderRadius: '6px', background: (d.challengeSource || 'premade') === 'premade' ? '#818cf8' : 'rgba(255,255,255,0.05)', color: (d.challengeSource || 'premade') === 'premade' ? '#fff' : '#94a3b8', border: 'none', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' } }, '\uD83D\uDCDA Pre-made'),
+                        React.createElement('button', { onClick: () => { upd('challengeSource', 'ai'); if (typeof addToast === 'function') addToast('AI challenges use Gemini to generate custom problems', 'info'); }, style: { flex: 1, padding: '5px', borderRadius: '6px', background: d.challengeSource === 'ai' ? '#a78bfa' : 'rgba(255,255,255,0.05)', color: d.challengeSource === 'ai' ? '#fff' : '#94a3b8', border: 'none', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' } }, '\uD83E\uDD16 AI Generated')
+                      )
+                    ),
+                    ...availableChallenges.map((ch, ci) => React.createElement('div', { key: ci, style: { padding: '10px', marginBottom: '6px', borderRadius: '10px', background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.15)', cursor: 'pointer' }, onClick: () => upd('activeChallenge', d.activeChallenge === ci ? -1 : ci) },
+                      React.createElement('div', { style: { fontSize: '9px', color: '#a78bfa', fontWeight: 'bold', marginBottom: '3px' } }, ch.topic),
+                      React.createElement('div', { style: { fontSize: '11px', lineHeight: '1.5', color: '#e2e8f0', marginBottom: '4px' } }, ch.prompt),
+                      d.activeChallenge === ci && React.createElement('div', { style: { fontSize: '10px', color: '#fbbf24', background: 'rgba(251,191,36,0.1)', padding: '6px 8px', borderRadius: '6px', marginTop: '4px', lineHeight: '1.4' } }, '\uD83D\uDCA1 Hint: ' + ch.hint)
+                    ))
+                  )
                 )
               )
             );
