@@ -143,6 +143,21 @@ if (dryRun) {
     fs.writeFileSync(BACKUP, content, 'utf-8');
     console.log(`📄 Backup:  ${path.relative(ROOT, BACKUP)}`);
 
+    // ── Stamp service worker with build timestamp ───────────────
+    const SW_SOURCE = path.join(ROOT, 'prismflow-deploy', 'public', 'sw.js');
+    if (fs.existsSync(SW_SOURCE)) {
+        const buildTs = Date.now();
+        let swContent = fs.readFileSync(SW_SOURCE, 'utf-8');
+        swContent = swContent.replace('__BUILD_TS__', String(buildTs));
+        // Write stamped sw.js directly — CRA copies public/ to build/ as-is,
+        // but we also write to build/ in case the build already ran
+        const SW_BUILD = path.join(ROOT, 'prismflow-deploy', 'build', 'sw.js');
+        if (fs.existsSync(path.dirname(SW_BUILD))) {
+            fs.writeFileSync(SW_BUILD, swContent, 'utf-8');
+        }
+        console.log(`🔧 SW stamped: CACHE_NAME = 'alloflow-v${buildTs}'`);
+    }
+
     // Show next steps
     console.log('\n── Next Steps ──');
     if (mode === 'dev') {

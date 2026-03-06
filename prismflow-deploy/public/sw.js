@@ -1,28 +1,34 @@
 // AlloFlow Service Worker
-// Purpose: Cache-first strategy to bypass Chrome QUIC protocol issues
+// Purpose: Stale-while-revalidate to bypass Chrome QUIC protocol issues
 // that cause page loads to hang on networks blocking UDP traffic.
 //
 // Strategy:
 // - Navigation requests: Stale-while-revalidate (serve cached, update in background)
 // - Static assets (JS/CSS with hashes): Cache-first (immutable, never changes)
 // - Other requests: Network-first with cache fallback
+//
+// IMPORTANT: CACHE_VERSION is auto-replaced by build.js on each deploy.
+// Do not change the format of the next line.
 
-const CACHE_NAME = 'alloflow-v3';
+const CACHE_NAME = 'alloflow-v__BUILD_TS__';
 
 // Install: cache the main page on first load
 self.addEventListener('install', (event) => {
-    console.log('[SW] Installing...');
+    console.log('[SW] Installing:', CACHE_NAME);
     // Activate immediately, don't wait for old tabs to close
     self.skipWaiting();
 });
 
 // Activate: clean up old caches and take control immediately
 self.addEventListener('activate', (event) => {
-    console.log('[SW] Activating...');
+    console.log('[SW] Activating:', CACHE_NAME);
     event.waitUntil(
         caches.keys().then((keys) => {
             return Promise.all(
-                keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
+                keys.filter(k => k !== CACHE_NAME).map(k => {
+                    console.log('[SW] Purging old cache:', k);
+                    return caches.delete(k);
+                })
             );
         }).then(() => {
             // Take control of all open tabs immediately
@@ -40,25 +46,27 @@ self.addEventListener('fetch', (event) => {
         return; // Let cross-origin requests pass through
     }
 
-    // Navigation requests (page loads/reloads): network-first with cache fallback
+    // Navigation requests (page loads/reloads): stale-while-revalidate
+    // CRITICAL: This strategy serves cached HTML instantly, preventing QUIC hangs.
+    // Do NOT change this to network-first — it will hang on networks blocking UDP.
     if (event.request.mode === 'navigate') {
         event.respondWith(
-            fetch(event.request).then(function (response) {
-                if (response.ok) {
-                    var responseClone = response.clone();
-                    caches.open(CACHE_NAME).then(function (cache) {
-                        cache.put('/index.html', responseClone);
+            caches.open(CACHE_NAME).then((cache) => {
+                return cache.match('/index.html').then((cached) => {
+                    const networkFetch = fetch(event.request).then((response) => {
+                        if (response.ok) {
+                            cache.put('/index.html', response.clone());
+                        }
+                        return response;
+                    }).catch(() => {
+                        // Network failed (QUIC hang, offline, etc.)
+                        return cached || new Response('AlloFlow is loading...', {
+                            headers: { 'Content-Type': 'text/html' }
+                        });
                     });
-                }
-                return response;
-            }).catch(function () {
-                // Network failed (offline, QUIC hang, etc.) — serve cached version
-                return caches.open(CACHE_NAME).then(function (cache) {
-                    return cache.match('/index.html');
-                }).then(function (cached) {
-                    return cached || new Response('AlloFlow is loading...', {
-                        headers: { 'Content-Type': 'text/html' }
-                    });
+
+                    // Return cached immediately if available, otherwise wait for network
+                    return cached || networkFetch;
                 });
             })
         );

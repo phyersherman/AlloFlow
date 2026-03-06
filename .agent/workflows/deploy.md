@@ -10,6 +10,12 @@ description: Sync AlloFlowANTI.txt to App.jsx, build, and deploy to Firebase
 > The app loads `stem_lab_module.js` and `word_sounds_module.js` via jsDelivr CDN using **pinned commit hashes** (e.g. `@c1a9644`).
 > The `build.js` script **automatically** handles hash detection and URL replacement.
 
+> **⚠️ SERVICE WORKER — Do NOT change navigation strategy:**
+> The SW uses **stale-while-revalidate** for navigation requests. This is critical for networks
+> that block UDP traffic (QUIC). Changing to network-first WILL cause the site to hang for
+> those users. The `sw.js` source in `public/` contains a `__BUILD_TS__` placeholder that
+> gets stamped with a unique timestamp on each deploy.
+
 1. Push the module files to GitHub:
 ```
 git add ui_strings.js stem_lab_module.js word_sounds_module.js AlloFlowANTI.txt; git commit -m "Deploy: sync files"; git push origin main
@@ -27,6 +33,7 @@ Working directory: `C:\Users\cabba\OneDrive\Desktop\UDL-Tool-Updated`
 > - Run `git rev-parse --short HEAD` to get the latest hash
 > - Replace both `loadModule` CDN URLs with the new hash
 > - Write to `prismflow-deploy/src/App.jsx` and `prismflow-deploy/src/AlloFlowANTI.txt`
+> - Stamp `build/sw.js` with a unique timestamp (if build/ exists)
 
 3. Build the production bundle:
 ```
@@ -34,15 +41,21 @@ npm run build
 ```
 Working directory: `C:\Users\cabba\OneDrive\Desktop\UDL-Tool-Updated\prismflow-deploy`
 
-4. Deploy to Firebase hosting:
+4. Stamp the service worker with a unique cache version (CRA overwrites `build/sw.js` from `public/`, so this must run AFTER the build):
+```
+node -e "const fs=require('fs');const ts=Date.now();const f='build/sw.js';let c=fs.readFileSync(f,'utf-8');c=c.replace('__BUILD_TS__',String(ts));fs.writeFileSync(f,c,'utf-8');console.log('SW stamped:',ts)"
+```
+Working directory: `C:\Users\cabba\OneDrive\Desktop\UDL-Tool-Updated\prismflow-deploy`
+
+5. Deploy to Firebase hosting:
 ```
 npx firebase deploy --only hosting
 ```
 Working directory: `C:\Users\cabba\OneDrive\Desktop\UDL-Tool-Updated\prismflow-deploy`
 
-5. Confirm deploy succeeded — check that the output shows `Deploy complete!` and the hosting URL.
+6. Confirm deploy succeeded — check that the output shows `Deploy complete!` and the hosting URL.
 
-6. Commit and push the updated `AlloFlowANTI.txt` (with new hash) so the repo stays in sync:
+7. Commit and push the updated `AlloFlowANTI.txt` (with new hash) so the repo stays in sync:
 ```
 git add AlloFlowANTI.txt; git commit -m "Deploy: update CDN hash"; git push origin main
 ```
