@@ -5947,6 +5947,9 @@
                   ctx.fillStyle = dcGrad; ctx.fill();
                   ctx.strokeStyle = 'rgba(16,185,129,0.5)'; ctx.lineWidth = 1 * dpr; ctx.stroke();
                 } else if (def.id === 'stentor') {
+                  // Apply body contraction/extension scale
+                  var stBodyScale = o._stScale || 1.0;
+                  ctx.scale(1, stBodyScale); // only stretch vertically (trumpet length)
                   // Trumpet / cone shape with gradient
                   ctx.beginPath();
                   ctx.moveTo(-sz * 0.3, sz * 1.2);
@@ -6102,6 +6105,7 @@
                 ctx.font = 'bold ' + fontSize + 'px Inter, system-ui, sans-serif';
                 ctx.textAlign = 'left';
                 ctx.textBaseline = 'middle';
+                var tNow = world.tick || 0;
                 def.anatomy.forEach(function (a, i) {
                   if (typeof a.lx === 'undefined') return;
                   // Organelle point in world-relative rotated coords
@@ -6123,18 +6127,29 @@
                   var textW = ctx.measureText(a.name).width + fontSize * 1.5;
                   lx = Math.max(fontSize, Math.min(W - textW - fontSize, lx));
                   ly = Math.max(fontSize * 2, Math.min(H - fontSize * 2, ly));
-                  // Leader line
+                  // Animated leader line — flowing dashes toward the organelle
                   ctx.beginPath();
                   ctx.moveTo(sx, sy);
                   ctx.lineTo(lx, ly);
-                  ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-                  ctx.lineWidth = 0.8 * dpr;
-                  ctx.setLineDash([2 * dpr, 2 * dpr]);
+                  ctx.strokeStyle = def.color.replace(')', ',0.5)').replace('rgb(', 'rgba(').replace('rgba(a(', 'rgba(');
+                  if (ctx.strokeStyle.indexOf('rgba') === -1) ctx.strokeStyle = 'rgba(200,200,255,0.5)';
+                  ctx.lineWidth = 1.0 * dpr;
+                  var dashLen = 3 * dpr;
+                  ctx.setLineDash([dashLen, dashLen]);
+                  ctx.lineDashOffset = -(tNow * 0.5); // flowing animation
                   ctx.stroke();
                   ctx.setLineDash([]);
-                  // Dot at organelle point
+                  ctx.lineDashOffset = 0;
+                  // Pulsing glow dot at organelle point
+                  var pulse = 0.6 + Math.sin(tNow * 0.06 + i * 1.2) * 0.4;
+                  var dotR = (2.5 + pulse * 1.5) * dpr;
                   ctx.beginPath();
-                  ctx.arc(sx, sy, 2.5 * dpr, 0, Math.PI * 2);
+                  ctx.arc(sx, sy, dotR * 1.5, 0, Math.PI * 2);
+                  ctx.fillStyle = def.color.replace(')', ',0.15)').replace('rgb(', 'rgba(').replace('rgba(a(', 'rgba(');
+                  if (ctx.fillStyle.indexOf('rgba') === -1) ctx.fillStyle = 'rgba(200,200,255,0.15)';
+                  ctx.fill();
+                  ctx.beginPath();
+                  ctx.arc(sx, sy, dotR, 0, Math.PI * 2);
                   ctx.fillStyle = def.color;
                   ctx.fill();
                   // Pill background
@@ -6154,10 +6169,10 @@
                   ctx.lineTo(pillX, pillY + r);
                   ctx.arcTo(pillX, pillY, pillX + r, pillY, r);
                   ctx.closePath();
-                  ctx.fillStyle = 'rgba(15,23,42,0.75)';
+                  ctx.fillStyle = 'rgba(15,23,42,0.82)';
                   ctx.fill();
                   ctx.strokeStyle = def.color;
-                  ctx.lineWidth = 0.8 * dpr;
+                  ctx.lineWidth = 1.0 * dpr;
                   ctx.stroke();
                   // Label text
                   ctx.fillStyle = '#ffffff';
@@ -6219,23 +6234,44 @@
                     }
                     o.angle += 0.005; // gentle rotation (~20s per revolution)
                   } else if (def.id === 'stentor') {
-                    // Filter-feeding behaviour: slow graceful drift + periodic pauses
+                    // Realistic filter-feeding behaviour: drift ➜ anchor ➜ feed ➜ escape
                     if (!o._stentorTimer) o._stentorTimer = Math.floor(Math.random() * 300);
                     o._stentorTimer = (o._stentorTimer || 0) + 1;
-                    var stCycle = o._stentorTimer % 600; // ~10s cycle at 60fps
-                    if (stCycle < 400) {
-                      // Drifting phase — slow purposeful glide
-                      if (stCycle === 0 || stCycle % 120 === 0) {
-                        // Pick a new drift direction every ~2s
-                        var da = Math.random() * Math.PI * 2;
-                        o._stDriftX = Math.cos(da) * 0.08;
-                        o._stDriftY = Math.sin(da) * 0.08;
+                    if (!o._stScale) o._stScale = 1.0;  // body contraction scale
+                    if (!o._stEscape) o._stEscape = 0;   // escape contraction timer
+                    var stCycle = o._stentorTimer % 720; // ~12s cycle at 60fps
+
+                    // Occasional escape contraction (rapid myoneme contraction)
+                    if (o._stEscape > 0) {
+                      o._stEscape--;
+                      if (o._stEscape > 15) {
+                        // Rapid contraction phase: body shrinks, dart backward
+                        o._stScale = Math.max(0.4, o._stScale - 0.06);
+                        o.vx += Math.cos(o.angle + Math.PI) * 0.5;
+                        o.vy += Math.sin(o.angle + Math.PI) * 0.5;
+                      } else {
+                        // Slow re-extension
+                        o._stScale = Math.min(1.0, o._stScale + 0.04);
+                        o.vx *= 0.9; o.vy *= 0.9;
                       }
-                      o.vx += ((o._stDriftX || 0) - o.vx) * 0.02;
-                      o.vy += ((o._stDriftY || 0) - o.vy) * 0.02;
+                    } else if (stCycle < 350) {
+                      // Drifting phase — slow purposeful glide seeking attachment site
+                      if (stCycle === 0 || stCycle % 140 === 0) {
+                        var da = Math.random() * Math.PI * 2;
+                        o._stDriftX = Math.cos(da) * 0.07;
+                        o._stDriftY = Math.sin(da) * 0.07;
+                      }
+                      o.vx += ((o._stDriftX || 0) - o.vx) * 0.015;
+                      o.vy += ((o._stDriftY || 0) - o.vy) * 0.015;
+                      o._stScale = 1.0; // fully extended while drifting
                     } else {
-                      // Feeding pause — nearly stationary, membranellar band active
-                      o.vx *= 0.92; o.vy *= 0.92;
+                      // Feeding pause — anchored, body pulses as cilia create feeding currents
+                      o.vx *= 0.88; o.vy *= 0.88;
+                      // Rhythmic body pulsing (trumpet opens/closes to draw water)
+                      var feedPulse = Math.sin(world.tick * 0.08 + o.phase) * 0.08;
+                      o._stScale = 0.95 + feedPulse;
+                      // Rare chance to trigger escape contraction
+                      if (Math.random() < 0.0008) o._stEscape = 30;
                     }
                     // Gentle rocking sway (trumpet opening scans the water)
                     o.angle = o.phase + Math.sin(world.tick * 0.018 + o.phase) * 0.45
@@ -6730,7 +6766,80 @@
                   }),
                   (d.simSpeed || 1) + "x",
                   React.createElement("button", { onClick: function () { var p = !d.paused; upd("paused", p); var cv = document.querySelector('[data-cell-sim-canvas]'); if (cv) { if (!p && cv._cellSimRestart && !cv._cellSimAlive) { cv._cellSimRestart(); } else if (cv._cellSimSetPaused) { cv._cellSimSetPaused(p); } } }, className: "text-xs font-bold px-2 py-0.5 rounded " + (d.paused ? "bg-green-600 text-white" : "bg-slate-200 text-slate-600") }, d.paused ? "\u25B6" : "\u23F8")
-                )
+                ),
+                // ── Play mode instructions overlay ──
+                d.playAsOrganism && d.showPlayInstructions !== false && (() => {
+                  var org = ORGANISMS.find(function (o) { return o.id === d.playAsOrganism; });
+                  if (!org) return null;
+                  // Predator info per organism
+                  var predatorInfo = {
+                    amoeba: { pred: 'Paramecium & WBCs', warn: 'Larger cells may engulf you!' },
+                    paramecium: { pred: 'Stentor', warn: 'Stentor creates vortex currents — avoid its trumpet-shaped mouth!' },
+                    euglena: { pred: 'Amoeba & Paramecium', warn: 'They can engulf small protists. Stay in the light!' },
+                    wbc: { pred: 'None — you are the hunter!', warn: 'Your targets are bacteria. Failure to catch them lets infection spread.' },
+                    bacterium: { pred: 'WBCs & Amoeba', warn: 'White blood cells will chase and engulf you!' },
+                    plantcell: { pred: 'None — you are stationary', warn: 'Explore your organelles up close.' },
+                    diatom: { pred: 'Copepods & Ciliates', warn: 'Filter-feeders may sweep you up!' },
+                    volvox: { pred: 'Rotifers', warn: 'Stay together with your colony!' },
+                    stentor: { pred: 'None — apex filter feeder!', warn: 'Anchor and create food vortices.' },
+                    tardigrade: { pred: 'None — nearly indestructible', warn: 'You can survive extreme conditions!' },
+                    spirillum: { pred: 'WBCs & Bacteriophages', warn: 'Immune cells are hunting you!' }
+                  };
+                  var pInfo = predatorInfo[org.id] || { pred: 'Various predators', warn: 'Stay alert!' };
+                  return React.createElement("div", {
+                    className: "absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-30",
+                    style: { animation: 'fadeIn 0.3s ease-out' }
+                  },
+                    React.createElement("div", { className: "bg-white rounded-2xl shadow-2xl max-w-sm w-full mx-4 overflow-hidden", style: { animation: 'slideUp 0.3s ease-out' } },
+                      // Header
+                      React.createElement("div", { className: "px-5 py-3 text-center", style: { background: 'linear-gradient(135deg, ' + org.color + ', ' + org.color + 'cc)' } },
+                        React.createElement("div", { className: "text-3xl mb-1" }, org.icon),
+                        React.createElement("h3", { className: "text-white font-black text-base" }, "Playing as " + org.label),
+                        React.createElement("p", { className: "text-white/80 text-[11px] mt-0.5" }, org.desc)
+                      ),
+                      // Body
+                      React.createElement("div", { className: "px-5 py-4 space-y-3" },
+                        // Goal
+                        React.createElement("div", { className: "flex items-start gap-2" },
+                          React.createElement("span", { className: "text-lg flex-shrink-0" }, "\uD83C\uDFAF"),
+                          React.createElement("div", null,
+                            React.createElement("p", { className: "text-xs font-black text-slate-700" }, "Goal: " + org.activity),
+                            React.createElement("p", { className: "text-[11px] text-slate-500" }, org.activityDesc + " Earn +" + org.xp + " XP per success!")
+                          )
+                        ),
+                        // Controls
+                        React.createElement("div", { className: "flex items-start gap-2" },
+                          React.createElement("span", { className: "text-lg flex-shrink-0" }, "\uD83C\uDFAE"),
+                          React.createElement("div", null,
+                            React.createElement("p", { className: "text-xs font-black text-slate-700" }, "Controls"),
+                            React.createElement("div", { className: "flex gap-1 mt-1" },
+                              ["W/\u2191", "A/\u2190", "S/\u2193", "D/\u2192"].map(function (k) {
+                                return React.createElement("span", { key: k, className: "px-1.5 py-0.5 bg-slate-100 rounded text-[10px] font-mono font-bold text-slate-600 border border-slate-200" }, k);
+                              })
+                            ),
+                            React.createElement("p", { className: "text-[10px] text-slate-400 mt-0.5" }, "Move your organism to interact with the environment")
+                          )
+                        ),
+                        // Predators/Dangers
+                        React.createElement("div", { className: "flex items-start gap-2 bg-red-50 rounded-lg p-2 -mx-1" },
+                          React.createElement("span", { className: "text-lg flex-shrink-0" }, "\u26A0\uFE0F"),
+                          React.createElement("div", null,
+                            React.createElement("p", { className: "text-xs font-black text-red-700" }, "Danger: " + pInfo.pred),
+                            React.createElement("p", { className: "text-[11px] text-red-600/80" }, pInfo.warn)
+                          )
+                        )
+                      ),
+                      // Footer
+                      React.createElement("div", { className: "px-5 pb-4" },
+                        React.createElement("button", {
+                          onClick: function () { upd("showPlayInstructions", false); },
+                          className: "w-full py-2.5 rounded-xl text-white font-bold text-sm shadow-lg hover:shadow-xl transition-all hover:scale-[1.02]",
+                          style: { background: 'linear-gradient(135deg, ' + org.color + ', ' + org.color + 'cc)' }
+                        }, "\uD83D\uDE80 Got it — Let's Go!")
+                      )
+                    )
+                  );
+                })()
               ),
 
               // Organism selector buttons
@@ -6759,6 +6868,7 @@
                   d.mode === 'play' && React.createElement("button", {
                     onClick: function () {
                       upd("playAsOrganism", selDef.id);
+                      upd("showPlayInstructions", true);
                       var cv = document.querySelector('[data-cell-sim-canvas]');
                       if (cv) {
                         cv._cellSimSetPlayAs(selDef.id);
@@ -25298,7 +25408,7 @@
 
             // ── Anatomy viewer state ──
             var viewingAnatomy = d.viewingAnatomy || null;
-            var anatomyHighlight = d.anatomyHighlight || null;
+            var anatomyHighlight = d.anatomyHighlight != null ? d.anatomyHighlight : null;
 
             var openAnatomy = function (speciesId) {
               updMulti({ viewingAnatomy: speciesId, anatomyHighlight: null });
@@ -26034,6 +26144,102 @@
                 }
               });
 
+              // ── Hunger consequences (starvation & cannibalism) ──
+              var species = SPECIES_BY_TANK[selectedTank] || [];
+              var fishToRemove = [];
+              var newStress = Object.assign({}, fishStress);
+
+              // Check each fish for starvation
+              tankFish.forEach(function (fId, idx) {
+                var hunger = newHunger[fId] !== undefined ? newHunger[fId] : 50;
+                if (hunger >= 100) {
+                  // Starvation death — 25% chance per tick at max hunger
+                  if (Math.random() < 0.25) {
+                    var sp = species.find(function (s) { return s.id === fId; });
+                    fishToRemove.push(idx);
+                    newLog.push({ tick: newTick, msg: '\u2620\uFE0F ' + (sp ? sp.name : fId) + ' has died from starvation!' });
+                  }
+                }
+                // Predator cannibalism — large predatory fish may eat smaller tankmates
+                if (hunger > 80) {
+                  var predSp = species.find(function (s) { return s.id === fId; });
+                  if (predSp && predSp.diet && /carnivore|piscivore|predator/i.test(predSp.diet)) {
+                    // Find a smaller incompatible prey in the tank
+                    var preyIdx = -1;
+                    tankFish.forEach(function (pId, pi) {
+                      if (pi === idx || fishToRemove.indexOf(pi) !== -1) return;
+                      if (pId === fId) return; // don't eat own species
+                      var preySp = species.find(function (s) { return s.id === pId; });
+                      if (preySp && preySp.load < predSp.load && predSp.compat.indexOf(pId) === -1) {
+                        if (preyIdx === -1 || Math.random() < 0.5) preyIdx = pi;
+                      }
+                    });
+                    if (preyIdx !== -1 && Math.random() < 0.12) {
+                      var preySp = species.find(function (s) { return s.id === tankFish[preyIdx]; });
+                      fishToRemove.push(preyIdx);
+                      newHunger[fId] = Math.max(0, hunger - 40); // predator is fed
+                      newLog.push({ tick: newTick, msg: '\uD83D\uDE31 ' + predSp.name + ' has eaten a ' + (preySp ? preySp.name : 'tankmate') + '! (Predator was starving)' });
+                    }
+                  }
+                }
+              });
+
+              // ── Species aggression & territorial fighting ──
+              var tank = TANK_TYPES.find(function (t) { return t.id === selectedTank; });
+              var maxLoad = tank ? Math.floor(tank.size / 2) : 10;
+              var currentLoad = tankFish.reduce(function (s, f) { var sp = species.find(function (x) { return x.id === f; }); return s + (sp ? sp.load : 0); }, 0);
+              var overcrowded = currentLoad > maxLoad * 0.85;
+
+              // Count each species
+              var speciesCounts = {};
+              tankFish.forEach(function (fId) {
+                speciesCounts[fId] = (speciesCounts[fId] || 0) + 1;
+              });
+
+              // Check incompatible pairings
+              var uniqueSpecies = Object.keys(speciesCounts);
+              for (var si = 0; si < uniqueSpecies.length; si++) {
+                for (var sj = si + 1; sj < uniqueSpecies.length; sj++) {
+                  var sp1 = species.find(function (s) { return s.id === uniqueSpecies[si]; });
+                  var sp2 = species.find(function (s) { return s.id === uniqueSpecies[sj]; });
+                  if (!sp1 || !sp2) continue;
+                  var compatible = sp1.compat && sp1.compat.indexOf(sp2.id) !== -1;
+                  if (!compatible) {
+                    // Aggression chance increases with overcrowding and hunger
+                    var aggressionChance = overcrowded ? 0.08 : 0.03;
+                    var avgH = ((newHunger[sp1.id] || 50) + (newHunger[sp2.id] || 50)) / 2;
+                    if (avgH > 70) aggressionChance += 0.05;
+                    if (Math.random() < aggressionChance) {
+                      // Larger fish usually wins; loser gets stressed
+                      var attacker = sp1.load >= sp2.load ? sp1 : sp2;
+                      var defender = sp1.load >= sp2.load ? sp2 : sp1;
+                      newStress[defender.id] = Math.min(100, (newStress[defender.id] || 0) + 15);
+                      newStress[attacker.id] = Math.min(100, (newStress[attacker.id] || 0) + 5);
+                      newLog.push({ tick: newTick, msg: '\u2694\uFE0F ' + attacker.name + ' is fighting with ' + defender.name + '! (' + (overcrowded ? 'Overcrowded tank' : 'Incompatible species') + ')' });
+                      // If stress reaches critical, fish may die
+                      if ((newStress[defender.id] || 0) >= 90) {
+                        var defIdx = tankFish.indexOf(defender.id);
+                        if (defIdx !== -1 && fishToRemove.indexOf(defIdx) === -1) {
+                          fishToRemove.push(defIdx);
+                          newLog.push({ tick: newTick, msg: '\u2620\uFE0F ' + defender.name + ' has died from aggression injuries!' });
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+
+              // Apply fish removals (in reverse order to maintain indices)
+              if (fishToRemove.length > 0) {
+                fishToRemove.sort(function (a, b) { return b - a; }); // reverse sort
+                var newTankFish = tankFish.slice();
+                fishToRemove.forEach(function (ri) {
+                  if (ri >= 0 && ri < newTankFish.length) newTankFish.splice(ri, 1);
+                });
+                // Update tickUpdate later with new fish list
+                tankFish = newTankFish;
+              }
+
               // ── Algae growth ──
               var newAlgae = algaeLevel;
               if (lightsOn) {
@@ -26042,8 +26248,9 @@
                 newAlgae = Math.max(0, newAlgae - 0.3);
               }
 
-              var tickUpdate = { waterChem: newChem, simTick: newTick, hungerLevels: newHunger, eventLog: newLog.slice(-20), algaeLevel: Math.round(newAlgae * 10) / 10 };
+              var tickUpdate = { waterChem: newChem, simTick: newTick, hungerLevels: newHunger, eventLog: newLog.slice(-20), algaeLevel: Math.round(newAlgae * 10) / 10, fishStress: newStress };
               if (sickChanged) tickUpdate.fishSickness = newSickness;
+              if (fishToRemove.length > 0) tickUpdate.tankFish = tankFish;
               updMulti(tickUpdate);
             };
 
@@ -26257,7 +26464,7 @@
                 if (!plan) { closeAnatomy(); return null; }
                 var extraInfo = SPECIES_ANATOMY[viewingAnatomy] || {};
 
-                return React.createElement("div", { className: "bg-gradient-to-br from-slate-900/95 via-indigo-950/95 to-slate-900/95 rounded-2xl p-5 border-2 border-indigo-400/30 shadow-2xl animate-in fade-in duration-300 relative overflow-hidden" },
+                return React.createElement("div", { className: "bg-gradient-to-br from-slate-900/95 via-indigo-950/95 to-slate-900/95 rounded-2xl p-5 border-2 border-indigo-400/30 shadow-2xl animate-in fade-in duration-300 relative" },
                   // Subtle background pattern
                   React.createElement("div", { style: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'radial-gradient(circle at 20% 80%, rgba(99,102,241,0.08) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(34,211,238,0.06) 0%, transparent 50%)', pointerEvents: 'none' } }),
 
@@ -26275,7 +26482,7 @@
                   ),
 
                   // ── SVG Diagram with interactive labels ──
-                  React.createElement("div", { className: "relative bg-gradient-to-b from-slate-800/50 to-slate-900/50 rounded-xl p-4 mb-4 border border-slate-700/30" },
+                  React.createElement("div", { className: "relative bg-gradient-to-b from-slate-800/50 to-slate-900/50 rounded-xl p-4 mb-4 border border-slate-700/30", style: { overflow: 'visible' } },
                     // Render SVG diagram
                     React.createElement("div", {
                       dangerouslySetInnerHTML: { __html: plan.svg(400, 250, SPECIES_COLORS[viewingAnatomy]) },
@@ -26283,7 +26490,7 @@
                       style: { filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.3))' }
                     }),
                     // Clickable label dots overlaid on the diagram
-                    React.createElement("div", { style: { position: 'absolute', top: '16px', left: '16px', right: '16px', bottom: '16px' } },
+                    React.createElement("div", { style: { position: 'absolute', top: '16px', left: '16px', right: '16px', bottom: '16px', overflow: 'visible' } },
                       plan.parts.map(function (part, i) {
                         var isHighlighted = anatomyHighlight === i;
                         return React.createElement("div", {
@@ -26317,16 +26524,22 @@
                               style: { position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', fontSize: '8px', fontWeight: 'bold', color: isHighlighted ? '#164e63' : '#4338ca', lineHeight: 1 }
                             }, String(i + 1))
                           ),
-                          // Tooltip on highlight
-                          isHighlighted && React.createElement("div", {
-                            className: "absolute z-30",
-                            style: { top: '20px', left: '50%', transform: 'translateX(-50%)', minWidth: '200px' }
-                          },
-                            React.createElement("div", { className: "bg-slate-800/95 backdrop-blur-sm rounded-lg p-2.5 border border-cyan-500/30 shadow-xl" },
-                              React.createElement("p", { className: "text-[11px] font-bold text-cyan-300 mb-0.5" }, part.name),
-                              React.createElement("p", { className: "text-[10px] text-slate-300 leading-relaxed" }, part.desc)
-                            )
-                          )
+                          // Tooltip on highlight — flip above/below based on dot y-position
+                          isHighlighted && (() => {
+                            var flipUp = part.y < 30; // dots near top → show tooltip below; near bottom or middle → show above
+                            var tooltipStyle = flipUp
+                              ? { top: '22px', left: '50%', transform: 'translateX(-50%)', minWidth: '200px' }
+                              : { bottom: '22px', left: '50%', transform: 'translateX(-50%)', minWidth: '200px' };
+                            return React.createElement("div", {
+                              className: "absolute z-30",
+                              style: tooltipStyle
+                            },
+                              React.createElement("div", { className: "bg-slate-800/95 backdrop-blur-sm rounded-lg p-2.5 border border-cyan-500/30 shadow-xl" },
+                                React.createElement("p", { className: "text-[11px] font-bold text-cyan-300 mb-0.5" }, part.name),
+                                React.createElement("p", { className: "text-[10px] text-slate-300 leading-relaxed" }, part.desc)
+                              )
+                            );
+                          })()
                         );
                       })
                     )
