@@ -7,7 +7,7 @@
 // - Static assets (JS/CSS with hashes): Cache-first (immutable, never changes)
 // - Other requests: Network-first with cache fallback
 
-const CACHE_NAME = 'alloflow-v1';
+const CACHE_NAME = 'alloflow-v2';
 
 // Install: cache the main page on first load
 self.addEventListener('install', (event) => {
