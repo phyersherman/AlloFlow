@@ -4792,6 +4792,19 @@
             const upd = (key, val) => setLabToolData(prev => ({ ...prev, wave: { ...prev.wave, [key]: val } }));
             var waveMode = d.waveMode || 'free';
 
+            // ── Match Waveform XP check (called on slider change) ──
+            var checkWaveMatch = function (newAmp, newFreq) {
+              if (!d.matchTarget || d.matchXpClaimed) return;
+              var tAmp = d.matchTarget.amp, tFreq = d.matchTarget.freq;
+              var ampDiff = Math.abs(newAmp - tAmp) / tAmp;
+              var freqDiff = Math.abs(newFreq - tFreq) / tFreq;
+              var matchPct = Math.max(0, Math.round((1 - (ampDiff + freqDiff) / 2) * 100));
+              if (matchPct > 90) {
+                awardStemXP('wave-match', 10, 'Matched waveform (A=' + tAmp + ', f=' + tFreq + ')');
+                upd('matchXpClaimed', true);
+              }
+            };
+
             // Canvas-based animated wave
             const canvasRef = function (canvasEl) {
               if (!canvasEl) {
@@ -5318,7 +5331,7 @@
                   React.createElement("div", { key: s.k, className: "text-center bg-slate-50 rounded-lg p-2 border" },
                     React.createElement("label", { className: "text-[10px] font-bold text-slate-500 block" }, s.label),
                     React.createElement("span", { className: "text-sm font-bold text-slate-700 block" }, d[s.k] || (s.k === 'speed' ? 1 : d[s.k])),
-                    React.createElement("input", { type: "range", min: s.min, max: s.max, step: s.step, value: d[s.k] || (s.k === 'speed' ? 1 : 0), onChange: e => upd(s.k, parseFloat(e.target.value)), className: "w-full accent-cyan-600" })
+                    React.createElement("input", { type: "range", min: s.min, max: s.max, step: s.step, value: d[s.k] || (s.k === 'speed' ? 1 : 0), onChange: function (e) { var v = parseFloat(e.target.value); upd(s.k, v); if (s.k === 'amplitude' || s.k === 'frequency') { checkWaveMatch(s.k === 'amplitude' ? v : d.amplitude, s.k === 'frequency' ? v : d.frequency); } }, className: "w-full accent-cyan-600" })
                   )
                 )
               ),
@@ -5385,11 +5398,12 @@
                     var ta = tAmps[Math.floor(Math.random() * tAmps.length)];
                     var tf = tFreqs[Math.floor(Math.random() * tFreqs.length)];
                     upd('matchTarget', { amp: ta, freq: tf });
+                    upd('matchXpClaimed', false);
                     addToast(t('stem.wave.ud83cudfaf_match_the_yellow_dashed'), 'info');
                   }, className: "px-3 py-1.5 rounded-lg text-xs font-bold " + (d.matchTarget ? 'bg-amber-100 text-amber-700' : 'bg-amber-500 text-white') + " transition-all"
                 }, d.matchTarget ? "\uD83D\uDD04 New Target" : "\uD83C\uDFAF Match Waveform"),
                 d.matchTarget && React.createElement("button", {
-                  onClick: function () { upd('matchTarget', null); },
+                  onClick: function () { upd('matchTarget', null); upd('matchXpClaimed', false); },
                   className: "px-2 py-1 rounded-lg text-xs text-slate-500 hover:bg-slate-100"
                 }, "\u2715 Clear"),
                 d.quiz && d.quiz.score > 0 && React.createElement("span", { className: "text-xs font-bold text-emerald-600" }, "\u2B50 " + d.quiz.score + " correct")
@@ -5405,6 +5419,7 @@
                       key: opt, disabled: d.quiz.answered, onClick: function () {
                         var correct = opt === d.quiz.a;
                         upd('quiz', Object.assign({}, d.quiz, { answered: true, chosen: opt, score: d.quiz.score + (correct ? 1 : 0) }));
+                        if (correct) { awardStemXP('wave-quiz', 5, 'Wave quiz: ' + d.quiz.q); }
                         addToast(correct ? '\u2705 Correct!' : '\u274C The answer is ' + d.quiz.a, correct ? 'success' : 'error');
                       }, className: "px-3 py-2 rounded-lg text-sm font-bold border-2 transition-all " + cls
                     }, opt);
