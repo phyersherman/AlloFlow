@@ -1378,6 +1378,658 @@ Analyze which routines are behavioral hotspots and return ONLY valid JSON:
         );
     };
 
+    // ─── RecordReview ───────────────────────────────────────────────────
+    // Paste IEP/eval text → AI-powered structured summary
+    const RecordReview = ({ studentName, callGemini, t, addToast }) => {
+        const [text, setText] = useState('');
+        const [summary, setSummary] = useState(null);
+        const [loading, setLoading] = useState(false);
+
+        const handleSummarize = async () => {
+            if (!callGemini || text.trim().length < 50) return;
+            setLoading(true);
+            try {
+                const prompt = `You are a school psychologist reviewing educational documents for a student (codename: "${studentName || 'Student'}").
+
+PASTED DOCUMENT TEXT:
+${text.substring(0, 4000)}
+
+Analyze this document and return ONLY valid JSON:
+{
+  "documentType": "IEP" | "Evaluation Report" | "Progress Notes" | "Other",
+  "keyFindings": ["finding 1", "finding 2", "finding 3"],
+  "currentGoals": ["goal 1", "goal 2"],
+  "areasOfConcern": ["concern 1", "concern 2"],
+  "strengths": ["strength 1", "strength 2"],
+  "behavioralNotes": "any behavioral observations mentioned",
+  "recommendations": ["recommendation 1", "recommendation 2"],
+  "summary": "2-3 sentence overall summary"
+}`;
+                const result = await callGemini(prompt, true);
+                const cleaned = result.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+                let parsed;
+                try { parsed = JSON.parse(cleaned); }
+                catch { const m = result.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); else throw new Error('Parse failed'); }
+                setSummary(parsed);
+                if (addToast) addToast('Record review complete ✨', 'success');
+            } catch (err) {
+                warnLog('Record review failed:', err);
+                if (addToast) addToast('Review failed — try again', 'error');
+            } finally { setLoading(false); }
+        };
+
+        const renderSection = (icon, title, items) => {
+            if (!items || items.length === 0) return null;
+            return h('div', { className: 'mb-4' },
+                h('h4', { className: 'text-xs font-bold text-slate-600 uppercase mb-2 flex items-center gap-1' }, icon, ' ', title),
+                h('ul', { className: 'space-y-1' },
+                    items.map((item, i) => h('li', { key: i, className: 'text-sm text-slate-700 flex items-start gap-2' },
+                        h('span', { className: 'text-cyan-500 mt-0.5 shrink-0' }, '•'), item
+                    ))
+                )
+            );
+        };
+
+        return h('div', { className: 'max-w-3xl mx-auto space-y-4' },
+            h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4' },
+                h('h3', { className: 'text-sm font-black text-slate-800' }, '📄 ' + (t('behavior_lens.record.title') || 'Record Review')),
+                h('p', { className: 'text-xs text-slate-500' }, t('behavior_lens.record.desc') || 'Paste IEP goals, evaluation reports, or progress notes for AI-powered analysis.'),
+                h('textarea', {
+                    value: text,
+                    onChange: (e) => setText(e.target.value),
+                    placeholder: t('behavior_lens.record.placeholder') || 'Paste document text here...',
+                    rows: 8,
+                    className: 'w-full border border-slate-200 rounded-lg px-4 py-3 text-sm resize-y focus:ring-2 focus:ring-cyan-400 outline-none'
+                }),
+                h('button', {
+                    onClick: handleSummarize,
+                    disabled: loading || text.trim().length < 50,
+                    className: 'w-full py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl disabled:opacity-40 transition-all flex items-center justify-center gap-2'
+                }, loading ? '⏳ Analyzing...' : ('🧠 ' + (t('behavior_lens.record.analyze') || 'AI Summarize')))
+            ),
+            summary && h('div', { className: 'bg-cyan-50 rounded-xl border border-cyan-200 p-5 animate-in slide-in-from-bottom-4 duration-300 space-y-2' },
+                h('div', { className: 'flex items-center justify-between mb-3' },
+                    h('h3', { className: 'text-sm font-black text-cyan-800' }, '📋 Record Summary'),
+                    summary.documentType && h('span', { className: 'px-2 py-0.5 bg-cyan-100 text-cyan-700 rounded-full text-xs font-bold' }, summary.documentType)
+                ),
+                summary.summary && h('p', { className: 'text-sm text-cyan-700 bg-white p-3 rounded-lg border border-cyan-100 mb-3' }, summary.summary),
+                renderSection('🔍', 'Key Findings', summary.keyFindings),
+                renderSection('🎯', 'Current Goals', summary.currentGoals),
+                renderSection('⚠️', 'Areas of Concern', summary.areasOfConcern),
+                renderSection('💪', 'Strengths', summary.strengths),
+                renderSection('💡', 'Recommendations', summary.recommendations),
+                summary.behavioralNotes && h('div', { className: 'mt-3 p-3 bg-amber-50 rounded-lg border border-amber-200' },
+                    h('div', { className: 'text-xs font-bold text-amber-700 mb-1' }, '📝 Behavioral Notes'),
+                    h('p', { className: 'text-sm text-amber-600' }, summary.behavioralNotes)
+                )
+            )
+        );
+    };
+
+    // ─── HypothesisDiagram ──────────────────────────────────────────────
+    // Visual function hypothesis flow diagram
+    const HypothesisDiagram = ({ abcEntries, aiAnalysis, studentName, callGemini, t, addToast }) => {
+        const defaultBoxes = {
+            setting: 'Describe the setting or context...',
+            antecedent: 'What triggers the behavior?',
+            behavior: 'What does the behavior look like?',
+            consequence: 'What happens after?',
+            function: 'What need does it serve?'
+        };
+        const [boxes, setBoxes] = useState(defaultBoxes);
+        const [generating, setGenerating] = useState(false);
+
+        const handleGenerate = async () => {
+            if (!callGemini) return;
+            setGenerating(true);
+            try {
+                const dataStr = abcEntries.slice(0, 15).map((e, i) =>
+                    `#${i + 1}: A="${e.antecedent}", B="${e.behavior}", C="${e.consequence}"${e.setting ? ', Setting="' + e.setting + '"' : ''}`
+                ).join('\n');
+                const existing = aiAnalysis ? `\nExisting AI analysis: Function=${aiAnalysis.hypothesizedFunction}, Confidence=${aiAnalysis.confidence}%` : '';
+                const prompt = `You are a BCBA creating a functional behavior hypothesis diagram.
+
+ABC DATA (${abcEntries.length} entries):
+${dataStr}${existing}
+
+Create a hypothesis diagram and return ONLY valid JSON:
+{
+  "setting": "Brief description of typical setting events (1-2 sentences)",
+  "antecedent": "Most common triggering antecedent (1-2 sentences)",
+  "behavior": "Operationally defined target behavior (1-2 sentences)",
+  "consequence": "Most common maintaining consequence (1-2 sentences)",
+  "function": "Hypothesized function with brief rationale (1-2 sentences)"
+}`;
+                const result = await callGemini(prompt, true);
+                const cleaned = result.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+                let parsed;
+                try { parsed = JSON.parse(cleaned); }
+                catch { const m = result.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); else throw new Error('Parse failed'); }
+                setBoxes(parsed);
+                if (addToast) addToast('Hypothesis generated ✨', 'success');
+            } catch (err) {
+                warnLog('Hypothesis generation failed:', err);
+                if (addToast) addToast('Generation failed', 'error');
+            } finally { setGenerating(false); }
+        };
+
+        const fc = aiAnalysis?.hypothesizedFunction ? (FUNCTION_COLORS[aiAnalysis.hypothesizedFunction] || FUNCTION_COLORS['Attention']) : FUNCTION_COLORS['Attention'];
+        const diagramSteps = [
+            { key: 'setting', label: 'Setting Event', icon: '🏫', color: '#e0f2fe', border: '#38bdf8' },
+            { key: 'antecedent', label: 'Antecedent', icon: '🔺', color: '#fef3c7', border: '#f59e0b' },
+            { key: 'behavior', label: 'Behavior', icon: '⚡', color: '#fee2e2', border: '#ef4444' },
+            { key: 'consequence', label: 'Consequence', icon: '🔻', color: '#e0e7ff', border: '#6366f1' },
+            { key: 'function', label: 'Function', icon: fc.emoji, color: fc.bg, border: fc.border },
+        ];
+
+        return h('div', { className: 'max-w-4xl mx-auto space-y-4' },
+            // AI generate button
+            callGemini && h('button', {
+                onClick: handleGenerate,
+                disabled: generating || abcEntries.length < 2,
+                className: 'w-full py-3 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl disabled:opacity-40 transition-all flex items-center justify-center gap-2'
+            }, generating ? '⏳ Generating...' : ('🧠 ' + (t('behavior_lens.hypothesis.generate') || 'Generate Hypothesis from Data'))),
+            // Diagram
+            h('div', { className: 'bg-white rounded-xl border border-slate-200 p-6 shadow-sm' },
+                h('h3', { className: 'text-sm font-black text-slate-800 mb-6 text-center' }, '🔗 ' + (t('behavior_lens.hypothesis.title') || 'Functional Hypothesis Diagram')),
+                h('div', { className: 'space-y-3' },
+                    diagramSteps.map((step, idx) =>
+                        h('div', { key: step.key },
+                            h('div', {
+                                className: 'rounded-xl p-4 border-2 transition-all',
+                                style: { background: step.color, borderColor: step.border }
+                            },
+                                h('div', { className: 'flex items-center gap-2 mb-2' },
+                                    h('span', { className: 'text-lg' }, step.icon),
+                                    h('span', { className: 'text-xs font-black uppercase tracking-wide', style: { color: step.border } }, step.label)
+                                ),
+                                h('textarea', {
+                                    value: boxes[step.key] || '',
+                                    onChange: (e) => setBoxes(prev => ({ ...prev, [step.key]: e.target.value })),
+                                    rows: 2,
+                                    className: 'w-full bg-white/70 rounded-lg px-3 py-2 text-sm border border-transparent focus:border-slate-300 focus:ring-1 focus:ring-slate-200 outline-none resize-none'
+                                })
+                            ),
+                            idx < diagramSteps.length - 1 && h('div', { className: 'flex justify-center py-1' },
+                                h('div', { className: 'text-slate-300 text-xl' }, '↓')
+                            )
+                        )
+                    )
+                )
+            )
+        );
+    };
+
+    // ─── SmartGoalBuilder ───────────────────────────────────────────────
+    // SMART goal construction wizard with AI suggestions
+    const SmartGoalBuilder = ({ abcEntries, aiAnalysis, studentName, callGemini, t, addToast }) => {
+        const [specific, setSpecific] = useState('');
+        const [measurable, setMeasurable] = useState('');
+        const [achievable, setAchievable] = useState('');
+        const [relevant, setRelevant] = useState('');
+        const [timeBound, setTimeBound] = useState('');
+        const [savedGoals, setSavedGoals] = useState([]);
+        const [suggesting, setSuggesting] = useState(false);
+        const [suggestions, setSuggestions] = useState(null);
+
+        const goalPreview = useMemo(() => {
+            const parts = [specific, measurable, achievable, relevant, timeBound].filter(Boolean);
+            if (parts.length === 0) return '';
+            return `${studentName || 'The student'} will ${specific || '___'}${measurable ? ', as measured by ' + measurable : ''}${achievable ? ', with support of ' + achievable : ''}${relevant ? ', in order to ' + relevant : ''}${timeBound ? ', by ' + timeBound : ''}.`;
+        }, [specific, measurable, achievable, relevant, timeBound, studentName]);
+
+        const handleSuggest = async () => {
+            if (!callGemini) return;
+            setSuggesting(true);
+            try {
+                const funcStr = aiAnalysis?.hypothesizedFunction || 'unknown';
+                const prompt = `You are a BCBA writing SMART behavioral goals for a student.
+
+Hypothesized function: ${funcStr}
+ABC entries: ${abcEntries.length}
+${aiAnalysis?.summary ? 'Analysis summary: ' + aiAnalysis.summary : ''}
+
+Generate 3 SMART behavioral goals and return ONLY valid JSON:
+{
+  "goals": [
+    {
+      "specific": "specific behavior target",
+      "measurable": "how it will be measured",
+      "achievable": "supports and scaffolds",
+      "relevant": "connection to function/need",
+      "timeBound": "timeline",
+      "preview": "full goal statement"
+    }
+  ]
+}`;
+                const result = await callGemini(prompt, true);
+                const cleaned = result.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+                let parsed;
+                try { parsed = JSON.parse(cleaned); }
+                catch { const m = result.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); else throw new Error('Parse failed'); }
+                setSuggestions(parsed.goals || []);
+                if (addToast) addToast('Goals suggested ✨', 'success');
+            } catch (err) {
+                warnLog('Goal suggestion failed:', err);
+                if (addToast) addToast('Suggestion failed', 'error');
+            } finally { setSuggesting(false); }
+        };
+
+        const saveGoal = () => {
+            if (!specific) return;
+            setSavedGoals(prev => [...prev, { id: uid(), specific, measurable, achievable, relevant, timeBound, preview: goalPreview, createdAt: new Date().toISOString() }]);
+            setSpecific(''); setMeasurable(''); setAchievable(''); setRelevant(''); setTimeBound('');
+            if (addToast) addToast('Goal saved ✅', 'success');
+        };
+
+        const applySuggestion = (goal) => {
+            setSpecific(goal.specific || '');
+            setMeasurable(goal.measurable || '');
+            setAchievable(goal.achievable || '');
+            setRelevant(goal.relevant || '');
+            setTimeBound(goal.timeBound || '');
+            setSuggestions(null);
+        };
+
+        const smartFields = [
+            { key: 'S', label: 'Specific', value: specific, set: setSpecific, placeholder: 'What behavior will change?', color: '#3b82f6' },
+            { key: 'M', label: 'Measurable', value: measurable, set: setMeasurable, placeholder: 'How will progress be measured?', color: '#10b981' },
+            { key: 'A', label: 'Achievable', value: achievable, set: setAchievable, placeholder: 'What supports are needed?', color: '#f59e0b' },
+            { key: 'R', label: 'Relevant', value: relevant, set: setRelevant, placeholder: 'Why does this matter?', color: '#8b5cf6' },
+            { key: 'T', label: 'Time-Bound', value: timeBound, set: setTimeBound, placeholder: 'By when?', color: '#ef4444' },
+        ];
+
+        return h('div', { className: 'max-w-3xl mx-auto space-y-4' },
+            // AI suggest
+            callGemini && h('button', {
+                onClick: handleSuggest,
+                disabled: suggesting,
+                className: 'w-full py-3 bg-gradient-to-r from-lime-500 to-emerald-500 text-white rounded-xl font-bold shadow-lg hover:shadow-xl disabled:opacity-40 transition-all'
+            }, suggesting ? '⏳ Generating...' : ('🧠 ' + (t('behavior_lens.goals.suggest') || 'AI Suggest Goals'))),
+            // Suggestions
+            suggestions && suggestions.length > 0 && h('div', { className: 'bg-lime-50 rounded-xl border border-lime-200 p-4 space-y-2' },
+                h('h4', { className: 'text-xs font-bold text-lime-700 uppercase mb-2' }, '💡 AI Suggestions — tap to apply'),
+                suggestions.map((g, i) => h('button', {
+                    key: i,
+                    onClick: () => applySuggestion(g),
+                    className: 'w-full text-left p-3 bg-white rounded-lg border border-lime-200 hover:border-lime-400 transition-all text-sm text-slate-700'
+                }, g.preview || g.specific))
+            ),
+            // SMART form
+            h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-3' },
+                h('h3', { className: 'text-sm font-black text-slate-800 mb-2' }, '🎯 ' + (t('behavior_lens.goals.title') || 'SMART Goal Builder')),
+                smartFields.map(f =>
+                    h('div', { key: f.key, className: 'flex items-start gap-3' },
+                        h('div', {
+                            className: 'w-8 h-8 rounded-lg flex items-center justify-center text-white font-black text-sm shrink-0 mt-1',
+                            style: { background: f.color }
+                        }, f.key),
+                        h('div', { className: 'flex-1' },
+                            h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase' }, f.label),
+                            h('input', {
+                                value: f.value,
+                                onChange: (e) => f.set(e.target.value),
+                                placeholder: f.placeholder,
+                                className: 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 outline-none mt-0.5',
+                                style: { '--tw-ring-color': f.color }
+                            })
+                        )
+                    )
+                )
+            ),
+            // Preview
+            goalPreview && h('div', { className: 'bg-gradient-to-r from-lime-50 to-emerald-50 rounded-xl border border-lime-200 p-5' },
+                h('div', { className: 'text-xs font-bold text-lime-700 uppercase mb-2' }, '📝 Goal Preview'),
+                h('p', { className: 'text-sm text-slate-800 font-medium leading-relaxed' }, goalPreview),
+                h('button', {
+                    onClick: saveGoal,
+                    className: 'mt-3 px-4 py-2 bg-lime-500 text-white rounded-lg font-bold text-sm hover:bg-lime-400 transition-all'
+                }, '✓ ' + (t('behavior_lens.goals.save') || 'Save Goal'))
+            ),
+            // Saved goals
+            savedGoals.length > 0 && h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm' },
+                h('h4', { className: 'text-xs font-bold text-slate-600 uppercase mb-3' }, `📋 Saved Goals (${savedGoals.length})`),
+                h('div', { className: 'space-y-2' },
+                    savedGoals.map(g => h('div', { key: g.id, className: 'p-3 bg-slate-50 rounded-lg border border-slate-100 text-sm text-slate-700' },
+                        h('p', null, g.preview),
+                        h('div', { className: 'text-[10px] text-slate-400 mt-1' }, fmtDate(g.createdAt))
+                    ))
+                )
+            )
+        );
+    };
+
+    // ─── BehaviorContract ───────────────────────────────────────────────
+    // AI-assisted behavior contract builder
+    const BehaviorContract = ({ studentName, abcEntries, aiAnalysis, callGemini, t, addToast }) => {
+        const [target, setTarget] = useState('');
+        const [studentExpectations, setStudentExpectations] = useState('');
+        const [rewards, setRewards] = useState('');
+        const [teacherSupports, setTeacherSupports] = useState('');
+        const [consequences, setConsequences] = useState('');
+        const [duration, setDuration] = useState('2 weeks');
+        const [drafting, setDrafting] = useState(false);
+        const [drafted, setDrafted] = useState(false);
+
+        const handleDraft = async () => {
+            if (!callGemini) return;
+            setDrafting(true);
+            try {
+                const funcStr = aiAnalysis?.hypothesizedFunction || 'unknown';
+                const prompt = `You are a BCBA drafting a behavior contract for a student (codename: "${studentName || 'Student'}").
+
+Hypothesized function: ${funcStr}
+${aiAnalysis?.summary ? 'Analysis: ' + aiAnalysis.summary : ''}
+ABC entries: ${abcEntries.length}
+
+Generate a behavior contract and return ONLY valid JSON:
+{
+  "targetBehavior": "operationally defined target behavior",
+  "studentExpectations": "what the student agrees to do (2-3 bullet points joined with semicolons)",
+  "rewards": "positive reinforcement for meeting expectations",
+  "teacherSupports": "what the teacher will provide (2-3 bullet points joined with semicolons)",
+  "consequences": "what happens if expectations are not met",
+  "duration": "recommended contract duration"
+}`;
+                const result = await callGemini(prompt, true);
+                const cleaned = result.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+                let parsed;
+                try { parsed = JSON.parse(cleaned); }
+                catch { const m = result.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); else throw new Error('Parse failed'); }
+                setTarget(parsed.targetBehavior || '');
+                setStudentExpectations(parsed.studentExpectations || '');
+                setRewards(parsed.rewards || '');
+                setTeacherSupports(parsed.teacherSupports || '');
+                setConsequences(parsed.consequences || '');
+                setDuration(parsed.duration || '2 weeks');
+                setDrafted(true);
+                if (addToast) addToast('Contract drafted ✨', 'success');
+            } catch (err) {
+                warnLog('Contract drafting failed:', err);
+                if (addToast) addToast('Drafting failed', 'error');
+            } finally { setDrafting(false); }
+        };
+
+        const handlePrint = () => { window.print(); };
+
+        return h('div', { className: 'max-w-3xl mx-auto space-y-4' },
+            // AI draft button
+            callGemini && h('button', {
+                onClick: handleDraft,
+                disabled: drafting,
+                className: 'w-full py-3 bg-gradient-to-r from-fuchsia-500 to-pink-500 text-white rounded-xl font-bold shadow-lg hover:shadow-xl disabled:opacity-40 transition-all'
+            }, drafting ? '⏳ Drafting...' : ('🧠 ' + (t('behavior_lens.contract.draft') || 'AI Draft Contract'))),
+            // Contract form
+            h('div', { id: 'behavior-contract-printable', className: 'bg-white rounded-xl border-2 border-fuchsia-200 p-6 shadow-sm space-y-4 print:border-black print:shadow-none' },
+                h('div', { className: 'text-center border-b border-slate-200 pb-4 mb-4' },
+                    h('h2', { className: 'text-xl font-black text-slate-800' }, '📜 ' + (t('behavior_lens.contract.title') || 'Behavior Contract')),
+                    h('p', { className: 'text-xs text-slate-500 mt-1' }, `Student: ${studentName || '___'} | Duration: ${duration}`)
+                ),
+                // Target behavior
+                h('div', null,
+                    h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-1' }, '🎯 Target Behavior'),
+                    h('textarea', { value: target, onChange: (e) => setTarget(e.target.value), rows: 2, className: 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-fuchsia-400 outline-none resize-none' })
+                ),
+                // Two columns
+                h('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-4' },
+                    h('div', { className: 'bg-blue-50 rounded-xl p-4 border border-blue-200' },
+                        h('h4', { className: 'text-xs font-black text-blue-700 uppercase mb-2' }, '👤 Student Agrees To'),
+                        h('textarea', { value: studentExpectations, onChange: (e) => setStudentExpectations(e.target.value), rows: 3, className: 'w-full bg-white/70 rounded-lg px-3 py-2 text-sm border border-blue-100 resize-none outline-none' })
+                    ),
+                    h('div', { className: 'bg-emerald-50 rounded-xl p-4 border border-emerald-200' },
+                        h('h4', { className: 'text-xs font-black text-emerald-700 uppercase mb-2' }, '👩‍🏫 Teacher Will Provide'),
+                        h('textarea', { value: teacherSupports, onChange: (e) => setTeacherSupports(e.target.value), rows: 3, className: 'w-full bg-white/70 rounded-lg px-3 py-2 text-sm border border-emerald-100 resize-none outline-none' })
+                    )
+                ),
+                h('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-4' },
+                    h('div', { className: 'bg-amber-50 rounded-xl p-4 border border-amber-200' },
+                        h('h4', { className: 'text-xs font-black text-amber-700 uppercase mb-2' }, '🎁 Rewards'),
+                        h('textarea', { value: rewards, onChange: (e) => setRewards(e.target.value), rows: 2, className: 'w-full bg-white/70 rounded-lg px-3 py-2 text-sm border border-amber-100 resize-none outline-none' })
+                    ),
+                    h('div', { className: 'bg-red-50 rounded-xl p-4 border border-red-200' },
+                        h('h4', { className: 'text-xs font-black text-red-700 uppercase mb-2' }, '⚠️ If Not Met'),
+                        h('textarea', { value: consequences, onChange: (e) => setConsequences(e.target.value), rows: 2, className: 'w-full bg-white/70 rounded-lg px-3 py-2 text-sm border border-red-100 resize-none outline-none' })
+                    )
+                ),
+                // Signature lines
+                h('div', { className: 'grid grid-cols-2 gap-8 pt-4 border-t border-slate-200 mt-4' },
+                    h('div', null,
+                        h('div', { className: 'border-b border-slate-400 mb-1 h-8' }),
+                        h('div', { className: 'text-[10px] text-slate-500 font-bold' }, 'Student Signature / Date')
+                    ),
+                    h('div', null,
+                        h('div', { className: 'border-b border-slate-400 mb-1 h-8' }),
+                        h('div', { className: 'text-[10px] text-slate-500 font-bold' }, 'Teacher Signature / Date')
+                    )
+                )
+            ),
+            // Print button
+            h('button', {
+                onClick: handlePrint,
+                className: 'w-full py-2 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all print:hidden'
+            }, '🖨️ ' + (t('behavior_lens.contract.print') || 'Print Contract'))
+        );
+    };
+
+    // ─── ActingOutCycle ─────────────────────────────────────────────────
+    // Colvin & Sugai 7-phase acting-out cycle visualizer
+    const ActingOutCycle = ({ abcEntries, aiAnalysis, studentName, callGemini, t, addToast }) => {
+        const phases = [
+            { name: 'Calm', icon: '😌', color: '#22c55e', bg: '#f0fdf4', signs: 'Cooperative, on-task, following routines', response: 'Reinforce positive behavior, build rapport' },
+            { name: 'Triggers', icon: '⚡', color: '#eab308', bg: '#fefce8', signs: 'Subtle changes in body language, withdrawal', response: 'Remove/reduce trigger, redirect calmly' },
+            { name: 'Agitation', icon: '😤', color: '#f97316', bg: '#fff7ed', signs: 'Off-task, fidgeting, non-compliance begins', response: 'Offer choices, use proximity, check in privately' },
+            { name: 'Acceleration', icon: '🔥', color: '#ef4444', bg: '#fef2f2', signs: 'Escalating defiance, arguing, disruptive', response: 'Avoid power struggles, state expectations calmly, clear the area if needed' },
+            { name: 'Peak', icon: '💥', color: '#dc2626', bg: '#fee2e2', signs: 'Most severe behavior, loss of control', response: 'Focus on safety, use crisis protocols, document' },
+            { name: 'De-escalation', icon: '🌊', color: '#3b82f6', bg: '#eff6ff', signs: 'Confusion, withdrawal, reduced intensity', response: 'Allow space, avoid debriefing too soon, quiet environment' },
+            { name: 'Recovery', icon: '🌱', color: '#06b6d4', bg: '#ecfeff', signs: 'Returning to baseline, may be subdued', response: 'Rebuild relationship, gentle re-engagement, debrief when ready' },
+        ];
+        const [selected, setSelected] = useState(null);
+        const [personalizing, setPersonalizing] = useState(false);
+        const [personalized, setPersonalized] = useState({});
+
+        const handlePersonalize = async () => {
+            if (!callGemini) return;
+            setPersonalizing(true);
+            try {
+                const dataStr = abcEntries.slice(0, 10).map((e, i) =>
+                    `#${i + 1}: A="${e.antecedent}", B="${e.behavior}", C="${e.consequence}", Intensity=${e.intensity}/5`
+                ).join('\n');
+                const prompt = `You are a BCBA personalizing a Colvin & Sugai acting-out cycle for a student.
+
+ABC DATA:
+${dataStr}
+${aiAnalysis?.summary ? 'Analysis: ' + aiAnalysis.summary : ''}
+
+Personalize each phase of the cycle and return ONLY valid JSON:
+{
+  "Calm": { "signs": "personalized signs for this student", "response": "personalized staff response" },
+  "Triggers": { "signs": "...", "response": "..." },
+  "Agitation": { "signs": "...", "response": "..." },
+  "Acceleration": { "signs": "...", "response": "..." },
+  "Peak": { "signs": "...", "response": "..." },
+  "De-escalation": { "signs": "...", "response": "..." },
+  "Recovery": { "signs": "...", "response": "..." }
+}`;
+                const result = await callGemini(prompt, true);
+                const cleaned = result.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+                let parsed;
+                try { parsed = JSON.parse(cleaned); }
+                catch { const m = result.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); else throw new Error('Parse failed'); }
+                setPersonalized(parsed);
+                if (addToast) addToast('Cycle personalized ✨', 'success');
+            } catch (err) {
+                warnLog('Personalization failed:', err);
+                if (addToast) addToast('Personalization failed', 'error');
+            } finally { setPersonalizing(false); }
+        };
+
+        return h('div', { className: 'max-w-3xl mx-auto space-y-4' },
+            // AI personalize button
+            callGemini && h('button', {
+                onClick: handlePersonalize,
+                disabled: personalizing || abcEntries.length < 2,
+                className: 'w-full py-3 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-xl font-bold shadow-lg hover:shadow-xl disabled:opacity-40 transition-all'
+            }, personalizing ? '⏳ Personalizing...' : ('🧠 ' + (t('behavior_lens.cycle.personalize') || 'Personalize for This Student'))),
+            // Cycle visualization
+            h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm' },
+                h('h3', { className: 'text-sm font-black text-slate-800 mb-4 text-center' }, '🔄 ' + (t('behavior_lens.cycle.title') || 'Acting-Out Cycle (Colvin & Sugai)')),
+                h('div', { className: 'space-y-2' },
+                    phases.map((phase, idx) => {
+                        const p = personalized[phase.name] || {};
+                        const isSelected = selected === idx;
+                        return h('div', { key: phase.name },
+                            h('button', {
+                                onClick: () => setSelected(isSelected ? null : idx),
+                                className: 'w-full text-left rounded-xl p-4 border-2 transition-all hover:shadow-md',
+                                style: { background: phase.bg, borderColor: isSelected ? phase.color : 'transparent' }
+                            },
+                                h('div', { className: 'flex items-center justify-between' },
+                                    h('div', { className: 'flex items-center gap-3' },
+                                        h('span', { className: 'text-2xl' }, phase.icon),
+                                        h('div', null,
+                                            h('div', { className: 'font-black text-sm', style: { color: phase.color } },
+                                                `${idx + 1}. ${phase.name}`
+                                            ),
+                                            !isSelected && h('div', { className: 'text-xs text-slate-500 mt-0.5' }, p.signs || phase.signs)
+                                        )
+                                    ),
+                                    h('span', { className: 'text-slate-400 text-sm' }, isSelected ? '▼' : '▶')
+                                )
+                            ),
+                            isSelected && h('div', { className: 'mx-4 p-4 bg-white rounded-b-xl border border-t-0 border-slate-200 space-y-3 animate-in slide-in-from-top-2 duration-200' },
+                                h('div', null,
+                                    h('div', { className: 'text-[10px] font-bold text-slate-500 uppercase mb-0.5' }, '👀 Observable Signs'),
+                                    h('p', { className: 'text-sm text-slate-700' }, p.signs || phase.signs)
+                                ),
+                                h('div', null,
+                                    h('div', { className: 'text-[10px] font-bold text-slate-500 uppercase mb-0.5' }, '🛡️ Recommended Response'),
+                                    h('p', { className: 'text-sm text-slate-700' }, p.response || phase.response)
+                                )
+                            )
+                        );
+                    })
+                )
+            )
+        );
+    };
+
+    // ─── ReinforcerAssessment ───────────────────────────────────────────
+    // Preference inventory across 5 categories with AI suggestions
+    const ReinforcerAssessment = ({ studentName, aiAnalysis, callGemini, t, addToast }) => {
+        const categories = {
+            social: { label: 'Social', icon: '👥', items: ['Verbal praise', 'High-five/fist bump', 'Lunch with teacher', 'Phone call home', 'Peer recognition', 'Leadership role'] },
+            activity: { label: 'Activity', icon: '🎮', items: ['Extra recess', 'Free choice time', 'Computer time', 'Read aloud to class', 'Helper role', 'Drawing time'] },
+            tangible: { label: 'Tangible', icon: '🎁', items: ['Stickers', 'Pencils/erasers', 'Bookmarks', 'Certificates', 'Class store credits', 'Special seating'] },
+            sensory: { label: 'Sensory', icon: '🌀', items: ['Fidget tool', 'Noise-canceling headphones', 'Movement break', 'Quiet corner', 'Weighted lap pad', 'Music listening'] },
+            edible: { label: 'Food/Drink', icon: '🍎', items: ['Healthy snack', 'Water bottle refill', 'Special lunch item', 'Gum/mints'] }
+        };
+        const [ratings, setRatings] = useState({});
+        const [aiSuggestions, setAiSuggestions] = useState(null);
+        const [suggesting, setSuggesting] = useState(false);
+
+        const setRating = (item, value) => {
+            setRatings(prev => ({ ...prev, [item]: prev[item] === value ? 0 : value }));
+        };
+
+        const rankedItems = useMemo(() => {
+            return Object.entries(ratings)
+                .filter(([_, v]) => v > 0)
+                .sort((a, b) => b[1] - a[1]);
+        }, [ratings]);
+
+        const handleSuggest = async () => {
+            if (!callGemini) return;
+            setSuggesting(true);
+            try {
+                const funcStr = aiAnalysis?.hypothesizedFunction || 'unknown';
+                const topRated = rankedItems.slice(0, 5).map(([item, rating]) => `${item} (${rating}/5)`).join(', ');
+                const prompt = `You are a BCBA selecting reinforcers for a student.
+
+Hypothesized function: ${funcStr}
+${topRated ? 'Top-rated reinforcers: ' + topRated : 'No ratings yet.'}
+${aiAnalysis?.summary ? 'Analysis: ' + aiAnalysis.summary : ''}
+
+Recommend reinforcers and return ONLY valid JSON:
+{
+  "recommendations": [
+    { "reinforcer": "name", "rationale": "why this works for this function", "category": "social/activity/tangible/sensory/edible" }
+  ],
+  "tips": "1-2 sentences on reinforcer delivery strategy"
+}`;
+                const result = await callGemini(prompt, true);
+                const cleaned = result.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+                let parsed;
+                try { parsed = JSON.parse(cleaned); }
+                catch { const m = result.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); else throw new Error('Parse failed'); }
+                setAiSuggestions(parsed);
+                if (addToast) addToast('Reinforcers recommended ✨', 'success');
+            } catch (err) {
+                warnLog('Reinforcer suggestion failed:', err);
+                if (addToast) addToast('Suggestion failed', 'error');
+            } finally { setSuggesting(false); }
+        };
+
+        return h('div', { className: 'max-w-3xl mx-auto space-y-4' },
+            // AI suggest
+            callGemini && h('button', {
+                onClick: handleSuggest,
+                disabled: suggesting,
+                className: 'w-full py-3 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-xl font-bold shadow-lg hover:shadow-xl disabled:opacity-40 transition-all'
+            }, suggesting ? '⏳ Analyzing...' : ('🧠 ' + (t('behavior_lens.reinforcer.suggest') || 'AI Recommend Reinforcers'))),
+            // AI suggestions
+            aiSuggestions && h('div', { className: 'bg-pink-50 rounded-xl border border-pink-200 p-5 animate-in slide-in-from-bottom-4 duration-300' },
+                h('h4', { className: 'text-sm font-black text-pink-800 mb-3' }, '🧠 AI Recommendations'),
+                aiSuggestions.recommendations && h('div', { className: 'space-y-2 mb-3' },
+                    aiSuggestions.recommendations.map((r, i) =>
+                        h('div', { key: i, className: 'flex items-start gap-2 p-2 bg-white rounded-lg border border-pink-100' },
+                            h('span', { className: 'text-pink-500 mt-0.5' }, '✓'),
+                            h('div', null,
+                                h('span', { className: 'text-sm font-bold text-slate-700' }, r.reinforcer),
+                                h('span', { className: 'text-xs text-slate-500 ml-2' }, r.rationale)
+                            )
+                        )
+                    )
+                ),
+                aiSuggestions.tips && h('p', { className: 'text-xs text-pink-600 italic' }, '💡 ' + aiSuggestions.tips)
+            ),
+            // Category sections
+            Object.entries(categories).map(([catKey, cat]) =>
+                h('div', { key: catKey, className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm' },
+                    h('h4', { className: 'text-sm font-black text-slate-800 mb-3 flex items-center gap-2' }, cat.icon, ' ', cat.label),
+                    h('div', { className: 'space-y-2' },
+                        cat.items.map(item =>
+                            h('div', { key: item, className: 'flex items-center justify-between' },
+                                h('span', { className: 'text-sm text-slate-700' }, item),
+                                h('div', { className: 'flex gap-1' },
+                                    [1, 2, 3, 4, 5].map(star =>
+                                        h('button', {
+                                            key: star,
+                                            onClick: () => setRating(item, star),
+                                            className: `text-lg transition-all ${(ratings[item] || 0) >= star ? 'text-amber-400 scale-110' : 'text-slate-200 hover:text-amber-200'}`
+                                        }, '★')
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            ),
+            // Ranked summary
+            rankedItems.length > 0 && h('div', { className: 'bg-amber-50 rounded-xl border border-amber-200 p-5' },
+                h('h4', { className: 'text-sm font-black text-amber-800 mb-3' }, '🏆 Top Preferences'),
+                h('div', { className: 'space-y-1' },
+                    rankedItems.slice(0, 8).map(([item, rating], i) =>
+                        h('div', { key: item, className: 'flex items-center gap-2 text-sm' },
+                            h('span', { className: 'text-xs font-bold text-amber-600 w-4' }, `${i + 1}.`),
+                            h('span', { className: 'text-slate-700' }, item),
+                            h('span', { className: 'text-amber-400 ml-auto' }, '★'.repeat(rating))
+                        )
+                    )
+                )
+            )
+        );
+    };
+
     // ─── BehaviorTab (Hub) ──────────────────────────────────────────────
     // The main hub component that renders inside a fullscreen overlay
     window.AlloModules = window.AlloModules || {};
@@ -1599,6 +2251,49 @@ Analyze this data and return ONLY valid JSON:
                     desc: t('behavior_lens.hub.export_desc') || 'Download behavioral data as JSON or formatted text reports',
                     color: 'slate',
                 },
+                {
+                    id: 'record',
+                    icon: '📄',
+                    title: t('behavior_lens.hub.record_title') || 'Record Review',
+                    desc: t('behavior_lens.hub.record_desc') || 'Paste IEP/eval text for AI-powered structured summary',
+                    color: 'cyan',
+                },
+                {
+                    id: 'hypothesis',
+                    icon: '🔗',
+                    title: t('behavior_lens.hub.hypothesis_title') || 'Hypothesis Diagram',
+                    desc: t('behavior_lens.hub.hypothesis_desc') || 'Visual function hypothesis flow from ABC data with AI generation',
+                    color: 'violet',
+                    disabled: abcEntries.length < 2,
+                },
+                {
+                    id: 'goals',
+                    icon: '🎯',
+                    title: t('behavior_lens.hub.goals_title') || 'SMART Goal Builder',
+                    desc: t('behavior_lens.hub.goals_desc') || 'Step-by-step behavioral goal construction with AI suggestions',
+                    color: 'lime',
+                },
+                {
+                    id: 'contract',
+                    icon: '📜',
+                    title: t('behavior_lens.hub.contract_title') || 'Behavior Contract',
+                    desc: t('behavior_lens.hub.contract_desc') || 'AI-drafted contract with student and teacher sections',
+                    color: 'fuchsia',
+                },
+                {
+                    id: 'cycle',
+                    icon: '🔄',
+                    title: t('behavior_lens.hub.cycle_title') || 'Acting-Out Cycle',
+                    desc: t('behavior_lens.hub.cycle_desc') || 'Colvin & Sugai 7-phase model with personalized strategies',
+                    color: 'red',
+                },
+                {
+                    id: 'reinforcer',
+                    icon: '🏆',
+                    title: t('behavior_lens.hub.reinforcer_title') || 'Reinforcer Assessment',
+                    desc: t('behavior_lens.hub.reinforcer_desc') || 'Preference inventory with AI-recommended reinforcers',
+                    color: 'pink',
+                },
             ];
 
             const colorClasses = {
@@ -1611,6 +2306,12 @@ Analyze this data and return ONLY valid JSON:
                 rose: { bg: 'bg-rose-50', border: 'border-rose-200', icon: 'bg-rose-100 text-rose-600', hover: 'hover:border-rose-400 hover:shadow-rose-100' },
                 orange: { bg: 'bg-orange-50', border: 'border-orange-200', icon: 'bg-orange-100 text-orange-600', hover: 'hover:border-orange-400 hover:shadow-orange-100' },
                 slate: { bg: 'bg-slate-50', border: 'border-slate-200', icon: 'bg-slate-100 text-slate-600', hover: 'hover:border-slate-400 hover:shadow-slate-100' },
+                cyan: { bg: 'bg-cyan-50', border: 'border-cyan-200', icon: 'bg-cyan-100 text-cyan-600', hover: 'hover:border-cyan-400 hover:shadow-cyan-100' },
+                violet: { bg: 'bg-violet-50', border: 'border-violet-200', icon: 'bg-violet-100 text-violet-600', hover: 'hover:border-violet-400 hover:shadow-violet-100' },
+                lime: { bg: 'bg-lime-50', border: 'border-lime-200', icon: 'bg-lime-100 text-lime-600', hover: 'hover:border-lime-400 hover:shadow-lime-100' },
+                fuchsia: { bg: 'bg-fuchsia-50', border: 'border-fuchsia-200', icon: 'bg-fuchsia-100 text-fuchsia-600', hover: 'hover:border-fuchsia-400 hover:shadow-fuchsia-100' },
+                red: { bg: 'bg-red-50', border: 'border-red-200', icon: 'bg-red-100 text-red-600', hover: 'hover:border-red-400 hover:shadow-red-100' },
+                pink: { bg: 'bg-pink-50', border: 'border-pink-200', icon: 'bg-pink-100 text-pink-600', hover: 'hover:border-pink-400 hover:shadow-pink-100' },
             };
 
             return h('div', { className: 'max-w-4xl mx-auto' },
@@ -1690,8 +2391,14 @@ Analyze this data and return ONLY valid JSON:
                                 else if (tool.id === 'token') setActivePanel('token');
                                 else if (tool.id === 'hotspot') setActivePanel('hotspot');
                                 else if (tool.id === 'export') setActivePanel('export');
+                                else if (tool.id === 'record') setActivePanel('record');
+                                else if (tool.id === 'hypothesis') setActivePanel('hypothesis');
+                                else if (tool.id === 'goals') setActivePanel('goals');
+                                else if (tool.id === 'contract') setActivePanel('contract');
+                                else if (tool.id === 'cycle') setActivePanel('cycle');
+                                else if (tool.id === 'reinforcer') setActivePanel('reinforcer');
                             },
-                            disabled: tool.disabled || (!selectedStudent && !['analysis', 'export'].includes(tool.id)),
+                            disabled: tool.disabled || (!selectedStudent && !['analysis', 'export', 'record'].includes(tool.id)),
                             className: `text-left p-5 rounded-xl border-2 transition-all ${cc.border} ${cc.hover} bg-white shadow-sm hover:shadow-md ${tool.disabled || !selectedStudent ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
                                 }`
                         },
@@ -1819,7 +2526,13 @@ Analyze this data and return ONLY valid JSON:
                                         activePanel === 'overview' ? (t('behavior_lens.overview.title') || 'Behavior Overview') :
                                             activePanel === 'token' ? (t('behavior_lens.token.title') || 'Token Board') :
                                                 activePanel === 'hotspot' ? (t('behavior_lens.hotspot.title') || 'Routine Hotspot Matrix') :
-                                                    activePanel === 'export' ? (t('behavior_lens.export.title') || 'Export Data') : ''
+                                                    activePanel === 'export' ? (t('behavior_lens.export.title') || 'Export Data') :
+                                                        activePanel === 'record' ? (t('behavior_lens.record.title') || 'Record Review') :
+                                                            activePanel === 'hypothesis' ? (t('behavior_lens.hypothesis.title') || 'Hypothesis Diagram') :
+                                                                activePanel === 'goals' ? (t('behavior_lens.goals.title') || 'SMART Goal Builder') :
+                                                                    activePanel === 'contract' ? (t('behavior_lens.contract.title') || 'Behavior Contract') :
+                                                                        activePanel === 'cycle' ? (t('behavior_lens.cycle.title') || 'Acting-Out Cycle') :
+                                                                            activePanel === 'reinforcer' ? (t('behavior_lens.reinforcer.title') || 'Reinforcer Assessment') : ''
                             )
                         )
                     ),
@@ -1867,6 +2580,51 @@ Analyze this data and return ONLY valid JSON:
                     studentName: selectedStudent,
                     aiAnalysis,
                     t
+                }),
+                activePanel === 'record' && h(RecordReview, {
+                    studentName: selectedStudent,
+                    callGemini,
+                    t,
+                    addToast
+                }),
+                activePanel === 'hypothesis' && h(HypothesisDiagram, {
+                    abcEntries,
+                    aiAnalysis,
+                    studentName: selectedStudent,
+                    callGemini,
+                    t,
+                    addToast
+                }),
+                activePanel === 'goals' && h(SmartGoalBuilder, {
+                    abcEntries,
+                    aiAnalysis,
+                    studentName: selectedStudent,
+                    callGemini,
+                    t,
+                    addToast
+                }),
+                activePanel === 'contract' && h(BehaviorContract, {
+                    studentName: selectedStudent,
+                    abcEntries,
+                    aiAnalysis,
+                    callGemini,
+                    t,
+                    addToast
+                }),
+                activePanel === 'cycle' && h(ActingOutCycle, {
+                    abcEntries,
+                    aiAnalysis,
+                    studentName: selectedStudent,
+                    callGemini,
+                    t,
+                    addToast
+                }),
+                activePanel === 'reinforcer' && h(ReinforcerAssessment, {
+                    studentName: selectedStudent,
+                    aiAnalysis,
+                    callGemini,
+                    t,
+                    addToast
                 })
             ),
             // Fullscreen live observation overlay
