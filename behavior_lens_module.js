@@ -637,6 +637,747 @@
         );
     };
 
+    // ─── OverviewPanel ───────────────────────────────────────────────────
+    // Visual dashboard summarizing all behavioral data
+    const OverviewPanel = ({ abcEntries, observationSessions, aiAnalysis, studentName, t }) => {
+        const stats = useMemo(() => {
+            const now = new Date();
+            const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
+            const thisWeek = abcEntries.filter(e => new Date(e.timestamp) >= weekAgo);
+            const antecedentCounts = {};
+            const consequenceCounts = {};
+            const settingCounts = {};
+            const intensities = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+            const dayMap = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+            abcEntries.forEach(e => {
+                if (e.antecedent) antecedentCounts[e.antecedent] = (antecedentCounts[e.antecedent] || 0) + 1;
+                if (e.consequence) consequenceCounts[e.consequence] = (consequenceCounts[e.consequence] || 0) + 1;
+                if (e.setting) settingCounts[e.setting] = (settingCounts[e.setting] || 0) + 1;
+                if (e.intensity) intensities[e.intensity] = (intensities[e.intensity] || 0) + 1;
+                const d = new Date(e.timestamp);
+                if (d >= weekAgo) dayMap[d.getDay()] = (dayMap[d.getDay()] || 0) + 1;
+            });
+            const topAntecedents = Object.entries(antecedentCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+            const topConsequences = Object.entries(consequenceCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+            const topSettings = Object.entries(settingCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
+            const avgIntensity = abcEntries.length > 0 ? (abcEntries.reduce((s, e) => s + (e.intensity || 0), 0) / abcEntries.length).toFixed(1) : '—';
+            return { thisWeek, topAntecedents, topConsequences, topSettings, intensities, dayMap, avgIntensity, totalAbc: abcEntries.length, totalObs: observationSessions.length };
+        }, [abcEntries, observationSessions]);
+
+        const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const maxDay = Math.max(1, ...Object.values(stats.dayMap));
+
+        const renderStatCard = (icon, label, value, color) =>
+            h('div', { className: `bg-${color}-50 border border-${color}-200 rounded-xl p-4 text-center` },
+                h('div', { className: 'text-2xl mb-1' }, icon),
+                h('div', { className: `text-2xl font-black text-${color}-700` }, value),
+                h('div', { className: 'text-[10px] font-bold text-slate-500 uppercase mt-0.5' }, label)
+            );
+
+        const renderBarChart = (items, maxVal, color) =>
+            h('div', { className: 'space-y-2' },
+                items.map(([label, count], i) =>
+                    h('div', { key: i, className: 'flex items-center gap-2' },
+                        h('div', { className: 'text-xs font-medium text-slate-600 w-28 truncate text-right' }, label),
+                        h('div', { className: 'flex-1 bg-slate-100 rounded-full h-5 overflow-hidden' },
+                            h('div', { className: `h-full bg-${color}-400 rounded-full transition-all`, style: { width: `${(count / Math.max(1, maxVal)) * 100}%` } })
+                        ),
+                        h('span', { className: 'text-xs font-bold text-slate-500 w-6 text-right' }, count)
+                    )
+                )
+            );
+
+        if (stats.totalAbc === 0 && stats.totalObs === 0) {
+            return h('div', { className: 'max-w-4xl mx-auto text-center py-16' },
+                h('div', { className: 'text-5xl mb-4' }, '📊'),
+                h('h3', { className: 'text-lg font-black text-slate-700 mb-2' }, t('behavior_lens.overview.empty_title') || 'No Data Yet'),
+                h('p', { className: 'text-sm text-slate-500' }, t('behavior_lens.overview.empty_desc') || 'Start collecting ABC data or run live observations to see trends here.')
+            );
+        }
+
+        return h('div', { className: 'max-w-4xl mx-auto space-y-6' },
+            // Stat cards row
+            h('div', { className: 'grid grid-cols-2 md:grid-cols-4 gap-3' },
+                renderStatCard('📋', 'ABC Entries', stats.totalAbc, 'indigo'),
+                renderStatCard('🔍', 'Observations', stats.totalObs, 'emerald'),
+                renderStatCard('📅', 'This Week', stats.thisWeek.length, 'sky'),
+                renderStatCard('⚡', 'Avg Intensity', stats.avgIntensity, 'amber')
+            ),
+            // Weekly heatmap
+            h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm' },
+                h('h3', { className: 'text-sm font-black text-slate-800 mb-4' }, '📅 ', t('behavior_lens.overview.weekly') || 'Weekly Heatmap'),
+                h('div', { className: 'flex gap-2 justify-between' },
+                    dayLabels.map((day, i) => {
+                        const count = stats.dayMap[i] || 0;
+                        const intensity = count / maxDay;
+                        const bg = count === 0 ? '#f1f5f9' : `rgba(99, 102, 241, ${0.2 + intensity * 0.8})`;
+                        return h('div', { key: i, className: 'flex-1 text-center' },
+                            h('div', { className: 'rounded-lg p-3 mb-1 transition-all', style: { background: bg } },
+                                h('div', { className: `text-lg font-black ${count > 0 ? 'text-white' : 'text-slate-300'}` }, count)
+                            ),
+                            h('div', { className: 'text-[10px] font-bold text-slate-400' }, day)
+                        );
+                    })
+                )
+            ),
+            // Top antecedents & consequences
+            h('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-4' },
+                stats.topAntecedents.length > 0 && h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm' },
+                    h('h3', { className: 'text-sm font-black text-slate-800 mb-3' }, '🔺 ', t('behavior_lens.overview.top_antecedents') || 'Top Antecedents'),
+                    renderBarChart(stats.topAntecedents, stats.topAntecedents[0]?.[1] || 1, 'indigo')
+                ),
+                stats.topConsequences.length > 0 && h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm' },
+                    h('h3', { className: 'text-sm font-black text-slate-800 mb-3' }, '🔻 ', t('behavior_lens.overview.top_consequences') || 'Top Consequences'),
+                    renderBarChart(stats.topConsequences, stats.topConsequences[0]?.[1] || 1, 'purple')
+                )
+            ),
+            // Intensity distribution
+            h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm' },
+                h('h3', { className: 'text-sm font-black text-slate-800 mb-3' }, '🌡️ ', t('behavior_lens.overview.intensity_dist') || 'Intensity Distribution'),
+                h('div', { className: 'flex gap-2 items-end h-24' },
+                    [1, 2, 3, 4, 5].map(level => {
+                        const count = stats.intensities[level] || 0;
+                        const maxI = Math.max(1, ...Object.values(stats.intensities));
+                        const colors = ['#86efac', '#fde047', '#fdba74', '#fb923c', '#f87171'];
+                        return h('div', { key: level, className: 'flex-1 flex flex-col items-center gap-1' },
+                            h('div', { className: 'text-[10px] font-bold text-slate-500' }, count),
+                            h('div', {
+                                className: 'w-full rounded-t-lg transition-all',
+                                style: { height: `${Math.max(4, (count / maxI) * 80)}px`, background: colors[level - 1] }
+                            }),
+                            h('div', { className: 'text-[10px] font-bold text-slate-400 mt-1' }, level)
+                        );
+                    })
+                )
+            ),
+            // AI Analysis summary (if available)
+            aiAnalysis && h('div', { className: 'bg-purple-50 rounded-xl border border-purple-200 p-5' },
+                h('h3', { className: 'text-sm font-black text-purple-800 mb-2' }, '🧠 ', t('behavior_lens.overview.ai_summary') || 'AI Analysis Summary'),
+                h('p', { className: 'text-sm text-purple-700' }, aiAnalysis.summary),
+                aiAnalysis.hypothesizedFunction && h('div', { className: 'mt-2 inline-flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-purple-200' },
+                    h('span', { className: 'text-xs font-bold text-purple-600' }, `Function: ${aiAnalysis.hypothesizedFunction}`),
+                    h('span', { className: 'text-xs text-purple-400' }, `(${aiAnalysis.confidence}% confidence)`)
+                )
+            )
+        );
+    };
+
+    // ─── FrequencyCounter ───────────────────────────────────────────────
+    // Fullscreen quick-click counter for rapid behavior tallying
+    const FrequencyCounter = ({ onClose, studentName, onSaveSession, t, addToast }) => {
+        const [count, setCount] = useState(0);
+        const [label, setLabel] = useState('');
+        const [running, setRunning] = useState(false);
+        const [elapsed, setElapsed] = useState(0);
+        const timerRef = useRef(null);
+
+        useEffect(() => {
+            if (running) {
+                timerRef.current = setInterval(() => setElapsed(p => p + 1), 1000);
+            } else if (timerRef.current) {
+                clearInterval(timerRef.current);
+            }
+            return () => { if (timerRef.current) clearInterval(timerRef.current); };
+        }, [running]);
+
+        const rate = elapsed > 0 ? (count / (elapsed / 60)).toFixed(1) : '0.0';
+
+        const handleSave = () => {
+            if (count === 0) return;
+            onSaveSession({
+                id: uid(),
+                method: 'frequency',
+                timestamp: new Date().toISOString(),
+                duration: elapsed,
+                data: { count, label: label || 'Unlabeled', rate: parseFloat(rate) }
+            });
+            if (addToast) addToast(t('behavior_lens.freq.saved') || 'Session saved ✅', 'success');
+            onClose();
+        };
+
+        return h('div', { className: 'fixed inset-0 z-[250] bg-slate-900 flex flex-col items-center justify-center text-white' },
+            // Top bar
+            h('div', { className: 'absolute top-0 left-0 right-0 flex items-center justify-between p-4' },
+                h('button', { onClick: onClose, className: 'p-2 rounded-full hover:bg-white/10 transition-colors' },
+                    h(X, { size: 24 })
+                ),
+                h('div', { className: 'text-center' },
+                    h('div', { className: 'text-xs font-bold text-slate-400 uppercase' }, studentName || ''),
+                    h('input', {
+                        value: label,
+                        onChange: (e) => setLabel(e.target.value),
+                        placeholder: t('behavior_lens.freq.label_placeholder') || 'Behavior label...',
+                        className: 'bg-transparent text-white text-sm text-center border-b border-slate-600 focus:border-indigo-400 outline-none px-4 py-1 mt-1'
+                    })
+                ),
+                h('button', {
+                    onClick: handleSave,
+                    className: 'px-4 py-2 bg-emerald-500 text-white rounded-full text-sm font-bold hover:bg-emerald-400 transition-colors'
+                }, t('behavior_lens.freq.save') || 'Save')
+            ),
+            // Counter display
+            h('div', { className: 'text-center mb-8' },
+                h('div', { className: 'text-[120px] md:text-[180px] font-black leading-none tabular-nums tracking-tighter' }, count),
+                h('div', { className: 'text-slate-400 text-sm font-medium mt-2' }, `${rate} / min`)
+            ),
+            // Tap button
+            h('button', {
+                onClick: () => { setCount(c => c + 1); if (!running) setRunning(true); },
+                className: 'w-40 h-40 rounded-full bg-indigo-500 hover:bg-indigo-400 active:scale-95 transition-all shadow-2xl shadow-indigo-500/30 flex items-center justify-center text-4xl font-black'
+            }, '+1'),
+            // Controls
+            h('div', { className: 'flex gap-4 mt-8' },
+                h('button', {
+                    onClick: () => setCount(c => Math.max(0, c - 1)),
+                    className: 'px-5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-sm font-bold transition-colors'
+                }, '-1'),
+                h('button', {
+                    onClick: () => setRunning(!running),
+                    className: `px-5 py-2 rounded-full text-sm font-bold transition-colors ${running ? 'bg-amber-500 hover:bg-amber-400' : 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300'}`
+                }, running ? '⏸ Pause' : '▶ Start'),
+                h('button', {
+                    onClick: () => { setCount(0); setElapsed(0); setRunning(false); },
+                    className: 'px-5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-sm font-bold transition-colors'
+                }, '↺ Reset')
+            ),
+            // Timer
+            h('div', { className: 'absolute bottom-8 text-center' },
+                h('div', { className: 'text-3xl font-black tabular-nums text-slate-300' }, fmtDuration(elapsed)),
+                h('div', { className: 'text-xs text-slate-500 mt-1' }, t('behavior_lens.freq.elapsed') || 'Elapsed')
+            )
+        );
+    };
+
+    // ─── IntervalGrid ───────────────────────────────────────────────────
+    // Visual interval recording with partial/whole/momentary modes
+    const IntervalGrid = ({ onClose, studentName, onSaveSession, t, addToast }) => {
+        const [mode, setMode] = useState('partial');
+        const [intervalSec, setIntervalSec] = useState(15);
+        const [totalIntervals, setTotalIntervals] = useState(20);
+        const [running, setRunning] = useState(false);
+        const [currentInterval, setCurrentInterval] = useState(0);
+        const [grid, setGrid] = useState([]);
+        const [elapsed, setElapsed] = useState(0);
+        const timerRef = useRef(null);
+
+        useEffect(() => {
+            if (running && currentInterval < totalIntervals) {
+                timerRef.current = setInterval(() => {
+                    setElapsed(p => {
+                        const next = p + 1;
+                        if (next % intervalSec === 0) {
+                            setCurrentInterval(ci => {
+                                const nextI = ci + 1;
+                                if (nextI >= totalIntervals) { setRunning(false); }
+                                setGrid(g => {
+                                    const ng = [...g];
+                                    if (ng[ci] === undefined) ng[ci] = false;
+                                    return ng;
+                                });
+                                return nextI;
+                            });
+                        }
+                        return next;
+                    });
+                }, 1000);
+            }
+            return () => { if (timerRef.current) clearInterval(timerRef.current); };
+        }, [running, currentInterval, totalIntervals, intervalSec]);
+
+        const mark = (idx) => {
+            setGrid(g => { const ng = [...g]; ng[idx] = !ng[idx]; return ng; });
+        };
+
+        const occurredCount = grid.filter(Boolean).length;
+        const completedCount = Math.min(currentInterval, totalIntervals);
+        const pct = completedCount > 0 ? ((occurredCount / completedCount) * 100).toFixed(0) : '0';
+
+        const handleSave = () => {
+            onSaveSession({
+                id: uid(),
+                method: 'interval',
+                timestamp: new Date().toISOString(),
+                duration: elapsed,
+                data: { mode, intervalSec, totalIntervals, grid: [...grid], occurredCount, completedCount, percentage: parseFloat(pct) }
+            });
+            if (addToast) addToast(t('behavior_lens.interval.saved') || 'Interval session saved ✅', 'success');
+            onClose();
+        };
+
+        const modeLabels = {
+            partial: { label: t('behavior_lens.obs_partial') || 'Partial Interval', desc: 'Mark if behavior occurred at ANY point' },
+            whole: { label: t('behavior_lens.obs_whole') || 'Whole Interval', desc: 'Mark only if behavior lasted the ENTIRE interval' },
+            momentary: { label: t('behavior_lens.obs_momentary') || 'Momentary', desc: 'Mark only if behavior at the EXACT moment' }
+        };
+
+        return h('div', { className: 'fixed inset-0 z-[250] bg-slate-900/95 flex flex-col' },
+            // Top bar
+            h('div', { className: 'p-4 flex items-center justify-between border-b border-slate-700' },
+                h('div', { className: 'flex items-center gap-3' },
+                    h('button', { onClick: onClose, className: 'p-2 rounded-full text-slate-400 hover:bg-white/10' }, h(X, { size: 20 })),
+                    h('div', null,
+                        h('h3', { className: 'text-white font-black text-lg' }, t('behavior_lens.interval.title') || 'Interval Recording'),
+                        h('p', { className: 'text-xs text-slate-400' }, `${studentName || ''} — ${modeLabels[mode].label}`)
+                    )
+                ),
+                h('button', { onClick: handleSave, disabled: completedCount === 0, className: 'px-4 py-2 bg-emerald-500 text-white rounded-full text-sm font-bold hover:bg-emerald-400 disabled:opacity-40 transition-all' },
+                    t('behavior_lens.interval.save') || 'Save Session')
+            ),
+            // Setup (shown when not running and no data)
+            !running && completedCount === 0 && h('div', { className: 'p-6 space-y-4' },
+                h('div', { className: 'flex gap-3' },
+                    Object.entries(modeLabels).map(([key, { label }]) =>
+                        h('button', {
+                            key,
+                            onClick: () => setMode(key),
+                            className: `flex-1 py-2 px-3 rounded-lg text-sm font-bold transition-all ${mode === key ? 'bg-indigo-500 text-white' : 'bg-white/10 text-slate-300 hover:bg-white/20'}`
+                        }, label)
+                    )
+                ),
+                h('p', { className: 'text-xs text-slate-400 text-center' }, modeLabels[mode].desc),
+                h('div', { className: 'flex gap-4 items-center justify-center' },
+                    h('div', null,
+                        h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-1' }, 'Interval (sec)'),
+                        h('select', {
+                            value: intervalSec,
+                            onChange: (e) => setIntervalSec(Number(e.target.value)),
+                            className: 'bg-white/10 text-white rounded-lg px-3 py-2 text-sm font-bold border border-slate-600'
+                        }, [10, 15, 20, 30, 60].map(v => h('option', { key: v, value: v }, `${v}s`)))
+                    ),
+                    h('div', null,
+                        h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-1' }, 'Total Intervals'),
+                        h('select', {
+                            value: totalIntervals,
+                            onChange: (e) => setTotalIntervals(Number(e.target.value)),
+                            className: 'bg-white/10 text-white rounded-lg px-3 py-2 text-sm font-bold border border-slate-600'
+                        }, [10, 15, 20, 30, 40].map(v => h('option', { key: v, value: v }, v)))
+                    )
+                ),
+                h('button', {
+                    onClick: () => { setRunning(true); setGrid([]); setCurrentInterval(0); setElapsed(0); },
+                    className: 'w-full py-3 bg-indigo-500 text-white rounded-xl font-bold text-lg hover:bg-indigo-400 transition-all'
+                }, '▶ ' + (t('behavior_lens.interval.start') || 'Start Recording'))
+            ),
+            // Grid display
+            (running || completedCount > 0) && h('div', { className: 'flex-1 overflow-y-auto p-4' },
+                // Progress bar
+                h('div', { className: 'mb-4 flex items-center gap-3' },
+                    h('div', { className: 'flex-1 bg-slate-700 rounded-full h-3 overflow-hidden' },
+                        h('div', { className: 'h-full bg-indigo-500 transition-all', style: { width: `${(completedCount / totalIntervals) * 100}%` } })
+                    ),
+                    h('span', { className: 'text-sm font-bold text-white tabular-nums' }, `${completedCount}/${totalIntervals}`),
+                    h('span', { className: 'text-lg font-black text-indigo-400 tabular-nums' }, `${pct}%`)
+                ),
+                // Grid cells
+                h('div', { className: 'grid grid-cols-5 md:grid-cols-10 gap-2' },
+                    Array.from({ length: totalIntervals }, (_, i) => {
+                        const isComplete = i < currentInterval;
+                        const isCurrent = i === currentInterval && running;
+                        const occurred = grid[i] === true;
+                        let bg = 'bg-slate-700';
+                        if (isCurrent) bg = 'bg-indigo-500 ring-2 ring-indigo-300 animate-pulse';
+                        else if (isComplete && occurred) bg = 'bg-red-500';
+                        else if (isComplete && !occurred) bg = 'bg-emerald-500';
+                        return h('button', {
+                            key: i,
+                            onClick: () => { if (isComplete || isCurrent) mark(i); },
+                            className: `aspect-square rounded-lg flex items-center justify-center text-xs font-bold text-white transition-all ${bg} ${isComplete || isCurrent ? 'cursor-pointer hover:opacity-80' : 'opacity-40 cursor-default'}`
+                        }, i + 1);
+                    })
+                ),
+                // Controls
+                running && h('div', { className: 'mt-4 flex gap-3 justify-center' },
+                    h('button', {
+                        onClick: () => mark(currentInterval),
+                        className: 'px-8 py-3 bg-red-500 text-white rounded-xl font-bold text-lg hover:bg-red-400 active:scale-95 transition-all'
+                    }, '✓ ' + (t('behavior_lens.obs_occurred') || 'Occurred')),
+                    h('button', {
+                        onClick: () => setRunning(false),
+                        className: 'px-6 py-3 bg-white/10 text-white rounded-xl font-bold hover:bg-white/20 transition-all'
+                    }, '⏸ Pause')
+                ),
+                !running && completedCount > 0 && h('div', { className: 'mt-4 flex gap-3 justify-center' },
+                    h('button', {
+                        onClick: () => setRunning(true),
+                        disabled: completedCount >= totalIntervals,
+                        className: 'px-6 py-3 bg-indigo-500 text-white rounded-xl font-bold hover:bg-indigo-400 disabled:opacity-40 transition-all'
+                    }, '▶ Resume')
+                )
+            ),
+            // Timer display
+            h('div', { className: 'p-4 border-t border-slate-700 text-center' },
+                h('span', { className: 'text-2xl font-black tabular-nums text-white' }, fmtDuration(elapsed)),
+                h('span', { className: 'text-xs text-slate-500 ml-3' }, `${intervalSec}s intervals`)
+            )
+        );
+    };
+
+    // ─── TokenBoard ─────────────────────────────────────────────────────
+    // Visual reinforcement tracker with configurable token slots
+    const TokenBoard = ({ onClose, studentName, t, addToast }) => {
+        const [slots, setSlots] = useState(5);
+        const [tokens, setTokens] = useState([]);
+        const [targetBehavior, setTargetBehavior] = useState('');
+        const [reward, setReward] = useState('');
+        const [showConfetti, setShowConfetti] = useState(false);
+        const tokenEmojis = ['⭐', '🌟', '🏆', '🎯', '💎', '🔥', '🌈', '🦄', '🎵', '💫'];
+
+        const toggleToken = (idx) => {
+            setTokens(prev => {
+                const next = [...prev];
+                next[idx] = !next[idx];
+                const earnedCount = next.filter(Boolean).length;
+                if (earnedCount >= slots && !showConfetti) {
+                    setShowConfetti(true);
+                    setTimeout(() => setShowConfetti(false), 3000);
+                    if (addToast) addToast(t('behavior_lens.token.complete') || '🎉 Token Board Complete!', 'success');
+                }
+                return next;
+            });
+        };
+
+        const earnedCount = tokens.filter(Boolean).length;
+
+        return h('div', { className: 'max-w-2xl mx-auto space-y-6' },
+            // Settings
+            h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-3' },
+                h('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-3' },
+                    h('div', null,
+                        h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-1' }, '🎯 ' + (t('behavior_lens.token.target') || 'Target Behavior')),
+                        h('input', {
+                            value: targetBehavior,
+                            onChange: (e) => setTargetBehavior(e.target.value),
+                            placeholder: t('behavior_lens.token.target_placeholder') || 'e.g., Raise hand before speaking',
+                            className: 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-rose-400 outline-none'
+                        })
+                    ),
+                    h('div', null,
+                        h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-1' }, '🎁 ' + (t('behavior_lens.token.reward') || 'Reward')),
+                        h('input', {
+                            value: reward,
+                            onChange: (e) => setReward(e.target.value),
+                            placeholder: t('behavior_lens.token.reward_placeholder') || 'e.g., 5 min free time',
+                            className: 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-rose-400 outline-none'
+                        })
+                    )
+                ),
+                h('div', null,
+                    h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-1' }, '🔢 ' + (t('behavior_lens.token.count') || 'Number of Tokens')),
+                    h('div', { className: 'flex gap-2' },
+                        [3, 4, 5, 6, 8, 10].map(n =>
+                            h('button', {
+                                key: n,
+                                onClick: () => { setSlots(n); setTokens([]); },
+                                className: `px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${slots === n ? 'bg-rose-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`
+                            }, n)
+                        )
+                    )
+                )
+            ),
+            // Token Board Display
+            h('div', { className: `bg-gradient-to-b from-rose-50 to-amber-50 rounded-2xl border-2 border-rose-200 p-8 shadow-lg relative overflow-hidden ${showConfetti ? 'animate-pulse' : ''}` },
+                // Header
+                h('div', { className: 'text-center mb-6' },
+                    h('div', { className: 'text-xs font-bold text-rose-500 uppercase mb-1' }, studentName || ''),
+                    targetBehavior && h('div', { className: 'text-lg font-black text-slate-800' }, targetBehavior),
+                    reward && h('div', { className: 'text-sm text-amber-600 font-medium mt-1' }, `🎁 ${reward}`)
+                ),
+                // Token grid
+                h('div', { className: 'flex flex-wrap justify-center gap-4 mb-6' },
+                    Array.from({ length: slots }, (_, i) => {
+                        const earned = tokens[i];
+                        const emoji = tokenEmojis[i % tokenEmojis.length];
+                        return h('button', {
+                            key: i,
+                            onClick: () => toggleToken(i),
+                            className: `w-16 h-16 md:w-20 md:h-20 rounded-2xl border-3 flex items-center justify-center text-3xl md:text-4xl transition-all transform ${earned
+                                ? 'bg-amber-100 border-amber-400 shadow-lg shadow-amber-200/50 scale-110'
+                                : 'bg-white border-slate-200 hover:border-rose-300 hover:shadow-md opacity-40 hover:opacity-60'
+                                }`
+                        }, earned ? emoji : '○');
+                    })
+                ),
+                // Progress
+                h('div', { className: 'flex items-center gap-3' },
+                    h('div', { className: 'flex-1 bg-white rounded-full h-4 overflow-hidden border border-rose-200' },
+                        h('div', {
+                            className: 'h-full rounded-full transition-all bg-gradient-to-r from-rose-400 to-amber-400',
+                            style: { width: `${(earnedCount / slots) * 100}%` }
+                        })
+                    ),
+                    h('span', { className: 'text-sm font-black text-rose-600' }, `${earnedCount}/${slots}`)
+                ),
+                // Confetti overlay
+                showConfetti && h('div', { className: 'absolute inset-0 flex items-center justify-center bg-white/60 rounded-2xl' },
+                    h('div', { className: 'text-center' },
+                        h('div', { className: 'text-6xl mb-2 animate-bounce' }, '🎉'),
+                        h('div', { className: 'text-2xl font-black text-rose-600' }, t('behavior_lens.token.success') || 'Great Job!'),
+                        reward && h('div', { className: 'text-lg text-amber-600 font-bold mt-1' }, `🎁 ${reward}`)
+                    )
+                )
+            ),
+            // Reset button
+            h('div', { className: 'text-center' },
+                h('button', {
+                    onClick: () => { setTokens([]); setShowConfetti(false); },
+                    className: 'px-6 py-2 bg-slate-100 text-slate-600 rounded-full text-sm font-bold hover:bg-slate-200 transition-all'
+                }, '↺ ' + (t('behavior_lens.token.reset') || 'Reset Board'))
+            )
+        );
+    };
+
+    // ─── HotspotMatrix ──────────────────────────────────────────────────
+    // Maps behavior incidents to daily routines
+    const HotspotMatrix = ({ abcEntries, studentName, callGemini, t, addToast }) => {
+        const defaultRoutines = [
+            'Morning Arrival', 'Circle Time', 'Reading/ELA', 'Math',
+            'Lunch', 'Recess', 'Specials (Art/PE/Music)', 'Dismissal'
+        ];
+        const [routines, setRoutines] = useState(defaultRoutines);
+        const [matrix, setMatrix] = useState(() => {
+            const m = {};
+            defaultRoutines.forEach(r => { m[r] = 0; });
+            return m;
+        });
+        const [analyzing, setAnalyzing] = useState(false);
+        const [analysis, setAnalysis] = useState(null);
+        const [editingRoutine, setEditingRoutine] = useState(null);
+        const [editVal, setEditVal] = useState('');
+
+        const maxCount = Math.max(1, ...Object.values(matrix));
+
+        const getHeatColor = (count) => {
+            if (count === 0) return { bg: '#f8fafc', text: '#94a3b8' };
+            const ratio = count / maxCount;
+            if (ratio < 0.33) return { bg: '#fef9c3', text: '#a16207' };
+            if (ratio < 0.66) return { bg: '#fed7aa', text: '#c2410c' };
+            return { bg: '#fecaca', text: '#dc2626' };
+        };
+
+        const handleAnalyze = async () => {
+            if (!callGemini) return;
+            setAnalyzing(true);
+            try {
+                const matrixStr = Object.entries(matrix)
+                    .map(([routine, count]) => `${routine}: ${count} incidents`)
+                    .join('\n');
+                const prompt = `You are a BCBA analyzing a behavior hotspot matrix for a student.
+
+ROUTINE HOTSPOT DATA:
+${matrixStr}
+
+Student has ${abcEntries.length} total ABC entries.
+
+Analyze which routines are behavioral hotspots and return ONLY valid JSON:
+{
+  "summary": "2-3 sentence analysis of the pattern",
+  "peakRoutines": ["routine name 1", "routine name 2"],
+  "recommendations": ["recommendation 1", "recommendation 2", "recommendation 3"],
+  "possibleTriggers": ["environmental factor 1", "factor 2"]
+}`;
+                const result = await callGemini(prompt, true);
+                const cleaned = result.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+                let parsed;
+                try { parsed = JSON.parse(cleaned); }
+                catch { const m = result.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); else throw new Error('Parse failed'); }
+                setAnalysis(parsed);
+            } catch (err) {
+                warnLog('Hotspot analysis failed:', err);
+                if (addToast) addToast('Analysis failed', 'error');
+            } finally { setAnalyzing(false); }
+        };
+
+        const startEdit = (routine) => { setEditingRoutine(routine); setEditVal(routine); };
+        const finishEdit = () => {
+            if (editVal.trim() && editVal !== editingRoutine) {
+                setRoutines(r => r.map(x => x === editingRoutine ? editVal.trim() : x));
+                setMatrix(m => {
+                    const nm = { ...m };
+                    nm[editVal.trim()] = nm[editingRoutine] || 0;
+                    delete nm[editingRoutine];
+                    return nm;
+                });
+            }
+            setEditingRoutine(null);
+        };
+
+        return h('div', { className: 'max-w-3xl mx-auto space-y-4' },
+            // Matrix
+            h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm' },
+                h('h3', { className: 'text-sm font-black text-slate-800 mb-4' }, '🗓️ ', t('behavior_lens.hotspot.title') || 'Routine Hotspot Matrix'),
+                h('div', { className: 'space-y-2' },
+                    routines.map(routine => {
+                        const count = matrix[routine] || 0;
+                        const colors = getHeatColor(count);
+                        return h('div', { key: routine, className: 'flex items-center gap-2' },
+                            editingRoutine === routine
+                                ? h('input', {
+                                    value: editVal,
+                                    onChange: (e) => setEditVal(e.target.value),
+                                    onBlur: finishEdit,
+                                    onKeyDown: (e) => { if (e.key === 'Enter') finishEdit(); },
+                                    autoFocus: true,
+                                    className: 'w-44 text-xs border border-indigo-300 rounded px-2 py-1.5 focus:ring-2 focus:ring-indigo-400 outline-none'
+                                })
+                                : h('button', {
+                                    onClick: () => startEdit(routine),
+                                    className: 'w-44 text-xs font-medium text-slate-600 text-left truncate hover:text-indigo-600 transition-colors'
+                                }, routine),
+                            h('div', { className: 'flex-1 flex gap-1' },
+                                h('div', {
+                                    className: 'flex-1 rounded-lg h-10 flex items-center justify-center font-bold text-sm transition-all cursor-pointer hover:opacity-80',
+                                    style: { background: colors.bg, color: colors.text },
+                                    onClick: () => setMatrix(m => ({ ...m, [routine]: (m[routine] || 0) + 1 }))
+                                }, count > 0 ? count : '—')
+                            ),
+                            h('button', {
+                                onClick: () => setMatrix(m => ({ ...m, [routine]: Math.max(0, (m[routine] || 0) - 1) })),
+                                className: 'text-xs text-slate-400 hover:text-red-500 px-1 transition-colors'
+                            }, '−')
+                        );
+                    })
+                ),
+                h('p', { className: 'text-[10px] text-slate-400 mt-3' }, t('behavior_lens.hotspot.tap_hint') || 'Tap a cell to increment. Click routine name to edit.')
+            ),
+            // AI analyze button
+            callGemini && h('button', {
+                onClick: handleAnalyze,
+                disabled: analyzing || Object.values(matrix).every(v => v === 0),
+                className: 'w-full py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-xl font-bold shadow-lg hover:shadow-xl hover:from-orange-400 disabled:opacity-50 transition-all flex items-center justify-center gap-2'
+            }, analyzing ? '⏳ Analyzing...' : ('🧠 ' + (t('behavior_lens.hotspot.analyze') || 'Analyze Hotspots'))),
+            // Analysis results
+            analysis && h('div', { className: 'bg-orange-50 rounded-xl border border-orange-200 p-5 animate-in slide-in-from-bottom-4 duration-300' },
+                h('h4', { className: 'text-sm font-black text-orange-800 mb-2' }, '🧠 Hotspot Analysis'),
+                h('p', { className: 'text-sm text-orange-700 mb-3' }, analysis.summary),
+                analysis.peakRoutines && analysis.peakRoutines.length > 0 && h('div', { className: 'mb-3' },
+                    h('div', { className: 'text-xs font-bold text-orange-600 uppercase mb-1' }, 'Peak Routines'),
+                    h('div', { className: 'flex flex-wrap gap-1' },
+                        analysis.peakRoutines.map((r, i) => h('span', { key: i, className: 'px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-bold' }, r))
+                    )
+                ),
+                analysis.recommendations && h('ul', { className: 'space-y-1' },
+                    analysis.recommendations.map((rec, i) => h('li', { key: i, className: 'text-xs text-orange-700 flex gap-2' }, h('span', null, '✓'), rec))
+                )
+            )
+        );
+    };
+
+    // ─── ExportPanel ────────────────────────────────────────────────────
+    // Export behavioral data as JSON or summary text
+    const ExportPanel = ({ abcEntries, observationSessions, studentName, aiAnalysis, t }) => {
+        const [format, setFormat] = useState('json');
+        const [dateRange, setDateRange] = useState('all');
+
+        const filteredAbc = useMemo(() => {
+            if (dateRange === 'all') return abcEntries;
+            const now = new Date();
+            const cutoff = dateRange === 'week' ? new Date(now - 7 * 86400000) :
+                dateRange === 'month' ? new Date(now - 30 * 86400000) : new Date(0);
+            return abcEntries.filter(e => new Date(e.timestamp) >= cutoff);
+        }, [abcEntries, dateRange]);
+
+        const filteredObs = useMemo(() => {
+            if (dateRange === 'all') return observationSessions;
+            const now = new Date();
+            const cutoff = dateRange === 'week' ? new Date(now - 7 * 86400000) :
+                dateRange === 'month' ? new Date(now - 30 * 86400000) : new Date(0);
+            return observationSessions.filter(s => new Date(s.timestamp) >= cutoff);
+        }, [observationSessions, dateRange]);
+
+        const handleExport = () => {
+            let content, filename, type;
+            if (format === 'json') {
+                const data = {
+                    student: studentName,
+                    exportDate: new Date().toISOString(),
+                    abcEntries: filteredAbc,
+                    observationSessions: filteredObs,
+                    aiAnalysis: aiAnalysis || null
+                };
+                content = JSON.stringify(data, null, 2);
+                filename = `behaviorlens_${(studentName || 'student').replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.json`;
+                type = 'application/json';
+            } else {
+                let text = `BehaviorLens Report — ${studentName || 'Student'}\n`;
+                text += `Exported: ${new Date().toLocaleString()}\n`;
+                text += '═'.repeat(50) + '\n\n';
+                text += `ABC DATA (${filteredAbc.length} entries)\n` + '─'.repeat(30) + '\n';
+                filteredAbc.forEach((e, i) => {
+                    text += `\n#${i + 1} — ${fmtDate(e.timestamp)} ${fmtTime(e.timestamp)}\n`;
+                    text += `  Antecedent: ${e.antecedent || '—'}\n`;
+                    text += `  Behavior:   ${e.behavior || '—'}\n`;
+                    text += `  Consequence: ${e.consequence || '—'}\n`;
+                    if (e.setting) text += `  Setting:    ${e.setting}\n`;
+                    if (e.intensity) text += `  Intensity:  ${e.intensity}/5\n`;
+                    if (e.notes) text += `  Notes:      ${e.notes}\n`;
+                });
+                text += `\n\nOBSERVATION SESSIONS (${filteredObs.length})\n` + '─'.repeat(30) + '\n';
+                filteredObs.forEach((s, i) => {
+                    text += `\n#${i + 1} — ${fmtDate(s.timestamp)} | ${s.method} | ${fmtDuration(s.duration)}\n`;
+                    if (s.method === 'frequency') text += `  Count: ${s.data?.count || 0} (${s.data?.rate || '?'}/min)\n`;
+                    if (s.method === 'interval') text += `  ${s.data?.occurredCount || 0}/${s.data?.totalIntervals || 0} intervals (${s.data?.percentage || 0}%)\n`;
+                });
+                if (aiAnalysis) {
+                    text += '\n\nAI ANALYSIS\n' + '─'.repeat(30) + '\n';
+                    text += `Function: ${aiAnalysis.hypothesizedFunction} (${aiAnalysis.confidence}% confidence)\n`;
+                    text += `Summary: ${aiAnalysis.summary}\n`;
+                }
+                content = text;
+                filename = `behaviorlens_${(studentName || 'student').replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`;
+                type = 'text/plain';
+            }
+            const blob = new Blob([content], { type });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = filename; a.click();
+            URL.revokeObjectURL(url);
+        };
+
+        return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
+            h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4' },
+                h('h3', { className: 'text-sm font-black text-slate-800' }, '📥 ' + (t('behavior_lens.export.title') || 'Export Data')),
+                // Format selector
+                h('div', null,
+                    h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-1' }, 'Format'),
+                    h('div', { className: 'flex gap-2' },
+                        [['json', '📦 JSON'], ['text', '📝 Text Report']].map(([key, label]) =>
+                            h('button', {
+                                key, onClick: () => setFormat(key),
+                                className: `flex-1 py-2 rounded-lg text-sm font-bold transition-all ${format === key ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`
+                            }, label)
+                        )
+                    )
+                ),
+                // Date range
+                h('div', null,
+                    h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-1' }, 'Date Range'),
+                    h('div', { className: 'flex gap-2' },
+                        [['all', 'All Time'], ['month', 'Last 30 Days'], ['week', 'Last 7 Days']].map(([key, label]) =>
+                            h('button', {
+                                key, onClick: () => setDateRange(key),
+                                className: `flex-1 py-2 rounded-lg text-xs font-bold transition-all ${dateRange === key ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`
+                            }, label)
+                        )
+                    )
+                ),
+                // Preview
+                h('div', { className: 'bg-slate-50 rounded-lg p-4 border border-slate-100' },
+                    h('div', { className: 'text-xs text-slate-600 space-y-1' },
+                        h('div', null, `📋 ${filteredAbc.length} ABC entries`),
+                        h('div', null, `🔍 ${filteredObs.length} observation sessions`),
+                        aiAnalysis && h('div', null, '🧠 AI analysis included')
+                    )
+                ),
+                // Export button
+                h('button', {
+                    onClick: handleExport,
+                    disabled: filteredAbc.length === 0 && filteredObs.length === 0,
+                    className: 'w-full py-3 bg-gradient-to-r from-slate-700 to-slate-900 text-white rounded-xl font-bold shadow-lg hover:shadow-xl disabled:opacity-40 transition-all'
+                }, '📥 ' + (t('behavior_lens.export.download') || 'Download Export'))
+            )
+        );
+    };
+
     // ─── BehaviorTab (Hub) ──────────────────────────────────────────────
     // The main hub component that renders inside a fullscreen overlay
     window.AlloModules = window.AlloModules || {};
@@ -656,6 +1397,8 @@
         const [aiAnalysis, setAiAnalysis] = useState(null);
         const [analyzing, setAnalyzing] = useState(false);
         const [showLiveObs, setShowLiveObs] = useState(false);
+        const [showFreqCounter, setShowFreqCounter] = useState(false);
+        const [showIntervalGrid, setShowIntervalGrid] = useState(false);
 
         // Two-dropdown codename system (adjective + animal)
         const adjectives = useMemo(() => t('codenames.adjectives') || [], [t]);
@@ -813,12 +1556,61 @@ Analyze this data and return ONLY valid JSON:
                     badge: aiAnalysis ? 'Ready' : null,
                     disabled: abcEntries.length < 3,
                 },
+                {
+                    id: 'overview',
+                    icon: '📊',
+                    title: t('behavior_lens.hub.overview_title') || 'Behavior Overview',
+                    desc: t('behavior_lens.hub.overview_desc') || 'Visual dashboard with trends, heatmap, and data summaries',
+                    color: 'sky',
+                    badge: (abcEntries.length + observationSessions.length) > 0 ? `${abcEntries.length + observationSessions.length} records` : null,
+                },
+                {
+                    id: 'frequency',
+                    icon: '🔢',
+                    title: t('behavior_lens.hub.freq_title') || 'Frequency Counter',
+                    desc: t('behavior_lens.hub.freq_desc') || 'Quick-click tap counter for rapid in-class behavior tallying',
+                    color: 'amber',
+                },
+                {
+                    id: 'interval',
+                    icon: '⏱️',
+                    title: t('behavior_lens.hub.interval_title') || 'Interval Recording',
+                    desc: t('behavior_lens.hub.interval_desc') || 'Visual grid with partial, whole, and momentary recording modes',
+                    color: 'teal',
+                },
+                {
+                    id: 'token',
+                    icon: '⭐',
+                    title: t('behavior_lens.hub.token_title') || 'Token Board',
+                    desc: t('behavior_lens.hub.token_desc') || 'Visual reinforcement tracker for positive behavior support',
+                    color: 'rose',
+                },
+                {
+                    id: 'hotspot',
+                    icon: '🗓️',
+                    title: t('behavior_lens.hub.hotspot_title') || 'Routine Hotspot Matrix',
+                    desc: t('behavior_lens.hub.hotspot_desc') || 'Map behavior incidents to daily routine periods with AI analysis',
+                    color: 'orange',
+                },
+                {
+                    id: 'export',
+                    icon: '📥',
+                    title: t('behavior_lens.hub.export_title') || 'Export Data',
+                    desc: t('behavior_lens.hub.export_desc') || 'Download behavioral data as JSON or formatted text reports',
+                    color: 'slate',
+                },
             ];
 
             const colorClasses = {
                 indigo: { bg: 'bg-indigo-50', border: 'border-indigo-200', icon: 'bg-indigo-100 text-indigo-600', hover: 'hover:border-indigo-400 hover:shadow-indigo-100' },
                 emerald: { bg: 'bg-emerald-50', border: 'border-emerald-200', icon: 'bg-emerald-100 text-emerald-600', hover: 'hover:border-emerald-400 hover:shadow-emerald-100' },
                 purple: { bg: 'bg-purple-50', border: 'border-purple-200', icon: 'bg-purple-100 text-purple-600', hover: 'hover:border-purple-400 hover:shadow-purple-100' },
+                sky: { bg: 'bg-sky-50', border: 'border-sky-200', icon: 'bg-sky-100 text-sky-600', hover: 'hover:border-sky-400 hover:shadow-sky-100' },
+                amber: { bg: 'bg-amber-50', border: 'border-amber-200', icon: 'bg-amber-100 text-amber-600', hover: 'hover:border-amber-400 hover:shadow-amber-100' },
+                teal: { bg: 'bg-teal-50', border: 'border-teal-200', icon: 'bg-teal-100 text-teal-600', hover: 'hover:border-teal-400 hover:shadow-teal-100' },
+                rose: { bg: 'bg-rose-50', border: 'border-rose-200', icon: 'bg-rose-100 text-rose-600', hover: 'hover:border-rose-400 hover:shadow-rose-100' },
+                orange: { bg: 'bg-orange-50', border: 'border-orange-200', icon: 'bg-orange-100 text-orange-600', hover: 'hover:border-orange-400 hover:shadow-orange-100' },
+                slate: { bg: 'bg-slate-50', border: 'border-slate-200', icon: 'bg-slate-100 text-slate-600', hover: 'hover:border-slate-400 hover:shadow-slate-100' },
             };
 
             return h('div', { className: 'max-w-4xl mx-auto' },
@@ -890,10 +1682,16 @@ Analyze this data and return ONLY valid JSON:
                             onClick: () => {
                                 if (tool.disabled) return;
                                 if (tool.id === 'abc') setActivePanel('abc');
-                                if (tool.id === 'observation') setShowLiveObs(true);
-                                if (tool.id === 'analysis') handleAiAnalyze();
+                                else if (tool.id === 'observation') setShowLiveObs(true);
+                                else if (tool.id === 'analysis') handleAiAnalyze();
+                                else if (tool.id === 'overview') setActivePanel('overview');
+                                else if (tool.id === 'frequency') setShowFreqCounter(true);
+                                else if (tool.id === 'interval') setShowIntervalGrid(true);
+                                else if (tool.id === 'token') setActivePanel('token');
+                                else if (tool.id === 'hotspot') setActivePanel('hotspot');
+                                else if (tool.id === 'export') setActivePanel('export');
                             },
-                            disabled: tool.disabled || (!selectedStudent && tool.id !== 'analysis'),
+                            disabled: tool.disabled || (!selectedStudent && !['analysis', 'export'].includes(tool.id)),
                             className: `text-left p-5 rounded-xl border-2 transition-all ${cc.border} ${cc.hover} bg-white shadow-sm hover:shadow-md ${tool.disabled || !selectedStudent ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
                                 }`
                         },
@@ -1017,7 +1815,11 @@ Analyze this data and return ONLY valid JSON:
                             ),
                             h('p', { className: 'text-xs text-slate-500' },
                                 activePanel === 'hub' ? (t('behavior_lens.subtitle') || 'Behavioral Observation & Analysis') :
-                                    activePanel === 'abc' ? (t('behavior_lens.abc.title') || 'ABC Data Collection') : ''
+                                    activePanel === 'abc' ? (t('behavior_lens.abc.title') || 'ABC Data Collection') :
+                                        activePanel === 'overview' ? (t('behavior_lens.overview.title') || 'Behavior Overview') :
+                                            activePanel === 'token' ? (t('behavior_lens.token.title') || 'Token Board') :
+                                                activePanel === 'hotspot' ? (t('behavior_lens.hotspot.title') || 'Routine Hotspot Matrix') :
+                                                    activePanel === 'export' ? (t('behavior_lens.export.title') || 'Export Data') : ''
                             )
                         )
                     ),
@@ -1038,11 +1840,54 @@ Analyze this data and return ONLY valid JSON:
                     analyzing,
                     t,
                     addToast
+                }),
+                activePanel === 'overview' && h(OverviewPanel, {
+                    abcEntries,
+                    observationSessions,
+                    aiAnalysis,
+                    studentName: selectedStudent,
+                    t
+                }),
+                activePanel === 'token' && h(TokenBoard, {
+                    onClose: () => setActivePanel('hub'),
+                    studentName: selectedStudent,
+                    t,
+                    addToast
+                }),
+                activePanel === 'hotspot' && h(HotspotMatrix, {
+                    abcEntries,
+                    studentName: selectedStudent,
+                    callGemini,
+                    t,
+                    addToast
+                }),
+                activePanel === 'export' && h(ExportPanel, {
+                    abcEntries,
+                    observationSessions,
+                    studentName: selectedStudent,
+                    aiAnalysis,
+                    t
                 })
             ),
             // Fullscreen live observation overlay
             showLiveObs && h(LiveObsOverlay, {
                 onClose: () => setShowLiveObs(false),
+                studentName: selectedStudent,
+                onSaveSession: handleSaveObsSession,
+                t,
+                addToast
+            }),
+            // Fullscreen frequency counter overlay
+            showFreqCounter && h(FrequencyCounter, {
+                onClose: () => setShowFreqCounter(false),
+                studentName: selectedStudent,
+                onSaveSession: handleSaveObsSession,
+                t,
+                addToast
+            }),
+            // Fullscreen interval grid overlay
+            showIntervalGrid && h(IntervalGrid, {
+                onClose: () => setShowIntervalGrid(false),
                 studentName: selectedStudent,
                 onSaveSession: handleSaveObsSession,
                 t,
