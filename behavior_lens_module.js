@@ -2030,6 +2030,638 @@ Recommend reinforcers and return ONLY valid JSON:
         );
     };
 
+    // ─── ChoiceBoard ────────────────────────────────────────────────────
+    // Fullscreen student-facing visual choice overlay
+    const ChoiceBoard = ({ onClose, studentName, t, addToast }) => {
+        const [choices, setChoices] = useState([
+            { label: 'Take a break', emoji: '🧘' },
+            { label: 'Ask for help', emoji: '🙋' },
+            { label: 'Use a tool', emoji: '🔧' },
+            { label: 'Keep working', emoji: '💪' },
+        ]);
+        const [editing, setEditing] = useState(false);
+        const [selected, setSelected] = useState(null);
+        const [log, setLog] = useState([]);
+
+        const gradients = [
+            'from-blue-400 to-indigo-500',
+            'from-emerald-400 to-teal-500',
+            'from-amber-400 to-orange-500',
+            'from-pink-400 to-rose-500',
+        ];
+
+        const handleSelect = (idx) => {
+            setSelected(idx);
+            setLog(prev => [...prev, { choice: choices[idx].label, time: new Date().toISOString() }]);
+            if (addToast) addToast(`Choice: ${choices[idx].label}`, 'success');
+            setTimeout(() => setSelected(null), 2000);
+        };
+
+        const updateChoice = (idx, field, val) => {
+            setChoices(prev => prev.map((c, i) => i === idx ? { ...c, [field]: val } : c));
+        };
+
+        if (editing) {
+            return h('div', { className: 'fixed inset-0 z-[300] bg-slate-900 flex flex-col items-center justify-center p-8' },
+                h('div', { className: 'bg-white rounded-2xl p-6 w-full max-w-md space-y-4' },
+                    h('h3', { className: 'text-sm font-black text-slate-800' }, '✏️ Edit Choices'),
+                    choices.map((c, i) =>
+                        h('div', { key: i, className: 'flex gap-2' },
+                            h('input', { value: c.emoji, onChange: (e) => updateChoice(i, 'emoji', e.target.value), className: 'w-12 text-center text-xl border rounded-lg', maxLength: 2 }),
+                            h('input', { value: c.label, onChange: (e) => updateChoice(i, 'label', e.target.value), className: 'flex-1 border rounded-lg px-3 py-2 text-sm' })
+                        )
+                    ),
+                    h('div', { className: 'flex gap-2' },
+                        choices.length < 4 && h('button', {
+                            onClick: () => setChoices(prev => [...prev, { label: 'New choice', emoji: '✨' }]),
+                            className: 'px-3 py-2 bg-emerald-100 text-emerald-700 rounded-lg text-sm font-bold'
+                        }, '+ Add'),
+                        choices.length > 2 && h('button', {
+                            onClick: () => setChoices(prev => prev.slice(0, -1)),
+                            className: 'px-3 py-2 bg-red-100 text-red-700 rounded-lg text-sm font-bold'
+                        }, '- Remove')
+                    ),
+                    h('button', { onClick: () => setEditing(false), className: 'w-full py-2 bg-indigo-500 text-white rounded-lg font-bold' }, 'Done')
+                )
+            );
+        }
+
+        return h('div', { className: 'fixed inset-0 z-[300] bg-slate-900 flex flex-col' },
+            // Toolbar
+            h('div', { className: 'flex justify-between items-center p-4 shrink-0' },
+                h('button', { onClick: () => setEditing(true), className: 'px-3 py-1.5 bg-white/10 text-white rounded-lg text-sm font-bold hover:bg-white/20' }, '✏️ Edit'),
+                h('span', { className: 'text-white/60 text-xs font-bold' }, studentName ? `For: ${studentName}` : 'Choice Board'),
+                h('button', { onClick: onClose, className: 'px-3 py-1.5 bg-white/10 text-white rounded-lg text-sm font-bold hover:bg-white/20' }, '✕ Close')
+            ),
+            // Choices grid
+            h('div', { className: `flex-1 grid gap-4 p-6 ${choices.length <= 2 ? 'grid-cols-1' : 'grid-cols-2'}` },
+                choices.map((c, i) =>
+                    h('button', {
+                        key: i,
+                        onClick: () => handleSelect(i),
+                        className: `rounded-3xl bg-gradient-to-br ${gradients[i % gradients.length]} flex flex-col items-center justify-center shadow-2xl transition-all duration-300 ${selected === i ? 'scale-95 ring-4 ring-white/80' : 'hover:scale-[1.02] active:scale-95'}`
+                    },
+                        h('span', { className: 'text-6xl md:text-8xl mb-4 drop-shadow-lg' }, c.emoji),
+                        h('span', { className: 'text-xl md:text-3xl font-black text-white drop-shadow-md' }, c.label),
+                        selected === i && h('div', { className: 'mt-3 text-white/80 text-lg font-bold animate-bounce' }, '✓ Selected!')
+                    )
+                )
+            )
+        );
+    };
+
+    // ─── EnvironmentAudit ───────────────────────────────────────────────
+    // 8-item classroom environment checklist with scoring
+    const EnvironmentAudit = ({ studentName, callGemini, t, addToast }) => {
+        const items = [
+            { id: 'structure', label: 'Classroom Structure', desc: 'Clear physical layout, defined areas, organized spaces' },
+            { id: 'schedule', label: 'Visual Schedule', desc: 'Daily schedule posted and referenced regularly' },
+            { id: 'rules', label: 'Rules & Expectations', desc: 'Positively stated rules visibly posted' },
+            { id: 'noise', label: 'Noise Level', desc: 'Appropriate volume management and signal systems' },
+            { id: 'seating', label: 'Seating Arrangement', desc: 'Strategic seating that minimizes triggers' },
+            { id: 'materials', label: 'Materials Access', desc: 'Students can access needed materials independently' },
+            { id: 'transitions', label: 'Transition Cues', desc: 'Clear signals and routines for activity transitions' },
+            { id: 'ratio', label: 'Positive:Corrective Ratio', desc: 'Aim for 4:1 positive to corrective interactions' },
+        ];
+        const [ratings, setRatings] = useState({});
+        const [aiRecs, setAiRecs] = useState(null);
+        const [loading, setLoading] = useState(false);
+
+        const total = useMemo(() => Object.values(ratings).reduce((s, v) => s + v, 0), [ratings]);
+        const maxScore = items.length * 5;
+        const pct = maxScore > 0 ? Math.round((total / maxScore) * 100) : 0;
+        const grade = pct >= 80 ? { label: 'Strong', color: '#22c55e', bg: '#f0fdf4' } :
+            pct >= 50 ? { label: 'Developing', color: '#f59e0b', bg: '#fefce8' } :
+                { label: 'Needs Improvement', color: '#ef4444', bg: '#fef2f2' };
+
+        const handleRecommend = async () => {
+            if (!callGemini) return;
+            setLoading(true);
+            try {
+                const lowItems = items.filter(it => (ratings[it.id] || 0) <= 2).map(it => it.label).join(', ');
+                const prompt = `You are a behavior specialist reviewing a classroom environment audit.
+
+Total score: ${total}/${maxScore} (${pct}%)
+Low-scoring areas: ${lowItems || 'None'}
+Ratings: ${items.map(it => `${it.label}: ${ratings[it.id] || 0}/5`).join(', ')}
+
+Provide improvement recommendations and return ONLY valid JSON:
+{
+  "summary": "1-2 sentence overall assessment",
+  "recommendations": [
+    { "area": "area name", "action": "specific actionable recommendation", "priority": "high/medium/low" }
+  ]
+}`;
+                const result = await callGemini(prompt, true);
+                const cleaned = result.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+                let parsed;
+                try { parsed = JSON.parse(cleaned); }
+                catch { const m = result.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); else throw new Error('Parse failed'); }
+                setAiRecs(parsed);
+                if (addToast) addToast('Recommendations ready ✨', 'success');
+            } catch (err) {
+                warnLog('Audit recs failed:', err);
+                if (addToast) addToast('Failed — try again', 'error');
+            } finally { setLoading(false); }
+        };
+
+        return h('div', { className: 'max-w-3xl mx-auto space-y-4' },
+            h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm' },
+                h('h3', { className: 'text-sm font-black text-slate-800 mb-4' }, '🏫 ' + (t('behavior_lens.audit.title') || 'Classroom Environment Audit')),
+                h('div', { className: 'space-y-3' },
+                    items.map(item =>
+                        h('div', { key: item.id, className: 'flex items-center justify-between gap-3' },
+                            h('div', { className: 'flex-1 min-w-0' },
+                                h('div', { className: 'text-sm font-bold text-slate-700' }, item.label),
+                                h('div', { className: 'text-[10px] text-slate-400' }, item.desc)
+                            ),
+                            h('div', { className: 'flex gap-0.5 shrink-0' },
+                                [1, 2, 3, 4, 5].map(v =>
+                                    h('button', {
+                                        key: v,
+                                        onClick: () => setRatings(prev => ({ ...prev, [item.id]: prev[item.id] === v ? 0 : v })),
+                                        className: `w-7 h-7 rounded-md text-xs font-bold transition-all ${(ratings[item.id] || 0) >= v ?
+                                            (v <= 2 ? 'bg-red-100 text-red-600 border border-red-200' : v <= 3 ? 'bg-amber-100 text-amber-600 border border-amber-200' : 'bg-emerald-100 text-emerald-600 border border-emerald-200') :
+                                            'bg-slate-50 text-slate-300 border border-slate-100 hover:bg-slate-100'}`
+                                    }, v)
+                                )
+                            )
+                        )
+                    )
+                )
+            ),
+            // Score card
+            Object.keys(ratings).length > 0 && h('div', { className: 'rounded-xl border-2 p-5', style: { background: grade.bg, borderColor: grade.color } },
+                h('div', { className: 'flex items-center justify-between' },
+                    h('div', null,
+                        h('div', { className: 'text-xs font-bold uppercase', style: { color: grade.color } }, 'Overall Score'),
+                        h('div', { className: 'text-3xl font-black', style: { color: grade.color } }, `${total}/${maxScore}`)
+                    ),
+                    h('div', { className: 'text-right' },
+                        h('div', { className: 'text-2xl font-black', style: { color: grade.color } }, `${pct}%`),
+                        h('div', { className: 'text-xs font-bold px-2 py-0.5 rounded-full text-white mt-1', style: { background: grade.color } }, grade.label)
+                    )
+                )
+            ),
+            // AI recommend
+            callGemini && h('button', {
+                onClick: handleRecommend,
+                disabled: loading || Object.keys(ratings).length < 3,
+                className: 'w-full py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl disabled:opacity-40 transition-all'
+            }, loading ? '⏳ Analyzing...' : ('🧠 ' + (t('behavior_lens.audit.recommend') || 'AI Recommend Improvements'))),
+            // Recommendations
+            aiRecs && h('div', { className: 'bg-blue-50 rounded-xl border border-blue-200 p-5 animate-in slide-in-from-bottom-4 duration-300' },
+                aiRecs.summary && h('p', { className: 'text-sm text-blue-700 mb-3 font-medium' }, aiRecs.summary),
+                aiRecs.recommendations && h('div', { className: 'space-y-2' },
+                    aiRecs.recommendations.map((r, i) =>
+                        h('div', { key: i, className: 'flex items-start gap-2 p-3 bg-white rounded-lg border border-blue-100' },
+                            h('span', { className: `px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${r.priority === 'high' ? 'bg-red-100 text-red-600' : r.priority === 'medium' ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}` }, r.priority),
+                            h('div', null,
+                                h('span', { className: 'text-sm font-bold text-slate-700' }, r.area + ': '),
+                                h('span', { className: 'text-sm text-slate-600' }, r.action)
+                            )
+                        )
+                    )
+                )
+            )
+        );
+    };
+
+    // ─── TriangulationCheck ─────────────────────────────────────────────
+    // Cross-references ABC data, observation sessions, and AI analysis
+    const TriangulationCheck = ({ abcEntries, observationSessions, aiAnalysis, studentName, callGemini, t, addToast }) => {
+        const [analysis, setAnalysis] = useState(null);
+        const [loading, setLoading] = useState(false);
+
+        const sources = [
+            { key: 'abc', label: 'ABC Data', icon: '📋', count: abcEntries.length, color: '#6366f1' },
+            { key: 'obs', label: 'Observations', icon: '🔍', count: observationSessions.length, color: '#10b981' },
+            { key: 'ai', label: 'AI Analysis', icon: '🧠', count: aiAnalysis ? 1 : 0, color: '#8b5cf6' },
+        ];
+        const totalSources = sources.filter(s => s.count > 0).length;
+
+        const handleAnalyze = async () => {
+            if (!callGemini) return;
+            setLoading(true);
+            try {
+                const abcSummary = abcEntries.slice(0, 10).map((e, i) =>
+                    `#${i + 1}: A="${e.antecedent}", B="${e.behavior}", C="${e.consequence}"`
+                ).join('\n');
+                const obsSummary = observationSessions.slice(0, 5).map((s, i) =>
+                    `#${i + 1}: method=${s.method}, count=${s.data?.count || 'N/A'}, duration=${fmtDuration(s.duration)}`
+                ).join('\n');
+                const aiSummary = aiAnalysis ? `Function: ${aiAnalysis.hypothesizedFunction}, Confidence: ${aiAnalysis.confidence}%, Summary: ${aiAnalysis.summary || ''}` : 'No AI analysis yet';
+
+                const prompt = `You are a BCBA performing data triangulation for a student.
+
+SOURCE 1 — ABC DATA (${abcEntries.length} entries):
+${abcSummary || 'No entries'}
+
+SOURCE 2 — OBSERVATIONS (${observationSessions.length} sessions):
+${obsSummary || 'No sessions'}
+
+SOURCE 3 — AI ANALYSIS:
+${aiSummary}
+
+Analyze data convergence and return ONLY valid JSON:
+{
+  "convergentThemes": ["theme 1", "theme 2", "theme 3"],
+  "divergentFindings": ["finding 1"],
+  "dataGaps": ["gap 1"],
+  "confidence": "low/moderate/high",
+  "summary": "2-3 sentence synthesis of all data sources",
+  "recommendation": "Next steps based on triangulation"
+}`;
+                const result = await callGemini(prompt, true);
+                const cleaned = result.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+                let parsed;
+                try { parsed = JSON.parse(cleaned); }
+                catch { const m = result.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); else throw new Error('Parse failed'); }
+                setAnalysis(parsed);
+                if (addToast) addToast('Triangulation complete ✨', 'success');
+            } catch (err) {
+                warnLog('Triangulation failed:', err);
+                if (addToast) addToast('Analysis failed', 'error');
+            } finally { setLoading(false); }
+        };
+
+        const renderList = (icon, title, items, color) => {
+            if (!items || items.length === 0) return null;
+            return h('div', { className: 'mb-3' },
+                h('h4', { className: 'text-xs font-bold uppercase mb-1', style: { color } }, icon + ' ' + title),
+                h('ul', { className: 'space-y-1' },
+                    items.map((item, i) => h('li', { key: i, className: 'text-sm text-slate-700 flex items-start gap-2' },
+                        h('span', { style: { color }, className: 'mt-0.5 shrink-0' }, '•'), item
+                    ))
+                )
+            );
+        };
+
+        return h('div', { className: 'max-w-3xl mx-auto space-y-4' },
+            // Sources overview
+            h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm' },
+                h('h3', { className: 'text-sm font-black text-slate-800 mb-4' }, '🔺 ' + (t('behavior_lens.triangulation.title') || 'Data Triangulation')),
+                h('div', { className: 'grid grid-cols-3 gap-3' },
+                    sources.map(s =>
+                        h('div', { key: s.key, className: 'text-center p-3 rounded-xl border', style: { borderColor: s.count > 0 ? s.color : '#e2e8f0', background: s.count > 0 ? s.color + '08' : '#f8fafc' } },
+                            h('div', { className: 'text-2xl mb-1' }, s.icon),
+                            h('div', { className: 'text-xs font-bold', style: { color: s.count > 0 ? s.color : '#94a3b8' } }, s.label),
+                            h('div', { className: 'text-lg font-black', style: { color: s.count > 0 ? s.color : '#cbd5e1' } }, s.count)
+                        )
+                    )
+                ),
+                h('div', { className: 'mt-3 text-center text-xs text-slate-500' },
+                    `${totalSources}/3 data sources available`
+                )
+            ),
+            // Analyze button
+            callGemini && h('button', {
+                onClick: handleAnalyze,
+                disabled: loading || totalSources < 1,
+                className: 'w-full py-3 bg-gradient-to-r from-zinc-600 to-zinc-800 text-white rounded-xl font-bold shadow-lg hover:shadow-xl disabled:opacity-40 transition-all'
+            }, loading ? '⏳ Analyzing...' : ('🧠 ' + (t('behavior_lens.triangulation.analyze') || 'Analyze Data Convergence'))),
+            // Results
+            analysis && h('div', { className: 'bg-zinc-50 rounded-xl border border-zinc-200 p-5 animate-in slide-in-from-bottom-4 duration-300 space-y-2' },
+                analysis.summary && h('p', { className: 'text-sm text-zinc-700 font-medium bg-white p-3 rounded-lg border border-zinc-100 mb-3' }, analysis.summary),
+                analysis.confidence && h('div', { className: 'mb-3' },
+                    h('span', { className: `px-2 py-0.5 rounded-full text-xs font-bold ${analysis.confidence === 'high' ? 'bg-emerald-100 text-emerald-700' : analysis.confidence === 'moderate' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}` }, `Confidence: ${analysis.confidence}`)
+                ),
+                renderList('✅', 'Convergent Themes', analysis.convergentThemes, '#22c55e'),
+                renderList('⚠️', 'Divergent Findings', analysis.divergentFindings, '#f59e0b'),
+                renderList('❓', 'Data Gaps', analysis.dataGaps, '#ef4444'),
+                analysis.recommendation && h('div', { className: 'mt-3 p-3 bg-indigo-50 rounded-lg border border-indigo-200' },
+                    h('div', { className: 'text-xs font-bold text-indigo-700 mb-1' }, '🎯 Next Steps'),
+                    h('p', { className: 'text-sm text-indigo-600' }, analysis.recommendation)
+                )
+            )
+        );
+    };
+
+    // ─── ImpactCalculator ───────────────────────────────────────────────
+    // Lost instructional time quantifier
+    const ImpactCalculator = ({ abcEntries, studentName, callGemini, t, addToast }) => {
+        const [frequency, setFrequency] = useState('');
+        const [avgDuration, setAvgDuration] = useState('');
+        const [schoolDays, setSchoolDays] = useState('5');
+        const [costPerPupil, setCostPerPupil] = useState('15000');
+        const [aiInsight, setAiInsight] = useState(null);
+        const [loading, setLoading] = useState(false);
+
+        const freq = parseFloat(frequency) || 0;
+        const dur = parseFloat(avgDuration) || 0;
+        const days = parseInt(schoolDays) || 5;
+        const lostPerDay = freq * dur;
+        const lostPerWeek = lostPerDay * days;
+        const lostPerMonth = lostPerWeek * 4;
+        const lostPerYear = lostPerWeek * 36;
+        const costPerMinute = (parseFloat(costPerPupil) || 15000) / (180 * 6.5 * 60);
+        const annualCost = lostPerYear * costPerMinute;
+
+        const handleInterpret = async () => {
+            if (!callGemini) return;
+            setLoading(true);
+            try {
+                const prompt = `You are a school psychologist analyzing the impact of a student's behavior on instructional time.
+
+Behavior frequency: ${freq} per day
+Average episode duration: ${dur} minutes
+Lost instructional time: ${lostPerDay.toFixed(1)} min/day, ${lostPerWeek.toFixed(1)} min/week, ${lostPerYear.toFixed(0)} min/year
+Estimated annual cost: $${annualCost.toFixed(2)}
+
+Provide a brief impact interpretation and return ONLY valid JSON:
+{
+  "severity": "minimal/moderate/significant/severe",
+  "interpretation": "2-3 sentence interpretation of impact",
+  "comparison": "Compare to typical classroom norms",
+  "urgency": "Recommended timeline for intervention"
+}`;
+                const result = await callGemini(prompt, true);
+                const cleaned = result.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+                let parsed;
+                try { parsed = JSON.parse(cleaned); }
+                catch { const m = result.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); else throw new Error('Parse failed'); }
+                setAiInsight(parsed);
+                if (addToast) addToast('Impact analyzed ✨', 'success');
+            } catch (err) {
+                warnLog('Impact analysis failed:', err);
+                if (addToast) addToast('Analysis failed', 'error');
+            } finally { setLoading(false); }
+        };
+
+        const bars = [
+            { label: 'Per Day', value: lostPerDay, max: 60, unit: 'min' },
+            { label: 'Per Week', value: lostPerWeek, max: 300, unit: 'min' },
+            { label: 'Per Month', value: lostPerMonth, max: 1200, unit: 'min' },
+            { label: 'Per Year', value: lostPerYear, max: 10000, unit: 'min' },
+        ];
+
+        return h('div', { className: 'max-w-3xl mx-auto space-y-4' },
+            // Input form
+            h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-3' },
+                h('h3', { className: 'text-sm font-black text-slate-800' }, '⏱️ ' + (t('behavior_lens.impact.title') || 'Impact Analysis Calculator')),
+                h('div', { className: 'grid grid-cols-2 gap-3' },
+                    h('div', null,
+                        h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase' }, 'Incidents per day'),
+                        h('input', { type: 'number', value: frequency, onChange: (e) => setFrequency(e.target.value), placeholder: '3', className: 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm mt-0.5' })
+                    ),
+                    h('div', null,
+                        h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase' }, 'Avg duration (min)'),
+                        h('input', { type: 'number', value: avgDuration, onChange: (e) => setAvgDuration(e.target.value), placeholder: '5', className: 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm mt-0.5' })
+                    ),
+                    h('div', null,
+                        h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase' }, 'School days/week'),
+                        h('input', { type: 'number', value: schoolDays, onChange: (e) => setSchoolDays(e.target.value), className: 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm mt-0.5' })
+                    ),
+                    h('div', null,
+                        h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase' }, 'Cost per pupil ($/yr)'),
+                        h('input', { type: 'number', value: costPerPupil, onChange: (e) => setCostPerPupil(e.target.value), className: 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm mt-0.5' })
+                    )
+                )
+            ),
+            // Results
+            (freq > 0 && dur > 0) && h('div', { className: 'bg-yellow-50 rounded-xl border border-yellow-200 p-5' },
+                h('h4', { className: 'text-xs font-bold text-yellow-700 uppercase mb-3' }, '📊 Lost Instructional Time'),
+                h('div', { className: 'space-y-2' },
+                    bars.map(b =>
+                        h('div', { key: b.label, className: 'flex items-center gap-3' },
+                            h('span', { className: 'text-xs font-bold text-slate-600 w-20 shrink-0' }, b.label),
+                            h('div', { className: 'flex-1 h-5 bg-yellow-100 rounded-full overflow-hidden' },
+                                h('div', { className: 'h-full bg-gradient-to-r from-yellow-400 to-red-400 rounded-full transition-all', style: { width: `${Math.min(100, (b.value / b.max) * 100)}%` } })
+                            ),
+                            h('span', { className: 'text-xs font-black text-yellow-700 w-20 text-right' }, `${b.value.toFixed(0)} ${b.unit}`)
+                        )
+                    )
+                ),
+                h('div', { className: 'mt-4 p-3 bg-red-50 rounded-lg border border-red-200 text-center' },
+                    h('div', { className: 'text-[10px] font-bold text-red-600 uppercase' }, 'Estimated Annual Cost'),
+                    h('div', { className: 'text-2xl font-black text-red-700' }, `$${annualCost.toFixed(2)}`)
+                )
+            ),
+            // AI interpret
+            callGemini && freq > 0 && dur > 0 && h('button', {
+                onClick: handleInterpret,
+                disabled: loading,
+                className: 'w-full py-3 bg-gradient-to-r from-yellow-500 to-amber-500 text-white rounded-xl font-bold shadow-lg hover:shadow-xl disabled:opacity-40 transition-all'
+            }, loading ? '⏳ Analyzing...' : ('🧠 ' + (t('behavior_lens.impact.interpret') || 'AI Interpret Impact'))),
+            aiInsight && h('div', { className: 'bg-amber-50 rounded-xl border border-amber-200 p-5 animate-in slide-in-from-bottom-4 duration-300' },
+                aiInsight.severity && h('span', { className: `px-2 py-0.5 rounded-full text-xs font-bold ${aiInsight.severity === 'severe' ? 'bg-red-100 text-red-700' : aiInsight.severity === 'significant' ? 'bg-orange-100 text-orange-700' : aiInsight.severity === 'moderate' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}` }, aiInsight.severity),
+                aiInsight.interpretation && h('p', { className: 'text-sm text-slate-700 mt-2' }, aiInsight.interpretation),
+                aiInsight.comparison && h('p', { className: 'text-xs text-slate-500 mt-1 italic' }, '📏 ' + aiInsight.comparison),
+                aiInsight.urgency && h('p', { className: 'text-xs text-amber-600 font-bold mt-2' }, '⏰ ' + aiInsight.urgency)
+            )
+        );
+    };
+
+    // ─── CrisisIntervention ─────────────────────────────────────────────
+    // 3-tier emergency protocol with AI auto-generation
+    const CrisisIntervention = ({ studentName, abcEntries, aiAnalysis, callGemini, t, addToast }) => {
+        const tiers = [
+            { key: 'prevention', label: 'Prevention', icon: '🛡️', color: '#22c55e', bg: '#f0fdf4' },
+            { key: 'deescalation', label: 'De-escalation', icon: '🌊', color: '#3b82f6', bg: '#eff6ff' },
+            { key: 'emergency', label: 'Emergency', icon: '🚨', color: '#ef4444', bg: '#fef2f2' },
+        ];
+        const [plan, setPlan] = useState({
+            prevention: { triggers: '', staffActions: '', communication: '' },
+            deescalation: { triggers: '', staffActions: '', communication: '' },
+            emergency: { triggers: '', staffActions: '', communication: '' },
+        });
+        const [contacts, setContacts] = useState('');
+        const [drafting, setDrafting] = useState(false);
+
+        const handleDraft = async () => {
+            if (!callGemini) return;
+            setDrafting(true);
+            try {
+                const funcStr = aiAnalysis?.hypothesizedFunction || 'unknown';
+                const prompt = `You are a crisis intervention specialist creating a safety plan for a student.
+
+Hypothesized function: ${funcStr}
+${aiAnalysis?.summary ? 'Analysis: ' + aiAnalysis.summary : ''}
+ABC entries: ${abcEntries.length}
+
+Generate a 3-tier crisis intervention plan and return ONLY valid JSON:
+{
+  "prevention": {
+    "triggers": "known triggers and early warning signs",
+    "staffActions": "proactive strategies to prevent escalation",
+    "communication": "how to communicate with student and team"
+  },
+  "deescalation": {
+    "triggers": "signs that de-escalation is needed",
+    "staffActions": "specific de-escalation techniques",
+    "communication": "scripts and communication approach"
+  },
+  "emergency": {
+    "triggers": "when to activate emergency protocol",
+    "staffActions": "immediate safety steps",
+    "communication": "who to notify and how"
+  },
+  "emergencyContacts": "list of emergency contacts and roles"
+}`;
+                const result = await callGemini(prompt, true);
+                const cleaned = result.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+                let parsed;
+                try { parsed = JSON.parse(cleaned); }
+                catch { const m = result.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); else throw new Error('Parse failed'); }
+                setPlan({ prevention: parsed.prevention || {}, deescalation: parsed.deescalation || {}, emergency: parsed.emergency || {} });
+                if (parsed.emergencyContacts) setContacts(parsed.emergencyContacts);
+                if (addToast) addToast('Crisis plan drafted ✨', 'success');
+            } catch (err) {
+                warnLog('Crisis plan failed:', err);
+                if (addToast) addToast('Drafting failed', 'error');
+            } finally { setDrafting(false); }
+        };
+
+        const updateField = (tier, field, val) => {
+            setPlan(prev => ({ ...prev, [tier]: { ...prev[tier], [field]: val } }));
+        };
+
+        return h('div', { className: 'max-w-3xl mx-auto space-y-4' },
+            // AI draft
+            callGemini && h('button', {
+                onClick: handleDraft,
+                disabled: drafting,
+                className: 'w-full py-3 bg-gradient-to-r from-stone-600 to-stone-800 text-white rounded-xl font-bold shadow-lg hover:shadow-xl disabled:opacity-40 transition-all'
+            }, drafting ? '⏳ Drafting...' : ('🧠 ' + (t('behavior_lens.crisis.draft') || 'AI Draft Crisis Plan'))),
+            // Title
+            h('div', { className: 'bg-white rounded-xl border-2 border-red-200 p-5 shadow-sm print:border-black' },
+                h('div', { className: 'text-center border-b border-slate-200 pb-3 mb-4' },
+                    h('h2', { className: 'text-lg font-black text-slate-800' }, '🚨 ' + (t('behavior_lens.crisis.title') || 'Crisis Intervention Plan')),
+                    h('p', { className: 'text-xs text-slate-500 mt-1' }, `Student: ${studentName || '___'}`)
+                ),
+                // Tiers
+                h('div', { className: 'space-y-4' },
+                    tiers.map(tier =>
+                        h('div', { key: tier.key, className: 'rounded-xl p-4 border-2', style: { background: tier.bg, borderColor: tier.color } },
+                            h('h3', { className: 'font-black text-sm mb-3 flex items-center gap-2', style: { color: tier.color } }, tier.icon, ' Tier: ', tier.label),
+                            h('div', { className: 'space-y-2' },
+                                ['triggers', 'staffActions', 'communication'].map(field =>
+                                    h('div', { key: field },
+                                        h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-0.5' },
+                                            field === 'triggers' ? '⚡ Triggers / Signs' : field === 'staffActions' ? '👤 Staff Actions' : '📢 Communication'
+                                        ),
+                                        h('textarea', {
+                                            value: plan[tier.key]?.[field] || '',
+                                            onChange: (e) => updateField(tier.key, field, e.target.value),
+                                            rows: 2,
+                                            className: 'w-full bg-white/70 rounded-lg px-3 py-2 text-sm border border-transparent focus:border-slate-300 outline-none resize-none'
+                                        })
+                                    )
+                                )
+                            )
+                        )
+                    )
+                ),
+                // Emergency contacts
+                h('div', { className: 'mt-4 p-4 bg-red-50 rounded-xl border border-red-200' },
+                    h('label', { className: 'text-[10px] font-bold text-red-600 uppercase block mb-1' }, '📞 Emergency Contacts'),
+                    h('textarea', { value: contacts, onChange: (e) => setContacts(e.target.value), rows: 2, className: 'w-full bg-white/70 rounded-lg px-3 py-2 text-sm border border-red-100 outline-none resize-none' })
+                )
+            ),
+            // Print
+            h('button', {
+                onClick: () => window.print(),
+                className: 'w-full py-2 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all print:hidden'
+            }, '🖨️ Print Crisis Plan')
+        );
+    };
+
+    // ─── TrafficLightVisual ─────────────────────────────────────────────
+    // Student-facing red/yellow/green behavior zone poster
+    const TrafficLightVisual = ({ studentName, aiAnalysis, callGemini, t, addToast }) => {
+        const [zones, setZones] = useState({
+            green: { title: 'Ready to Learn', items: 'Sitting in seat; Eyes on teacher; Raising hand; Following directions' },
+            yellow: { title: 'Slow Down', items: 'Feeling frustrated; Getting distracted; Talking out of turn; Need a break' },
+            red: { title: 'Stop & Get Help', items: 'Feeling very upset; Wanting to leave; Cannot focus; Need adult support' },
+        });
+        const [generating, setGenerating] = useState(false);
+
+        const handleGenerate = async () => {
+            if (!callGemini) return;
+            setGenerating(true);
+            try {
+                const funcStr = aiAnalysis?.hypothesizedFunction || 'unknown';
+                const prompt = `You are a behavior specialist creating a student-facing traffic light behavior visual.
+
+Hypothesized function: ${funcStr}
+${aiAnalysis?.summary ? 'Analysis: ' + aiAnalysis.summary : ''}
+
+Create student-friendly language and return ONLY valid JSON:
+{
+  "green": { "title": "positive zone title", "items": "expected behaviors separated by semicolons (4 items)" },
+  "yellow": { "title": "caution zone title", "items": "warning signs separated by semicolons (4 items)" },
+  "red": { "title": "stop zone title", "items": "crisis-level behaviors separated by semicolons (4 items)" }
+}`;
+                const result = await callGemini(prompt, true);
+                const cleaned = result.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+                let parsed;
+                try { parsed = JSON.parse(cleaned); }
+                catch { const m = result.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); else throw new Error('Parse failed'); }
+                setZones(parsed);
+                if (addToast) addToast('Traffic light generated ✨', 'success');
+            } catch (err) {
+                warnLog('Traffic light failed:', err);
+                if (addToast) addToast('Generation failed', 'error');
+            } finally { setGenerating(false); }
+        };
+
+        const zoneConfig = [
+            { key: 'green', emoji: '🟢', color: '#22c55e', bg: '#f0fdf4', border: '#86efac' },
+            { key: 'yellow', emoji: '🟡', color: '#eab308', bg: '#fefce8', border: '#fde68a' },
+            { key: 'red', emoji: '🔴', color: '#ef4444', bg: '#fef2f2', border: '#fca5a5' },
+        ];
+
+        return h('div', { className: 'max-w-md mx-auto space-y-4' },
+            // AI generate
+            callGemini && h('button', {
+                onClick: handleGenerate,
+                disabled: generating,
+                className: 'w-full py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-bold shadow-lg hover:shadow-xl disabled:opacity-40 transition-all'
+            }, generating ? '⏳ Generating...' : ('🧠 ' + (t('behavior_lens.traffic.generate') || 'AI Generate Expectations'))),
+            // Traffic light poster
+            h('div', { id: 'traffic-light-printable', className: 'bg-white rounded-2xl border-2 border-slate-200 p-6 shadow-lg print:shadow-none' },
+                h('h2', { className: 'text-center text-lg font-black text-slate-800 mb-1' }, '🚦 My Behavior Plan'),
+                studentName && h('p', { className: 'text-center text-xs text-slate-500 mb-4' }, `For: ${studentName}`),
+                h('div', { className: 'space-y-3' },
+                    zoneConfig.map(z => {
+                        const zone = zones[z.key] || {};
+                        const itemList = (zone.items || '').split(';').map(s => s.trim()).filter(Boolean);
+                        return h('div', { key: z.key, className: 'rounded-xl p-4 border-2', style: { background: z.bg, borderColor: z.border } },
+                            h('div', { className: 'flex items-center gap-2 mb-2' },
+                                h('span', { className: 'text-2xl' }, z.emoji),
+                                h('input', {
+                                    value: zone.title || '',
+                                    onChange: (e) => setZones(prev => ({ ...prev, [z.key]: { ...prev[z.key], title: e.target.value } })),
+                                    className: 'flex-1 bg-transparent font-black text-lg outline-none',
+                                    style: { color: z.color }
+                                })
+                            ),
+                            h('div', { className: 'space-y-1 ml-9' },
+                                itemList.map((item, i) =>
+                                    h('div', { key: i, className: 'flex items-center gap-2 text-sm', style: { color: z.color } },
+                                        h('span', { className: 'text-xs' }, '•'), item
+                                    )
+                                )
+                            ),
+                            h('textarea', {
+                                value: zone.items || '',
+                                onChange: (e) => setZones(prev => ({ ...prev, [z.key]: { ...prev[z.key], items: e.target.value } })),
+                                placeholder: 'Items separated by semicolons',
+                                rows: 1,
+                                className: 'w-full mt-2 bg-white/50 rounded-lg px-3 py-1.5 text-xs border border-transparent focus:border-slate-200 outline-none resize-none print:hidden'
+                            })
+                        );
+                    })
+                )
+            ),
+            // Print
+            h('button', {
+                onClick: () => window.print(),
+                className: 'w-full py-2 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all print:hidden'
+            }, '🖨️ Print Poster')
+        );
+    };
+
     // ─── BehaviorTab (Hub) ──────────────────────────────────────────────
     // The main hub component that renders inside a fullscreen overlay
     window.AlloModules = window.AlloModules || {};
@@ -2051,6 +2683,7 @@ Recommend reinforcers and return ONLY valid JSON:
         const [showLiveObs, setShowLiveObs] = useState(false);
         const [showFreqCounter, setShowFreqCounter] = useState(false);
         const [showIntervalGrid, setShowIntervalGrid] = useState(false);
+        const [showChoiceBoard, setShowChoiceBoard] = useState(false);
 
         // Two-dropdown codename system (adjective + animal)
         const adjectives = useMemo(() => t('codenames.adjectives') || [], [t]);
@@ -2294,6 +2927,48 @@ Analyze this data and return ONLY valid JSON:
                     desc: t('behavior_lens.hub.reinforcer_desc') || 'Preference inventory with AI-recommended reinforcers',
                     color: 'pink',
                 },
+                {
+                    id: 'choice',
+                    icon: '🃏',
+                    title: t('behavior_lens.hub.choice_title') || 'Choice Board',
+                    desc: t('behavior_lens.hub.choice_desc') || 'Fullscreen student-facing visual choice overlay',
+                    color: 'emerald',
+                },
+                {
+                    id: 'audit',
+                    icon: '🏫',
+                    title: t('behavior_lens.hub.audit_title') || 'Environment Audit',
+                    desc: t('behavior_lens.hub.audit_desc') || '8-item classroom environment checklist with AI recommendations',
+                    color: 'blue',
+                },
+                {
+                    id: 'triangulation',
+                    icon: '🔺',
+                    title: t('behavior_lens.hub.triangulation_title') || 'Data Triangulation',
+                    desc: t('behavior_lens.hub.triangulation_desc') || 'Cross-reference ABC, observations, and AI analysis for convergence',
+                    color: 'zinc',
+                },
+                {
+                    id: 'impact',
+                    icon: '⏱️',
+                    title: t('behavior_lens.hub.impact_title') || 'Impact Calculator',
+                    desc: t('behavior_lens.hub.impact_desc') || 'Quantify lost instructional time and estimated annual cost',
+                    color: 'yellow',
+                },
+                {
+                    id: 'crisis',
+                    icon: '🚨',
+                    title: t('behavior_lens.hub.crisis_title') || 'Crisis Plan',
+                    desc: t('behavior_lens.hub.crisis_desc') || '3-tier emergency protocol with AI-drafted safety plan',
+                    color: 'stone',
+                },
+                {
+                    id: 'traffic',
+                    icon: '🚦',
+                    title: t('behavior_lens.hub.traffic_title') || 'Traffic Light',
+                    desc: t('behavior_lens.hub.traffic_desc') || 'Student-facing red/yellow/green behavior zone poster',
+                    color: 'green',
+                },
             ];
 
             const colorClasses = {
@@ -2312,6 +2987,11 @@ Analyze this data and return ONLY valid JSON:
                 fuchsia: { bg: 'bg-fuchsia-50', border: 'border-fuchsia-200', icon: 'bg-fuchsia-100 text-fuchsia-600', hover: 'hover:border-fuchsia-400 hover:shadow-fuchsia-100' },
                 red: { bg: 'bg-red-50', border: 'border-red-200', icon: 'bg-red-100 text-red-600', hover: 'hover:border-red-400 hover:shadow-red-100' },
                 pink: { bg: 'bg-pink-50', border: 'border-pink-200', icon: 'bg-pink-100 text-pink-600', hover: 'hover:border-pink-400 hover:shadow-pink-100' },
+                blue: { bg: 'bg-blue-50', border: 'border-blue-200', icon: 'bg-blue-100 text-blue-600', hover: 'hover:border-blue-400 hover:shadow-blue-100' },
+                zinc: { bg: 'bg-zinc-50', border: 'border-zinc-200', icon: 'bg-zinc-100 text-zinc-600', hover: 'hover:border-zinc-400 hover:shadow-zinc-100' },
+                yellow: { bg: 'bg-yellow-50', border: 'border-yellow-200', icon: 'bg-yellow-100 text-yellow-600', hover: 'hover:border-yellow-400 hover:shadow-yellow-100' },
+                stone: { bg: 'bg-stone-50', border: 'border-stone-200', icon: 'bg-stone-100 text-stone-600', hover: 'hover:border-stone-400 hover:shadow-stone-100' },
+                green: { bg: 'bg-green-50', border: 'border-green-200', icon: 'bg-green-100 text-green-600', hover: 'hover:border-green-400 hover:shadow-green-100' },
             };
 
             return h('div', { className: 'max-w-4xl mx-auto' },
@@ -2397,6 +3077,12 @@ Analyze this data and return ONLY valid JSON:
                                 else if (tool.id === 'contract') setActivePanel('contract');
                                 else if (tool.id === 'cycle') setActivePanel('cycle');
                                 else if (tool.id === 'reinforcer') setActivePanel('reinforcer');
+                                else if (tool.id === 'choice') setShowChoiceBoard(true);
+                                else if (tool.id === 'audit') setActivePanel('audit');
+                                else if (tool.id === 'triangulation') setActivePanel('triangulation');
+                                else if (tool.id === 'impact') setActivePanel('impact');
+                                else if (tool.id === 'crisis') setActivePanel('crisis');
+                                else if (tool.id === 'traffic') setActivePanel('traffic');
                             },
                             disabled: tool.disabled || (!selectedStudent && !['analysis', 'export', 'record'].includes(tool.id)),
                             className: `text-left p-5 rounded-xl border-2 transition-all ${cc.border} ${cc.hover} bg-white shadow-sm hover:shadow-md ${tool.disabled || !selectedStudent ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
@@ -2532,7 +3218,12 @@ Analyze this data and return ONLY valid JSON:
                                                                 activePanel === 'goals' ? (t('behavior_lens.goals.title') || 'SMART Goal Builder') :
                                                                     activePanel === 'contract' ? (t('behavior_lens.contract.title') || 'Behavior Contract') :
                                                                         activePanel === 'cycle' ? (t('behavior_lens.cycle.title') || 'Acting-Out Cycle') :
-                                                                            activePanel === 'reinforcer' ? (t('behavior_lens.reinforcer.title') || 'Reinforcer Assessment') : ''
+                                                                            activePanel === 'reinforcer' ? (t('behavior_lens.reinforcer.title') || 'Reinforcer Assessment') :
+                                                                                activePanel === 'audit' ? (t('behavior_lens.audit.title') || 'Environment Audit') :
+                                                                                    activePanel === 'triangulation' ? (t('behavior_lens.triangulation.title') || 'Data Triangulation') :
+                                                                                        activePanel === 'impact' ? (t('behavior_lens.impact.title') || 'Impact Calculator') :
+                                                                                            activePanel === 'crisis' ? (t('behavior_lens.crisis.title') || 'Crisis Plan') :
+                                                                                                activePanel === 'traffic' ? (t('behavior_lens.traffic.title') || 'Traffic Light') : ''
                             )
                         )
                     ),
@@ -2625,6 +3316,43 @@ Analyze this data and return ONLY valid JSON:
                     callGemini,
                     t,
                     addToast
+                }),
+                activePanel === 'audit' && h(EnvironmentAudit, {
+                    studentName: selectedStudent,
+                    callGemini,
+                    t,
+                    addToast
+                }),
+                activePanel === 'triangulation' && h(TriangulationCheck, {
+                    abcEntries,
+                    observationSessions,
+                    aiAnalysis,
+                    studentName: selectedStudent,
+                    callGemini,
+                    t,
+                    addToast
+                }),
+                activePanel === 'impact' && h(ImpactCalculator, {
+                    abcEntries,
+                    studentName: selectedStudent,
+                    callGemini,
+                    t,
+                    addToast
+                }),
+                activePanel === 'crisis' && h(CrisisIntervention, {
+                    studentName: selectedStudent,
+                    abcEntries,
+                    aiAnalysis,
+                    callGemini,
+                    t,
+                    addToast
+                }),
+                activePanel === 'traffic' && h(TrafficLightVisual, {
+                    studentName: selectedStudent,
+                    aiAnalysis,
+                    callGemini,
+                    t,
+                    addToast
                 })
             ),
             // Fullscreen live observation overlay
@@ -2648,6 +3376,13 @@ Analyze this data and return ONLY valid JSON:
                 onClose: () => setShowIntervalGrid(false),
                 studentName: selectedStudent,
                 onSaveSession: handleSaveObsSession,
+                t,
+                addToast
+            }),
+            // Fullscreen choice board overlay
+            showChoiceBoard && h(ChoiceBoard, {
+                onClose: () => setShowChoiceBoard(false),
+                studentName: selectedStudent,
                 t,
                 addToast
             })
