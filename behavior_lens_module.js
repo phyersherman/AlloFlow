@@ -12674,177 +12674,179 @@ Keep under 250 words. Use clear sections.`);
     };
 
 
-// ─── NaturalLanguageABC ─────────────────────────────────────
+    // ─── NaturalLanguageABC ─────────────────────────────────────
 
-const NaturalLanguageABC = ({ abcEntries, setAbcEntries, callGemini, t, addToast, studentName }) => {
+    const NaturalLanguageABC = ({ abcEntries, setAbcEntries, callGemini, t, addToast, studentName }) => {
 
-    const [rawText, setRawText] = useState('');
+        const [rawText, setRawText] = useState('');
 
-    const [parsedEntries, setParsedEntries] = useState([]);
+        const [parsedEntries, setParsedEntries] = useState([]);
 
-    const [parsing, setParsing] = useState(false);
+        const [parsing, setParsing] = useState(false);
 
-    const [editingIdx, setEditingIdx] = useState(null);
+        const [editingIdx, setEditingIdx] = useState(null);
 
 
 
-    const handleParse = async () => {
+        const handleParse = async () => {
 
-        if (!rawText.trim() || !callGemini) return;
+            if (!rawText.trim() || !callGemini) return;
 
-        setParsing(true);
+            setParsing(true);
 
-        try {
+            try {
 
-            const prompt = `You are a BCBA helping parse observation notes into ABC entries.\nParse:\n"${rawText.substring(0, 3000)}"\n\nReturn ONLY valid JSON array:\n[{"antecedent":"...","behavior":"...","consequence":"...","function":"escape|attention|tangible|sensory|unknown","intensity":1-5,"setting":"...","time":"...","notes":"..."}]`;
+                const prompt = `You are a BCBA helping parse observation notes into ABC entries.\nParse:\n"${rawText.substring(0, 3000)}"\n\nReturn ONLY valid JSON array:\n[{"antecedent":"...","behavior":"...","consequence":"...","function":"escape|attention|tangible|sensory|unknown","intensity":1-5,"setting":"...","time":"...","notes":"..."}]`;
 
-            const result = await callGemini(prompt);
+                const result = await callGemini(prompt);
 
-            const jsonMatch = result.match(/\[[\s\S]*\]/);
+                const jsonMatch = result.match(/\[[\s\S]*\]/);
 
-            if (jsonMatch) {
+                if (jsonMatch) {
 
-                const entries = JSON.parse(jsonMatch[0]);
+                    const entries = JSON.parse(jsonMatch[0]);
 
-                setParsedEntries(entries.map(e => ({ ...e, intensity: Math.min(5, Math.max(1, parseInt(e.intensity) || 3)), timestamp: new Date().toISOString(), source: 'natural_language' })));
+                    setParsedEntries(entries.map(e => ({ ...e, intensity: Math.min(5, Math.max(1, parseInt(e.intensity) || 3)), timestamp: new Date().toISOString(), source: 'natural_language' })));
 
-                if (addToast) addToast('Parsed ' + entries.length + ' ABC entries!', 'success');
+                    if (addToast) addToast('Parsed ' + entries.length + ' ABC entries!', 'success');
 
-            }
+                }
 
-        } catch (err) { if (addToast) addToast('Failed to parse notes.', 'error'); }
+            } catch (err) { if (addToast) addToast('Failed to parse notes.', 'error'); }
 
-        setParsing(false);
+            setParsing(false);
 
-    };
+        };
 
 
 
-    const addToLog = (entry) => {
+        const addToLog = (entry) => {
 
-        const newEntry = { ...entry, id: Date.now() + '_' + Math.random().toString(36).substr(2, 5), student: studentName || 'Unknown' };
+            const newEntry = { ...entry, id: Date.now() + '_' + Math.random().toString(36).substr(2, 5), student: studentName || 'Unknown' };
 
-        setAbcEntries(prev => [...prev, newEntry]);
+            setAbcEntries(prev => [...prev, newEntry]);
 
-        setParsedEntries(prev => prev.filter(e => e !== entry));
+            setParsedEntries(prev => prev.filter(e => e !== entry));
 
-        if (addToast) addToast('Entry added!', 'success');
+            if (addToast) addToast('Entry added!', 'success');
 
-    };
+        };
 
 
 
-    const addAllToLog = () => {
+        const addAllToLog = () => {
 
-        parsedEntries.forEach(entry => {
+            parsedEntries.forEach(entry => {
 
-            setAbcEntries(prev => [...prev, { ...entry, id: Date.now() + '_' + Math.random().toString(36).substr(2, 5), student: studentName || 'Unknown' }]);
+                setAbcEntries(prev => [...prev, { ...entry, id: Date.now() + '_' + Math.random().toString(36).substr(2, 5), student: studentName || 'Unknown' }]);
 
-        });
+            });
 
-        if (addToast) addToast('All ' + parsedEntries.length + ' entries added!', 'success');
+            if (addToast) addToast('All ' + parsedEntries.length + ' entries added!', 'success');
 
-        setParsedEntries([]); setRawText('');
+            setParsedEntries([]); setRawText('');
 
-    };
+        };
 
 
 
-    const updateParsed = (idx, field, value) => setParsedEntries(prev => prev.map((e, i) => i === idx ? { ...e, [field]: value } : e));
+        const updateParsed = (idx, field, value) => setParsedEntries(prev => prev.map((e, i) => i === idx ? { ...e, [field]: value } : e));
 
-    const removeParsed = (idx) => setParsedEntries(prev => prev.filter((_, i) => i !== idx));
+        const removeParsed = (idx) => setParsedEntries(prev => prev.filter((_, i) => i !== idx));
 
-    const functionColors = { escape: 'red', attention: 'blue', tangible: 'amber', sensory: 'purple', unknown: 'slate' };
+        const functionColors = { escape: 'red', attention: 'blue', tangible: 'amber', sensory: 'purple', unknown: 'slate' };
 
-    const functionEmojis = { escape: '🏃', attention: '👋', tangible: '🎁', sensory: '✨', unknown: '❓' };
+        const functionEmojis = { escape: '🏃', attention: '👋', tangible: '🎁', sensory: '✨', unknown: '❓' };
 
 
 
-    return h('div', { className: 'space-y-4' },
+        return h('div', { className: 'space-y-4' },
 
-        h('div', { className: 'bg-gradient-to-r from-violet-50 to-fuchsia-50 rounded-xl p-4 border border-violet-200' },
+            h('div', { className: 'bg-gradient-to-r from-violet-50 to-fuchsia-50 rounded-xl p-4 border border-violet-200' },
 
-            h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '✏️'), h('h3', { className: 'text-lg font-black text-violet-800' }, 'Natural Language ABC Entry')),
+                h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '✏️'), h('h3', { className: 'text-lg font-black text-violet-800' }, 'Natural Language ABC Entry')),
 
-            h('p', { className: 'text-xs text-violet-600' }, 'Type or paste your observation notes in everyday English. AI will structure them into proper ABC entries.')
-
-        ),
-
-        h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 space-y-3' },
-
-            h('label', { className: 'text-xs font-bold text-slate-500 uppercase tracking-wider' }, '📝 Your Observation Notes'),
-
-            h('textarea', { value: rawText, onChange: (e) => setRawText(e.target.value), placeholder: 'Example: During math class, when asked to complete worksheet problems, Johnny pushed his papers off the desk...', className: 'w-full h-40 p-3 border border-slate-300 rounded-lg text-sm resize-y focus:ring-2 focus:ring-violet-400 focus:border-violet-400', rows: 6 }),
-
-            h('div', { className: 'flex items-center justify-between' },
-
-                h('span', { className: 'text-[10px] text-slate-400' }, rawText.length + '/3000 characters'),
-
-                h('button', { onClick: handleParse, disabled: parsing || !rawText.trim(), className: 'px-4 py-2 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-bold rounded-lg text-sm hover:from-violet-700 hover:to-fuchsia-700 transition-all disabled:opacity-40 flex items-center gap-2' }, parsing ? '⏳ Parsing...' : '🤖 Parse with AI')
-
-            )
-
-        ),
-
-        parsedEntries.length > 0 && h('div', { className: 'space-y-3' },
-
-            h('div', { className: 'flex items-center justify-between' },
-
-                h('h4', { className: 'text-sm font-bold text-slate-700' }, '📋 Parsed Entries (' + parsedEntries.length + ')'),
-
-                h('button', { onClick: addAllToLog, className: 'px-3 py-1.5 bg-emerald-600 text-white font-bold rounded-lg text-xs hover:bg-emerald-700 transition-all' }, '✅ Add All to ABC Log')
+                h('p', { className: 'text-xs text-violet-600' }, 'Type or paste your observation notes in everyday English. AI will structure them into proper ABC entries.')
 
             ),
 
-            parsedEntries.map((entry, idx) =>
+            h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 space-y-3' },
 
-                h('div', { key: idx, className: 'bg-white rounded-xl border-2 border-violet-200 p-4 space-y-2 hover:border-violet-400 transition-all' },
+                h('label', { className: 'text-xs font-bold text-slate-500 uppercase tracking-wider' }, '📝 Your Observation Notes'),
 
-                    h('div', { className: 'flex items-center justify-between mb-2' },
+                h('textarea', { value: rawText, onChange: (e) => setRawText(e.target.value), placeholder: 'Example: During math class, when asked to complete worksheet problems, Johnny pushed his papers off the desk...', className: 'w-full h-40 p-3 border border-slate-300 rounded-lg text-sm resize-y focus:ring-2 focus:ring-violet-400 focus:border-violet-400', rows: 6 }),
 
-                        h('div', { className: 'flex items-center gap-2' },
+                h('div', { className: 'flex items-center justify-between' },
 
-                            h('span', { className: 'px-2 py-0.5 bg-' + (functionColors[entry.function] || 'slate') + '-100 text-' + (functionColors[entry.function] || 'slate') + '-700 rounded-full text-[10px] font-bold' }, (functionEmojis[entry.function] || '❓') + ' ' + (entry.function || 'unknown').toUpperCase()),
+                    h('span', { className: 'text-[10px] text-slate-400' }, rawText.length + '/3000 characters'),
 
-                            h('span', { className: 'text-[10px] text-slate-400' }, '⚡ Intensity: ' + entry.intensity + '/5'),
+                    h('button', { onClick: handleParse, disabled: parsing || !rawText.trim(), className: 'px-4 py-2 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-bold rounded-lg text-sm hover:from-violet-700 hover:to-fuchsia-700 transition-all disabled:opacity-40 flex items-center gap-2' }, parsing ? '⏳ Parsing...' : '🤖 Parse with AI')
 
-                            entry.setting && h('span', { className: 'text-[10px] text-slate-400' }, '📍 ' + entry.setting)
+                )
+
+            ),
+
+            parsedEntries.length > 0 && h('div', { className: 'space-y-3' },
+
+                h('div', { className: 'flex items-center justify-between' },
+
+                    h('h4', { className: 'text-sm font-bold text-slate-700' }, '📋 Parsed Entries (' + parsedEntries.length + ')'),
+
+                    h('button', { onClick: addAllToLog, className: 'px-3 py-1.5 bg-emerald-600 text-white font-bold rounded-lg text-xs hover:bg-emerald-700 transition-all' }, '✅ Add All to ABC Log')
+
+                ),
+
+                parsedEntries.map((entry, idx) =>
+
+                    h('div', { key: idx, className: 'bg-white rounded-xl border-2 border-violet-200 p-4 space-y-2 hover:border-violet-400 transition-all' },
+
+                        h('div', { className: 'flex items-center justify-between mb-2' },
+
+                            h('div', { className: 'flex items-center gap-2' },
+
+                                h('span', { className: 'px-2 py-0.5 bg-' + (functionColors[entry.function] || 'slate') + '-100 text-' + (functionColors[entry.function] || 'slate') + '-700 rounded-full text-[10px] font-bold' }, (functionEmojis[entry.function] || '❓') + ' ' + (entry.function || 'unknown').toUpperCase()),
+
+                                h('span', { className: 'text-[10px] text-slate-400' }, '⚡ Intensity: ' + entry.intensity + '/5'),
+
+                                entry.setting && h('span', { className: 'text-[10px] text-slate-400' }, '📍 ' + entry.setting)
+
+                            ),
+
+                            h('div', { className: 'flex gap-1' },
+
+                                h('button', { onClick: () => setEditingIdx(editingIdx === idx ? null : idx), className: 'px-2 py-1 text-[10px] font-bold text-violet-600 hover:bg-violet-50 rounded' }, editingIdx === idx ? '✓ Done' : '✏️ Edit'),
+
+                                h('button', { onClick: () => addToLog(entry), className: 'px-2 py-1 text-[10px] font-bold text-emerald-600 hover:bg-emerald-50 rounded' }, '➕ Add'),
+
+                                h('button', { onClick: () => removeParsed(idx), className: 'px-2 py-1 text-[10px] font-bold text-red-500 hover:bg-red-50 rounded' }, '✕')
+
+                            )
 
                         ),
 
-                        h('div', { className: 'flex gap-1' },
+                        editingIdx === idx ? h('div', { className: 'space-y-2' },
 
-                            h('button', { onClick: () => setEditingIdx(editingIdx === idx ? null : idx), className: 'px-2 py-1 text-[10px] font-bold text-violet-600 hover:bg-violet-50 rounded' }, editingIdx === idx ? '✓ Done' : '✏️ Edit'),
+                            ['antecedent', 'behavior', 'consequence', 'notes'].map(field =>
 
-                            h('button', { onClick: () => addToLog(entry), className: 'px-2 py-1 text-[10px] font-bold text-emerald-600 hover:bg-emerald-50 rounded' }, '➕ Add'),
+                                h('div', { key: field }, h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase' }, field), h('textarea', { value: entry[field] || '', onChange: (e) => updateParsed(idx, field, e.target.value), className: 'w-full p-2 border border-slate-200 rounded text-xs resize-none', rows: 2 }))
 
-                            h('button', { onClick: () => removeParsed(idx), className: 'px-2 py-1 text-[10px] font-bold text-red-500 hover:bg-red-50 rounded' }, '✕')
+                            ),
 
-                        )
+                            h('div', { className: 'flex gap-2' },
 
-                    ),
+                                h('select', { value: entry.function || 'unknown', onChange: (e) => updateParsed(idx, 'function', e.target.value), className: 'px-2 py-1 border border-slate-200 rounded text-xs' }, ['escape', 'attention', 'tangible', 'sensory', 'unknown'].map(f => h('option', { key: f, value: f }, f.charAt(0).toUpperCase() + f.slice(1)))),
 
-                    editingIdx === idx ? h('div', { className: 'space-y-2' },
+                                h('select', { value: entry.intensity || 3, onChange: (e) => updateParsed(idx, 'intensity', parseInt(e.target.value)), className: 'px-2 py-1 border border-slate-200 rounded text-xs' }, [1, 2, 3, 4, 5].map(v => h('option', { key: v, value: v }, 'Intensity ' + v)))
 
-                        ['antecedent', 'behavior', 'consequence', 'notes'].map(field =>
+                            )
 
-                            h('div', { key: field }, h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase' }, field), h('textarea', { value: entry[field] || '', onChange: (e) => updateParsed(idx, field, e.target.value), className: 'w-full p-2 border border-slate-200 rounded text-xs resize-none', rows: 2 }))
+                        ) : h('div', { className: 'grid grid-cols-3 gap-2' },
 
-                        ),
+                            [['🔵 Antecedent', entry.antecedent], ['🔴 Behavior', entry.behavior], ['🟢 Consequence', entry.consequence]].map(([label, val]) =>
 
-                        h('div', { className: 'flex gap-2' },
+                                h('div', { key: label, className: 'bg-slate-50 rounded-lg p-2' }, h('div', { className: 'text-[10px] font-bold text-slate-500' }, label), h('p', { className: 'text-xs text-slate-700 mt-1' }, val || '-'))
 
-                            h('select', { value: entry.function || 'unknown', onChange: (e) => updateParsed(idx, 'function', e.target.value), className: 'px-2 py-1 border border-slate-200 rounded text-xs' }, ['escape','attention','tangible','sensory','unknown'].map(f => h('option', { key: f, value: f }, f.charAt(0).toUpperCase() + f.slice(1)))),
-
-                            h('select', { value: entry.intensity || 3, onChange: (e) => updateParsed(idx, 'intensity', parseInt(e.target.value)), className: 'px-2 py-1 border border-slate-200 rounded text-xs' }, [1,2,3,4,5].map(v => h('option', { key: v, value: v }, 'Intensity ' + v)))
-
-                        )
-
-                    ) : h('div', { className: 'grid grid-cols-3 gap-2' },
-
-                        [['🔵 Antecedent', entry.antecedent], ['🔴 Behavior', entry.behavior], ['🟢 Consequence', entry.consequence]].map(([label, val]) =>
-
-                            h('div', { key: label, className: 'bg-slate-50 rounded-lg p-2' }, h('div', { className: 'text-[10px] font-bold text-slate-500' }, label), h('p', { className: 'text-xs text-slate-700 mt-1' }, val || '-'))
+                            )
 
                         )
 
@@ -12852,649 +12854,831 @@ const NaturalLanguageABC = ({ abcEntries, setAbcEntries, callGemini, t, addToast
 
                 )
 
-            )
-
-        ),
-
-        !parsedEntries.length && !parsing && h('div', { className: 'bg-amber-50 border border-amber-200 rounded-xl p-4' },
-
-            h('p', { className: 'text-xs font-bold text-amber-700 mb-2' }, '💡 Tips for Better Parsing'),
-
-            h('ul', { className: 'text-xs text-amber-600 space-y-1 list-disc list-inside' },
-
-                h('li', null, 'Include what happened before, during, and after the behavior'),
-
-                h('li', null, 'Mention the setting/location when possible'),
-
-                h('li', null, 'You can paste multiple incidents'),
-
-                h('li', null, 'Use specific, observable descriptions')
-
-            )
-
-        )
-
-    );
-
-};
-
-
-
-// ─── IEPGoalGenerator ───────────────────────────────────────
-
-const IEPGoalGenerator = ({ abcEntries, observationSessions, studentProfile, studentName, callGemini, t, addToast }) => {
-
-    const [generating, setGenerating] = useState(false);
-
-    const [result, setResult] = useState(null);
-
-    const [goalType, setGoalType] = useState('behavior_reduction');
-
-    const [customContext, setCustomContext] = useState('');
-
-    const goalTypes = [
-
-        { id: 'behavior_reduction', label: '📉 Behavior Reduction', desc: 'Decrease challenging behaviors' },
-
-        { id: 'skill_acquisition', label: '📈 Skill Building', desc: 'Increase replacement/adaptive behaviors' },
-
-        { id: 'social_emotional', label: '🤝 Social-Emotional', desc: 'Social skills and emotional regulation' },
-
-        { id: 'academic_behavior', label: '📚 Academic Behavior', desc: 'On-task, completion, engagement' },
-
-        { id: 'self_management', label: '🧠 Self-Management', desc: 'Self-monitoring and regulation' },
-
-    ];
-
-    const handleGenerate = async () => {
-
-        if (!callGemini) return;
-
-        setGenerating(true);
-
-        try {
-
-            const abcSummary = abcEntries.slice(0, 15).map((e, i) => `${i+1}. A:${e.antecedent} B:${e.behavior} C:${e.consequence} Func:${e.function||'?'} Int:${e.intensity}/5`).join('\n');
-
-            const prompt = `You are an experienced special education consultant creating IEP behavioral goals.\nSTUDENT: ${studentName || 'Student'}\nGOAL TYPE: ${goalType}\nABC DATA (${abcEntries.length} entries):\n${abcSummary || 'No data'}\n${customContext ? 'CONTEXT: ' + customContext : ''}\n\nReturn ONLY valid JSON:\n{"presentLevel":"...","annualGoals":[{"goalNumber":1,"goal":"SMART goal","baseline":"...","targetCriteria":"...","measurementMethod":"...","schedule":"..."}],"shortTermObjectives":[{"objectiveNumber":1,"relatedGoal":1,"objective":"...","targetDate":"...","criteria":"..."}],"accommodations":["..."],"progressMonitoring":{"frequency":"...","method":"...","reportingSchedule":"..."},"suggestedInterventions":["..."]}`;
-
-            const aiResult = await callGemini(prompt);
-
-            const jsonMatch = aiResult.match(/\{[\s\S]*\}/);
-
-            if (jsonMatch) { setResult(JSON.parse(jsonMatch[0])); if (addToast) addToast('IEP goals generated!', 'success'); }
-
-        } catch (err) { if (addToast) addToast('Generation failed.', 'error'); }
-
-        setGenerating(false);
-
-    };
-
-    const copyToClipboard = () => {
-
-        if (!result) return;
-
-        let text = '=== PRESENT LEVEL ===\n' + result.presentLevel + '\n\n=== ANNUAL GOALS ===\n';
-
-        (result.annualGoals || []).forEach(g => { text += '\nGoal ' + g.goalNumber + ': ' + g.goal + '\nBaseline: ' + g.baseline + '\nTarget: ' + g.targetCriteria + '\n'; });
-
-        text += '\n=== OBJECTIVES ===\n';
-
-        (result.shortTermObjectives || []).forEach(o => { text += '\nObj ' + o.objectiveNumber + ': ' + o.objective + '\n'; });
-
-        text += '\n=== ACCOMMODATIONS ===\n' + (result.accommodations || []).join('\n');
-
-        navigator.clipboard.writeText(text);
-
-        if (addToast) addToast('Copied!', 'success');
-
-    };
-
-    return h('div', { className: 'space-y-4' },
-
-        h('div', { className: 'bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200' },
-
-            h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '📄'), h('h3', { className: 'text-lg font-black text-blue-800' }, 'IEP Behavior Goal Generator')),
-
-            h('p', { className: 'text-xs text-blue-600' }, 'Generate compliant IEP behavioral goals from observation data with present levels, SMART goals, and progress monitoring.')
-
-        ),
-
-        h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 space-y-3' },
-
-            h('label', { className: 'text-xs font-bold text-slate-500 uppercase tracking-wider' }, '🎯 Goal Focus Area'),
-
-            h('div', { className: 'grid grid-cols-1 sm:grid-cols-2 gap-2' }, goalTypes.map(gt => h('button', { key: gt.id, onClick: () => setGoalType(gt.id), className: 'p-3 rounded-lg border-2 text-left transition-all ' + (goalType === gt.id ? 'border-blue-400 bg-blue-50' : 'border-slate-200 hover:border-slate-300') }, h('div', { className: 'text-sm font-bold' }, gt.label), h('div', { className: 'text-[10px] text-slate-500' }, gt.desc)))),
-
-            h('textarea', { value: customContext, onChange: (e) => setCustomContext(e.target.value), placeholder: 'Additional context...', className: 'w-full p-2 border border-slate-200 rounded-lg text-xs resize-none', rows: 3 }),
-
-            h('div', { className: 'flex items-center justify-between bg-slate-50 rounded-lg p-3' },
-
-                h('div', { className: 'text-xs text-slate-500' }, '📋 ' + abcEntries.length + ' ABC entries • 🔍 ' + observationSessions.length + ' observations'),
-
-                h('button', { onClick: handleGenerate, disabled: generating, className: 'px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-lg text-sm hover:from-blue-700 hover:to-indigo-700 disabled:opacity-40' }, generating ? '⏳ Generating...' : '🤖 Generate IEP Goals')
-
-            )
-
-        ),
-
-        result && h('div', { className: 'space-y-3' },
-
-            h('div', { className: 'flex gap-2 justify-end' }, h('button', { onClick: copyToClipboard, className: 'px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold hover:bg-blue-200' }, '📋 Copy All'), h('button', { onClick: () => window.print(), className: 'px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold hover:bg-blue-200' }, '🖨️ Print')),
-
-            h('div', { className: 'bg-white rounded-xl border border-blue-200 p-4' },
-
-                h('h4', { className: 'text-sm font-bold text-blue-700 mb-2' }, '📊 Present Level of Performance'),
-
-                h('p', { className: 'text-xs text-slate-700 leading-relaxed whitespace-pre-wrap' }, result.presentLevel)
-
             ),
 
-            h('div', { className: 'bg-white rounded-xl border border-emerald-200 p-4' },
+            !parsedEntries.length && !parsing && h('div', { className: 'bg-amber-50 border border-amber-200 rounded-xl p-4' },
 
-                h('h4', { className: 'text-sm font-bold text-emerald-700 mb-3' }, '🎯 Annual Goals'),
+                h('p', { className: 'text-xs font-bold text-amber-700 mb-2' }, '💡 Tips for Better Parsing'),
 
-                (result.annualGoals || []).map((g, i) => h('div', { key: i, className: 'mb-4 p-3 bg-emerald-50 rounded-lg border border-emerald-100' },
+                h('ul', { className: 'text-xs text-amber-600 space-y-1 list-disc list-inside' },
 
-                    h('p', { className: 'text-xs font-bold text-emerald-800 mb-2' }, 'Goal ' + g.goalNumber + ': ' + g.goal),
+                    h('li', null, 'Include what happened before, during, and after the behavior'),
 
-                    h('div', { className: 'grid grid-cols-2 gap-2' }, [['Baseline', g.baseline], ['Target', g.targetCriteria], ['Measurement', g.measurementMethod], ['Schedule', g.schedule]].map(([label, val]) => h('div', { key: label, className: 'text-[10px]' }, h('span', { className: 'font-bold text-slate-500' }, label + ': '), h('span', { className: 'text-slate-700' }, val))))
+                    h('li', null, 'Mention the setting/location when possible'),
 
-                ))
+                    h('li', null, 'You can paste multiple incidents'),
 
-            ),
-
-            (result.shortTermObjectives || []).length > 0 && h('div', { className: 'bg-white rounded-xl border border-amber-200 p-4' },
-
-                h('h4', { className: 'text-sm font-bold text-amber-700 mb-3' }, '📋 Short-Term Objectives'),
-
-                (result.shortTermObjectives || []).map((o, i) => h('div', { key: i, className: 'mb-2 p-2 bg-amber-50 rounded-lg text-xs' }, h('p', { className: 'font-bold text-amber-800' }, 'Objective ' + o.objectiveNumber), h('p', { className: 'text-slate-700' }, o.objective)))
-
-            ),
-
-            h('div', { className: 'bg-white rounded-xl border border-purple-200 p-4' },
-
-                h('h4', { className: 'text-sm font-bold text-purple-700 mb-2' }, '🛠️ Accommodations & Interventions'),
-
-                h('div', { className: 'grid grid-cols-1 sm:grid-cols-2 gap-3' },
-
-                    h('div', null, h('p', { className: 'text-[10px] font-bold text-slate-500 uppercase mb-1' }, 'Accommodations'), (result.accommodations || []).map((a, i) => h('div', { key: i, className: 'text-xs text-slate-700 mb-1' }, '• ' + a))),
-
-                    h('div', null, h('p', { className: 'text-[10px] font-bold text-slate-500 uppercase mb-1' }, 'Interventions'), (result.suggestedInterventions || []).map((s, i) => h('div', { key: i, className: 'text-xs text-slate-700 mb-1' }, '• ' + s)))
+                    h('li', null, 'Use specific, observable descriptions')
 
                 )
 
-            ),
-
-            result.progressMonitoring && h('div', { className: 'bg-white rounded-xl border border-teal-200 p-4' },
-
-                h('h4', { className: 'text-sm font-bold text-teal-700 mb-2' }, '📈 Progress Monitoring Plan'),
-
-                h('div', { className: 'grid grid-cols-3 gap-3' }, [['📅 Frequency', result.progressMonitoring.frequency], ['📊 Method', result.progressMonitoring.method], ['📤 Reporting', result.progressMonitoring.reportingSchedule]].map(([label, val]) => h('div', { key: label, className: 'bg-teal-50 rounded-lg p-2' }, h('div', { className: 'text-[10px] font-bold text-teal-600' }, label), h('p', { className: 'text-xs text-slate-700 mt-1' }, val))))
-
             )
-
-        )
-
-    );
-
-};
-
-
-
-// ─── CaseloadDashboard ──────────────────────────────────────
-
-const CaseloadDashboard = ({ abcEntries, dashboardData, callGemini, t, addToast, selectedStudent, setSelectedStudent, openPanel }) => {
-
-    const [sortBy, setSortBy] = useState('status');
-
-    const [sortDir, setSortDir] = useState('desc');
-
-    const [caseloadSummary, setCaseloadSummary] = useState('');
-
-    const [summaryLoading, setSummaryLoading] = useState(false);
-
-    const [filterStatus, setFilterStatus] = useState('all');
-
-    const studentCaseData = useMemo(() => {
-
-        const students = dashboardData && Array.isArray(dashboardData) ? dashboardData : [];
-
-        return students.map(s => {
-
-            const name = s.studentNickname || 'Unknown';
-
-            const studentAbc = abcEntries.filter(e => e.student === name);
-
-            const lastEntry = studentAbc.length > 0 ? studentAbc[studentAbc.length - 1] : null;
-
-            const daysSinceEntry = lastEntry ? Math.floor((Date.now() - new Date(lastEntry.timestamp).getTime()) / 86400000) : 999;
-
-            const avgIntensity = studentAbc.length > 0 ? studentAbc.reduce((sum, e) => sum + (e.intensity || 3), 0) / studentAbc.length : 0;
-
-            let status = 'on_track';
-
-            if (avgIntensity >= 4) status = 'urgent';
-
-            else if (daysSinceEntry > 14 || avgIntensity >= 3) status = 'needs_attention';
-
-            return { name, abcCount: studentAbc.length, daysSinceEntry, avgIntensity: avgIntensity.toFixed(1), status };
-
-        });
-
-    }, [dashboardData, abcEntries]);
-
-    const statusConfig = { urgent: { emoji: '🔴', label: 'Urgent', bg: 'bg-red-50', border: 'border-red-300', text: 'text-red-700' }, needs_attention: { emoji: '🟡', label: 'Needs Attention', bg: 'bg-amber-50', border: 'border-amber-300', text: 'text-amber-700' }, on_track: { emoji: '🟢', label: 'On Track', bg: 'bg-emerald-50', border: 'border-emerald-300', text: 'text-emerald-700' } };
-
-    const filtered = filterStatus === 'all' ? studentCaseData : studentCaseData.filter(s => s.status === filterStatus);
-
-    const sorted = [...filtered].sort((a, b) => {
-
-        const dir = sortDir === 'asc' ? 1 : -1;
-
-        if (sortBy === 'name') return dir * a.name.localeCompare(b.name);
-
-        if (sortBy === 'abcCount') return dir * (a.abcCount - b.abcCount);
-
-        if (sortBy === 'status') { const order = { urgent: 0, needs_attention: 1, on_track: 2 }; return dir * (order[a.status] - order[b.status]); }
-
-        return 0;
-
-    });
-
-    const handleCaseloadSummary = async () => {
-
-        if (!callGemini || studentCaseData.length === 0) return;
-
-        setSummaryLoading(true);
-
-        try {
-
-            const dataStr = studentCaseData.map(s => `${s.name}: ${s.abcCount} entries, status=${s.status}, intensity=${s.avgIntensity}`).join('\n');
-
-            const prompt = `You are a school BCBA reviewing your caseload. Provide a brief caseload summary.\n\nCASELOAD (${studentCaseData.length} students):\n${dataStr}\n\nProvide 3-5 sentence summary highlighting priority students and recommendations.`;
-
-            const result = await callGemini(prompt);
-
-            setCaseloadSummary(result);
-
-            if (addToast) addToast('Summary generated!', 'success');
-
-        } catch (e) { if (addToast) addToast('Failed to generate summary', 'error'); }
-
-        setSummaryLoading(false);
-
-    };
-
-    const urgentCount = studentCaseData.filter(s => s.status === 'urgent').length;
-
-    const attentionCount = studentCaseData.filter(s => s.status === 'needs_attention').length;
-
-    const onTrackCount = studentCaseData.filter(s => s.status === 'on_track').length;
-
-    return h('div', { className: 'space-y-4' },
-
-        h('div', { className: 'bg-gradient-to-r from-teal-50 to-cyan-50 rounded-xl p-4 border border-teal-200' },
-
-            h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '👥'), h('h3', { className: 'text-lg font-black text-teal-800' }, 'Caseload Dashboard')),
-
-            h('p', { className: 'text-xs text-teal-600' }, "Bird's-eye view of your caseload with status indicators, trends, and AI summary.")
-
-        ),
-
-        h('div', { className: 'grid grid-cols-4 gap-3' },
-
-            [['👥', 'Total', studentCaseData.length, 'bg-slate-50 border-slate-200'], ['🔴', 'Urgent', urgentCount, 'bg-red-50 border-red-200'], ['🟡', 'Attention', attentionCount, 'bg-amber-50 border-amber-200'], ['🟢', 'On Track', onTrackCount, 'bg-emerald-50 border-emerald-200']].map(([icon, label, count, cls]) =>
-
-                h('div', { key: label, className: 'rounded-xl border p-3 text-center ' + cls }, h('div', { className: 'text-xl' }, icon), h('div', { className: 'text-lg font-black text-slate-800' }, count), h('div', { className: 'text-[10px] text-slate-500 font-bold' }, label))
-
-            )
-
-        ),
-
-        h('div', { className: 'flex gap-2' },
-
-            h('button', { onClick: handleCaseloadSummary, disabled: summaryLoading || studentCaseData.length === 0, className: 'px-3 py-1.5 bg-teal-600 text-white font-bold rounded-lg text-xs hover:bg-teal-700 disabled:opacity-40' }, summaryLoading ? '⏳ Generating...' : '🤖 AI Caseload Summary'),
-
-            h('div', { className: 'flex gap-1 ml-auto' }, ['all', 'urgent', 'needs_attention', 'on_track'].map(f => h('button', { key: f, onClick: () => setFilterStatus(f), className: 'px-2 py-1 rounded text-[10px] font-bold transition-all ' + (filterStatus === f ? 'bg-teal-200 text-teal-800' : 'bg-slate-100 text-slate-500 hover:bg-slate-200') }, f === 'all' ? 'All' : f === 'needs_attention' ? '🟡' : f === 'urgent' ? '🔴' : '🟢')))
-
-        ),
-
-        caseloadSummary && h('div', { className: 'bg-teal-50 border border-teal-200 rounded-xl p-4' }, h('p', { className: 'text-xs text-teal-800 leading-relaxed whitespace-pre-wrap' }, caseloadSummary)),
-
-        h('div', { className: 'bg-white rounded-xl border border-slate-200 overflow-hidden' },
-
-            sorted.length === 0 ? h('div', { className: 'p-8 text-center text-sm text-slate-400 italic' }, 'No students in caseload.') :
-
-            sorted.map((s, idx) => {
-
-                const sc = statusConfig[s.status];
-
-                return h('div', { key: idx, className: 'flex items-center justify-between px-4 py-3 border-b border-slate-100 hover:bg-slate-50 transition-all ' + sc.bg },
-
-                    h('div', { className: 'flex items-center gap-3' },
-
-                        h('span', { className: 'text-xs font-bold text-slate-800 w-24' }, s.name),
-
-                        h('span', { className: 'px-2 py-0.5 rounded-full text-[10px] font-bold ' + sc.text + ' border ' + sc.border }, sc.emoji + ' ' + sc.label),
-
-                        h('span', { className: 'text-[10px] text-slate-500' }, s.abcCount + ' entries'),
-
-                        h('span', { className: 'text-[10px] text-slate-400' }, s.daysSinceEntry > 900 ? 'Never' : s.daysSinceEntry + 'd ago')
-
-                    ),
-
-                    h('button', { onClick: () => { if (setSelectedStudent) setSelectedStudent(s.name); if (openPanel) openPanel('abc'); }, className: 'px-2 py-1 bg-teal-100 text-teal-700 rounded text-[10px] font-bold hover:bg-teal-200' }, '👁️ View')
-
-                );
-
-            })
-
-        )
-
-    );
-
-};
-
-
-
-// ─── MTSSTierManager ────────────────────────────────────────
-
-const MTSSTierManager = ({ dashboardData, abcEntries, callGemini, t, addToast, selectedStudent }) => {
-
-    const [tiers, setTiers] = useState(() => { try { const s = localStorage.getItem('behaviorlens_mtss_tiers'); return s ? JSON.parse(s) : {}; } catch { return {}; } });
-
-    const [aiRecs, setAiRecs] = useState(null);
-
-    const [recsLoading, setRecsLoading] = useState(false);
-
-    useEffect(() => { try { localStorage.setItem('behaviorlens_mtss_tiers', JSON.stringify(tiers)); } catch {} }, [tiers]);
-
-    const students = useMemo(() => (dashboardData && Array.isArray(dashboardData) ? dashboardData : []).map(s => s.studentNickname).filter(Boolean), [dashboardData]);
-
-    const getTier = (name) => tiers[name] || 1;
-
-    const setTier = (name, tier) => setTiers(prev => ({ ...prev, [name]: tier }));
-
-    const tierConfig = { 1: { label: 'Tier 1 — Universal', color: 'emerald', emoji: '🟢', pct: '80%' }, 2: { label: 'Tier 2 — Targeted', color: 'amber', emoji: '🟡', pct: '15%' }, 3: { label: 'Tier 3 — Intensive', color: 'red', emoji: '🔴', pct: '5%' } };
-
-    const handleAiRecommendations = async () => {
-
-        if (!callGemini) return;
-
-        setRecsLoading(true);
-
-        try {
-
-            const studentData = students.map(name => { const abc = abcEntries.filter(e => e.student === name); return `${name}: Tier ${getTier(name)}, ${abc.length} entries, avg int ${abc.length > 0 ? (abc.reduce((s,e)=>s+(e.intensity||3),0)/abc.length).toFixed(1) : 'N/A'}`; }).join('\n');
-
-            const prompt = `You are an MTSS coordinator. Review tier assignments:\n${studentData}\n\nRecommend changes. Return ONLY valid JSON:\n{"recommendations":[{"student":"name","currentTier":1,"recommendedTier":2,"reason":"..."}],"summary":"Overall MTSS health in 2 sentences"}`;
-
-            const result = await callGemini(prompt);
-
-            const jsonMatch = result.match(/\{[\s\S]*\}/);
-
-            if (jsonMatch) { setAiRecs(JSON.parse(jsonMatch[0])); if (addToast) addToast('Recommendations generated!', 'success'); }
-
-        } catch (e) { if (addToast) addToast('Failed', 'error'); }
-
-        setRecsLoading(false);
-
-    };
-
-    const applyRec = (rec) => { setTier(rec.student, rec.recommendedTier); if (addToast) addToast(rec.student + ' moved to Tier ' + rec.recommendedTier, 'success'); };
-
-    const renderTierSection = (tierNum) => {
-
-        const tc = tierConfig[tierNum];
-
-        const tierStudents = students.filter(s => getTier(s) === tierNum);
-
-        return h('div', { className: 'bg-' + tc.color + '-50 rounded-xl border-2 border-' + tc.color + '-200 p-4' },
-
-            h('div', { className: 'flex items-center justify-between mb-3' },
-
-                h('h4', { className: 'text-sm font-bold text-' + tc.color + '-800' }, tc.emoji + ' ' + tc.label),
-
-                h('div', { className: 'flex items-center gap-2' }, h('span', { className: 'px-2 py-0.5 bg-white rounded-full text-xs font-bold text-' + tc.color + '-700 border border-' + tc.color + '-200' }, tierStudents.length + ' students'), h('span', { className: 'text-[10px] text-' + tc.color + '-500' }, '~' + tc.pct))
-
-            ),
-
-            tierStudents.length === 0 ? h('p', { className: 'text-xs text-' + tc.color + '-400 italic text-center py-2' }, 'No students') :
-
-            h('div', { className: 'flex flex-wrap gap-2' }, tierStudents.map(name => h('div', { key: name, className: 'flex items-center gap-1 bg-white rounded-lg px-3 py-1.5 border border-' + tc.color + '-200' },
-
-                h('span', { className: 'text-xs font-bold text-slate-700' }, name),
-
-                h('select', { value: tierNum, onChange: (e) => setTier(name, parseInt(e.target.value)), className: 'ml-1 text-[10px] bg-transparent border-0 text-' + tc.color + '-600 font-bold cursor-pointer' }, h('option', { value: 1 }, 'T1'), h('option', { value: 2 }, 'T2'), h('option', { value: 3 }, 'T3'))
-
-            )))
 
         );
 
     };
 
-    return h('div', { className: 'space-y-4' },
 
-        h('div', { className: 'bg-gradient-to-r from-orange-50 to-rose-50 rounded-xl p-4 border border-orange-200' },
 
-            h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '🏗️'), h('h3', { className: 'text-lg font-black text-orange-800' }, 'MTSS/RTI Tier Manager')),
+    // ─── IEPGoalGenerator ───────────────────────────────────────
 
-            h('p', { className: 'text-xs text-orange-600' }, 'Visual multi-tiered system of supports. Assign students to tiers, get AI-powered placement recommendations.')
+    const IEPGoalGenerator = ({ abcEntries, observationSessions, studentProfile, studentName, callGemini, t, addToast }) => {
 
-        ),
+        const [generating, setGenerating] = useState(false);
 
-        h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4' },
+        const [result, setResult] = useState(null);
 
-            h('button', { onClick: handleAiRecommendations, disabled: recsLoading || students.length === 0, className: 'px-3 py-1.5 bg-orange-600 text-white font-bold rounded-lg text-xs hover:bg-orange-700 disabled:opacity-40 mb-4' }, recsLoading ? '⏳ Analyzing...' : '🤖 AI Tier Recommendations'),
+        const [goalType, setGoalType] = useState('behavior_reduction');
 
-            aiRecs && h('div', { className: 'mb-4 bg-orange-50 border border-orange-200 rounded-xl p-4 space-y-2' },
+        const [customContext, setCustomContext] = useState('');
 
-                aiRecs.summary && h('p', { className: 'text-xs text-orange-800 font-medium mb-2' }, aiRecs.summary),
+        const goalTypes = [
 
-                (aiRecs.recommendations || []).length > 0 ? (aiRecs.recommendations || []).map((rec, i) => h('div', { key: i, className: 'flex items-center justify-between bg-white rounded-lg p-2 border border-orange-100' },
+            { id: 'behavior_reduction', label: '📉 Behavior Reduction', desc: 'Decrease challenging behaviors' },
 
-                    h('div', null, h('span', { className: 'text-xs font-bold text-slate-700' }, rec.student), h('span', { className: 'text-[10px] text-slate-400 mx-2' }, 'T' + rec.currentTier + ' → T' + rec.recommendedTier), h('span', { className: 'text-[10px] text-orange-600' }, rec.reason)),
+            { id: 'skill_acquisition', label: '📈 Skill Building', desc: 'Increase replacement/adaptive behaviors' },
 
-                    h('button', { onClick: () => applyRec(rec), className: 'px-2 py-1 bg-orange-200 text-orange-800 rounded text-[10px] font-bold hover:bg-orange-300' }, '✅ Apply')
+            { id: 'social_emotional', label: '🤝 Social-Emotional', desc: 'Social skills and emotional regulation' },
 
-                )) : h('p', { className: 'text-xs text-orange-600 italic' }, '✅ All placements appropriate!')
+            { id: 'academic_behavior', label: '📚 Academic Behavior', desc: 'On-task, completion, engagement' },
+
+            { id: 'self_management', label: '🧠 Self-Management', desc: 'Self-monitoring and regulation' },
+
+        ];
+
+        const handleGenerate = async () => {
+
+            if (!callGemini) return;
+
+            setGenerating(true);
+
+            try {
+
+                const abcSummary = abcEntries.slice(0, 15).map((e, i) => `${i + 1}. A:${e.antecedent} B:${e.behavior} C:${e.consequence} Func:${e.function || '?'} Int:${e.intensity}/5`).join('\n');
+
+                const prompt = `You are an experienced special education consultant creating IEP behavioral goals.\nSTUDENT: ${studentName || 'Student'}\nGOAL TYPE: ${goalType}\nABC DATA (${abcEntries.length} entries):\n${abcSummary || 'No data'}\n${customContext ? 'CONTEXT: ' + customContext : ''}\n\nReturn ONLY valid JSON:\n{"presentLevel":"...","annualGoals":[{"goalNumber":1,"goal":"SMART goal","baseline":"...","targetCriteria":"...","measurementMethod":"...","schedule":"..."}],"shortTermObjectives":[{"objectiveNumber":1,"relatedGoal":1,"objective":"...","targetDate":"...","criteria":"..."}],"accommodations":["..."],"progressMonitoring":{"frequency":"...","method":"...","reportingSchedule":"..."},"suggestedInterventions":["..."]}`;
+
+                const aiResult = await callGemini(prompt);
+
+                const jsonMatch = aiResult.match(/\{[\s\S]*\}/);
+
+                if (jsonMatch) { setResult(JSON.parse(jsonMatch[0])); if (addToast) addToast('IEP goals generated!', 'success'); }
+
+            } catch (err) { if (addToast) addToast('Generation failed.', 'error'); }
+
+            setGenerating(false);
+
+        };
+
+        const copyToClipboard = () => {
+
+            if (!result) return;
+
+            let text = '=== PRESENT LEVEL ===\n' + result.presentLevel + '\n\n=== ANNUAL GOALS ===\n';
+
+            (result.annualGoals || []).forEach(g => { text += '\nGoal ' + g.goalNumber + ': ' + g.goal + '\nBaseline: ' + g.baseline + '\nTarget: ' + g.targetCriteria + '\n'; });
+
+            text += '\n=== OBJECTIVES ===\n';
+
+            (result.shortTermObjectives || []).forEach(o => { text += '\nObj ' + o.objectiveNumber + ': ' + o.objective + '\n'; });
+
+            text += '\n=== ACCOMMODATIONS ===\n' + (result.accommodations || []).join('\n');
+
+            navigator.clipboard.writeText(text);
+
+            if (addToast) addToast('Copied!', 'success');
+
+        };
+
+        return h('div', { className: 'space-y-4' },
+
+            h('div', { className: 'bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200' },
+
+                h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '📄'), h('h3', { className: 'text-lg font-black text-blue-800' }, 'IEP Behavior Goal Generator')),
+
+                h('p', { className: 'text-xs text-blue-600' }, 'Generate compliant IEP behavioral goals from observation data with present levels, SMART goals, and progress monitoring.')
 
             ),
 
-            h('div', { className: 'space-y-3' }, renderTierSection(3), renderTierSection(2), renderTierSection(1))
+            h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 space-y-3' },
 
-        )
+                h('label', { className: 'text-xs font-bold text-slate-500 uppercase tracking-wider' }, '🎯 Goal Focus Area'),
 
-    );
+                h('div', { className: 'grid grid-cols-1 sm:grid-cols-2 gap-2' }, goalTypes.map(gt => h('button', { key: gt.id, onClick: () => setGoalType(gt.id), className: 'p-3 rounded-lg border-2 text-left transition-all ' + (goalType === gt.id ? 'border-blue-400 bg-blue-50' : 'border-slate-200 hover:border-slate-300') }, h('div', { className: 'text-sm font-bold' }, gt.label), h('div', { className: 'text-[10px] text-slate-500' }, gt.desc)))),
 
-};
+                h('textarea', { value: customContext, onChange: (e) => setCustomContext(e.target.value), placeholder: 'Additional context...', className: 'w-full p-2 border border-slate-200 rounded-lg text-xs resize-none', rows: 3 }),
+
+                h('div', { className: 'flex items-center justify-between bg-slate-50 rounded-lg p-3' },
+
+                    h('div', { className: 'text-xs text-slate-500' }, '📋 ' + abcEntries.length + ' ABC entries • 🔍 ' + observationSessions.length + ' observations'),
+
+                    h('button', { onClick: handleGenerate, disabled: generating, className: 'px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-lg text-sm hover:from-blue-700 hover:to-indigo-700 disabled:opacity-40' }, generating ? '⏳ Generating...' : '🤖 Generate IEP Goals')
+
+                )
+
+            ),
+
+            result && h('div', { className: 'space-y-3' },
+
+                h('div', { className: 'flex gap-2 justify-end' }, h('button', { onClick: copyToClipboard, className: 'px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold hover:bg-blue-200' }, '📋 Copy All'), h('button', { onClick: () => window.print(), className: 'px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold hover:bg-blue-200' }, '🖨️ Print')),
+
+                h('div', { className: 'bg-white rounded-xl border border-blue-200 p-4' },
+
+                    h('h4', { className: 'text-sm font-bold text-blue-700 mb-2' }, '📊 Present Level of Performance'),
+
+                    h('p', { className: 'text-xs text-slate-700 leading-relaxed whitespace-pre-wrap' }, result.presentLevel)
+
+                ),
+
+                h('div', { className: 'bg-white rounded-xl border border-emerald-200 p-4' },
+
+                    h('h4', { className: 'text-sm font-bold text-emerald-700 mb-3' }, '🎯 Annual Goals'),
+
+                    (result.annualGoals || []).map((g, i) => h('div', { key: i, className: 'mb-4 p-3 bg-emerald-50 rounded-lg border border-emerald-100' },
+
+                        h('p', { className: 'text-xs font-bold text-emerald-800 mb-2' }, 'Goal ' + g.goalNumber + ': ' + g.goal),
+
+                        h('div', { className: 'grid grid-cols-2 gap-2' }, [['Baseline', g.baseline], ['Target', g.targetCriteria], ['Measurement', g.measurementMethod], ['Schedule', g.schedule]].map(([label, val]) => h('div', { key: label, className: 'text-[10px]' }, h('span', { className: 'font-bold text-slate-500' }, label + ': '), h('span', { className: 'text-slate-700' }, val))))
+
+                    ))
+
+                ),
+
+                (result.shortTermObjectives || []).length > 0 && h('div', { className: 'bg-white rounded-xl border border-amber-200 p-4' },
+
+                    h('h4', { className: 'text-sm font-bold text-amber-700 mb-3' }, '📋 Short-Term Objectives'),
+
+                    (result.shortTermObjectives || []).map((o, i) => h('div', { key: i, className: 'mb-2 p-2 bg-amber-50 rounded-lg text-xs' }, h('p', { className: 'font-bold text-amber-800' }, 'Objective ' + o.objectiveNumber), h('p', { className: 'text-slate-700' }, o.objective)))
+
+                ),
+
+                h('div', { className: 'bg-white rounded-xl border border-purple-200 p-4' },
+
+                    h('h4', { className: 'text-sm font-bold text-purple-700 mb-2' }, '🛠️ Accommodations & Interventions'),
+
+                    h('div', { className: 'grid grid-cols-1 sm:grid-cols-2 gap-3' },
+
+                        h('div', null, h('p', { className: 'text-[10px] font-bold text-slate-500 uppercase mb-1' }, 'Accommodations'), (result.accommodations || []).map((a, i) => h('div', { key: i, className: 'text-xs text-slate-700 mb-1' }, '• ' + a))),
+
+                        h('div', null, h('p', { className: 'text-[10px] font-bold text-slate-500 uppercase mb-1' }, 'Interventions'), (result.suggestedInterventions || []).map((s, i) => h('div', { key: i, className: 'text-xs text-slate-700 mb-1' }, '• ' + s)))
+
+                    )
+
+                ),
+
+                result.progressMonitoring && h('div', { className: 'bg-white rounded-xl border border-teal-200 p-4' },
+
+                    h('h4', { className: 'text-sm font-bold text-teal-700 mb-2' }, '📈 Progress Monitoring Plan'),
+
+                    h('div', { className: 'grid grid-cols-3 gap-3' }, [['📅 Frequency', result.progressMonitoring.frequency], ['📊 Method', result.progressMonitoring.method], ['📤 Reporting', result.progressMonitoring.reportingSchedule]].map(([label, val]) => h('div', { key: label, className: 'bg-teal-50 rounded-lg p-2' }, h('div', { className: 'text-[10px] font-bold text-teal-600' }, label), h('p', { className: 'text-xs text-slate-700 mt-1' }, val))))
+
+                )
+
+            )
+
+        );
+
+    };
 
 
 
-// ─── ProgressReportGenerator ────────────────────────────────
-const ProgressReportGenerator = ({ abcEntries, observationSessions, sessionHistory, studentName, studentProfile, callGemini, t, addToast }) => {
-    const [period, setPeriod] = useState('monthly');
-    const [report, setReport] = useState(null);
-    const [generating, setGenerating] = useState(false);
-    const [parentFriendly, setParentFriendly] = useState(false);
-    const periodConfig = { weekly: { label: '📅 Weekly', days: 7 }, monthly: { label: '📆 Monthly', days: 30 }, quarterly: { label: '📊 Quarterly', days: 90 } };
-    const handleGenerate = async () => {
-        if (!callGemini) return;
-        setGenerating(true);
-        try {
-            const days = periodConfig[period]?.days || 30;
-            const cutoff = Date.now() - days * 86400000;
-            const periodAbc = abcEntries.filter(e => new Date(e.timestamp).getTime() >= cutoff);
-            const funcs = {};
-            periodAbc.forEach(e => { const f = e.function || 'unknown'; funcs[f] = (funcs[f]||0)+1; });
-            const avgInt = periodAbc.length > 0 ? (periodAbc.reduce((s,e)=>s+(e.intensity||3),0)/periodAbc.length).toFixed(1) : 'N/A';
-            const abcSummary = periodAbc.slice(0, 20).map((e, i) => `${i+1}. A:${e.antecedent} B:${e.behavior} C:${e.consequence} Int:${e.intensity}/5`).join('\n');
-            const prompt = `You are a BCBA writing a ${parentFriendly ? 'parent-friendly' : 'professional'} progress report.\nSTUDENT: ${studentName||'Student'}\nPERIOD: Last ${days} days\nDATA: ${periodAbc.length} ABC entries, Functions: ${JSON.stringify(funcs)}, Avg intensity: ${avgInt}/5\nSAMPLE:\n${abcSummary||'No data'}\n\nReturn ONLY valid JSON:\n{"title":"...","period":"...","dataSummary":{"totalEntries":0,"avgIntensity":"","topFunction":"","sessionsRecorded":0},"narrative":"...","trends":["..."],"strengths":["..."],"concerns":["..."],"goalProgress":"...","recommendations":["..."]}`;
-            const result = await callGemini(prompt);
-            const jsonMatch = result.match(/\{[\s\S]*\}/);
-            if (jsonMatch) { setReport(JSON.parse(jsonMatch[0])); if (addToast) addToast('Report generated!', 'success'); }
-        } catch (e) { if (addToast) addToast('Report generation failed', 'error'); }
-        setGenerating(false);
-    };
-    const copyReport = () => {
-        if (!report) return;
-        let text = (report.title||'Progress Report') + '\n' + (report.period||'') + '\n\n' + (report.narrative||'');
-        text += '\n\nStrengths: ' + (report.strengths||[]).join('; ');
-        text += '\nConcerns: ' + (report.concerns||[]).join('; ');
-        text += '\nRecommendations: ' + (report.recommendations||[]).join('; ');
-        navigator.clipboard.writeText(text);
-        if (addToast) addToast('Report copied!', 'success');
-    };
-    return h('div', { className: 'space-y-4' },
-        h('div', { className: 'bg-gradient-to-r from-emerald-50 to-green-50 rounded-xl p-4 border border-emerald-200' },
-            h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '📊'), h('h3', { className: 'text-lg font-black text-emerald-800' }, 'Automated Progress Reports')),
-            h('p', { className: 'text-xs text-emerald-600' }, 'AI-generated progress reports with data summaries, trend analysis, and recommendations.')
-        ),
-        h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 space-y-3' },
-            h('div', { className: 'flex gap-2 flex-wrap' }, Object.entries(periodConfig).map(([key, cfg]) => h('button', { key, onClick: () => setPeriod(key), className: 'px-3 py-1.5 rounded-lg text-xs font-bold transition-all ' + (period === key ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200') }, cfg.label))),
-            h('div', { className: 'flex items-center justify-between' },
-                h('label', { className: 'flex items-center gap-2 text-xs text-slate-600 cursor-pointer' }, h('input', { type: 'checkbox', checked: parentFriendly, onChange: () => setParentFriendly(!parentFriendly), className: 'rounded' }), '👪 Parent-friendly language'),
-                h('button', { onClick: handleGenerate, disabled: generating, className: 'px-4 py-2 bg-gradient-to-r from-emerald-600 to-green-600 text-white font-bold rounded-lg text-sm hover:from-emerald-700 hover:to-green-700 disabled:opacity-40' }, generating ? '⏳ Generating...' : '📊 Generate Report')
-            )
-        ),
-        report && h('div', { className: 'space-y-3' },
-            h('div', { className: 'flex gap-2 justify-end' }, h('button', { onClick: copyReport, className: 'px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold hover:bg-emerald-200' }, '📋 Copy'), h('button', { onClick: () => window.print(), className: 'px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold hover:bg-emerald-200' }, '🖨️ Print')),
-            h('div', { className: 'bg-white rounded-xl border border-emerald-200 p-5' },
-                h('h3', { className: 'text-lg font-black text-slate-800 mb-1' }, report.title || 'Progress Report'),
-                h('p', { className: 'text-xs text-slate-500 mb-4' }, report.period),
-                report.dataSummary && h('div', { className: 'grid grid-cols-4 gap-2 mb-4' }, [['📋', 'Entries', report.dataSummary.totalEntries], ['⚡', 'Avg Int.', report.dataSummary.avgIntensity], ['🎯', 'Top Func', report.dataSummary.topFunction], ['📊', 'Sessions', report.dataSummary.sessionsRecorded]].map(([icon, label, val]) => h('div', { key: label, className: 'bg-slate-50 rounded-lg p-2 text-center' }, h('div', { className: 'text-sm' }, icon), h('div', { className: 'text-xs font-bold text-slate-800' }, val), h('div', { className: 'text-[10px] text-slate-400' }, label)))),
-                h('p', { className: 'text-xs text-slate-700 leading-relaxed whitespace-pre-wrap mb-4' }, report.narrative),
-                h('div', { className: 'grid grid-cols-2 gap-3 mb-4' },
-                    h('div', { className: 'bg-emerald-50 rounded-lg p-3' }, h('h5', { className: 'text-[10px] font-bold text-emerald-700 uppercase mb-1' }, '💪 Strengths'), (report.strengths||[]).map((s,i) => h('p', { key: i, className: 'text-xs text-slate-700' }, '• ' + s))),
-                    h('div', { className: 'bg-red-50 rounded-lg p-3' }, h('h5', { className: 'text-[10px] font-bold text-red-700 uppercase mb-1' }, '⚠️ Concerns'), (report.concerns||[]).map((c,i) => h('p', { key: i, className: 'text-xs text-slate-700' }, '• ' + c)))
-                ),
-                report.goalProgress && h('div', { className: 'bg-blue-50 rounded-lg p-3 mb-3' }, h('h5', { className: 'text-[10px] font-bold text-blue-700 uppercase mb-1' }, '🎯 Goal Progress'), h('p', { className: 'text-xs text-slate-700' }, report.goalProgress)),
-                h('div', { className: 'bg-purple-50 rounded-lg p-3' }, h('h5', { className: 'text-[10px] font-bold text-purple-700 uppercase mb-1' }, '📋 Recommendations'), (report.recommendations||[]).map((r,i) => h('p', { key: i, className: 'text-xs text-slate-700' }, (i+1) + '. ' + r)))
-            )
-        )
-    );
-};
-
-// ─── EffectSizeCalculator ───────────────────────────────────
-const EffectSizeCalculator = ({ sessionHistory, designPhases, t, addToast }) => {
-    const [baselineData, setBaselineData] = useState('');
-    const [interventionData, setInterventionData] = useState('');
-    const [results, setResults] = useState(null);
-    const parseData = (str) => str.split(/[,\s]+/).map(Number).filter(n => !isNaN(n));
-    const calculate = () => {
-        const baseline = parseData(baselineData);
-        const intervention = parseData(interventionData);
-        if (baseline.length < 2 || intervention.length < 2) { if (addToast) addToast('Need at least 2 data points per phase', 'error'); return; }
-        const baseMax = Math.max(...baseline);
-        const pndCount = intervention.filter(v => v > baseMax).length;
-        const pnd = (pndCount / intervention.length) * 100;
-        let pairs = 0, nonoverlap = 0, ties = 0;
-        baseline.forEach(b => { intervention.forEach(i => { pairs++; if (i > b) nonoverlap++; else if (i === b) ties++; }); });
-        const nap = ((nonoverlap + 0.5 * ties) / pairs) * 100;
-        let sBaseline = 0;
-        for (let i = 0; i < baseline.length; i++) { for (let j = i + 1; j < baseline.length; j++) { if (baseline[j] > baseline[i]) sBaseline++; else if (baseline[j] < baseline[i]) sBaseline--; } }
-        const baselineTrend = sBaseline / (baseline.length * (baseline.length - 1) / 2);
-        let sBetween = 0;
-        baseline.forEach(b => { intervention.forEach(i => { if (i > b) sBetween++; else if (i < b) sBetween--; }); });
-        const tauU = Math.max(-1, Math.min(1, (sBetween / pairs) - baselineTrend));
-        const baseMean = baseline.reduce((a,b)=>a+b,0) / baseline.length;
-        const intMean = intervention.reduce((a,b)=>a+b,0) / intervention.length;
-        const pctChange = baseMean !== 0 ? ((intMean - baseMean) / baseMean * 100) : 0;
-        setResults({ pnd: pnd.toFixed(1), nap: nap.toFixed(1), tauU: tauU.toFixed(3), baseMean: baseMean.toFixed(2), intMean: intMean.toFixed(2), pctChange: pctChange.toFixed(1), baseline, intervention,
-            pndInterp: pnd >= 90 ? 'Very effective' : pnd >= 70 ? 'Effective' : pnd >= 50 ? 'Questionable' : 'Ineffective',
-            napInterp: nap >= 93 ? 'Large' : nap >= 66 ? 'Medium' : nap >= 50 ? 'Small' : 'Weak',
-            tauInterp: Math.abs(tauU) >= 0.8 ? 'Large' : Math.abs(tauU) >= 0.5 ? 'Medium' : Math.abs(tauU) >= 0.2 ? 'Small' : 'Negligible'
-        });
-        if (addToast) addToast('Effect sizes calculated!', 'success');
-    };
-    return h('div', { className: 'space-y-4' },
-        h('div', { className: 'bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-4 border border-indigo-200' },
-            h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '📐'), h('h3', { className: 'text-lg font-black text-indigo-800' }, 'Effect Size Calculator')),
-            h('p', { className: 'text-xs text-indigo-600' }, 'Calculate Tau-U, NAP, and PND to quantify intervention effectiveness.')
-        ),
-        h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 space-y-3' },
-            h('div', null, h('label', { className: 'text-xs font-bold text-slate-500 uppercase tracking-wider' }, '📊 Baseline Phase (A)'), h('input', { value: baselineData, onChange: e => setBaselineData(e.target.value), placeholder: 'e.g. 12, 15, 14, 13, 16', className: 'w-full mt-1 p-2 border border-slate-200 rounded-lg text-xs' })),
-            h('div', null, h('label', { className: 'text-xs font-bold text-slate-500 uppercase tracking-wider' }, '📈 Intervention Phase (B)'), h('input', { value: interventionData, onChange: e => setInterventionData(e.target.value), placeholder: 'e.g. 8, 6, 5, 4, 3', className: 'w-full mt-1 p-2 border border-slate-200 rounded-lg text-xs' })),
-            h('button', { onClick: calculate, className: 'px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-lg text-sm hover:from-indigo-700 hover:to-purple-700 transition-all' }, '📐 Calculate Effect Sizes')
-        ),
-        results && h('div', { className: 'space-y-3' },
-            h('div', { className: 'grid grid-cols-3 gap-3' },
-                [['Tau-U', results.tauU, results.tauInterp, 'indigo'], ['NAP', results.nap + '%', results.napInterp, 'purple'], ['PND', results.pnd + '%', results.pndInterp, 'violet']].map(([label, val, interp, color]) =>
-                    h('div', { key: label, className: 'bg-' + color + '-50 rounded-xl border border-' + color + '-200 p-4 text-center' },
-                        h('div', { className: 'text-[10px] font-bold text-' + color + '-500 uppercase' }, label),
-                        h('div', { className: 'text-2xl font-black text-' + color + '-800 my-1' }, val),
-                        h('div', { className: 'text-[10px] font-bold text-' + color + '-600 px-2 py-0.5 bg-' + color + '-100 rounded-full inline-block' }, interp)
-                    )
-                )
-            ),
-            h('div', { className: 'grid grid-cols-3 gap-3' }, [['Baseline Mean', results.baseMean], ['Intervention Mean', results.intMean], ['% Change', results.pctChange + '%']].map(([label, val]) => h('div', { key: label, className: 'bg-white rounded-lg border border-slate-200 p-3 text-center' }, h('div', { className: 'text-[10px] font-bold text-slate-500' }, label), h('div', { className: 'text-lg font-bold text-slate-800' }, val)))),
-            h('div', { className: 'bg-amber-50 border border-amber-200 rounded-xl p-3' }, h('p', { className: 'text-[10px] text-amber-700' }, '💡 Tau-U corrects for baseline trend. NAP counts nonoverlapping pairs. PND uses highest baseline point as threshold.'))
-        )
-    );
-};
-
-// ─── ObservationCoach ───────────────────────────────────────
-const ObservationCoach = ({ abcEntries, observationSessions, callGemini, t, addToast }) => {
-    const [coaching, setCoaching] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [dismissed, setDismissed] = useState(new Set());
-    const handleCoach = async () => {
-        if (!callGemini) return;
-        setLoading(true);
-        try {
-            const recentAbc = abcEntries.slice(-10);
-            const abcStr = recentAbc.map((e,i) => `${i+1}. A:${e.antecedent||'?'} B:${e.behavior||'?'} C:${e.consequence||'?'} Func:${e.function||'?'} Int:${e.intensity||'?'}/5`).join('\n');
-            const settings = [...new Set(recentAbc.map(e => e.setting).filter(Boolean))];
-            const functions = [...new Set(recentAbc.map(e => e.function).filter(Boolean))];
-            const prompt = `You are a BCBA coaching a teacher on data quality.\nABC DATA (${abcEntries.length} total, last ${recentAbc.length}):\n${abcStr||'No entries'}\nSettings: ${settings.join(', ')||'None'}\nFunctions: ${functions.join(', ')||'None'}\nSessions: ${observationSessions.length}\n\nReturn ONLY valid JSON:\n{"overallScore":1-10,"overallFeedback":"...","tips":[{"priority":"high|medium|low","icon":"emoji","title":"...","detail":"...","example":"..."}],"strengths":["..."],"nextSteps":["..."]}`;
-            const result = await callGemini(prompt);
-            const jsonMatch = result.match(/\{[\s\S]*\}/);
-            if (jsonMatch) { setCoaching(JSON.parse(jsonMatch[0])); setDismissed(new Set()); if (addToast) addToast('Coaching tips generated!', 'success'); }
-        } catch (e) { if (addToast) addToast('Coaching failed.', 'error'); }
-        setLoading(false);
-    };
-    const priorityColors = { high: 'red', medium: 'amber', low: 'emerald' };
-    const priorityLabels = { high: '🔴 High', medium: '🟡 Medium', low: '🟢 Low' };
-    return h('div', { className: 'space-y-4' },
-        h('div', { className: 'bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl p-4 border border-amber-200' },
-            h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '🎓'), h('h3', { className: 'text-lg font-black text-amber-800' }, 'AI Observation Coach')),
-            h('p', { className: 'text-xs text-amber-600' }, 'Get AI coaching on data collection quality. Identifies gaps, suggests improvements, rates your data.')
-        ),
-        h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4' },
-            h('div', { className: 'flex items-center justify-between' },
-                h('div', { className: 'text-xs text-slate-500' }, '📋 ' + abcEntries.length + ' ABC entries • 🔍 ' + observationSessions.length + ' sessions'),
-                h('button', { onClick: handleCoach, disabled: loading, className: 'px-4 py-2 bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-bold rounded-lg text-sm hover:from-amber-600 hover:to-yellow-600 disabled:opacity-40' }, loading ? '⏳ Analyzing...' : '🎓 Get Coaching Tips')
-            )
-        ),
-        coaching && h('div', { className: 'space-y-3' },
-            h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-4' },
-                h('div', { className: 'w-16 h-16 rounded-full flex items-center justify-center text-2xl font-black border-4 ' + (coaching.overallScore >= 7 ? 'border-emerald-400 text-emerald-700 bg-emerald-50' : coaching.overallScore >= 4 ? 'border-amber-400 text-amber-700 bg-amber-50' : 'border-red-400 text-red-700 bg-red-50') }, coaching.overallScore + '/10'),
-                h('div', null, h('h4', { className: 'text-sm font-bold text-slate-800' }, 'Data Quality Score'), h('p', { className: 'text-xs text-slate-600' }, coaching.overallFeedback))
-            ),
-            (coaching.strengths || []).length > 0 && h('div', { className: 'bg-emerald-50 rounded-xl border border-emerald-200 p-3' },
-                h('h4', { className: 'text-[10px] font-bold text-emerald-700 uppercase mb-2' }, '💪 Strengths'),
-                (coaching.strengths || []).map((s, i) => h('p', { key: i, className: 'text-xs text-emerald-800' }, '✅ ' + s))
-            ),
-            (coaching.tips || []).filter(tip => !dismissed.has(tip.title)).map((tip, i) => {
-                const pc = priorityColors[tip.priority] || 'slate';
-                return h('div', { key: i, className: 'bg-white rounded-xl border border-' + pc + '-200 p-4' },
-                    h('div', { className: 'flex items-center justify-between mb-2' },
-                        h('div', { className: 'flex items-center gap-2' }, h('span', { className: 'text-lg' }, tip.icon || '💡'), h('h4', { className: 'text-sm font-bold text-slate-800' }, tip.title), h('span', { className: 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-' + pc + '-100 text-' + pc + '-700' }, priorityLabels[tip.priority] || 'Medium')),
-                        h('button', { onClick: () => setDismissed(prev => new Set([...prev, tip.title])), className: 'text-slate-300 hover:text-slate-500 text-sm' }, '✕')
-                    ),
-                    h('p', { className: 'text-xs text-slate-700 mb-2' }, tip.detail),
-                    tip.example && h('div', { className: 'bg-slate-50 rounded-lg p-2 text-xs text-slate-600 italic' }, '📝 Example: ' + tip.example)
-                );
-            }),
-            (coaching.nextSteps || []).length > 0 && h('div', { className: 'bg-blue-50 rounded-xl border border-blue-200 p-3' },
-                h('h4', { className: 'text-[10px] font-bold text-blue-700 uppercase mb-2' }, '🚀 Next Steps'),
-                (coaching.nextSteps || []).map((s, i) => h('p', { key: i, className: 'text-xs text-blue-800' }, (i+1) + '. ' + s))
-            )
-        )
-    );
-};
-
+    // ─── CaseloadDashboard ──────────────────────────────────────
+
+    const CaseloadDashboard = ({ abcEntries, dashboardData, callGemini, t, addToast, selectedStudent, setSelectedStudent, openPanel }) => {
+
+        const [sortBy, setSortBy] = useState('status');
+
+        const [sortDir, setSortDir] = useState('desc');
+
+        const [caseloadSummary, setCaseloadSummary] = useState('');
+
+        const [summaryLoading, setSummaryLoading] = useState(false);
+
+        const [filterStatus, setFilterStatus] = useState('all');
+
+        const studentCaseData = useMemo(() => {
+
+            const students = dashboardData && Array.isArray(dashboardData) ? dashboardData : [];
+
+            return students.map(s => {
+
+                const name = s.studentNickname || 'Unknown';
+
+                const studentAbc = abcEntries.filter(e => e.student === name);
+
+                const lastEntry = studentAbc.length > 0 ? studentAbc[studentAbc.length - 1] : null;
+
+                const daysSinceEntry = lastEntry ? Math.floor((Date.now() - new Date(lastEntry.timestamp).getTime()) / 86400000) : 999;
+
+                const avgIntensity = studentAbc.length > 0 ? studentAbc.reduce((sum, e) => sum + (e.intensity || 3), 0) / studentAbc.length : 0;
+
+                let status = 'on_track';
+
+                if (avgIntensity >= 4) status = 'urgent';
+
+                else if (daysSinceEntry > 14 || avgIntensity >= 3) status = 'needs_attention';
+
+                return { name, abcCount: studentAbc.length, daysSinceEntry, avgIntensity: avgIntensity.toFixed(1), status };
+
+            });
+
+        }, [dashboardData, abcEntries]);
+
+        const statusConfig = { urgent: { emoji: '🔴', label: 'Urgent', bg: 'bg-red-50', border: 'border-red-300', text: 'text-red-700' }, needs_attention: { emoji: '🟡', label: 'Needs Attention', bg: 'bg-amber-50', border: 'border-amber-300', text: 'text-amber-700' }, on_track: { emoji: '🟢', label: 'On Track', bg: 'bg-emerald-50', border: 'border-emerald-300', text: 'text-emerald-700' } };
+
+        const filtered = filterStatus === 'all' ? studentCaseData : studentCaseData.filter(s => s.status === filterStatus);
+
+        const sorted = [...filtered].sort((a, b) => {
+
+            const dir = sortDir === 'asc' ? 1 : -1;
+
+            if (sortBy === 'name') return dir * a.name.localeCompare(b.name);
+
+            if (sortBy === 'abcCount') return dir * (a.abcCount - b.abcCount);
+
+            if (sortBy === 'status') { const order = { urgent: 0, needs_attention: 1, on_track: 2 }; return dir * (order[a.status] - order[b.status]); }
+
+            return 0;
+
+        });
+
+        const handleCaseloadSummary = async () => {
+
+            if (!callGemini || studentCaseData.length === 0) return;
+
+            setSummaryLoading(true);
+
+            try {
+
+                const dataStr = studentCaseData.map(s => `${s.name}: ${s.abcCount} entries, status=${s.status}, intensity=${s.avgIntensity}`).join('\n');
+
+                const prompt = `You are a school BCBA reviewing your caseload. Provide a brief caseload summary.\n\nCASELOAD (${studentCaseData.length} students):\n${dataStr}\n\nProvide 3-5 sentence summary highlighting priority students and recommendations.`;
+
+                const result = await callGemini(prompt);
+
+                setCaseloadSummary(result);
+
+                if (addToast) addToast('Summary generated!', 'success');
+
+            } catch (e) { if (addToast) addToast('Failed to generate summary', 'error'); }
+
+            setSummaryLoading(false);
+
+        };
+
+        const urgentCount = studentCaseData.filter(s => s.status === 'urgent').length;
+
+        const attentionCount = studentCaseData.filter(s => s.status === 'needs_attention').length;
+
+        const onTrackCount = studentCaseData.filter(s => s.status === 'on_track').length;
+
+        return h('div', { className: 'space-y-4' },
+
+            h('div', { className: 'bg-gradient-to-r from-teal-50 to-cyan-50 rounded-xl p-4 border border-teal-200' },
+
+                h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '👥'), h('h3', { className: 'text-lg font-black text-teal-800' }, 'Caseload Dashboard')),
+
+                h('p', { className: 'text-xs text-teal-600' }, "Bird's-eye view of your caseload with status indicators, trends, and AI summary.")
+
+            ),
+
+            h('div', { className: 'grid grid-cols-4 gap-3' },
+
+                [['👥', 'Total', studentCaseData.length, 'bg-slate-50 border-slate-200'], ['🔴', 'Urgent', urgentCount, 'bg-red-50 border-red-200'], ['🟡', 'Attention', attentionCount, 'bg-amber-50 border-amber-200'], ['🟢', 'On Track', onTrackCount, 'bg-emerald-50 border-emerald-200']].map(([icon, label, count, cls]) =>
+
+                    h('div', { key: label, className: 'rounded-xl border p-3 text-center ' + cls }, h('div', { className: 'text-xl' }, icon), h('div', { className: 'text-lg font-black text-slate-800' }, count), h('div', { className: 'text-[10px] text-slate-500 font-bold' }, label))
+
+                )
+
+            ),
+
+            h('div', { className: 'flex gap-2' },
+
+                h('button', { onClick: handleCaseloadSummary, disabled: summaryLoading || studentCaseData.length === 0, className: 'px-3 py-1.5 bg-teal-600 text-white font-bold rounded-lg text-xs hover:bg-teal-700 disabled:opacity-40' }, summaryLoading ? '⏳ Generating...' : '🤖 AI Caseload Summary'),
+
+                h('div', { className: 'flex gap-1 ml-auto' }, ['all', 'urgent', 'needs_attention', 'on_track'].map(f => h('button', { key: f, onClick: () => setFilterStatus(f), className: 'px-2 py-1 rounded text-[10px] font-bold transition-all ' + (filterStatus === f ? 'bg-teal-200 text-teal-800' : 'bg-slate-100 text-slate-500 hover:bg-slate-200') }, f === 'all' ? 'All' : f === 'needs_attention' ? '🟡' : f === 'urgent' ? '🔴' : '🟢')))
+
+            ),
+
+            caseloadSummary && h('div', { className: 'bg-teal-50 border border-teal-200 rounded-xl p-4' }, h('p', { className: 'text-xs text-teal-800 leading-relaxed whitespace-pre-wrap' }, caseloadSummary)),
+
+            h('div', { className: 'bg-white rounded-xl border border-slate-200 overflow-hidden' },
+
+                sorted.length === 0 ? h('div', { className: 'p-8 text-center text-sm text-slate-400 italic' }, 'No students in caseload.') :
+
+                    sorted.map((s, idx) => {
+
+                        const sc = statusConfig[s.status];
+
+                        return h('div', { key: idx, className: 'flex items-center justify-between px-4 py-3 border-b border-slate-100 hover:bg-slate-50 transition-all ' + sc.bg },
+
+                            h('div', { className: 'flex items-center gap-3' },
+
+                                h('span', { className: 'text-xs font-bold text-slate-800 w-24' }, s.name),
+
+                                h('span', { className: 'px-2 py-0.5 rounded-full text-[10px] font-bold ' + sc.text + ' border ' + sc.border }, sc.emoji + ' ' + sc.label),
+
+                                h('span', { className: 'text-[10px] text-slate-500' }, s.abcCount + ' entries'),
+
+                                h('span', { className: 'text-[10px] text-slate-400' }, s.daysSinceEntry > 900 ? 'Never' : s.daysSinceEntry + 'd ago')
+
+                            ),
+
+                            h('button', { onClick: () => { if (setSelectedStudent) setSelectedStudent(s.name); if (openPanel) openPanel('abc'); }, className: 'px-2 py-1 bg-teal-100 text-teal-700 rounded text-[10px] font-bold hover:bg-teal-200' }, '👁️ View')
+
+                        );
+
+                    })
+
+            )
+
+        );
+
+    };
+
+
+
+    // ─── MTSSTierManager ────────────────────────────────────────
+
+    const MTSSTierManager = ({ dashboardData, abcEntries, callGemini, t, addToast, selectedStudent }) => {
+
+        const [tiers, setTiers] = useState(() => { try { const s = localStorage.getItem('behaviorlens_mtss_tiers'); return s ? JSON.parse(s) : {}; } catch { return {}; } });
+
+        const [aiRecs, setAiRecs] = useState(null);
+
+        const [recsLoading, setRecsLoading] = useState(false);
+
+        useEffect(() => { try { localStorage.setItem('behaviorlens_mtss_tiers', JSON.stringify(tiers)); } catch { } }, [tiers]);
+
+        const students = useMemo(() => (dashboardData && Array.isArray(dashboardData) ? dashboardData : []).map(s => s.studentNickname).filter(Boolean), [dashboardData]);
+
+        const getTier = (name) => tiers[name] || 1;
+
+        const setTier = (name, tier) => setTiers(prev => ({ ...prev, [name]: tier }));
+
+        const tierConfig = { 1: { label: 'Tier 1 — Universal', color: 'emerald', emoji: '🟢', pct: '80%' }, 2: { label: 'Tier 2 — Targeted', color: 'amber', emoji: '🟡', pct: '15%' }, 3: { label: 'Tier 3 — Intensive', color: 'red', emoji: '🔴', pct: '5%' } };
+
+        const handleAiRecommendations = async () => {
+
+            if (!callGemini) return;
+
+            setRecsLoading(true);
+
+            try {
+
+                const studentData = students.map(name => { const abc = abcEntries.filter(e => e.student === name); return `${name}: Tier ${getTier(name)}, ${abc.length} entries, avg int ${abc.length > 0 ? (abc.reduce((s, e) => s + (e.intensity || 3), 0) / abc.length).toFixed(1) : 'N/A'}`; }).join('\n');
+
+                const prompt = `You are an MTSS coordinator. Review tier assignments:\n${studentData}\n\nRecommend changes. Return ONLY valid JSON:\n{"recommendations":[{"student":"name","currentTier":1,"recommendedTier":2,"reason":"..."}],"summary":"Overall MTSS health in 2 sentences"}`;
+
+                const result = await callGemini(prompt);
+
+                const jsonMatch = result.match(/\{[\s\S]*\}/);
+
+                if (jsonMatch) { setAiRecs(JSON.parse(jsonMatch[0])); if (addToast) addToast('Recommendations generated!', 'success'); }
+
+            } catch (e) { if (addToast) addToast('Failed', 'error'); }
+
+            setRecsLoading(false);
+
+        };
+
+        const applyRec = (rec) => { setTier(rec.student, rec.recommendedTier); if (addToast) addToast(rec.student + ' moved to Tier ' + rec.recommendedTier, 'success'); };
+
+        const renderTierSection = (tierNum) => {
+
+            const tc = tierConfig[tierNum];
+
+            const tierStudents = students.filter(s => getTier(s) === tierNum);
+
+            return h('div', { className: 'bg-' + tc.color + '-50 rounded-xl border-2 border-' + tc.color + '-200 p-4' },
+
+                h('div', { className: 'flex items-center justify-between mb-3' },
+
+                    h('h4', { className: 'text-sm font-bold text-' + tc.color + '-800' }, tc.emoji + ' ' + tc.label),
+
+                    h('div', { className: 'flex items-center gap-2' }, h('span', { className: 'px-2 py-0.5 bg-white rounded-full text-xs font-bold text-' + tc.color + '-700 border border-' + tc.color + '-200' }, tierStudents.length + ' students'), h('span', { className: 'text-[10px] text-' + tc.color + '-500' }, '~' + tc.pct))
+
+                ),
+
+                tierStudents.length === 0 ? h('p', { className: 'text-xs text-' + tc.color + '-400 italic text-center py-2' }, 'No students') :
+
+                    h('div', { className: 'flex flex-wrap gap-2' }, tierStudents.map(name => h('div', { key: name, className: 'flex items-center gap-1 bg-white rounded-lg px-3 py-1.5 border border-' + tc.color + '-200' },
+
+                        h('span', { className: 'text-xs font-bold text-slate-700' }, name),
+
+                        h('select', { value: tierNum, onChange: (e) => setTier(name, parseInt(e.target.value)), className: 'ml-1 text-[10px] bg-transparent border-0 text-' + tc.color + '-600 font-bold cursor-pointer' }, h('option', { value: 1 }, 'T1'), h('option', { value: 2 }, 'T2'), h('option', { value: 3 }, 'T3'))
+
+                    )))
+
+            );
+
+        };
+
+        return h('div', { className: 'space-y-4' },
+
+            h('div', { className: 'bg-gradient-to-r from-orange-50 to-rose-50 rounded-xl p-4 border border-orange-200' },
+
+                h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '🏗️'), h('h3', { className: 'text-lg font-black text-orange-800' }, 'MTSS/RTI Tier Manager')),
+
+                h('p', { className: 'text-xs text-orange-600' }, 'Visual multi-tiered system of supports. Assign students to tiers, get AI-powered placement recommendations.')
+
+            ),
+
+            h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4' },
+
+                h('button', { onClick: handleAiRecommendations, disabled: recsLoading || students.length === 0, className: 'px-3 py-1.5 bg-orange-600 text-white font-bold rounded-lg text-xs hover:bg-orange-700 disabled:opacity-40 mb-4' }, recsLoading ? '⏳ Analyzing...' : '🤖 AI Tier Recommendations'),
+
+                aiRecs && h('div', { className: 'mb-4 bg-orange-50 border border-orange-200 rounded-xl p-4 space-y-2' },
+
+                    aiRecs.summary && h('p', { className: 'text-xs text-orange-800 font-medium mb-2' }, aiRecs.summary),
+
+                    (aiRecs.recommendations || []).length > 0 ? (aiRecs.recommendations || []).map((rec, i) => h('div', { key: i, className: 'flex items-center justify-between bg-white rounded-lg p-2 border border-orange-100' },
+
+                        h('div', null, h('span', { className: 'text-xs font-bold text-slate-700' }, rec.student), h('span', { className: 'text-[10px] text-slate-400 mx-2' }, 'T' + rec.currentTier + ' → T' + rec.recommendedTier), h('span', { className: 'text-[10px] text-orange-600' }, rec.reason)),
+
+                        h('button', { onClick: () => applyRec(rec), className: 'px-2 py-1 bg-orange-200 text-orange-800 rounded text-[10px] font-bold hover:bg-orange-300' }, '✅ Apply')
+
+                    )) : h('p', { className: 'text-xs text-orange-600 italic' }, '✅ All placements appropriate!')
+
+                ),
+
+                h('div', { className: 'space-y-3' }, renderTierSection(3), renderTierSection(2), renderTierSection(1))
+
+            )
+
+        );
+
+    };
+
+
+
+    // ─── ProgressReportGenerator ────────────────────────────────
+
+    const ProgressReportGenerator = ({ abcEntries, observationSessions, sessionHistory, studentName, studentProfile, callGemini, t, addToast }) => {
+
+        const [period, setPeriod] = useState('monthly');
+
+        const [report, setReport] = useState(null);
+
+        const [generating, setGenerating] = useState(false);
+
+        const [parentFriendly, setParentFriendly] = useState(false);
+
+        const periodConfig = { weekly: { label: '📅 Weekly', days: 7 }, monthly: { label: '📆 Monthly', days: 30 }, quarterly: { label: '📊 Quarterly', days: 90 } };
+
+        const handleGenerate = async () => {
+
+            if (!callGemini) return;
+
+            setGenerating(true);
+
+            try {
+
+                const days = periodConfig[period]?.days || 30;
+
+                const cutoff = Date.now() - days * 86400000;
+
+                const periodAbc = abcEntries.filter(e => new Date(e.timestamp).getTime() >= cutoff);
+
+                const funcs = {};
+
+                periodAbc.forEach(e => { const f = e.function || 'unknown'; funcs[f] = (funcs[f] || 0) + 1; });
+
+                const avgInt = periodAbc.length > 0 ? (periodAbc.reduce((s, e) => s + (e.intensity || 3), 0) / periodAbc.length).toFixed(1) : 'N/A';
+
+                const abcSummary = periodAbc.slice(0, 20).map((e, i) => `${i + 1}. A:${e.antecedent} B:${e.behavior} C:${e.consequence} Int:${e.intensity}/5`).join('\n');
+
+                const prompt = `You are a BCBA writing a ${parentFriendly ? 'parent-friendly' : 'professional'} progress report.\nSTUDENT: ${studentName || 'Student'}\nPERIOD: Last ${days} days\nDATA: ${periodAbc.length} ABC entries, Functions: ${JSON.stringify(funcs)}, Avg intensity: ${avgInt}/5\nSAMPLE:\n${abcSummary || 'No data'}\n\nReturn ONLY valid JSON:\n{"title":"...","period":"...","dataSummary":{"totalEntries":0,"avgIntensity":"","topFunction":"","sessionsRecorded":0},"narrative":"...","trends":["..."],"strengths":["..."],"concerns":["..."],"goalProgress":"...","recommendations":["..."]}`;
+
+                const result = await callGemini(prompt);
+
+                const jsonMatch = result.match(/\{[\s\S]*\}/);
+
+                if (jsonMatch) { setReport(JSON.parse(jsonMatch[0])); if (addToast) addToast('Report generated!', 'success'); }
+
+            } catch (e) { if (addToast) addToast('Report generation failed', 'error'); }
+
+            setGenerating(false);
+
+        };
+
+        const copyReport = () => {
+
+            if (!report) return;
+
+            let text = (report.title || 'Progress Report') + '\n' + (report.period || '') + '\n\n' + (report.narrative || '');
+
+            text += '\n\nStrengths: ' + (report.strengths || []).join('; ');
+
+            text += '\nConcerns: ' + (report.concerns || []).join('; ');
+
+            text += '\nRecommendations: ' + (report.recommendations || []).join('; ');
+
+            navigator.clipboard.writeText(text);
+
+            if (addToast) addToast('Report copied!', 'success');
+
+        };
+
+        return h('div', { className: 'space-y-4' },
+
+            h('div', { className: 'bg-gradient-to-r from-emerald-50 to-green-50 rounded-xl p-4 border border-emerald-200' },
+
+                h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '📊'), h('h3', { className: 'text-lg font-black text-emerald-800' }, 'Automated Progress Reports')),
+
+                h('p', { className: 'text-xs text-emerald-600' }, 'AI-generated progress reports with data summaries, trend analysis, and recommendations.')
+
+            ),
+
+            h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 space-y-3' },
+
+                h('div', { className: 'flex gap-2 flex-wrap' }, Object.entries(periodConfig).map(([key, cfg]) => h('button', { key, onClick: () => setPeriod(key), className: 'px-3 py-1.5 rounded-lg text-xs font-bold transition-all ' + (period === key ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200') }, cfg.label))),
+
+                h('div', { className: 'flex items-center justify-between' },
+
+                    h('label', { className: 'flex items-center gap-2 text-xs text-slate-600 cursor-pointer' }, h('input', { type: 'checkbox', checked: parentFriendly, onChange: () => setParentFriendly(!parentFriendly), className: 'rounded' }), '👪 Parent-friendly language'),
+
+                    h('button', { onClick: handleGenerate, disabled: generating, className: 'px-4 py-2 bg-gradient-to-r from-emerald-600 to-green-600 text-white font-bold rounded-lg text-sm hover:from-emerald-700 hover:to-green-700 disabled:opacity-40' }, generating ? '⏳ Generating...' : '📊 Generate Report')
+
+                )
+
+            ),
+
+            report && h('div', { className: 'space-y-3' },
+
+                h('div', { className: 'flex gap-2 justify-end' }, h('button', { onClick: copyReport, className: 'px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold hover:bg-emerald-200' }, '📋 Copy'), h('button', { onClick: () => window.print(), className: 'px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold hover:bg-emerald-200' }, '🖨️ Print')),
+
+                h('div', { className: 'bg-white rounded-xl border border-emerald-200 p-5' },
+
+                    h('h3', { className: 'text-lg font-black text-slate-800 mb-1' }, report.title || 'Progress Report'),
+
+                    h('p', { className: 'text-xs text-slate-500 mb-4' }, report.period),
+
+                    report.dataSummary && h('div', { className: 'grid grid-cols-4 gap-2 mb-4' }, [['📋', 'Entries', report.dataSummary.totalEntries], ['⚡', 'Avg Int.', report.dataSummary.avgIntensity], ['🎯', 'Top Func', report.dataSummary.topFunction], ['📊', 'Sessions', report.dataSummary.sessionsRecorded]].map(([icon, label, val]) => h('div', { key: label, className: 'bg-slate-50 rounded-lg p-2 text-center' }, h('div', { className: 'text-sm' }, icon), h('div', { className: 'text-xs font-bold text-slate-800' }, val), h('div', { className: 'text-[10px] text-slate-400' }, label)))),
+
+                    h('p', { className: 'text-xs text-slate-700 leading-relaxed whitespace-pre-wrap mb-4' }, report.narrative),
+
+                    h('div', { className: 'grid grid-cols-2 gap-3 mb-4' },
+
+                        h('div', { className: 'bg-emerald-50 rounded-lg p-3' }, h('h5', { className: 'text-[10px] font-bold text-emerald-700 uppercase mb-1' }, '💪 Strengths'), (report.strengths || []).map((s, i) => h('p', { key: i, className: 'text-xs text-slate-700' }, '• ' + s))),
+
+                        h('div', { className: 'bg-red-50 rounded-lg p-3' }, h('h5', { className: 'text-[10px] font-bold text-red-700 uppercase mb-1' }, '⚠️ Concerns'), (report.concerns || []).map((c, i) => h('p', { key: i, className: 'text-xs text-slate-700' }, '• ' + c)))
+
+                    ),
+
+                    report.goalProgress && h('div', { className: 'bg-blue-50 rounded-lg p-3 mb-3' }, h('h5', { className: 'text-[10px] font-bold text-blue-700 uppercase mb-1' }, '🎯 Goal Progress'), h('p', { className: 'text-xs text-slate-700' }, report.goalProgress)),
+
+                    h('div', { className: 'bg-purple-50 rounded-lg p-3' }, h('h5', { className: 'text-[10px] font-bold text-purple-700 uppercase mb-1' }, '📋 Recommendations'), (report.recommendations || []).map((r, i) => h('p', { key: i, className: 'text-xs text-slate-700' }, (i + 1) + '. ' + r)))
+
+                )
+
+            )
+
+        );
+
+    };
+
+
+
+    // ─── EffectSizeCalculator ───────────────────────────────────
+
+    const EffectSizeCalculator = ({ sessionHistory, designPhases, t, addToast }) => {
+
+        const [baselineData, setBaselineData] = useState('');
+
+        const [interventionData, setInterventionData] = useState('');
+
+        const [results, setResults] = useState(null);
+
+        const parseData = (str) => str.split(/[,\s]+/).map(Number).filter(n => !isNaN(n));
+
+        const calculate = () => {
+
+            const baseline = parseData(baselineData);
+
+            const intervention = parseData(interventionData);
+
+            if (baseline.length < 2 || intervention.length < 2) { if (addToast) addToast('Need at least 2 data points per phase', 'error'); return; }
+
+            const baseMax = Math.max(...baseline);
+
+            const pndCount = intervention.filter(v => v > baseMax).length;
+
+            const pnd = (pndCount / intervention.length) * 100;
+
+            let pairs = 0, nonoverlap = 0, ties = 0;
+
+            baseline.forEach(b => { intervention.forEach(i => { pairs++; if (i > b) nonoverlap++; else if (i === b) ties++; }); });
+
+            const nap = ((nonoverlap + 0.5 * ties) / pairs) * 100;
+
+            let sBaseline = 0;
+
+            for (let i = 0; i < baseline.length; i++) { for (let j = i + 1; j < baseline.length; j++) { if (baseline[j] > baseline[i]) sBaseline++; else if (baseline[j] < baseline[i]) sBaseline--; } }
+
+            const baselineTrend = sBaseline / (baseline.length * (baseline.length - 1) / 2);
+
+            let sBetween = 0;
+
+            baseline.forEach(b => { intervention.forEach(i => { if (i > b) sBetween++; else if (i < b) sBetween--; }); });
+
+            const tauU = Math.max(-1, Math.min(1, (sBetween / pairs) - baselineTrend));
+
+            const baseMean = baseline.reduce((a, b) => a + b, 0) / baseline.length;
+
+            const intMean = intervention.reduce((a, b) => a + b, 0) / intervention.length;
+
+            const pctChange = baseMean !== 0 ? ((intMean - baseMean) / baseMean * 100) : 0;
+
+            setResults({
+                pnd: pnd.toFixed(1), nap: nap.toFixed(1), tauU: tauU.toFixed(3), baseMean: baseMean.toFixed(2), intMean: intMean.toFixed(2), pctChange: pctChange.toFixed(1), baseline, intervention,
+
+                pndInterp: pnd >= 90 ? 'Very effective' : pnd >= 70 ? 'Effective' : pnd >= 50 ? 'Questionable' : 'Ineffective',
+
+                napInterp: nap >= 93 ? 'Large' : nap >= 66 ? 'Medium' : nap >= 50 ? 'Small' : 'Weak',
+
+                tauInterp: Math.abs(tauU) >= 0.8 ? 'Large' : Math.abs(tauU) >= 0.5 ? 'Medium' : Math.abs(tauU) >= 0.2 ? 'Small' : 'Negligible'
+
+            });
+
+            if (addToast) addToast('Effect sizes calculated!', 'success');
+
+        };
+
+        return h('div', { className: 'space-y-4' },
+
+            h('div', { className: 'bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-4 border border-indigo-200' },
+
+                h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '📐'), h('h3', { className: 'text-lg font-black text-indigo-800' }, 'Effect Size Calculator')),
+
+                h('p', { className: 'text-xs text-indigo-600' }, 'Calculate Tau-U, NAP, and PND to quantify intervention effectiveness.')
+
+            ),
+
+            h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 space-y-3' },
+
+                h('div', null, h('label', { className: 'text-xs font-bold text-slate-500 uppercase tracking-wider' }, '📊 Baseline Phase (A)'), h('input', { value: baselineData, onChange: e => setBaselineData(e.target.value), placeholder: 'e.g. 12, 15, 14, 13, 16', className: 'w-full mt-1 p-2 border border-slate-200 rounded-lg text-xs' })),
+
+                h('div', null, h('label', { className: 'text-xs font-bold text-slate-500 uppercase tracking-wider' }, '📈 Intervention Phase (B)'), h('input', { value: interventionData, onChange: e => setInterventionData(e.target.value), placeholder: 'e.g. 8, 6, 5, 4, 3', className: 'w-full mt-1 p-2 border border-slate-200 rounded-lg text-xs' })),
+
+                h('button', { onClick: calculate, className: 'px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-lg text-sm hover:from-indigo-700 hover:to-purple-700 transition-all' }, '📐 Calculate Effect Sizes')
+
+            ),
+
+            results && h('div', { className: 'space-y-3' },
+
+                h('div', { className: 'grid grid-cols-3 gap-3' },
+
+                    [['Tau-U', results.tauU, results.tauInterp, 'indigo'], ['NAP', results.nap + '%', results.napInterp, 'purple'], ['PND', results.pnd + '%', results.pndInterp, 'violet']].map(([label, val, interp, color]) =>
+
+                        h('div', { key: label, className: 'bg-' + color + '-50 rounded-xl border border-' + color + '-200 p-4 text-center' },
+
+                            h('div', { className: 'text-[10px] font-bold text-' + color + '-500 uppercase' }, label),
+
+                            h('div', { className: 'text-2xl font-black text-' + color + '-800 my-1' }, val),
+
+                            h('div', { className: 'text-[10px] font-bold text-' + color + '-600 px-2 py-0.5 bg-' + color + '-100 rounded-full inline-block' }, interp)
+
+                        )
+
+                    )
+
+                ),
+
+                h('div', { className: 'grid grid-cols-3 gap-3' }, [['Baseline Mean', results.baseMean], ['Intervention Mean', results.intMean], ['% Change', results.pctChange + '%']].map(([label, val]) => h('div', { key: label, className: 'bg-white rounded-lg border border-slate-200 p-3 text-center' }, h('div', { className: 'text-[10px] font-bold text-slate-500' }, label), h('div', { className: 'text-lg font-bold text-slate-800' }, val)))),
+
+                h('div', { className: 'bg-amber-50 border border-amber-200 rounded-xl p-3' }, h('p', { className: 'text-[10px] text-amber-700' }, '💡 Tau-U corrects for baseline trend. NAP counts nonoverlapping pairs. PND uses highest baseline point as threshold.'))
+
+            )
+
+        );
+
+    };
+
+
+
+    // ─── ObservationCoach ───────────────────────────────────────
+
+    const ObservationCoach = ({ abcEntries, observationSessions, callGemini, t, addToast }) => {
+
+        const [coaching, setCoaching] = useState(null);
+
+        const [loading, setLoading] = useState(false);
+
+        const [dismissed, setDismissed] = useState(new Set());
+
+        const handleCoach = async () => {
+
+            if (!callGemini) return;
+
+            setLoading(true);
+
+            try {
+
+                const recentAbc = abcEntries.slice(-10);
+
+                const abcStr = recentAbc.map((e, i) => `${i + 1}. A:${e.antecedent || '?'} B:${e.behavior || '?'} C:${e.consequence || '?'} Func:${e.function || '?'} Int:${e.intensity || '?'}/5`).join('\n');
+
+                const settings = [...new Set(recentAbc.map(e => e.setting).filter(Boolean))];
+
+                const functions = [...new Set(recentAbc.map(e => e.function).filter(Boolean))];
+
+                const prompt = `You are a BCBA coaching a teacher on data quality.\nABC DATA (${abcEntries.length} total, last ${recentAbc.length}):\n${abcStr || 'No entries'}\nSettings: ${settings.join(', ') || 'None'}\nFunctions: ${functions.join(', ') || 'None'}\nSessions: ${observationSessions.length}\n\nReturn ONLY valid JSON:\n{"overallScore":1-10,"overallFeedback":"...","tips":[{"priority":"high|medium|low","icon":"emoji","title":"...","detail":"...","example":"..."}],"strengths":["..."],"nextSteps":["..."]}`;
+
+                const result = await callGemini(prompt);
+
+                const jsonMatch = result.match(/\{[\s\S]*\}/);
+
+                if (jsonMatch) { setCoaching(JSON.parse(jsonMatch[0])); setDismissed(new Set()); if (addToast) addToast('Coaching tips generated!', 'success'); }
+
+            } catch (e) { if (addToast) addToast('Coaching failed.', 'error'); }
+
+            setLoading(false);
+
+        };
+
+        const priorityColors = { high: 'red', medium: 'amber', low: 'emerald' };
+
+        const priorityLabels = { high: '🔴 High', medium: '🟡 Medium', low: '🟢 Low' };
+
+        return h('div', { className: 'space-y-4' },
+
+            h('div', { className: 'bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl p-4 border border-amber-200' },
+
+                h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '🎓'), h('h3', { className: 'text-lg font-black text-amber-800' }, 'AI Observation Coach')),
+
+                h('p', { className: 'text-xs text-amber-600' }, 'Get AI coaching on data collection quality. Identifies gaps, suggests improvements, rates your data.')
+
+            ),
+
+            h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4' },
+
+                h('div', { className: 'flex items-center justify-between' },
+
+                    h('div', { className: 'text-xs text-slate-500' }, '📋 ' + abcEntries.length + ' ABC entries • 🔍 ' + observationSessions.length + ' sessions'),
+
+                    h('button', { onClick: handleCoach, disabled: loading, className: 'px-4 py-2 bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-bold rounded-lg text-sm hover:from-amber-600 hover:to-yellow-600 disabled:opacity-40' }, loading ? '⏳ Analyzing...' : '🎓 Get Coaching Tips')
+
+                )
+
+            ),
+
+            coaching && h('div', { className: 'space-y-3' },
+
+                h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-4' },
+
+                    h('div', { className: 'w-16 h-16 rounded-full flex items-center justify-center text-2xl font-black border-4 ' + (coaching.overallScore >= 7 ? 'border-emerald-400 text-emerald-700 bg-emerald-50' : coaching.overallScore >= 4 ? 'border-amber-400 text-amber-700 bg-amber-50' : 'border-red-400 text-red-700 bg-red-50') }, coaching.overallScore + '/10'),
+
+                    h('div', null, h('h4', { className: 'text-sm font-bold text-slate-800' }, 'Data Quality Score'), h('p', { className: 'text-xs text-slate-600' }, coaching.overallFeedback))
+
+                ),
+
+                (coaching.strengths || []).length > 0 && h('div', { className: 'bg-emerald-50 rounded-xl border border-emerald-200 p-3' },
+
+                    h('h4', { className: 'text-[10px] font-bold text-emerald-700 uppercase mb-2' }, '💪 Strengths'),
+
+                    (coaching.strengths || []).map((s, i) => h('p', { key: i, className: 'text-xs text-emerald-800' }, '✅ ' + s))
+
+                ),
+
+                (coaching.tips || []).filter(tip => !dismissed.has(tip.title)).map((tip, i) => {
+
+                    const pc = priorityColors[tip.priority] || 'slate';
+
+                    return h('div', { key: i, className: 'bg-white rounded-xl border border-' + pc + '-200 p-4' },
+
+                        h('div', { className: 'flex items-center justify-between mb-2' },
+
+                            h('div', { className: 'flex items-center gap-2' }, h('span', { className: 'text-lg' }, tip.icon || '💡'), h('h4', { className: 'text-sm font-bold text-slate-800' }, tip.title), h('span', { className: 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-' + pc + '-100 text-' + pc + '-700' }, priorityLabels[tip.priority] || 'Medium')),
+
+                            h('button', { onClick: () => setDismissed(prev => new Set([...prev, tip.title])), className: 'text-slate-300 hover:text-slate-500 text-sm' }, '✕')
+
+                        ),
+
+                        h('p', { className: 'text-xs text-slate-700 mb-2' }, tip.detail),
+
+                        tip.example && h('div', { className: 'bg-slate-50 rounded-lg p-2 text-xs text-slate-600 italic' }, '📝 Example: ' + tip.example)
+
+                    );
+
+                }),
+
+                (coaching.nextSteps || []).length > 0 && h('div', { className: 'bg-blue-50 rounded-xl border border-blue-200 p-3' },
+
+                    h('h4', { className: 'text-[10px] font-bold text-blue-700 uppercase mb-2' }, '🚀 Next Steps'),
+
+                    (coaching.nextSteps || []).map((s, i) => h('p', { key: i, className: 'text-xs text-blue-800' }, (i + 1) + '. ' + s))
+
+                )
+
+            )
+
+        );
+
+    };
+
+
+
     // ─── BehaviorTab (Hub) ──────────────────────────────────────────────
     // The main hub component that renders inside a fullscreen overlay
     window.AlloModules = window.AlloModules || {};
@@ -14767,9 +14951,22 @@ Analyze this data and return ONLY valid JSON:
                             }, '✕')
                         ),
 
+                        // ── Workspace Save/Load (Top) ──
+                        h('div', { className: 'flex flex-wrap items-center gap-2' },
+                            h('button', {
+                                onClick: handleSaveWorkspace,
+                                className: 'flex items-center gap-1.5 px-4 py-2 bg-indigo-50 border border-indigo-200 rounded-xl text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition-all'
+                            }, '💾 ', t('behavior_lens.hub.save_workspace') || 'Save Workspace'),
+                            h('button', {
+                                onClick: () => fileInputRef.current?.click(),
+                                className: 'flex items-center gap-1.5 px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-700 hover:bg-emerald-100 transition-all'
+                            }, '📂 ', t('behavior_lens.hub.load_workspace') || 'Load Workspace'),
+                            h('input', { ref: fileInputRef, type: 'file', accept: '.json', onChange: handleLoadWorkspace, className: 'hidden' })
+                        ),
+
                         // ── Favorites Bar ──
                         favTools.length > 0 && h('div', { className: 'bg-gradient-to-r from-yellow-50 to-amber-50 rounded-xl border border-yellow-200 p-3' },
-                            h('div', { className: 'text-[10px] font-black text-yellow-600 uppercase tracking-wider mb-2' }, '⭐ Favorites'),
+                            h('div', { className: 'text-[10px] font-black text-yellow-600 uppercase tracking-wider mb-2' }, '⭐ ', t('behavior_lens.hub.favorites') || 'Favorites'),
                             h('div', { className: 'flex flex-wrap gap-2' },
                                 favTools.map(tool => h('button', {
                                     key: 'fav-' + tool.id,
@@ -14795,28 +14992,28 @@ Analyze this data and return ONLY valid JSON:
                             h('div', { className: 'grid grid-cols-2 md:grid-cols-4 gap-2' },
                                 h('div', { className: 'bg-white rounded-lg p-2 text-center border border-indigo-100' },
                                     h('div', { className: 'text-lg font-black text-indigo-600' }, abcEntries.length),
-                                    h('div', { className: 'text-[9px] text-slate-500 font-bold' }, 'ABC Entries')
+                                    h('div', { className: 'text-[9px] text-slate-500 font-bold' }, t('behavior_lens.hub.abc_entries') || 'ABC Entries')
                                 ),
                                 h('div', { className: 'bg-white rounded-lg p-2 text-center border border-indigo-100' },
                                     h('div', { className: 'text-lg font-black text-emerald-600' }, observationSessions.length),
-                                    h('div', { className: 'text-[9px] text-slate-500 font-bold' }, 'Observations')
+                                    h('div', { className: 'text-[9px] text-slate-500 font-bold' }, t('behavior_lens.hub.observations') || 'Observations')
                                 ),
                                 h('div', { className: 'bg-white rounded-lg p-2 text-center border border-indigo-100' },
                                     h('div', { className: 'text-lg font-black text-amber-600' }, sessionNotes.length),
-                                    h('div', { className: 'text-[9px] text-slate-500 font-bold' }, 'Notes')
+                                    h('div', { className: 'text-[9px] text-slate-500 font-bold' }, t('behavior_lens.hub.notes') || 'Notes')
                                 ),
                                 h('div', { className: 'bg-white rounded-lg p-2 text-center border border-indigo-100' },
                                     h('div', { className: 'text-lg font-black text-purple-600' },
                                         abcEntries.length > 0 ? (abcEntries.reduce((s, e) => s + (e.intensity || 3), 0) / abcEntries.length).toFixed(1) : '—'
                                     ),
-                                    h('div', { className: 'text-[9px] text-slate-500 font-bold' }, 'Avg Intensity')
+                                    h('div', { className: 'text-[9px] text-slate-500 font-bold' }, t('behavior_lens.hub.avg_intensity') || 'Avg Intensity')
                                 )
                             )
                         ),
 
                         // ── Smart Recommendations ──
                         recs.length > 0 && h('div', { className: 'bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl border border-emerald-200 p-3' },
-                            h('div', { className: 'text-[10px] font-black text-emerald-600 uppercase tracking-wider mb-2' }, '💡 Recommended Next Steps'),
+                            h('div', { className: 'text-[10px] font-black text-emerald-600 uppercase tracking-wider mb-2' }, '💡 ', t('behavior_lens.hub.recommended_next') || 'Recommended Next Steps'),
                             h('div', { className: 'flex flex-wrap gap-2' },
                                 recs.slice(0, 3).map((r, i) => h('button', {
                                     key: 'rec-' + i,
@@ -14856,16 +15053,16 @@ Analyze this data and return ONLY valid JSON:
                                 })
                             ),
 
-                        // ── Workspace Save/Load ──
+                        // ── Workspace Save/Load (Bottom) ──
                         h('div', { className: 'flex flex-wrap items-center gap-2 pt-2' },
                             h('button', {
                                 onClick: handleSaveWorkspace,
                                 className: 'flex items-center gap-1.5 px-4 py-2 bg-indigo-50 border border-indigo-200 rounded-xl text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition-all'
-                            }, '💾 Save Workspace'),
+                            }, '💾 ', t('behavior_lens.hub.save_workspace') || 'Save Workspace'),
                             h('button', {
                                 onClick: () => fileInputRef.current?.click(),
                                 className: 'flex items-center gap-1.5 px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-700 hover:bg-emerald-100 transition-all'
-                            }, '📂 Load Workspace'),
+                            }, '📂 ', t('behavior_lens.hub.load_workspace') || 'Load Workspace'),
                             h('input', { ref: fileInputRef, type: 'file', accept: '.json', onChange: handleLoadWorkspace, className: 'hidden' })
                         )
                     );
@@ -15453,9 +15650,9 @@ Analyze this data and return ONLY valid JSON:
                     t,
                     addToast
                 }),
-                
-                
-                
+
+
+
                 activePanel === 'progressreport' && h(ProgressReportGenerator, {
                     abcEntries, observationSessions, sessionHistory,
                     studentName: selectedStudent, studentProfile,
