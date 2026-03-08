@@ -638,10 +638,14 @@
     };
 
     // ─── OverviewPanel ───────────────────────────────────────────────────
-    // Visual dashboard summarizing all behavioral data
+    // Visual dashboard summarizing all behavioral data with trend analysis
     const OverviewPanel = ({ abcEntries, observationSessions, aiAnalysis, studentName, t }) => {
+        const [dateRange, setDateRange] = useState(14); // 7, 14, 30, or 0 for all
+
         const stats = useMemo(() => {
             const now = new Date();
+            const cutoff = dateRange > 0 ? new Date(now - dateRange * 24 * 60 * 60 * 1000) : new Date(0);
+            const filtered = abcEntries.filter(e => new Date(e.timestamp) >= cutoff);
             const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
             const thisWeek = abcEntries.filter(e => new Date(e.timestamp) >= weekAgo);
             const antecedentCounts = {};
@@ -649,7 +653,7 @@
             const settingCounts = {};
             const intensities = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
             const dayMap = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
-            abcEntries.forEach(e => {
+            filtered.forEach(e => {
                 if (e.antecedent) antecedentCounts[e.antecedent] = (antecedentCounts[e.antecedent] || 0) + 1;
                 if (e.consequence) consequenceCounts[e.consequence] = (consequenceCounts[e.consequence] || 0) + 1;
                 if (e.setting) settingCounts[e.setting] = (settingCounts[e.setting] || 0) + 1;
@@ -657,15 +661,52 @@
                 const d = new Date(e.timestamp);
                 if (d >= weekAgo) dayMap[d.getDay()] = (dayMap[d.getDay()] || 0) + 1;
             });
+
+            // 14-day trend data
+            const trendDays = Math.min(dateRange || 30, 30);
+            const trendData = [];
+            for (let i = trendDays - 1; i >= 0; i--) {
+                const dayStart = new Date(now);
+                dayStart.setHours(0, 0, 0, 0);
+                dayStart.setDate(dayStart.getDate() - i);
+                const dayEnd = new Date(dayStart);
+                dayEnd.setDate(dayEnd.getDate() + 1);
+                const dayEntries = abcEntries.filter(e => {
+                    const ts = new Date(e.timestamp);
+                    return ts >= dayStart && ts < dayEnd;
+                });
+                const avgI = dayEntries.length > 0
+                    ? dayEntries.reduce((s, e) => s + (e.intensity || 0), 0) / dayEntries.length
+                    : 0;
+                trendData.push({
+                    date: dayStart,
+                    count: dayEntries.length,
+                    avgIntensity: avgI,
+                    label: dayStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                });
+            }
+
+            // Hour-of-day distribution
+            const hourMap = {};
+            filtered.forEach(e => {
+                const hour = new Date(e.timestamp).getHours();
+                hourMap[hour] = (hourMap[hour] || 0) + 1;
+            });
+
             const topAntecedents = Object.entries(antecedentCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
             const topConsequences = Object.entries(consequenceCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
             const topSettings = Object.entries(settingCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
-            const avgIntensity = abcEntries.length > 0 ? (abcEntries.reduce((s, e) => s + (e.intensity || 0), 0) / abcEntries.length).toFixed(1) : '—';
-            return { thisWeek, topAntecedents, topConsequences, topSettings, intensities, dayMap, avgIntensity, totalAbc: abcEntries.length, totalObs: observationSessions.length };
-        }, [abcEntries, observationSessions]);
+            const avgIntensity = filtered.length > 0 ? (filtered.reduce((s, e) => s + (e.intensity || 0), 0) / filtered.length).toFixed(1) : '—';
+            return {
+                filtered, thisWeek, topAntecedents, topConsequences, topSettings, intensities,
+                dayMap, avgIntensity, totalAbc: filtered.length, totalObs: observationSessions.length,
+                trendData, hourMap, allAbc: abcEntries.length
+            };
+        }, [abcEntries, observationSessions, dateRange]);
 
         const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         const maxDay = Math.max(1, ...Object.values(stats.dayMap));
+        const maxTrend = Math.max(1, ...stats.trendData.map(d => d.count));
 
         const renderStatCard = (icon, label, value, color) =>
             h('div', { className: `bg-${color}-50 border border-${color}-200 rounded-xl p-4 text-center` },
@@ -687,7 +728,7 @@
                 )
             );
 
-        if (stats.totalAbc === 0 && stats.totalObs === 0) {
+        if (stats.allAbc === 0 && stats.totalObs === 0) {
             return h('div', { className: 'max-w-4xl mx-auto text-center py-16' },
                 h('div', { className: 'text-5xl mb-4' }, '📊'),
                 h('h3', { className: 'text-lg font-black text-slate-700 mb-2' }, t('behavior_lens.overview.empty_title') || 'No Data Yet'),
@@ -696,12 +737,71 @@
         }
 
         return h('div', { className: 'max-w-4xl mx-auto space-y-6' },
+            // Date range filter
+            h('div', { className: 'flex items-center justify-between bg-white rounded-xl border border-slate-200 p-3 shadow-sm' },
+                h('span', { className: 'text-xs font-bold text-slate-500 uppercase' }, '📅 Date Range'),
+                h('div', { className: 'flex gap-1.5' },
+                    [{ val: 7, label: '7 days' }, { val: 14, label: '14 days' }, { val: 30, label: '30 days' }, { val: 0, label: 'All' }].map(opt =>
+                        h('button', {
+                            key: opt.val,
+                            onClick: () => setDateRange(opt.val),
+                            className: `text-xs px-3 py-1.5 rounded-full font-bold transition-all ${dateRange === opt.val
+                                ? 'bg-indigo-600 text-white shadow-md'
+                                : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`
+                        }, opt.label)
+                    )
+                )
+            ),
             // Stat cards row
             h('div', { className: 'grid grid-cols-2 md:grid-cols-4 gap-3' },
                 renderStatCard('📋', 'ABC Entries', stats.totalAbc, 'indigo'),
                 renderStatCard('🔍', 'Observations', stats.totalObs, 'emerald'),
                 renderStatCard('📅', 'This Week', stats.thisWeek.length, 'sky'),
                 renderStatCard('⚡', 'Avg Intensity', stats.avgIntensity, 'amber')
+            ),
+            // Trend chart
+            stats.trendData.length > 0 && h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm' },
+                h('h3', { className: 'text-sm font-black text-slate-800 mb-4' }, '📈 ', t('behavior_lens.overview.trend') || 'Daily Trend'),
+                h('div', { className: 'flex items-end gap-1', style: { height: '120px' } },
+                    stats.trendData.map((day, i) => {
+                        const barH = maxTrend > 0 ? (day.count / maxTrend) * 100 : 0;
+                        const intensityColor = day.avgIntensity <= 2 ? '#86efac'
+                            : day.avgIntensity <= 3 ? '#fde047'
+                                : day.avgIntensity <= 4 ? '#fb923c' : '#f87171';
+                        return h('div', { key: i, className: 'flex-1 flex flex-col items-center gap-0.5', style: { minWidth: 0 } },
+                            day.count > 0 && h('div', { className: 'text-[9px] font-bold text-slate-500' }, day.count),
+                            h('div', {
+                                className: 'w-full rounded-t-sm transition-all',
+                                style: {
+                                    height: `${Math.max(barH, day.count > 0 ? 4 : 0)}%`,
+                                    background: day.count > 0 ? intensityColor : 'transparent',
+                                    minHeight: day.count > 0 ? '4px' : '0px'
+                                },
+                                title: `${day.label}: ${day.count} entries, avg intensity ${day.avgIntensity.toFixed(1)}`
+                            }),
+                            (i % Math.ceil(stats.trendData.length / 7) === 0 || i === stats.trendData.length - 1) &&
+                            h('div', { className: 'text-[8px] text-slate-400 mt-1 truncate w-full text-center' }, day.label)
+                        );
+                    })
+                ),
+                h('div', { className: 'flex items-center gap-3 mt-3 justify-center' },
+                    h('div', { className: 'flex items-center gap-1' },
+                        h('div', { className: 'w-3 h-3 rounded-sm', style: { background: '#86efac' } }),
+                        h('span', { className: 'text-[9px] text-slate-400' }, 'Low')
+                    ),
+                    h('div', { className: 'flex items-center gap-1' },
+                        h('div', { className: 'w-3 h-3 rounded-sm', style: { background: '#fde047' } }),
+                        h('span', { className: 'text-[9px] text-slate-400' }, 'Med')
+                    ),
+                    h('div', { className: 'flex items-center gap-1' },
+                        h('div', { className: 'w-3 h-3 rounded-sm', style: { background: '#fb923c' } }),
+                        h('span', { className: 'text-[9px] text-slate-400' }, 'High')
+                    ),
+                    h('div', { className: 'flex items-center gap-1' },
+                        h('div', { className: 'w-3 h-3 rounded-sm', style: { background: '#f87171' } }),
+                        h('span', { className: 'text-[9px] text-slate-400' }, 'Severe')
+                    )
+                )
             ),
             // Weekly heatmap
             h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm' },
@@ -718,6 +818,36 @@
                             h('div', { className: 'text-[10px] font-bold text-slate-400' }, day)
                         );
                     })
+                )
+            ),
+            // Hour-of-day distribution
+            Object.keys(stats.hourMap).length > 0 && h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm' },
+                h('h3', { className: 'text-sm font-black text-slate-800 mb-3' }, '🕐 ', t('behavior_lens.overview.time_of_day') || 'Time of Day Distribution'),
+                h('div', { className: 'flex items-end gap-0.5', style: { height: '60px' } },
+                    Array.from({ length: 24 }, (_, hr) => {
+                        const count = stats.hourMap[hr] || 0;
+                        const maxHr = Math.max(1, ...Object.values(stats.hourMap));
+                        const pct = (count / maxHr) * 100;
+                        const schoolHour = hr >= 8 && hr <= 15;
+                        return h('div', {
+                            key: hr,
+                            className: 'flex-1',
+                            style: {
+                                height: `${Math.max(pct, count > 0 ? 5 : 0)}%`,
+                                background: count > 0 ? (schoolHour ? '#818cf8' : '#c4b5fd') : '#f1f5f9',
+                                borderRadius: '2px 2px 0 0',
+                                minHeight: count > 0 ? '3px' : '1px'
+                            },
+                            title: `${hr}:00 — ${count} incidents`
+                        });
+                    })
+                ),
+                h('div', { className: 'flex justify-between mt-1' },
+                    h('span', { className: 'text-[8px] text-slate-400' }, '12am'),
+                    h('span', { className: 'text-[8px] text-slate-400' }, '6am'),
+                    h('span', { className: 'text-[8px] text-indigo-400 font-bold' }, '12pm'),
+                    h('span', { className: 'text-[8px] text-slate-400' }, '6pm'),
+                    h('span', { className: 'text-[8px] text-slate-400' }, '11pm')
                 )
             ),
             // Top antecedents & consequences
@@ -765,11 +895,13 @@
     // ─── FrequencyCounter ───────────────────────────────────────────────
     // Fullscreen quick-click counter for rapid behavior tallying
     const FrequencyCounter = ({ onClose, studentName, onSaveSession, t, addToast }) => {
-        const [count, setCount] = useState(0);
-        const [label, setLabel] = useState('');
+        const [counters, setCounters] = useState([{ id: uid(), label: '', count: 0 }]);
         const [running, setRunning] = useState(false);
         const [elapsed, setElapsed] = useState(0);
+        const [newLabel, setNewLabel] = useState('');
         const timerRef = useRef(null);
+
+        const counterColors = ['#818cf8', '#f472b6', '#34d399', '#fbbf24', '#f97316', '#a78bfa'];
 
         useEffect(() => {
             if (running) {
@@ -780,16 +912,45 @@
             return () => { if (timerRef.current) clearInterval(timerRef.current); };
         }, [running]);
 
-        const rate = elapsed > 0 ? (count / (elapsed / 60)).toFixed(1) : '0.0';
+        const totalCount = counters.reduce((s, c) => s + c.count, 0);
+        const totalRate = elapsed > 0 ? (totalCount / (elapsed / 60)).toFixed(1) : '0.0';
+
+        const incrementCounter = (id) => {
+            setCounters(prev => prev.map(c => c.id === id ? { ...c, count: c.count + 1 } : c));
+            if (!running) setRunning(true);
+        };
+
+        const decrementCounter = (id) => {
+            setCounters(prev => prev.map(c => c.id === id ? { ...c, count: Math.max(0, c.count - 1) } : c));
+        };
+
+        const addCounter = () => {
+            if (counters.length >= 6) return;
+            setCounters(prev => [...prev, { id: uid(), label: newLabel || '', count: 0 }]);
+            setNewLabel('');
+        };
+
+        const removeCounter = (id) => {
+            if (counters.length <= 1) return;
+            setCounters(prev => prev.filter(c => c.id !== id));
+        };
 
         const handleSave = () => {
-            if (count === 0) return;
+            if (totalCount === 0) return;
             onSaveSession({
                 id: uid(),
                 method: 'frequency',
                 timestamp: new Date().toISOString(),
                 duration: elapsed,
-                data: { count, label: label || 'Unlabeled', rate: parseFloat(rate) }
+                data: {
+                    count: totalCount,
+                    rate: parseFloat(totalRate),
+                    counters: counters.map(c => ({
+                        label: c.label || 'Unlabeled',
+                        count: c.count,
+                        rate: elapsed > 0 ? parseFloat((c.count / (elapsed / 60)).toFixed(2)) : 0
+                    }))
+                }
             });
             if (addToast) addToast(t('behavior_lens.freq.saved') || 'Session saved ✅', 'success');
             onClose();
@@ -803,40 +964,90 @@
                 ),
                 h('div', { className: 'text-center' },
                     h('div', { className: 'text-xs font-bold text-slate-400 uppercase' }, studentName || ''),
-                    h('input', {
-                        value: label,
-                        onChange: (e) => setLabel(e.target.value),
-                        placeholder: t('behavior_lens.freq.label_placeholder') || 'Behavior label...',
-                        className: 'bg-transparent text-white text-sm text-center border-b border-slate-600 focus:border-indigo-400 outline-none px-4 py-1 mt-1'
-                    })
+                    h('div', { className: 'text-xs text-slate-500 mt-0.5' },
+                        counters.length > 1 ? `${counters.length} behaviors tracked` : 'Frequency Counter'
+                    )
                 ),
                 h('button', {
                     onClick: handleSave,
                     className: 'px-4 py-2 bg-emerald-500 text-white rounded-full text-sm font-bold hover:bg-emerald-400 transition-colors'
                 }, t('behavior_lens.freq.save') || 'Save')
             ),
-            // Counter display
-            h('div', { className: 'text-center mb-8' },
-                h('div', { className: 'text-[120px] md:text-[180px] font-black leading-none tabular-nums tracking-tighter' }, count),
-                h('div', { className: 'text-slate-400 text-sm font-medium mt-2' }, `${rate} / min`)
+
+            // Total counter display (if multiple counters)
+            counters.length > 1 && h('div', { className: 'text-center mb-4' },
+                h('div', { className: 'text-6xl font-black tabular-nums tracking-tighter text-slate-300' }, totalCount),
+                h('div', { className: 'text-slate-500 text-xs font-medium mt-1' }, `Total: ${totalRate} / min`)
             ),
-            // Tap button
-            h('button', {
-                onClick: () => { setCount(c => c + 1); if (!running) setRunning(true); },
-                className: 'w-40 h-40 rounded-full bg-indigo-500 hover:bg-indigo-400 active:scale-95 transition-all shadow-2xl shadow-indigo-500/30 flex items-center justify-center text-4xl font-black'
-            }, '+1'),
-            // Controls
-            h('div', { className: 'flex gap-4 mt-8' },
+
+            // Counter grid
+            h('div', {
+                className: `grid gap-4 w-full max-w-2xl px-6 ${counters.length === 1 ? '' : counters.length <= 2 ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-3'}`
+            },
+                counters.map((counter, idx) => {
+                    const color = counterColors[idx % counterColors.length];
+                    const counterRate = elapsed > 0 ? (counter.count / (elapsed / 60)).toFixed(1) : '0.0';
+                    return h('div', {
+                        key: counter.id,
+                        className: 'flex flex-col items-center gap-2 p-4 rounded-2xl bg-white/5 border border-white/10'
+                    },
+                        // Label input
+                        h('div', { className: 'w-full flex items-center gap-1' },
+                            h('input', {
+                                value: counter.label,
+                                onChange: (e) => setCounters(prev => prev.map(c => c.id === counter.id ? { ...c, label: e.target.value } : c)),
+                                placeholder: 'Behavior...',
+                                className: 'flex-1 bg-transparent text-white text-xs text-center border-b border-white/20 focus:border-indigo-400 outline-none py-0.5'
+                            }),
+                            counters.length > 1 && h('button', {
+                                onClick: () => removeCounter(counter.id),
+                                className: 'p-0.5 rounded-full hover:bg-white/10 text-slate-500 hover:text-red-400'
+                            }, h(X, { size: 12 }))
+                        ),
+                        // Count display
+                        h('div', {
+                            className: `text-${counters.length === 1 ? '[120px] md:text-[180px]' : '5xl'} font-black tabular-nums leading-none`,
+                            style: { color }
+                        }, counter.count),
+                        h('div', { className: 'text-xs text-slate-500' }, `${counterRate} / min`),
+                        // Tap button
+                        h('button', {
+                            onClick: () => incrementCounter(counter.id),
+                            className: `${counters.length === 1 ? 'w-32 h-32' : 'w-20 h-20'} rounded-full active:scale-95 transition-all shadow-xl flex items-center justify-center text-xl font-black`,
+                            style: { background: color, boxShadow: `0 8px 24px ${color}40` }
+                        }, '+1'),
+                        // Decrement
+                        h('button', {
+                            onClick: () => decrementCounter(counter.id),
+                            className: 'text-xs px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 text-slate-400 transition-colors'
+                        }, '-1')
+                    );
+                })
+            ),
+
+            // Add counter button
+            counters.length < 6 && h('div', { className: 'flex items-center gap-2 mt-6' },
+                h('input', {
+                    value: newLabel,
+                    onChange: (e) => setNewLabel(e.target.value),
+                    placeholder: 'New behavior label...',
+                    onKeyDown: (e) => { if (e.key === 'Enter') addCounter(); },
+                    className: 'bg-white/10 border border-white/20 text-white text-sm rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-48'
+                }),
                 h('button', {
-                    onClick: () => setCount(c => Math.max(0, c - 1)),
-                    className: 'px-5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-sm font-bold transition-colors'
-                }, '-1'),
+                    onClick: addCounter,
+                    className: 'px-4 py-2 rounded-full bg-indigo-500/30 hover:bg-indigo-500/50 text-indigo-300 text-sm font-bold transition-colors'
+                }, '+ Add')
+            ),
+
+            // Controls
+            h('div', { className: 'flex gap-4 mt-6' },
                 h('button', {
                     onClick: () => setRunning(!running),
                     className: `px-5 py-2 rounded-full text-sm font-bold transition-colors ${running ? 'bg-amber-500 hover:bg-amber-400' : 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300'}`
                 }, running ? '⏸ Pause' : '▶ Start'),
                 h('button', {
-                    onClick: () => { setCount(0); setElapsed(0); setRunning(false); },
+                    onClick: () => { setCounters(prev => prev.map(c => ({ ...c, count: 0 }))); setElapsed(0); setRunning(false); },
                     className: 'px-5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-sm font-bold transition-colors'
                 }, '↺ Reset')
             ),
@@ -1013,7 +1224,15 @@
     };
 
     // ─── TokenBoard ─────────────────────────────────────────────────────
-    // Visual reinforcement tracker with configurable token slots
+    // Visual reinforcement tracker with configurable token slots AND reinforcement schedule engine
+    const SCHEDULE_TYPES = [
+        { id: 'token', label: '⭐ Token Economy', desc: 'Simple: earn tokens, get reward', tip: 'Best for: building new behaviors' },
+        { id: 'FR', label: '📊 Fixed Ratio (FR)', desc: 'Reinforce every Nth response', tip: 'e.g. FR-5 = every 5th correct behavior' },
+        { id: 'VR', label: '🎲 Variable Ratio (VR)', desc: 'Reinforce around every Nth response (randomized)', tip: 'e.g. VR-5 = average of every 5th, but varies' },
+        { id: 'FI', label: '⏰ Fixed Interval (FI)', desc: 'Reinforce first response after N minutes', tip: 'e.g. FI-3 = first correct behavior after 3 min' },
+        { id: 'VI', label: '🎲⏰ Variable Interval (VI)', desc: 'Reinforce first response after ~N minutes (randomized)', tip: 'e.g. VI-3 = average 3 min, varies 1-5 min' },
+    ];
+
     const TokenBoard = ({ onClose, studentName, t, addToast }) => {
         const [slots, setSlots] = useState(5);
         const [tokens, setTokens] = useState([]);
@@ -1021,6 +1240,140 @@
         const [reward, setReward] = useState('');
         const [showConfetti, setShowConfetti] = useState(false);
         const tokenEmojis = ['⭐', '🌟', '🏆', '🎯', '💎', '🔥', '🌈', '🦄', '🎵', '💫'];
+
+        // Reinforcement Schedule State
+        const [scheduleType, setScheduleType] = useState('token');
+        const [scheduleParam, setScheduleParam] = useState(5);
+        const [responseCount, setResponseCount] = useState(0);
+        const [reinforceNow, setReinforceNow] = useState(false);
+        const [nextReinforceAt, setNextReinforceAt] = useState(null);
+        const [timerSeconds, setTimerSeconds] = useState(0);
+        const [timerActive, setTimerActive] = useState(false);
+        const [intervalReady, setIntervalReady] = useState(false);
+        const timerRef = useRef(null);
+        const [sessionHistory, setSessionHistory] = useState([]);
+        const [showHistory, setShowHistory] = useState(false);
+        const [showThinning, setShowThinning] = useState(false);
+
+        // Load session history
+        useEffect(() => {
+            if (!studentName) return;
+            try {
+                const saved = localStorage.getItem(`behaviorLens_tokenHistory_${studentName}`);
+                if (saved) setSessionHistory(JSON.parse(saved));
+            } catch (e) { /* ignore */ }
+        }, [studentName]);
+
+        // Save session history
+        const saveSession = useCallback(() => {
+            if (!studentName || responseCount === 0) return;
+            const session = {
+                id: uid(),
+                timestamp: new Date().toISOString(),
+                scheduleType,
+                scheduleParam,
+                targetBehavior,
+                reward,
+                responseCount,
+                tokensEarned: tokens.filter(Boolean).length,
+                totalSlots: slots,
+            };
+            setSessionHistory(prev => {
+                const updated = [session, ...prev].slice(0, 50);
+                try { localStorage.setItem(`behaviorLens_tokenHistory_${studentName}`, JSON.stringify(updated)); } catch (e) { /* ignore */ }
+                return updated;
+            });
+            if (addToast) addToast('Session saved ✨', 'success');
+        }, [studentName, responseCount, scheduleType, scheduleParam, targetBehavior, reward, tokens, slots]);
+
+        // Compute next reinforcement point for ratio schedules
+        const computeNextReinforce = useCallback((type, param, currentCount) => {
+            if (type === 'FR') return currentCount + param;
+            if (type === 'VR') {
+                const min = Math.max(1, Math.floor(param * 0.5));
+                const max = Math.floor(param * 1.5);
+                return currentCount + min + Math.floor(Math.random() * (max - min + 1));
+            }
+            return null;
+        }, []);
+
+        // Compute next interval for interval schedules
+        const computeNextInterval = useCallback((type, param) => {
+            if (type === 'FI') return param * 60;
+            if (type === 'VI') {
+                const min = Math.max(30, Math.floor(param * 0.5 * 60));
+                const max = Math.floor(param * 1.5 * 60);
+                return min + Math.floor(Math.random() * (max - min + 1));
+            }
+            return null;
+        }, []);
+
+        // Initialize schedule when type changes
+        useEffect(() => {
+            setResponseCount(0);
+            setReinforceNow(false);
+            setIntervalReady(false);
+            setTimerSeconds(0);
+            setTimerActive(false);
+            if (timerRef.current) clearInterval(timerRef.current);
+            if (scheduleType === 'FR' || scheduleType === 'VR') {
+                setNextReinforceAt(computeNextReinforce(scheduleType, scheduleParam, 0));
+            } else {
+                setNextReinforceAt(null);
+            }
+        }, [scheduleType, scheduleParam]);
+
+        // Timer for interval schedules
+        useEffect(() => {
+            if (timerRef.current) clearInterval(timerRef.current);
+            if (!timerActive || (scheduleType !== 'FI' && scheduleType !== 'VI')) return;
+            const targetSec = computeNextInterval(scheduleType, scheduleParam);
+            timerRef.current = setInterval(() => {
+                setTimerSeconds(prev => {
+                    const next = prev + 1;
+                    if (next >= targetSec && !intervalReady) {
+                        setIntervalReady(true);
+                        if (addToast) addToast('⏰ Interval ready — reinforce next behavior!', 'info');
+                    }
+                    return next;
+                });
+            }, 1000);
+            return () => clearInterval(timerRef.current);
+        }, [timerActive, scheduleType, scheduleParam, intervalReady]);
+
+        // Record a behavior response
+        const recordResponse = () => {
+            const newCount = responseCount + 1;
+            setResponseCount(newCount);
+
+            if (scheduleType === 'token') {
+                // Simple token toggle auto-advance
+                const nextEmpty = tokens.findIndex((t2, i) => !t2 && i < slots);
+                if (nextEmpty >= 0) toggleToken(nextEmpty);
+                return;
+            }
+
+            if (scheduleType === 'FR' || scheduleType === 'VR') {
+                if (nextReinforceAt && newCount >= nextReinforceAt) {
+                    setReinforceNow(true);
+                    setTimeout(() => setReinforceNow(false), 3000);
+                    if (addToast) addToast('🎉 REINFORCE NOW!', 'success');
+                    const nextEmpty = tokens.findIndex((t2, i) => !t2 && i < slots);
+                    if (nextEmpty >= 0) toggleToken(nextEmpty);
+                    setNextReinforceAt(computeNextReinforce(scheduleType, scheduleParam, newCount));
+                }
+            }
+
+            if ((scheduleType === 'FI' || scheduleType === 'VI') && intervalReady) {
+                setReinforceNow(true);
+                setIntervalReady(false);
+                setTimeout(() => setReinforceNow(false), 3000);
+                if (addToast) addToast('🎉 REINFORCE NOW!', 'success');
+                const nextEmpty = tokens.findIndex((t2, i) => !t2 && i < slots);
+                if (nextEmpty >= 0) toggleToken(nextEmpty);
+                setTimerSeconds(0);
+            }
+        };
 
         const toggleToken = (idx) => {
             setTokens(prev => {
@@ -1037,8 +1390,61 @@
         };
 
         const earnedCount = tokens.filter(Boolean).length;
+        const fmtTimer = (sec) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
 
         return h('div', { className: 'max-w-2xl mx-auto space-y-6' },
+            // Schedule selector
+            h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm' },
+                h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-2' }, '📋 ' + (t('behavior_lens.token.schedule_type') || 'Reinforcement Schedule')),
+                h('div', { className: 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2' },
+                    SCHEDULE_TYPES.map(st =>
+                        h('button', {
+                            key: st.id,
+                            onClick: () => setScheduleType(st.id),
+                            className: `text-left p-3 rounded-xl border-2 transition-all ${scheduleType === st.id ? 'border-rose-400 bg-rose-50 shadow-md' : 'border-slate-100 hover:border-slate-200'}`
+                        },
+                            h('div', { className: 'text-sm font-bold text-slate-800' }, st.label),
+                            h('div', { className: 'text-[10px] text-slate-500 mt-0.5' }, st.desc)
+                        )
+                    )
+                ),
+                // Schedule parameter (ratio/interval value)
+                scheduleType !== 'token' && h('div', { className: 'mt-3 flex items-center gap-3' },
+                    h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase whitespace-nowrap' },
+                        (scheduleType === 'FR' || scheduleType === 'VR') ? 'Ratio (n):' : 'Interval (min):'
+                    ),
+                    h('input', {
+                        type: 'number',
+                        min: 1,
+                        max: 60,
+                        value: scheduleParam,
+                        onChange: (e) => setScheduleParam(Math.max(1, parseInt(e.target.value) || 1)),
+                        className: 'w-20 border border-slate-200 rounded-lg px-3 py-2 text-sm text-center font-bold focus:ring-2 focus:ring-rose-400 outline-none'
+                    }),
+                    h('span', { className: 'text-xs text-slate-400 italic' },
+                        scheduleType === 'FR' ? `Every ${scheduleParam} responses` :
+                            scheduleType === 'VR' ? `Average every ${scheduleParam} responses` :
+                                scheduleType === 'FI' ? `Every ${scheduleParam} minute(s)` :
+                                    `Average every ${scheduleParam} minute(s)`
+                    )
+                ),
+                // Schedule thinning
+                scheduleType !== 'token' && h('button', {
+                    onClick: () => setShowThinning(!showThinning),
+                    className: 'mt-2 text-xs text-rose-500 hover:text-rose-700 font-bold'
+                }, showThinning ? '▾ Hide Thinning Guide' : '▸ Schedule Thinning Guide'),
+                showThinning && h('div', { className: 'mt-2 p-3 bg-amber-50 rounded-lg border border-amber-200 text-xs text-amber-800 space-y-1' },
+                    h('p', { className: 'font-bold' }, '📈 Schedule Thinning Steps:'),
+                    h('ol', { className: 'list-decimal pl-4 space-y-0.5' },
+                        h('li', null, 'Start with dense reinforcement (e.g., FR-1 or FR-2)'),
+                        h('li', null, 'Once behavior is consistent (~80%), increase ratio by 1-2'),
+                        h('li', null, 'Move to variable schedule (VR) for more natural maintenance'),
+                        h('li', null, 'Gradually increase VR value (VR-3 → VR-5 → VR-8)'),
+                        h('li', null, 'Transition to intermittent/natural reinforcement')
+                    ),
+                    h('p', { className: 'italic mt-1' }, '⚠️ If behavior breaks down, return to previous schedule density')
+                )
+            ),
             // Settings
             h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-3' },
                 h('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-3' },
@@ -1074,22 +1480,49 @@
                     )
                 )
             ),
+            // Interval timer (for FI/VI)
+            (scheduleType === 'FI' || scheduleType === 'VI') && h('div', { className: `rounded-xl border-2 p-4 text-center transition-all ${intervalReady ? 'border-green-400 bg-green-50 animate-pulse' : 'border-slate-200 bg-white'}` },
+                h('div', { className: 'text-3xl font-black text-slate-800 mb-2' }, fmtTimer(timerSeconds)),
+                intervalReady && h('div', { className: 'text-lg font-black text-green-600 mb-2 animate-bounce' }, '✅ INTERVAL READY — Reinforce next behavior!'),
+                h('div', { className: 'flex gap-2 justify-center' },
+                    h('button', {
+                        onClick: () => setTimerActive(!timerActive),
+                        className: `px-4 py-2 rounded-lg font-bold text-sm ${timerActive ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'}`
+                    }, timerActive ? '⏸ Pause' : '▶ Start Timer'),
+                    h('button', {
+                        onClick: () => { setTimerSeconds(0); setIntervalReady(false); },
+                        className: 'px-4 py-2 bg-slate-100 text-slate-600 rounded-lg font-bold text-sm'
+                    }, '↺ Reset')
+                )
+            ),
+            // Response counter + Reinforce button (for ratio/interval schedules)
+            scheduleType !== 'token' && h('div', { className: `rounded-xl border-2 p-5 text-center transition-all ${reinforceNow ? 'border-amber-400 bg-amber-50 animate-pulse shadow-lg shadow-amber-200/50' : 'border-slate-200 bg-white'}` },
+                h('div', { className: 'text-xs font-bold text-slate-500 uppercase mb-1' }, 'Responses Recorded'),
+                h('div', { className: 'text-4xl font-black text-slate-800 mb-3' }, responseCount),
+                reinforceNow && h('div', { className: 'text-xl font-black text-amber-600 mb-3 animate-bounce' }, '🎉 REINFORCE NOW!'),
+                (scheduleType === 'FR' || scheduleType === 'VR') && nextReinforceAt && !reinforceNow &&
+                h('div', { className: 'text-xs text-slate-400 mb-3' }, `Next reinforcement at response #${nextReinforceAt}`),
+                h('button', {
+                    onClick: recordResponse,
+                    className: 'px-8 py-4 bg-gradient-to-r from-rose-500 to-amber-500 text-white rounded-2xl font-black text-lg shadow-lg hover:shadow-xl hover:scale-105 transition-all active:scale-95'
+                }, '✋ Record Behavior')
+            ),
             // Token Board Display
             h('div', { className: `bg-gradient-to-b from-rose-50 to-amber-50 rounded-2xl border-2 border-rose-200 p-8 shadow-lg relative overflow-hidden ${showConfetti ? 'animate-pulse' : ''}` },
-                // Header
                 h('div', { className: 'text-center mb-6' },
                     h('div', { className: 'text-xs font-bold text-rose-500 uppercase mb-1' }, studentName || ''),
                     targetBehavior && h('div', { className: 'text-lg font-black text-slate-800' }, targetBehavior),
-                    reward && h('div', { className: 'text-sm text-amber-600 font-medium mt-1' }, `🎁 ${reward}`)
+                    reward && h('div', { className: 'text-sm text-amber-600 font-medium mt-1' }, `🎁 ${reward}`),
+                    scheduleType !== 'token' && h('div', { className: 'mt-1 inline-block px-2 py-0.5 bg-rose-100 text-rose-600 rounded-full text-[10px] font-bold' },
+                        `${scheduleType}-${scheduleParam}`)
                 ),
-                // Token grid
                 h('div', { className: 'flex flex-wrap justify-center gap-4 mb-6' },
                     Array.from({ length: slots }, (_, i) => {
                         const earned = tokens[i];
                         const emoji = tokenEmojis[i % tokenEmojis.length];
                         return h('button', {
                             key: i,
-                            onClick: () => toggleToken(i),
+                            onClick: () => scheduleType === 'token' ? toggleToken(i) : null,
                             className: `w-16 h-16 md:w-20 md:h-20 rounded-2xl border-3 flex items-center justify-center text-3xl md:text-4xl transition-all transform ${earned
                                 ? 'bg-amber-100 border-amber-400 shadow-lg shadow-amber-200/50 scale-110'
                                 : 'bg-white border-slate-200 hover:border-rose-300 hover:shadow-md opacity-40 hover:opacity-60'
@@ -1097,7 +1530,6 @@
                         }, earned ? emoji : '○');
                     })
                 ),
-                // Progress
                 h('div', { className: 'flex items-center gap-3' },
                     h('div', { className: 'flex-1 bg-white rounded-full h-4 overflow-hidden border border-rose-200' },
                         h('div', {
@@ -1107,7 +1539,6 @@
                     ),
                     h('span', { className: 'text-sm font-black text-rose-600' }, `${earnedCount}/${slots}`)
                 ),
-                // Confetti overlay
                 showConfetti && h('div', { className: 'absolute inset-0 flex items-center justify-center bg-white/60 rounded-2xl' },
                     h('div', { className: 'text-center' },
                         h('div', { className: 'text-6xl mb-2 animate-bounce' }, '🎉'),
@@ -1116,12 +1547,48 @@
                     )
                 )
             ),
-            // Reset button
-            h('div', { className: 'text-center' },
+            // Action buttons
+            h('div', { className: 'flex gap-2 justify-center flex-wrap' },
                 h('button', {
-                    onClick: () => { setTokens([]); setShowConfetti(false); },
+                    onClick: () => { setTokens([]); setShowConfetti(false); setResponseCount(0); setReinforceNow(false); },
                     className: 'px-6 py-2 bg-slate-100 text-slate-600 rounded-full text-sm font-bold hover:bg-slate-200 transition-all'
-                }, '↺ ' + (t('behavior_lens.token.reset') || 'Reset Board'))
+                }, '↺ ' + (t('behavior_lens.token.reset') || 'Reset Board')),
+                h('button', {
+                    onClick: saveSession,
+                    disabled: responseCount === 0 && earnedCount === 0,
+                    className: 'px-6 py-2 bg-emerald-100 text-emerald-700 rounded-full text-sm font-bold hover:bg-emerald-200 transition-all disabled:opacity-40'
+                }, '💾 Save Session'),
+                h('button', {
+                    onClick: () => setShowHistory(!showHistory),
+                    className: 'px-6 py-2 bg-indigo-100 text-indigo-700 rounded-full text-sm font-bold hover:bg-indigo-200 transition-all'
+                }, `📊 History (${sessionHistory.length})`)
+            ),
+            // Session history
+            showHistory && sessionHistory.length > 0 && h('div', { className: 'bg-white rounded-xl border border-indigo-200 p-5 shadow-sm' },
+                h('h4', { className: 'text-sm font-black text-slate-800 mb-3' }, '📊 Session History'),
+                // Mini bar chart
+                sessionHistory.length > 1 && h('div', { className: 'flex items-end gap-1 h-20 mb-4 px-2' },
+                    sessionHistory.slice(0, 14).reverse().map((s, i) => {
+                        const pct = s.totalSlots > 0 ? (s.tokensEarned / s.totalSlots) * 100 : 0;
+                        return h('div', {
+                            key: i,
+                            className: 'flex-1 bg-gradient-to-t from-rose-400 to-amber-300 rounded-t transition-all',
+                            style: { height: `${Math.max(4, pct)}%` },
+                            title: `${fmtDate(s.timestamp)}: ${s.tokensEarned}/${s.totalSlots}`
+                        });
+                    })
+                ),
+                h('div', { className: 'space-y-2 max-h-48 overflow-y-auto' },
+                    sessionHistory.slice(0, 10).map(s =>
+                        h('div', { key: s.id, className: 'flex items-center justify-between p-2 bg-slate-50 rounded-lg text-xs' },
+                            h('div', null,
+                                h('span', { className: 'font-bold text-slate-700' }, fmtDate(s.timestamp)),
+                                h('span', { className: 'text-slate-400 ml-2' }, s.scheduleType === 'token' ? 'Token' : `${s.scheduleType}-${s.scheduleParam}`)
+                            ),
+                            h('div', { className: 'text-slate-500' }, `${s.tokensEarned}/${s.totalSlots} tokens · ${s.responseCount} responses`)
+                        )
+                    )
+                )
             )
         );
     };
@@ -1263,7 +1730,7 @@ Analyze which routines are behavioral hotspots and return ONLY valid JSON:
     };
 
     // ─── ExportPanel ────────────────────────────────────────────────────
-    // Export behavioral data as JSON or summary text
+    // Export behavioral data as JSON, CSV, or summary text
     const ExportPanel = ({ abcEntries, observationSessions, studentName, aiAnalysis, t }) => {
         const [format, setFormat] = useState('json');
         const [dateRange, setDateRange] = useState('all');
@@ -1284,8 +1751,20 @@ Analyze which routines are behavioral hotspots and return ONLY valid JSON:
             return observationSessions.filter(s => new Date(s.timestamp) >= cutoff);
         }, [observationSessions, dateRange]);
 
+        const csvEscape = (val) => {
+            if (val == null) return '';
+            const str = String(val);
+            if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                return '"' + str.replace(/"/g, '""') + '"';
+            }
+            return str;
+        };
+
         const handleExport = () => {
             let content, filename, type;
+            const dateSuffix = new Date().toISOString().split('T')[0];
+            const safeName = (studentName || 'student').replace(/\s/g, '_');
+
             if (format === 'json') {
                 const data = {
                     student: studentName,
@@ -1295,8 +1774,43 @@ Analyze which routines are behavioral hotspots and return ONLY valid JSON:
                     aiAnalysis: aiAnalysis || null
                 };
                 content = JSON.stringify(data, null, 2);
-                filename = `behaviorlens_${(studentName || 'student').replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.json`;
+                filename = `behaviorlens_${safeName}_${dateSuffix}.json`;
                 type = 'application/json';
+            } else if (format === 'csv') {
+                // ABC Data as CSV
+                const headers = ['Timestamp', 'Date', 'Time', 'Antecedent', 'Behavior', 'Consequence', 'Setting', 'Intensity', 'Duration (s)', 'Notes'];
+                const rows = filteredAbc.map(e => [
+                    csvEscape(e.timestamp),
+                    csvEscape(fmtDate(e.timestamp)),
+                    csvEscape(fmtTime(e.timestamp)),
+                    csvEscape(e.antecedent),
+                    csvEscape(e.behavior),
+                    csvEscape(e.consequence),
+                    csvEscape(e.setting),
+                    csvEscape(e.intensity),
+                    csvEscape(e.duration),
+                    csvEscape(e.notes)
+                ].join(','));
+                content = [headers.join(','), ...rows].join('\n');
+
+                // Append observation sessions as a second section
+                if (filteredObs.length > 0) {
+                    content += '\n\n' + ['Session Timestamp', 'Method', 'Duration (s)', 'Count/Rate', 'Notes'].join(',');
+                    filteredObs.forEach(s => {
+                        const detail = s.method === 'frequency' ? `${s.data?.count || 0} (${s.data?.rate || 0}/min)` :
+                            s.method === 'interval' ? `${s.data?.occurredCount || 0}/${s.data?.totalIntervals || 0}` :
+                                s.method === 'duration' ? `${s.data?.totalDuration || 0}s total` : '';
+                        content += '\n' + [
+                            csvEscape(s.timestamp),
+                            csvEscape(s.method),
+                            csvEscape(s.duration),
+                            csvEscape(detail),
+                            csvEscape(s.notes)
+                        ].join(',');
+                    });
+                }
+                filename = `behaviorlens_${safeName}_${dateSuffix}.csv`;
+                type = 'text/csv';
             } else {
                 let text = `BehaviorLens Report — ${studentName || 'Student'}\n`;
                 text += `Exported: ${new Date().toLocaleString()}\n`;
@@ -1323,7 +1837,7 @@ Analyze which routines are behavioral hotspots and return ONLY valid JSON:
                     text += `Summary: ${aiAnalysis.summary}\n`;
                 }
                 content = text;
-                filename = `behaviorlens_${(studentName || 'student').replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`;
+                filename = `behaviorlens_${safeName}_${dateSuffix}.txt`;
                 type = 'text/plain';
             }
             const blob = new Blob([content], { type });
@@ -1340,12 +1854,20 @@ Analyze which routines are behavioral hotspots and return ONLY valid JSON:
                 h('div', null,
                     h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-1' }, 'Format'),
                     h('div', { className: 'flex gap-2' },
-                        [['json', '📦 JSON'], ['text', '📝 Text Report']].map(([key, label]) =>
+                        [['json', '📦 JSON'], ['csv', '📊 CSV'], ['text', '📝 Text']].map(([key, label]) =>
                             h('button', {
                                 key, onClick: () => setFormat(key),
                                 className: `flex-1 py-2 rounded-lg text-sm font-bold transition-all ${format === key ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`
                             }, label)
                         )
+                    )
+                ),
+                // Format description
+                h('div', { className: 'bg-slate-50 rounded-lg p-3 border border-slate-100' },
+                    h('p', { className: 'text-[11px] text-slate-500' },
+                        format === 'json' ? '📦 Full data export including all fields. Best for data backup or importing into other tools.' :
+                            format === 'csv' ? '📊 Spreadsheet-compatible format. Opens in Excel, Google Sheets, or any data analysis tool.' :
+                                '📝 Human-readable text report. Best for printing, emailing, or pasting into documents.'
                     )
                 ),
                 // Date range
@@ -2042,12 +2564,18 @@ Recommend reinforcers and return ONLY valid JSON:
         const [editing, setEditing] = useState(false);
         const [selected, setSelected] = useState(null);
         const [log, setLog] = useState([]);
+        const [mode, setMode] = useState('choice'); // 'choice' or 'firstThen'
+        const [firstItem, setFirstItem] = useState({ label: 'Finish math worksheet', emoji: '📝' });
+        const [thenItem, setThenItem] = useState({ label: 'Free time on iPad', emoji: '🎮' });
+        const [firstDone, setFirstDone] = useState(false);
 
         const gradients = [
             'from-blue-400 to-indigo-500',
             'from-emerald-400 to-teal-500',
             'from-amber-400 to-orange-500',
             'from-pink-400 to-rose-500',
+            'from-violet-400 to-purple-500',
+            'from-cyan-400 to-sky-500',
         ];
 
         const handleSelect = (idx) => {
@@ -2063,25 +2591,85 @@ Recommend reinforcers and return ONLY valid JSON:
 
         if (editing) {
             return h('div', { className: 'fixed inset-0 z-[300] bg-slate-900 flex flex-col items-center justify-center p-8' },
-                h('div', { className: 'bg-white rounded-2xl p-6 w-full max-w-md space-y-4' },
+                h('div', { className: 'bg-white rounded-2xl p-6 w-full max-w-md space-y-4 max-h-[85vh] overflow-y-auto' },
                     h('h3', { className: 'text-sm font-black text-slate-800' }, '✏️ Edit Choices'),
                     choices.map((c, i) =>
-                        h('div', { key: i, className: 'flex gap-2' },
+                        h('div', { key: i, className: 'flex gap-2 items-center' },
                             h('input', { value: c.emoji, onChange: (e) => updateChoice(i, 'emoji', e.target.value), className: 'w-12 text-center text-xl border rounded-lg', maxLength: 2 }),
-                            h('input', { value: c.label, onChange: (e) => updateChoice(i, 'label', e.target.value), className: 'flex-1 border rounded-lg px-3 py-2 text-sm' })
+                            h('input', { value: c.label, onChange: (e) => updateChoice(i, 'label', e.target.value), className: 'flex-1 border rounded-lg px-3 py-2 text-sm' }),
+                            choices.length > 2 && h('button', {
+                                onClick: () => setChoices(prev => prev.filter((_, j) => j !== i)),
+                                className: 'p-1.5 rounded-lg hover:bg-red-100 text-slate-400 hover:text-red-600 transition-colors'
+                            }, h(X, { size: 14 }))
                         )
                     ),
                     h('div', { className: 'flex gap-2' },
-                        choices.length < 4 && h('button', {
+                        choices.length < 6 && h('button', {
                             onClick: () => setChoices(prev => [...prev, { label: 'New choice', emoji: '✨' }]),
                             className: 'px-3 py-2 bg-emerald-100 text-emerald-700 rounded-lg text-sm font-bold'
-                        }, '+ Add'),
-                        choices.length > 2 && h('button', {
-                            onClick: () => setChoices(prev => prev.slice(0, -1)),
-                            className: 'px-3 py-2 bg-red-100 text-red-700 rounded-lg text-sm font-bold'
-                        }, '- Remove')
+                        }, '+ Add Choice')
+                    ),
+                    // First-Then editor
+                    h('div', { className: 'border-t border-slate-200 pt-4 mt-2' },
+                        h('h4', { className: 'text-xs font-bold text-slate-500 uppercase mb-2' }, '⬅️ First-Then Board'),
+                        h('div', { className: 'space-y-2' },
+                            h('div', { className: 'flex gap-2' },
+                                h('input', { value: firstItem.emoji, onChange: (e) => setFirstItem(p => ({ ...p, emoji: e.target.value })), className: 'w-12 text-center text-xl border rounded-lg', maxLength: 2 }),
+                                h('input', { value: firstItem.label, onChange: (e) => setFirstItem(p => ({ ...p, label: e.target.value })), className: 'flex-1 border rounded-lg px-3 py-2 text-sm', placeholder: 'FIRST (task)...' })
+                            ),
+                            h('div', { className: 'flex gap-2' },
+                                h('input', { value: thenItem.emoji, onChange: (e) => setThenItem(p => ({ ...p, emoji: e.target.value })), className: 'w-12 text-center text-xl border rounded-lg', maxLength: 2 }),
+                                h('input', { value: thenItem.label, onChange: (e) => setThenItem(p => ({ ...p, label: e.target.value })), className: 'flex-1 border rounded-lg px-3 py-2 text-sm', placeholder: 'THEN (reward)...' })
+                            )
+                        )
                     ),
                     h('button', { onClick: () => setEditing(false), className: 'w-full py-2 bg-indigo-500 text-white rounded-lg font-bold' }, 'Done')
+                )
+            );
+        }
+
+        // First-Then mode
+        if (mode === 'firstThen') {
+            return h('div', { className: 'fixed inset-0 z-[300] bg-slate-900 flex flex-col' },
+                h('div', { className: 'flex justify-between items-center p-4 shrink-0' },
+                    h('div', { className: 'flex gap-2' },
+                        h('button', { onClick: () => setMode('choice'), className: 'px-3 py-1.5 bg-white/10 text-white rounded-lg text-xs font-bold hover:bg-white/20' }, '🔲 Choices'),
+                        h('button', { onClick: () => setEditing(true), className: 'px-3 py-1.5 bg-white/10 text-white rounded-lg text-xs font-bold hover:bg-white/20' }, '✏️ Edit')
+                    ),
+                    h('span', { className: 'text-white/60 text-xs font-bold' }, 'First → Then'),
+                    h('button', { onClick: onClose, className: 'px-3 py-1.5 bg-white/10 text-white rounded-lg text-xs font-bold hover:bg-white/20' }, '✕ Close')
+                ),
+                h('div', { className: 'flex-1 grid grid-cols-2 gap-6 p-6' },
+                    // FIRST panel
+                    h('button', {
+                        onClick: () => { setFirstDone(true); if (addToast) addToast('First task complete! ✅', 'success'); },
+                        className: `rounded-3xl flex flex-col items-center justify-center shadow-2xl transition-all duration-500 ${firstDone
+                            ? 'bg-gradient-to-br from-emerald-400 to-emerald-600 scale-95 ring-4 ring-emerald-300/50'
+                            : 'bg-gradient-to-br from-blue-400 to-indigo-600 hover:scale-[1.02] active:scale-95'}`
+                    },
+                        h('div', { className: 'text-xs font-black text-white/60 uppercase tracking-widest mb-2' }, 'FIRST'),
+                        h('span', { className: 'text-6xl md:text-8xl mb-4 drop-shadow-lg' }, firstItem.emoji),
+                        h('span', { className: 'text-xl md:text-2xl font-black text-white drop-shadow-md text-center px-4' }, firstItem.label),
+                        firstDone && h('div', { className: 'mt-4 text-white text-4xl animate-bounce' }, '✅')
+                    ),
+                    // THEN panel
+                    h('div', {
+                        className: `rounded-3xl flex flex-col items-center justify-center shadow-2xl transition-all duration-500 ${firstDone
+                            ? 'bg-gradient-to-br from-amber-400 to-orange-500 scale-[1.05] ring-4 ring-amber-300/50 animate-pulse'
+                            : 'bg-gradient-to-br from-slate-600 to-slate-800 opacity-50 grayscale'}`
+                    },
+                        h('div', { className: 'text-xs font-black text-white/60 uppercase tracking-widest mb-2' }, 'THEN'),
+                        h('span', { className: 'text-6xl md:text-8xl mb-4 drop-shadow-lg' }, thenItem.emoji),
+                        h('span', { className: 'text-xl md:text-2xl font-black text-white drop-shadow-md text-center px-4' }, thenItem.label),
+                        !firstDone && h('div', { className: 'mt-4 text-white/30 text-sm font-bold' }, '🔒 Complete "First" to unlock')
+                    )
+                ),
+                // Reset button
+                firstDone && h('div', { className: 'p-4 flex justify-center' },
+                    h('button', {
+                        onClick: () => setFirstDone(false),
+                        className: 'px-6 py-2 rounded-full bg-white/10 text-white text-sm font-bold hover:bg-white/20 transition-colors'
+                    }, '↺ Reset')
                 )
             );
         }
@@ -2089,20 +2677,23 @@ Recommend reinforcers and return ONLY valid JSON:
         return h('div', { className: 'fixed inset-0 z-[300] bg-slate-900 flex flex-col' },
             // Toolbar
             h('div', { className: 'flex justify-between items-center p-4 shrink-0' },
-                h('button', { onClick: () => setEditing(true), className: 'px-3 py-1.5 bg-white/10 text-white rounded-lg text-sm font-bold hover:bg-white/20' }, '✏️ Edit'),
+                h('div', { className: 'flex gap-2' },
+                    h('button', { onClick: () => setMode('firstThen'), className: 'px-3 py-1.5 bg-white/10 text-white rounded-lg text-xs font-bold hover:bg-white/20' }, '➡️ First/Then'),
+                    h('button', { onClick: () => setEditing(true), className: 'px-3 py-1.5 bg-white/10 text-white rounded-lg text-xs font-bold hover:bg-white/20' }, '✏️ Edit')
+                ),
                 h('span', { className: 'text-white/60 text-xs font-bold' }, studentName ? `For: ${studentName}` : 'Choice Board'),
-                h('button', { onClick: onClose, className: 'px-3 py-1.5 bg-white/10 text-white rounded-lg text-sm font-bold hover:bg-white/20' }, '✕ Close')
+                h('button', { onClick: onClose, className: 'px-3 py-1.5 bg-white/10 text-white rounded-lg text-xs font-bold hover:bg-white/20' }, '✕ Close')
             ),
             // Choices grid
-            h('div', { className: `flex-1 grid gap-4 p-6 ${choices.length <= 2 ? 'grid-cols-1' : 'grid-cols-2'}` },
+            h('div', { className: `flex-1 grid gap-4 p-6 ${choices.length <= 2 ? 'grid-cols-1' : choices.length <= 4 ? 'grid-cols-2' : 'grid-cols-3'}` },
                 choices.map((c, i) =>
                     h('button', {
                         key: i,
                         onClick: () => handleSelect(i),
                         className: `rounded-3xl bg-gradient-to-br ${gradients[i % gradients.length]} flex flex-col items-center justify-center shadow-2xl transition-all duration-300 ${selected === i ? 'scale-95 ring-4 ring-white/80' : 'hover:scale-[1.02] active:scale-95'}`
                     },
-                        h('span', { className: 'text-6xl md:text-8xl mb-4 drop-shadow-lg' }, c.emoji),
-                        h('span', { className: 'text-xl md:text-3xl font-black text-white drop-shadow-md' }, c.label),
+                        h('span', { className: `${choices.length <= 4 ? 'text-6xl md:text-8xl' : 'text-4xl md:text-6xl'} mb-4 drop-shadow-lg` }, c.emoji),
+                        h('span', { className: `${choices.length <= 4 ? 'text-xl md:text-3xl' : 'text-lg md:text-xl'} font-black text-white drop-shadow-md` }, c.label),
                         selected === i && h('div', { className: 'mt-3 text-white/80 text-lg font-bold animate-bounce' }, '✓ Selected!')
                     )
                 )
@@ -3184,6 +3775,313 @@ Generate descriptors for each GAS level and return ONLY valid JSON:
         );
     };
 
+    // ─── ABAQuickGuide ──────────────────────────────────────────────────
+    // Comprehensive ABA principles reference and staff training tool
+    const ABAQuickGuide = ({ t }) => {
+        const [activeTab, setActiveTab] = useState('glossary');
+        const [searchTerm, setSearchTerm] = useState('');
+
+        const glossary = [
+            { term: 'ABC Data', def: 'Antecedent-Behavior-Consequence: A recording method that captures what happens before (A), the behavior itself (B), and what happens after (C).', category: 'Data Collection' },
+            { term: 'Antecedent', def: 'What happens immediately before a behavior occurs. Can be a demand, transition, trigger, or environmental event.', category: 'Data Collection' },
+            { term: 'Behavior', def: 'An observable and measurable action. Must be described specifically enough that two observers would agree on its occurrence.', category: 'Core Concepts' },
+            { term: 'Consequence', def: 'What happens immediately after a behavior occurs. Can reinforce (increase) or punish (decrease) the behavior.', category: 'Data Collection' },
+            { term: 'Positive Reinforcement', def: 'ADDING something desirable after a behavior to INCREASE it. Example: giving praise after hand-raising.', category: 'Reinforcement' },
+            { term: 'Negative Reinforcement', def: 'REMOVING something aversive after a behavior to INCREASE it. Example: allowing a break after completing work (removing the demand).', category: 'Reinforcement' },
+            { term: 'Positive Punishment', def: 'ADDING something aversive after a behavior to DECREASE it. Example: assigning extra work after disruption. Use sparingly.', category: 'Consequences' },
+            { term: 'Negative Punishment', def: 'REMOVING something desirable after a behavior to DECREASE it. Example: loss of recess after disruption.', category: 'Consequences' },
+            { term: 'Extinction', def: 'Withholding reinforcement for a previously reinforced behavior. May initially cause an "extinction burst" (temporary increase in behavior).', category: 'Consequences' },
+            { term: 'Extinction Burst', def: 'Temporary increase in frequency or intensity of a behavior when reinforcement is first withheld. A normal part of extinction — stay consistent!', category: 'Consequences' },
+            { term: 'Operational Definition', def: 'A clear, observable, measurable description of a behavior. Example: "Hits peers with open or closed hand" NOT "is aggressive."', category: 'Core Concepts' },
+            { term: 'Function of Behavior', def: 'The purpose a behavior serves: Attention, Escape/Avoidance, Access to Tangibles, or Sensory/Automatic reinforcement.', category: 'Core Concepts' },
+            { term: 'FBA', def: 'Functional Behavior Assessment: A systematic process to determine WHY a behavior occurs (its function) using data collection and analysis.', category: 'Assessment' },
+            { term: 'BIP', def: 'Behavior Intervention Plan: A documented plan based on FBA findings that outlines strategies to address challenging behaviors.', category: 'Assessment' },
+            { term: 'Replacement Behavior', def: 'A socially appropriate behavior that serves the same function as the challenging behavior. Must be as efficient or more efficient.', category: 'Intervention' },
+            { term: 'Prompt', def: 'An extra cue to help a student perform a behavior. Types: verbal, gestural, visual, model, physical. Fade prompts over time.', category: 'Intervention' },
+            { term: 'Prompt Fading', def: 'Gradually reducing the level of help (prompts) to promote independence. Move from most-to-least or least-to-most.', category: 'Intervention' },
+            { term: 'Generalization', def: 'The ability to perform a learned behavior in new settings, with new people, or in new situations beyond where it was taught.', category: 'Core Concepts' },
+            { term: 'Baseline', def: 'Data collected before intervention begins. Used to measure the starting level of behavior so progress can be compared.', category: 'Data Collection' },
+            { term: 'DRA', def: 'Differential Reinforcement of Alternative behavior: Reinforce a specific alternative behavior while withholding reinforcement for the problem behavior.', category: 'Reinforcement' },
+            { term: 'DRO', def: 'Differential Reinforcement of Other behavior: Reinforce the ABSENCE of the problem behavior in a set time interval.', category: 'Reinforcement' },
+            { term: 'DRI', def: 'Differential Reinforcement of Incompatible behavior: Reinforce a behavior that is physically incompatible with the problem behavior.', category: 'Reinforcement' },
+            { term: 'Token Economy', def: 'A system where tokens are earned for desired behaviors and exchanged for backup reinforcers. The Token Board tool implements this.', category: 'Reinforcement' },
+            { term: 'Schedule of Reinforcement', def: 'The pattern by which reinforcement is delivered: Fixed Ratio (FR), Variable Ratio (VR), Fixed Interval (FI), Variable Interval (VI).', category: 'Reinforcement' },
+            { term: 'Schedule Thinning', def: 'Gradually moving from continuous (every time) to intermittent reinforcement to maintain behavior with less frequent reinforcement.', category: 'Reinforcement' },
+        ];
+
+        const scheduleExplainer = [
+            { type: 'FR (Fixed Ratio)', desc: 'Reinforce after every N responses', example: 'FR-3: Reward after every 3rd hand raise', when: 'Building consistent new behaviors', icon: '📊' },
+            { type: 'VR (Variable Ratio)', desc: 'Reinforce after an average of N responses (random)', example: 'VR-5: Average every 5th, but could be 3rd or 7th', when: 'Maintaining established behaviors (most resistant to extinction)', icon: '🎲' },
+            { type: 'FI (Fixed Interval)', desc: 'Reinforce first response after N minutes', example: 'FI-5: First correct behavior after each 5-minute interval', when: 'Time-based behavior monitoring', icon: '⏰' },
+            { type: 'VI (Variable Interval)', desc: 'Reinforce first response after ~N minutes (random)', example: 'VI-5: Check at random times averaging every 5 min', when: 'Maintaining steady behavior over time', icon: '🎲⏰' },
+            { type: 'CRF (Continuous)', desc: 'Reinforce every single correct response', example: 'Praise every hand raise', when: 'First teaching a new behavior (then thin the schedule)', icon: '💯' },
+        ];
+
+        const decisionTree = [
+            { q: 'What happens when the student gets attention after the behavior?', yes: 'Behavior INCREASES → Function may be ATTENTION 👀', no: 'Continue...' },
+            { q: 'What happens when the student escapes a demand after the behavior?', yes: 'Behavior INCREASES → Function may be ESCAPE 🏃', no: 'Continue...' },
+            { q: 'What happens when the student gains access to an item/activity?', yes: 'Behavior INCREASES → Function may be TANGIBLE 🎁', no: 'Continue...' },
+            { q: 'Does the behavior happen even when the student is alone?', yes: 'Behavior CONTINUES → Function may be SENSORY 🌀', no: 'Reassess — consider multiple functions' },
+        ];
+
+        const commonMistakes = [
+            { mistake: 'Accidental Reinforcement', desc: 'Giving attention (even negative!) to a behavior maintained by attention. Remove eye contact, don\'t lecture during the behavior.', fix: 'Planned ignoring for attention-maintained behaviors; redirect without excessive verbal attention.' },
+            { mistake: 'Punishment Without Teaching', desc: 'Removing privileges but never teaching what the student SHOULD do instead.', fix: 'Always pair consequences with explicit instruction of the replacement behavior.' },
+            { mistake: 'Inconsistency', desc: 'Sometimes enforcing expectations and sometimes ignoring the same behavior.', fix: 'Create a written BIP and ensure ALL staff follow it consistently — use the Fidelity Checklist tool.' },
+            { mistake: 'Too-Rapid Schedule Thinning', desc: 'Moving from FR-1 to VR-10 overnight, causing behavior to break down.', fix: 'Thin gradually: FR-1 → FR-2 → FR-3 → VR-3 → VR-5. If behavior drops, go back to previous schedule.' },
+            { mistake: 'Vague Behavior Definitions', desc: '"Student is disrespectful" — two observers might not agree on what this means.', fix: 'Use operational definitions: "Student uses profanity directed at peers or staff."' },
+            { mistake: 'Ignoring Setting Events', desc: 'Not considering factors like hunger, sleep, medication changes, or home stressors.', fix: 'Track setting events in ABC notes. Look for patterns across environments.' },
+        ];
+
+        const categories = [...new Set(glossary.map(g => g.category))];
+        const filtered = searchTerm
+            ? glossary.filter(g => g.term.toLowerCase().includes(searchTerm.toLowerCase()) || g.def.toLowerCase().includes(searchTerm.toLowerCase()))
+            : glossary;
+
+        const tabs = [
+            { id: 'glossary', label: '📖 Glossary', icon: '📖' },
+            { id: 'schedules', label: '📋 Schedules', icon: '📋' },
+            { id: 'decision', label: '🌲 Decision Tree', icon: '🌲' },
+            { id: 'mistakes', label: '⚠️ Common Mistakes', icon: '⚠️' },
+        ];
+
+        return h('div', { className: 'max-w-3xl mx-auto space-y-4' },
+            // Tab bar
+            h('div', { className: 'flex gap-2 bg-white rounded-xl border border-slate-200 p-2 shadow-sm' },
+                tabs.map(tab =>
+                    h('button', {
+                        key: tab.id,
+                        onClick: () => setActiveTab(tab.id),
+                        className: `flex-1 py-2.5 px-3 rounded-lg text-sm font-bold transition-all ${activeTab === tab.id
+                            ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-md'
+                            : 'text-slate-600 hover:bg-slate-100'}`
+                    }, tab.label)
+                )
+            ),
+
+            // GLOSSARY TAB
+            activeTab === 'glossary' && h('div', { className: 'space-y-4' },
+                h('input', {
+                    value: searchTerm,
+                    onChange: (e) => setSearchTerm(e.target.value),
+                    placeholder: '🔍 Search ABA terms...',
+                    className: 'w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm shadow-sm focus:ring-2 focus:ring-indigo-400 outline-none'
+                }),
+                categories.map(cat => {
+                    const items = filtered.filter(g => g.category === cat);
+                    if (items.length === 0) return null;
+                    return h('div', { key: cat, className: 'bg-white rounded-xl border border-slate-200 p-4 shadow-sm' },
+                        h('h4', { className: 'text-xs font-black text-slate-500 uppercase mb-3 tracking-wide' }, cat),
+                        h('div', { className: 'space-y-2' },
+                            items.map(g =>
+                                h('div', { key: g.term, className: 'p-3 bg-slate-50 rounded-lg border border-slate-100' },
+                                    h('div', { className: 'text-sm font-bold text-indigo-700 mb-0.5' }, g.term),
+                                    h('div', { className: 'text-xs text-slate-600 leading-relaxed' }, g.def)
+                                )
+                            )
+                        )
+                    );
+                })
+            ),
+
+            // SCHEDULES TAB
+            activeTab === 'schedules' && h('div', { className: 'space-y-3' },
+                h('div', { className: 'bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border border-indigo-200 p-4' },
+                    h('h3', { className: 'text-sm font-black text-indigo-800 mb-1' }, '📋 Reinforcement Schedules Explained'),
+                    h('p', { className: 'text-xs text-indigo-600' }, 'How often and when to deliver reinforcement. Use the Token Board tool to implement these schedules in practice.')
+                ),
+                scheduleExplainer.map(s =>
+                    h('div', { key: s.type, className: 'bg-white rounded-xl border border-slate-200 p-4 shadow-sm' },
+                        h('div', { className: 'flex items-start gap-3' },
+                            h('div', { className: 'text-2xl' }, s.icon),
+                            h('div', { className: 'flex-1' },
+                                h('div', { className: 'text-sm font-black text-slate-800' }, s.type),
+                                h('div', { className: 'text-xs text-slate-600 mt-0.5' }, s.desc),
+                                h('div', { className: 'mt-2 p-2 bg-blue-50 rounded-lg text-xs text-blue-700' },
+                                    h('span', { className: 'font-bold' }, 'Example: '), s.example
+                                ),
+                                h('div', { className: 'mt-1 text-[10px] text-slate-400 italic' }, `Best used: ${s.when}`)
+                            )
+                        )
+                    )
+                ),
+                h('div', { className: 'bg-amber-50 rounded-xl border border-amber-200 p-4 text-xs text-amber-800' },
+                    h('p', { className: 'font-bold mb-1' }, '📈 Schedule Thinning Path:'),
+                    h('p', null, 'CRF (every time) → FR-2 → FR-3 → FR-5 → VR-5 → VR-8 → Natural reinforcement'),
+                    h('p', { className: 'italic mt-1' }, '⚠️ If behavior breaks down, go back one step.')
+                )
+            ),
+
+            // DECISION TREE TAB
+            activeTab === 'decision' && h('div', { className: 'space-y-3' },
+                h('div', { className: 'bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl border border-emerald-200 p-4' },
+                    h('h3', { className: 'text-sm font-black text-emerald-800 mb-1' }, '🌲 Function Identification Decision Tree'),
+                    h('p', { className: 'text-xs text-emerald-600' }, 'Use this flow to hypothesize the function of a challenging behavior.')
+                ),
+                decisionTree.map((step, i) =>
+                    h('div', { key: i, className: 'bg-white rounded-xl border border-slate-200 p-4 shadow-sm' },
+                        h('div', { className: 'flex items-start gap-3' },
+                            h('div', { className: 'w-8 h-8 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-sm font-black shrink-0' }, i + 1),
+                            h('div', { className: 'flex-1' },
+                                h('div', { className: 'text-sm font-bold text-slate-800 mb-2' }, step.q),
+                                h('div', { className: 'grid grid-cols-2 gap-2' },
+                                    h('div', { className: 'p-2 bg-emerald-50 rounded-lg border border-emerald-200 text-xs' },
+                                        h('span', { className: 'font-bold text-emerald-700' }, '✅ YES: '), step.yes
+                                    ),
+                                    h('div', { className: 'p-2 bg-slate-50 rounded-lg border border-slate-200 text-xs' },
+                                        h('span', { className: 'font-bold text-slate-500' }, '❌ NO: '), step.no
+                                    )
+                                )
+                            )
+                        )
+                    )
+                ),
+                h('div', { className: 'bg-purple-50 rounded-xl border border-purple-200 p-4 text-xs text-purple-700' },
+                    h('p', { className: 'font-bold mb-1' }, '💡 Pro Tip:'),
+                    h('p', null, 'Behaviors can serve MULTIPLE functions. Always collect enough data (10+ ABC entries) before finalizing your hypothesis. Use the AI Pattern Analysis tool for data-driven confirmation.')
+                )
+            ),
+
+            // COMMON MISTAKES TAB
+            activeTab === 'mistakes' && h('div', { className: 'space-y-3' },
+                h('div', { className: 'bg-gradient-to-r from-red-50 to-orange-50 rounded-xl border border-red-200 p-4' },
+                    h('h3', { className: 'text-sm font-black text-red-800 mb-1' }, '⚠️ Common ABA Implementation Mistakes'),
+                    h('p', { className: 'text-xs text-red-600' }, 'Avoid these frequently seen errors to improve behavioral outcomes.')
+                ),
+                commonMistakes.map((m, i) =>
+                    h('div', { key: i, className: 'bg-white rounded-xl border border-slate-200 p-4 shadow-sm' },
+                        h('div', { className: 'text-sm font-black text-red-600 mb-1' }, `❌ ${m.mistake}`),
+                        h('div', { className: 'text-xs text-slate-600 mb-2' }, m.desc),
+                        h('div', { className: 'p-2 bg-emerald-50 rounded-lg text-xs text-emerald-700 border border-emerald-200' },
+                            h('span', { className: 'font-bold' }, '✅ Fix: '), m.fix
+                        )
+                    )
+                )
+            )
+        );
+    };
+
+    // ─── HomeBehaviorLog ────────────────────────────────────────────────
+    // Simplified ABC logging designed for parents/family context
+    const HomeBehaviorLog = ({ studentName, t, addToast }) => {
+        const [entries, setEntries] = useState([]);
+        const [showForm, setShowForm] = useState(false);
+        const [newEntry, setNewEntry] = useState({ context: '', behavior: '', response: '', notes: '' });
+
+        const homeContexts = [
+            'Morning routine', 'Getting ready for school', 'Mealtime', 'Homework time',
+            'Screen time transition', 'Playtime with siblings', 'Bedtime routine',
+            'Public outing', 'In the car', 'After school', 'Other'
+        ];
+
+        const homeResponses = [
+            'Redirected calmly', 'Gave a break', 'Used a timer', 'Offered choices',
+            'Used first-then language', 'Ignored the behavior', 'Praised alternative behavior',
+            'Removed the item/activity', 'Used a visual schedule', 'Other'
+        ];
+
+        // Load from localStorage
+        useEffect(() => {
+            if (!studentName) return;
+            try {
+                const saved = localStorage.getItem(`behaviorLens_homeLog_${studentName}`);
+                if (saved) setEntries(JSON.parse(saved));
+            } catch (e) { /* ignore */ }
+        }, [studentName]);
+
+        const saveEntry = () => {
+            if (!newEntry.behavior.trim()) return;
+            const entry = { ...newEntry, id: uid(), timestamp: new Date().toISOString() };
+            const updated = [entry, ...entries];
+            setEntries(updated);
+            try { localStorage.setItem(`behaviorLens_homeLog_${studentName}`, JSON.stringify(updated)); } catch (e) { /* ignore */ }
+            setNewEntry({ context: '', behavior: '', response: '', notes: '' });
+            setShowForm(false);
+            if (addToast) addToast('Entry saved ✅', 'success');
+        };
+
+        return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
+            h('div', { className: 'bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 p-4' },
+                h('h3', { className: 'text-sm font-black text-blue-800 mb-1' }, '🏠 ' + (t('behavior_lens.homelog.title') || 'Home Behavior Log')),
+                h('p', { className: 'text-xs text-blue-600' }, 'Track behaviors at home using simple, everyday language. This helps your child\'s school team see the full picture.')
+            ),
+            // Add button
+            h('button', {
+                onClick: () => setShowForm(!showForm),
+                className: 'w-full py-3 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all'
+            }, showForm ? '▾ Close Form' : '➕ Log a Behavior'),
+            // Entry form
+            showForm && h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-3' },
+                h('div', null,
+                    h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-1' }, '📍 When did it happen?'),
+                    h('div', { className: 'flex flex-wrap gap-1.5' },
+                        homeContexts.map(ctx =>
+                            h('button', {
+                                key: ctx,
+                                onClick: () => setNewEntry(p => ({ ...p, context: ctx })),
+                                className: `px-3 py-1.5 rounded-full text-xs font-bold transition-all ${newEntry.context === ctx ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`
+                            }, ctx)
+                        )
+                    )
+                ),
+                h('div', null,
+                    h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-1' }, '👀 What happened? (behavior)'),
+                    h('textarea', {
+                        value: newEntry.behavior,
+                        onChange: (e) => setNewEntry(p => ({ ...p, behavior: e.target.value })),
+                        placeholder: 'Describe what your child did...',
+                        rows: 2,
+                        className: 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-blue-400 outline-none'
+                    })
+                ),
+                h('div', null,
+                    h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-1' }, '💬 What did you do? (response)'),
+                    h('div', { className: 'flex flex-wrap gap-1.5' },
+                        homeResponses.map(r =>
+                            h('button', {
+                                key: r,
+                                onClick: () => setNewEntry(p => ({ ...p, response: r })),
+                                className: `px-3 py-1.5 rounded-full text-xs font-bold transition-all ${newEntry.response === r ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`
+                            }, r)
+                        )
+                    )
+                ),
+                h('div', null,
+                    h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-1' }, '📝 Extra notes (optional)'),
+                    h('input', {
+                        value: newEntry.notes,
+                        onChange: (e) => setNewEntry(p => ({ ...p, notes: e.target.value })),
+                        placeholder: 'Any other details (was child tired, hungry, etc.)...',
+                        className: 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none'
+                    })
+                ),
+                h('button', {
+                    onClick: saveEntry,
+                    disabled: !newEntry.behavior.trim(),
+                    className: 'w-full py-2.5 bg-blue-500 text-white rounded-xl font-bold hover:bg-blue-600 disabled:opacity-40 transition-all'
+                }, '💾 Save Entry')
+            ),
+            // Entries list
+            entries.length > 0 ? h('div', { className: 'space-y-2' },
+                h('h4', { className: 'text-xs font-black text-slate-500 uppercase' }, `${entries.length} Entries`),
+                entries.slice(0, 20).map(e =>
+                    h('div', { key: e.id, className: 'bg-white rounded-xl border border-slate-200 p-4 shadow-sm' },
+                        h('div', { className: 'flex justify-between items-start mb-2' },
+                            h('span', { className: 'text-xs font-bold text-blue-600' }, e.context || 'General'),
+                            h('span', { className: 'text-[10px] text-slate-400' }, fmtDate(e.timestamp))
+                        ),
+                        h('p', { className: 'text-sm text-slate-700 mb-1' }, e.behavior),
+                        e.response && h('div', { className: 'text-xs text-emerald-600 bg-emerald-50 rounded px-2 py-1 inline-block' }, `Response: ${e.response}`),
+                        e.notes && h('p', { className: 'text-xs text-slate-400 mt-1 italic' }, e.notes)
+                    )
+                )
+            ) : h('div', { className: 'text-center py-8 bg-slate-50 rounded-xl' },
+                h('div', { className: 'text-3xl mb-2' }, '🏠'),
+                h('p', { className: 'text-sm text-slate-500' }, 'No entries yet. Tap "Log a Behavior" to get started!')
+            )
+        );
+    };
+
     // ─── PocketBip ──────────────────────────────────────────────────────
     // Compact index-card BIP summary for wallet/clipboard carry
     const PocketBip = ({ studentName, abcEntries, aiAnalysis, callGemini, t, addToast }) => {
@@ -3290,6 +4188,10 @@ Create a concise pocket BIP. Return ONLY valid JSON:
         const [showFreqCounter, setShowFreqCounter] = useState(false);
         const [showIntervalGrid, setShowIntervalGrid] = useState(false);
         const [showChoiceBoard, setShowChoiceBoard] = useState(false);
+        const [isParentMode, setIsParentMode] = useState(!isTeacherMode && false);
+
+        // Parent-friendly tool IDs (shown when isParentMode is true)
+        const parentTools = ['overview', 'token', 'traffic', 'choice', 'homelog', 'abaguide', 'homenote', 'pocket'];
 
         // Two-dropdown codename system (adjective + animal)
         const adjectives = useMemo(() => t('codenames.adjectives') || [], [t]);
@@ -3617,7 +4519,21 @@ Analyze this data and return ONLY valid JSON:
                     desc: t('behavior_lens.hub.pocket_desc') || 'Compact index-card BIP summary for clipboard carry',
                     color: 'darkGray',
                 },
-            ];
+                {
+                    id: 'abaguide',
+                    icon: '📚',
+                    title: t('behavior_lens.hub.abaguide_title') || 'ABA Quick Guide',
+                    desc: t('behavior_lens.hub.abaguide_desc') || 'Searchable glossary, reinforcement schedules, decision tree & common mistakes',
+                    color: 'indigo',
+                },
+                {
+                    id: 'homelog',
+                    icon: '🏠',
+                    title: t('behavior_lens.hub.homelog_title') || 'Home Behavior Log',
+                    desc: t('behavior_lens.hub.homelog_desc') || 'Simplified parent-friendly behavior logging with everyday language',
+                    color: 'blue',
+                },
+            ].filter(tool => !isParentMode || parentTools.includes(tool.id));
 
             const colorClasses = {
                 indigo: { bg: 'bg-indigo-50', border: 'border-indigo-200', icon: 'bg-indigo-100 text-indigo-600', hover: 'hover:border-indigo-400 hover:shadow-indigo-100' },
@@ -3743,8 +4659,10 @@ Analyze this data and return ONLY valid JSON:
                                 else if (tool.id === 'feasibility') setActivePanel('feasibility');
                                 else if (tool.id === 'gas') setActivePanel('gas');
                                 else if (tool.id === 'pocket') setActivePanel('pocket');
+                                else if (tool.id === 'abaguide') setActivePanel('abaguide');
+                                else if (tool.id === 'homelog') setActivePanel('homelog');
                             },
-                            disabled: tool.disabled || (!selectedStudent && !['analysis', 'export', 'record'].includes(tool.id)),
+                            disabled: tool.disabled || (!selectedStudent && !['analysis', 'export', 'record', 'abaguide'].includes(tool.id)),
                             className: `text-left p-5 rounded-xl border-2 transition-all ${cc.border} ${cc.hover} bg-white shadow-sm hover:shadow-md ${tool.disabled || !selectedStudent ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
                                 }`
                         },
@@ -3889,14 +4807,25 @@ Analyze this data and return ONLY valid JSON:
                                                                                                             activePanel === 'fidelity' ? (t('behavior_lens.fidelity.title') || 'Fidelity Checklist') :
                                                                                                                 activePanel === 'feasibility' ? (t('behavior_lens.feasibility.title') || 'Feasibility Check') :
                                                                                                                     activePanel === 'gas' ? (t('behavior_lens.gas.title') || 'GAS Rubric') :
-                                                                                                                        activePanel === 'pocket' ? (t('behavior_lens.pocket.title') || 'Pocket BIP') : ''
+                                                                                                                        activePanel === 'pocket' ? (t('behavior_lens.pocket.title') || 'Pocket BIP') :
+                                                                                                                            activePanel === 'abaguide' ? (t('behavior_lens.abaguide.title') || 'ABA Quick Guide') :
+                                                                                                                                activePanel === 'homelog' ? (t('behavior_lens.homelog.title') || 'Home Behavior Log') : ''
                             )
                         )
                     ),
-                    h('button', {
-                        onClick: onClose,
-                        className: 'p-2 rounded-full text-slate-500 hover:bg-slate-100 transition-colors'
-                    }, h(X, { size: 24 }))
+                    h('div', { className: 'flex items-center gap-2' },
+                        // Parent Mode toggle
+                        activePanel === 'hub' && h('button', {
+                            onClick: () => setIsParentMode(p => !p),
+                            className: `px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${isParentMode
+                                ? 'bg-blue-500 text-white border-blue-500 shadow-md'
+                                : 'bg-white text-slate-500 border-slate-200 hover:border-blue-300 hover:text-blue-500'}`
+                        }, isParentMode ? '👨‍👩‍👧 Family Mode' : '👨‍👩‍👧 Family'),
+                        h('button', {
+                            onClick: onClose,
+                            className: 'p-2 rounded-full text-slate-500 hover:bg-slate-100 transition-colors'
+                        }, h(X, { size: 24 }))
+                    )
                 )
             ),
             // Content area
@@ -4060,6 +4989,12 @@ Analyze this data and return ONLY valid JSON:
                     abcEntries,
                     aiAnalysis,
                     callGemini,
+                    t,
+                    addToast
+                }),
+                activePanel === 'abaguide' && h(ABAQuickGuide, { t }),
+                activePanel === 'homelog' && h(HomeBehaviorLog, {
+                    studentName: selectedStudent,
                     t,
                     addToast
                 })
