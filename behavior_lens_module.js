@@ -4500,6 +4500,238 @@ Respond only with the student's words:`;
         );
     };
 
+    // ─── SnapshotExchange ────────────────────────────────────────────────
+    // Sneakernet JSON export/import for parent-teacher data exchange
+    const SnapshotExchange = ({ studentName, abcEntries, observationSessions, aiAnalysis, setAbcEntries, setObservationSessions, t, addToast }) => {
+        const [tab, setTab] = useState('export');
+        const [role, setRole] = useState('educator');
+        const [message, setMessage] = useState('');
+        const [includeAbc, setIncludeAbc] = useState(true);
+        const [includeObs, setIncludeObs] = useState(true);
+        const [includeAi, setIncludeAi] = useState(true);
+        const [importPreview, setImportPreview] = useState(null);
+        const [dragActive, setDragActive] = useState(false);
+        const fileRef = useRef(null);
+
+        const SNAPSHOT_VERSION = '1.0';
+
+        const buildSnapshot = () => {
+            const snapshot = {
+                alloflowSnapshot: true,
+                version: SNAPSHOT_VERSION,
+                exportedAt: new Date().toISOString(),
+                exportedBy: role,
+                studentCodename: studentName || 'Unknown',
+                message: message.trim() || null,
+                behaviorLens: {
+                    abcEntries: includeAbc ? abcEntries : [],
+                    observationSessions: includeObs ? observationSessions : [],
+                    aiAnalysis: includeAi ? (aiAnalysis || null) : null,
+                },
+                crossModule: null,
+            };
+            return snapshot;
+        };
+
+        const handleExport = () => {
+            const snapshot = buildSnapshot();
+            const content = JSON.stringify(snapshot, null, 2);
+            const dateSuffix = new Date().toISOString().split('T')[0];
+            const safeName = (studentName || 'student').replace(/\s/g, '_');
+            const filename = `alloflow_snapshot_${safeName}_${role}_${dateSuffix}.json`;
+            const blob = new Blob([content], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = filename; a.click();
+            URL.revokeObjectURL(url);
+            addToast && addToast(`Snapshot exported as ${filename}`, 'success');
+        };
+
+        const parseFile = (file) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (!data.alloflowSnapshot) {
+                        addToast && addToast('Not a valid AlloFlow snapshot file', 'error');
+                        return;
+                    }
+                    // Count duplicates
+                    const existingTs = new Set(abcEntries.map(e => e.timestamp));
+                    const newAbc = (data.behaviorLens?.abcEntries || []).filter(e => !existingTs.has(e.timestamp));
+                    const existingObsTs = new Set(observationSessions.map(s => s.timestamp));
+                    const newObs = (data.behaviorLens?.observationSessions || []).filter(s => !existingObsTs.has(s.timestamp));
+                    const dupeCount = (data.behaviorLens?.abcEntries?.length || 0) - newAbc.length + (data.behaviorLens?.observationSessions?.length || 0) - newObs.length;
+                    setImportPreview({
+                        raw: data,
+                        newAbc,
+                        newObs,
+                        dupeCount,
+                        hasAi: !!data.behaviorLens?.aiAnalysis,
+                    });
+                } catch (err) {
+                    addToast && addToast('Failed to parse snapshot file', 'error');
+                }
+            };
+            reader.readAsText(file);
+        };
+
+        const handleDrop = (e) => {
+            e.preventDefault();
+            setDragActive(false);
+            const file = e.dataTransfer?.files?.[0];
+            if (file) parseFile(file);
+        };
+
+        const handleFileInput = (e) => {
+            const file = e.target.files?.[0];
+            if (file) parseFile(file);
+        };
+
+        const handleMerge = () => {
+            if (!importPreview) return;
+            const { newAbc, newObs, raw } = importPreview;
+            if (newAbc.length > 0) setAbcEntries(prev => [...prev, ...newAbc].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)));
+            if (newObs.length > 0) setObservationSessions(prev => [...prev, ...newObs].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)));
+            addToast && addToast(`Merged ${newAbc.length} ABC entries and ${newObs.length} observations`, 'success');
+            setImportPreview(null);
+        };
+
+        // Export tab UI
+        const renderExport = () => h('div', { className: 'space-y-4' },
+            // Role selector
+            h('div', null,
+                h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-1' }, 'Your Role'),
+                h('div', { className: 'flex gap-2' },
+                    [['educator', '🏫 Educator'], ['family', '👨‍👩‍👧 Family']].map(([key, label]) =>
+                        h('button', {
+                            key, onClick: () => setRole(key),
+                            className: `flex-1 py-2.5 rounded-lg text-sm font-bold transition-all ${role === key ? 'bg-cyan-600 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`
+                        }, label)
+                    )
+                )
+            ),
+            // Privacy controls
+            h('div', null,
+                h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-2' }, 'Data to Include'),
+                h('div', { className: 'space-y-2' },
+                    [['abc', includeAbc, setIncludeAbc, `📋 ABC Observations (${abcEntries.length})`],
+                    ['obs', includeObs, setIncludeObs, `🔍 Observation Sessions (${observationSessions.length})`],
+                    ['ai', includeAi, setIncludeAi, '🧠 AI Analysis']].map(([key, val, setter, label]) =>
+                        h('label', { key, className: 'flex items-center gap-2 bg-slate-50 p-2.5 rounded-lg border border-slate-100 cursor-pointer hover:border-cyan-200 transition-colors' },
+                            h('input', { type: 'checkbox', checked: val, onChange: () => setter(!val), className: 'w-4 h-4 text-cyan-600 rounded' }),
+                            h('span', { className: 'text-sm font-medium text-slate-700' }, label)
+                        )
+                    )
+                )
+            ),
+            // Codename preview
+            h('div', { className: 'bg-cyan-50 rounded-lg p-3 border border-cyan-100 flex items-center gap-2' },
+                h('span', { className: 'text-lg' }, '🏷️'),
+                h('div', null,
+                    h('div', { className: 'text-[10px] font-bold text-cyan-600 uppercase' }, 'Student Codename'),
+                    h('div', { className: 'text-sm font-black text-cyan-900' }, studentName || 'Not assigned')
+                )
+            ),
+            // Optional message
+            h('div', null,
+                h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-1' }, 'Optional Message'),
+                h('textarea', {
+                    value: message, onChange: e => setMessage(e.target.value),
+                    placeholder: role === 'educator' ? 'Notes for the family... (e.g., strategies that worked well this week)' : 'Notes for the teacher... (e.g., what happened at home over the weekend)',
+                    rows: 3,
+                    className: 'w-full text-sm p-3 border-2 border-slate-200 rounded-xl focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/20 outline-none transition-all resize-none'
+                })
+            ),
+            // Export button
+            h('button', {
+                onClick: handleExport,
+                disabled: !includeAbc && !includeObs && !includeAi,
+                className: 'w-full py-3 bg-gradient-to-r from-cyan-600 to-teal-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl disabled:opacity-40 transition-all flex items-center justify-center gap-2'
+            }, h('span', null, '📦'), `Export ${role === 'educator' ? 'Educator' : 'Family'} Snapshot`)
+        );
+
+        // Import tab UI
+        const renderImport = () => h('div', { className: 'space-y-4' },
+            !importPreview ? (
+                // Drag-drop zone
+                h('div', {
+                    onDragOver: (e) => { e.preventDefault(); setDragActive(true); },
+                    onDragLeave: () => setDragActive(false),
+                    onDrop: handleDrop,
+                    onClick: () => fileRef.current?.click(),
+                    className: `border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all ${dragActive ? 'border-cyan-500 bg-cyan-50' : 'border-slate-200 hover:border-cyan-300 hover:bg-slate-50'}`
+                },
+                    h('div', { className: 'text-4xl mb-3' }, '📥'),
+                    h('p', { className: 'text-sm font-bold text-slate-700 mb-1' }, 'Drop a Snapshot File Here'),
+                    h('p', { className: 'text-xs text-slate-400' }, 'or click to browse (.json)'),
+                    h('input', { ref: fileRef, type: 'file', accept: '.json', onChange: handleFileInput, className: 'hidden' })
+                )
+            ) : (
+                // Preview & merge
+                h('div', { className: 'space-y-3' },
+                    h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 shadow-sm' },
+                        h('div', { className: 'flex items-center gap-2 mb-3' },
+                            h('span', { className: 'text-xl' }, importPreview.raw.exportedBy === 'family' ? '👨‍👩‍👧' : '🏫'),
+                            h('div', null,
+                                h('div', { className: 'text-sm font-black text-slate-800' }, `From: ${importPreview.raw.exportedBy === 'family' ? 'Family' : 'Educator'}`),
+                                h('div', { className: 'text-[10px] text-slate-400' }, `Exported ${new Date(importPreview.raw.exportedAt).toLocaleString()}`)
+                            )
+                        ),
+                        h('div', { className: 'text-xs text-slate-500 mb-1' }, `Student: ${importPreview.raw.studentCodename || '—'}`),
+                        importPreview.raw.message && h('div', { className: 'bg-cyan-50 border border-cyan-100 rounded-lg p-2.5 text-xs text-cyan-800 mt-2 italic' }, `💬 "${importPreview.raw.message}"`)
+                    ),
+                    // Data summary
+                    h('div', { className: 'bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-2 text-xs' },
+                        h('div', { className: 'font-bold text-slate-700 mb-1' }, 'Incoming Data'),
+                        h('div', { className: 'flex justify-between' }, h('span', null, '📋 New ABC Entries'), h('span', { className: 'font-bold text-emerald-600' }, `+${importPreview.newAbc.length}`)),
+                        h('div', { className: 'flex justify-between' }, h('span', null, '🔍 New Observations'), h('span', { className: 'font-bold text-emerald-600' }, `+${importPreview.newObs.length}`)),
+                        importPreview.hasAi && h('div', { className: 'flex justify-between' }, h('span', null, '🧠 AI Analysis'), h('span', { className: 'font-bold text-blue-600' }, 'Included')),
+                        importPreview.dupeCount > 0 && h('div', { className: 'text-amber-600 mt-1 flex items-center gap-1' }, `⚠️ ${importPreview.dupeCount} duplicate(s) will be skipped`)
+                    ),
+                    // Codename mismatch warning
+                    importPreview.raw.studentCodename && importPreview.raw.studentCodename !== studentName &&
+                    h('div', { className: 'bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-xs text-amber-800' },
+                        `⚠️ Codename mismatch: file says "${importPreview.raw.studentCodename}" but current session is "${studentName}". Data will still merge if you proceed.`),
+                    // Action buttons
+                    h('div', { className: 'flex gap-2' },
+                        h('button', {
+                            onClick: () => setImportPreview(null),
+                            className: 'flex-1 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-all'
+                        }, 'Cancel'),
+                        h('button', {
+                            onClick: handleMerge,
+                            disabled: importPreview.newAbc.length === 0 && importPreview.newObs.length === 0,
+                            className: 'flex-1 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-bold shadow-lg hover:shadow-xl disabled:opacity-40 transition-all'
+                        }, '✅ Merge Data')
+                    )
+                )
+            )
+        );
+
+        return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
+            h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4' },
+                h('div', { className: 'flex items-center gap-2 mb-1' },
+                    h('span', { className: 'text-lg' }, '📦'),
+                    h('h3', { className: 'text-sm font-black text-slate-800' }, 'Student Snapshot Exchange')
+                ),
+                h('p', { className: 'text-xs text-slate-500 leading-relaxed -mt-2' },
+                    'Share behavioral data with families or colleagues via JSON files — no shared platform needed. Export your observations, send the file, and have the other party import it.'),
+                // Tab selector
+                h('div', { className: 'flex gap-2 bg-slate-50 p-1 rounded-lg' },
+                    [['export', '↗️ Export'], ['import', '↙️ Import']].map(([key, label]) =>
+                        h('button', {
+                            key, onClick: () => { setTab(key); setImportPreview(null); },
+                            className: `flex-1 py-2 rounded-md text-sm font-bold transition-all ${tab === key ? 'bg-white text-cyan-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`
+                        }, label)
+                    )
+                ),
+                // Tab content
+                tab === 'export' ? renderExport() : renderImport()
+            )
+        );
+    };
+
     // ─── BehaviorTab (Hub) ──────────────────────────────────────────────
     // The main hub component that renders inside a fullscreen overlay
     window.AlloModules = window.AlloModules || {};
@@ -4525,7 +4757,7 @@ Respond only with the student's words:`;
         const [isParentMode, setIsParentMode] = useState(!isTeacherMode && false);
 
         // Parent-friendly tool IDs (shown when isParentMode is true)
-        const parentTools = ['overview', 'token', 'traffic', 'choice', 'homelog', 'abaguide', 'homenote', 'pocket'];
+        const parentTools = ['overview', 'token', 'traffic', 'choice', 'homelog', 'abaguide', 'homenote', 'pocket', 'snapshot'];
 
         // Two-dropdown codename system (adjective + animal)
         const adjectives = useMemo(() => t('codenames.adjectives') || [], [t]);
@@ -4869,6 +5101,13 @@ Analyze this data and return ONLY valid JSON:
                     color: 'teal',
                 },
                 {
+                    id: 'snapshot',
+                    icon: '📦',
+                    title: t('behavior_lens.hub.snapshot_title') || 'Student Snapshot Exchange',
+                    desc: t('behavior_lens.hub.snapshot_desc') || 'Export & import JSON snapshots for parent–teacher data exchange',
+                    color: 'cyan',
+                },
+                {
                     id: 'homelog',
                     icon: '🏠',
                     title: t('behavior_lens.hub.homelog_title') || 'Home Behavior Log',
@@ -5152,7 +5391,8 @@ Analyze this data and return ONLY valid JSON:
                                                                                                                         activePanel === 'pocket' ? (t('behavior_lens.pocket.title') || 'Pocket BIP') :
                                                                                                                             activePanel === 'abaguide' ? (t('behavior_lens.abaguide.title') || 'ABA Quick Guide') :
                                                                                                                                 activePanel === 'counseling' ? (t('behavior_lens.counseling.title') || 'Counseling Simulation') :
-                                                                                                                                    activePanel === 'homelog' ? (t('behavior_lens.homelog.title') || 'Home Behavior Log') : ''
+                                                                                                                                    activePanel === 'snapshot' ? (t('behavior_lens.snapshot.title') || 'Student Snapshot Exchange') :
+                                                                                                                                        activePanel === 'homelog' ? (t('behavior_lens.homelog.title') || 'Home Behavior Log') : ''
                             )
                         )
                     ),
@@ -5346,6 +5586,16 @@ Analyze this data and return ONLY valid JSON:
                     abcEntries,
                     aiAnalysis,
                     callGemini,
+                    t,
+                    addToast
+                }),
+                activePanel === 'snapshot' && h(SnapshotExchange, {
+                    studentName: selectedStudent,
+                    abcEntries,
+                    observationSessions,
+                    aiAnalysis,
+                    setAbcEntries,
+                    setObservationSessions,
                     t,
                     addToast
                 })
