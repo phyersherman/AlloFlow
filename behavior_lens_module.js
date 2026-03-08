@@ -227,6 +227,11 @@
         const [sortField, setSortField] = useState('timestamp');
         const [sortDir, setSortDir] = useState('desc');
         const [filterBehavior, setFilterBehavior] = useState('all');
+        const [searchText, setSearchText] = useState('');
+        const [dateRange, setDateRange] = useState('all'); // today, 7, 30, all
+        const [selectedIds, setSelectedIds] = useState(new Set());
+        const [expandedId, setExpandedId] = useState(null);
+        const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
 
         const uniqueBehaviors = useMemo(() => {
             const set = new Set(entries.map(e => e.behavior));
@@ -234,7 +239,36 @@
         }, [entries]);
 
         const sorted = useMemo(() => {
-            let filtered = filterBehavior === 'all' ? entries : entries.filter(e => e.behavior === filterBehavior);
+            const now = new Date();
+            let filtered = entries;
+
+            // Behavior filter
+            if (filterBehavior !== 'all') filtered = filtered.filter(e => e.behavior === filterBehavior);
+
+            // Date range filter
+            if (dateRange !== 'all') {
+                const days = dateRange === 'today' ? 1 : parseInt(dateRange);
+                const cutoff = new Date(now);
+                if (dateRange === 'today') {
+                    cutoff.setHours(0, 0, 0, 0);
+                } else {
+                    cutoff.setDate(cutoff.getDate() - days);
+                }
+                filtered = filtered.filter(e => new Date(e.timestamp) >= cutoff);
+            }
+
+            // Text search
+            if (searchText.trim()) {
+                const q = searchText.toLowerCase().trim();
+                filtered = filtered.filter(e =>
+                    (e.antecedent || '').toLowerCase().includes(q) ||
+                    (e.behavior || '').toLowerCase().includes(q) ||
+                    (e.consequence || '').toLowerCase().includes(q) ||
+                    (e.notes || '').toLowerCase().includes(q) ||
+                    (e.setting || '').toLowerCase().includes(q)
+                );
+            }
+
             return [...filtered].sort((a, b) => {
                 if (sortField === 'timestamp') {
                     return sortDir === 'desc'
@@ -245,7 +279,7 @@
                 const vb = b[sortField] || '';
                 return sortDir === 'desc' ? vb.localeCompare(va) : va.localeCompare(vb);
             });
-        }, [entries, sortField, sortDir, filterBehavior]);
+        }, [entries, sortField, sortDir, filterBehavior, searchText, dateRange]);
 
         const handleSaveEntry = (entry) => {
             setEntries(prev => {
@@ -264,7 +298,32 @@
 
         const handleDelete = (id) => {
             setEntries(prev => prev.filter(e => e.id !== id));
+            setSelectedIds(prev => { const n = new Set(prev); n.delete(id); return n; });
             if (addToast) addToast(t('behavior_lens.abc.entry_deleted') || 'Entry deleted', 'info');
+        };
+
+        const handleBulkDelete = () => {
+            if (selectedIds.size === 0) return;
+            setEntries(prev => prev.filter(e => !selectedIds.has(e.id)));
+            if (addToast) addToast(`${selectedIds.size} entries deleted`, 'info');
+            setSelectedIds(new Set());
+            setConfirmBulkDelete(false);
+        };
+
+        const toggleSelect = (id) => {
+            setSelectedIds(prev => {
+                const n = new Set(prev);
+                if (n.has(id)) n.delete(id); else n.add(id);
+                return n;
+            });
+        };
+
+        const toggleSelectAll = () => {
+            if (selectedIds.size === sorted.length) {
+                setSelectedIds(new Set());
+            } else {
+                setSelectedIds(new Set(sorted.map(e => e.id)));
+            }
         };
 
         const behaviorSummary = useMemo(() => {
@@ -275,6 +334,13 @@
             return Object.entries(counts).sort((a, b) => b[1] - a[1]);
         }, [entries]);
 
+        const dateRangeOpts = [
+            { key: 'all', label: 'All' },
+            { key: 'today', label: 'Today' },
+            { key: '7', label: '7d' },
+            { key: '30', label: '30d' }
+        ];
+
         return h('div', { className: 'space-y-4' },
             // Header with add button
             h('div', { className: 'flex items-center justify-between' },
@@ -284,7 +350,8 @@
                     ),
                     h('p', { className: 'text-xs text-slate-500 mt-0.5' },
                         studentName ? `${t('behavior_lens.abc.for_student') || 'For'}: ${studentName}` : '',
-                        entries.length > 0 && ` — ${entries.length} ${t('behavior_lens.abc.entries') || 'entries'}`
+                        entries.length > 0 && ` — ${entries.length} ${t('behavior_lens.abc.entries') || 'entries'}`,
+                        sorted.length !== entries.length && ` (${sorted.length} shown)`
                     )
                 ),
                 h('div', { className: 'flex items-center gap-2' },
@@ -303,18 +370,46 @@
                     }, h(Plus, { size: 14 }), t('behavior_lens.abc.add_entry') || 'Add Entry')
                 )
             ),
-            // Filter bar
-            entries.length > 0 && h('div', { className: 'flex items-center gap-2 flex-wrap' },
-                h('span', { className: 'text-xs font-bold text-slate-500' }, '🔍 ', t('behavior_lens.filter') || 'Filter:'),
-                uniqueBehaviors.map(beh =>
-                    h('button', {
-                        key: beh,
-                        onClick: () => setFilterBehavior(beh),
-                        className: `text-[11px] px-2.5 py-1 rounded-full border transition-all ${filterBehavior === beh
-                            ? 'bg-indigo-600 text-white border-indigo-600'
-                            : 'bg-white text-slate-500 border-slate-200 hover:border-indigo-300'
-                            }`
-                    }, beh === 'all' ? (t('behavior_lens.all') || 'All') : beh)
+            // Search + Date range + Behavior filter bar
+            entries.length > 0 && h('div', { className: 'space-y-2' },
+                // Search bar
+                h('div', { className: 'flex items-center gap-2' },
+                    h('div', { className: 'relative flex-1' },
+                        h('input', {
+                            value: searchText,
+                            onChange: e => setSearchText(e.target.value),
+                            placeholder: 'Search antecedent, behavior, consequence, notes, setting...',
+                            className: 'w-full text-xs pl-8 pr-3 py-2 border border-slate-200 rounded-lg focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 outline-none transition-all'
+                        }),
+                        h('span', { className: 'absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs' }, '🔍')
+                    ),
+                    // Date range buttons
+                    h('div', { className: 'flex items-center bg-slate-100 rounded-lg p-0.5' },
+                        dateRangeOpts.map(opt =>
+                            h('button', {
+                                key: opt.key,
+                                onClick: () => setDateRange(opt.key),
+                                className: `text-[10px] px-2.5 py-1.5 rounded-md font-bold transition-all ${dateRange === opt.key
+                                    ? 'bg-white text-indigo-700 shadow-sm'
+                                    : 'text-slate-500 hover:text-slate-700'
+                                    }`
+                            }, opt.label)
+                        )
+                    )
+                ),
+                // Behavior filter pills
+                h('div', { className: 'flex items-center gap-2 flex-wrap' },
+                    h('span', { className: 'text-xs font-bold text-slate-500' }, t('behavior_lens.filter') || 'Filter:'),
+                    uniqueBehaviors.map(beh =>
+                        h('button', {
+                            key: beh,
+                            onClick: () => setFilterBehavior(beh),
+                            className: `text-[11px] px-2.5 py-1 rounded-full border transition-all ${filterBehavior === beh
+                                ? 'bg-indigo-600 text-white border-indigo-600'
+                                : 'bg-white text-slate-500 border-slate-200 hover:border-indigo-300'
+                                }`
+                        }, beh === 'all' ? (t('behavior_lens.all') || 'All') : beh)
+                    )
                 )
             ),
             // Quick summary chips
@@ -325,6 +420,30 @@
                         className: 'text-xs px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 font-medium'
                     }, `${beh}: `, h('span', { className: 'font-black text-indigo-600' }, count))
                 )
+            ),
+            // Bulk actions bar
+            selectedIds.size > 0 && h('div', { className: 'flex items-center gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5' },
+                h('span', { className: 'text-xs font-bold text-red-700' }, `${selectedIds.size} selected`),
+                !confirmBulkDelete
+                    ? h('button', {
+                        onClick: () => setConfirmBulkDelete(true),
+                        className: 'text-[10px] px-3 py-1 bg-red-600 text-white rounded-lg font-bold hover:bg-red-500 transition-all'
+                    }, '🗑 Delete Selected')
+                    : h('div', { className: 'flex items-center gap-2' },
+                        h('span', { className: 'text-[10px] text-red-700 font-bold' }, 'Are you sure?'),
+                        h('button', {
+                            onClick: handleBulkDelete,
+                            className: 'text-[10px] px-3 py-1 bg-red-700 text-white rounded-lg font-black hover:bg-red-600 transition-all'
+                        }, 'Yes, Delete'),
+                        h('button', {
+                            onClick: () => setConfirmBulkDelete(false),
+                            className: 'text-[10px] px-3 py-1 bg-white text-slate-600 border border-slate-200 rounded-lg font-bold hover:bg-slate-50 transition-all'
+                        }, 'Cancel')
+                    ),
+                h('button', {
+                    onClick: () => { setSelectedIds(new Set()); setConfirmBulkDelete(false); },
+                    className: 'ml-auto text-[10px] text-red-400 hover:text-red-600 font-bold transition-colors'
+                }, 'Clear selection')
             ),
             // Entries table
             entries.length === 0
@@ -337,76 +456,130 @@
                         t('behavior_lens.abc.no_entries_hint') || 'Click "Add Entry" to start recording behavioral observations'
                     )
                 )
-                : h('div', { className: 'bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm' },
-                    h('div', { className: 'overflow-x-auto' },
-                        h('table', { className: 'w-full text-sm' },
-                            h('thead', null,
-                                h('tr', { className: 'bg-slate-50 border-b border-slate-200' },
-                                    ['timestamp', 'antecedent', 'behavior', 'consequence', 'intensity'].map(col =>
-                                        h('th', {
-                                            key: col,
-                                            onClick: () => {
-                                                if (sortField === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-                                                else { setSortField(col); setSortDir('desc'); }
+                : sorted.length === 0
+                    ? h('div', { className: 'text-center py-10 bg-white rounded-xl border border-slate-200' },
+                        h('div', { className: 'text-2xl mb-2' }, '🔍'),
+                        h('p', { className: 'text-sm font-bold text-slate-500' }, 'No entries match your filters'),
+                        h('button', {
+                            onClick: () => { setSearchText(''); setDateRange('all'); setFilterBehavior('all'); },
+                            className: 'mt-2 text-xs text-indigo-600 font-bold hover:underline'
+                        }, 'Clear all filters')
+                    )
+                    : h('div', { className: 'bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm' },
+                        h('div', { className: 'overflow-x-auto' },
+                            h('table', { className: 'w-full text-sm' },
+                                h('thead', null,
+                                    h('tr', { className: 'bg-slate-50 border-b border-slate-200' },
+                                        // Checkbox header
+                                        h('th', { className: 'px-2 py-2.5 text-center w-8' },
+                                            h('input', {
+                                                type: 'checkbox',
+                                                checked: selectedIds.size === sorted.length && sorted.length > 0,
+                                                onChange: toggleSelectAll,
+                                                className: 'w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 cursor-pointer'
+                                            })
+                                        ),
+                                        ['timestamp', 'antecedent', 'behavior', 'consequence', 'intensity'].map(col =>
+                                            h('th', {
+                                                key: col,
+                                                onClick: () => {
+                                                    if (sortField === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+                                                    else { setSortField(col); setSortDir('desc'); }
+                                                },
+                                                className: 'px-3 py-2.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wide cursor-pointer hover:text-indigo-600 transition-colors select-none'
                                             },
-                                            className: 'px-3 py-2.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wide cursor-pointer hover:text-indigo-600 transition-colors select-none'
-                                        },
-                                            col === 'timestamp' ? (t('behavior_lens.abc.time') || 'Time') :
-                                                col === 'intensity' ? '📊' :
-                                                    (t(`behavior_lens.abc.${col}`) || col.charAt(0).toUpperCase() + col.slice(1)),
-                                            sortField === col && h('span', { className: 'ml-1' }, sortDir === 'asc' ? '↑' : '↓')
-                                        )
-                                    ),
-                                    h('th', { className: 'px-3 py-2.5 text-right text-xs font-bold text-slate-500 uppercase' }, '')
-                                )
-                            ),
-                            h('tbody', null,
-                                sorted.map((entry, idx) =>
-                                    h('tr', {
-                                        key: entry.id,
-                                        className: `border-b border-slate-100 hover:bg-indigo-50/40 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`
-                                    },
-                                        h('td', { className: 'px-3 py-2.5 whitespace-nowrap' },
-                                            h('div', { className: 'text-xs font-bold text-slate-700' }, fmtDate(entry.timestamp)),
-                                            h('div', { className: 'text-[10px] text-slate-400' }, fmtTime(entry.timestamp))
-                                        ),
-                                        h('td', { className: 'px-3 py-2.5' },
-                                            h('span', { className: 'text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-medium' }, entry.antecedent)
-                                        ),
-                                        h('td', { className: 'px-3 py-2.5' },
-                                            h('span', { className: 'text-xs px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 font-bold' }, entry.behavior)
-                                        ),
-                                        h('td', { className: 'px-3 py-2.5' },
-                                            h('span', { className: 'text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-medium' }, entry.consequence)
-                                        ),
-                                        h('td', { className: 'px-3 py-2.5 text-center' },
-                                            h('div', { className: 'flex items-center gap-0.5 justify-center' },
-                                                Array.from({ length: 5 }, (_, i) =>
-                                                    h('div', {
-                                                        key: i,
-                                                        className: `w-2 h-2 rounded-full ${i < entry.intensity ? 'bg-indigo-500' : 'bg-slate-200'}`
-                                                    })
-                                                )
+                                                col === 'timestamp' ? (t('behavior_lens.abc.time') || 'Time') :
+                                                    col === 'intensity' ? '📊' :
+                                                        (t(`behavior_lens.abc.${col}`) || col.charAt(0).toUpperCase() + col.slice(1)),
+                                                sortField === col && h('span', { className: 'ml-1' }, sortDir === 'asc' ? '↑' : '↓')
                                             )
                                         ),
-                                        h('td', { className: 'px-3 py-2.5 text-right' },
-                                            h('div', { className: 'flex justify-end gap-1' },
-                                                h('button', {
-                                                    onClick: () => { setEditEntry(entry); setShowModal(true); },
-                                                    className: 'p-1 rounded hover:bg-indigo-100 text-slate-400 hover:text-indigo-600 transition-colors'
-                                                }, h(Edit2, { size: 13 })),
-                                                h('button', {
-                                                    onClick: () => handleDelete(entry.id),
-                                                    className: 'p-1 rounded hover:bg-red-100 text-slate-400 hover:text-red-600 transition-colors'
-                                                }, h(Trash2, { size: 13 }))
+                                        // Notes indicator header
+                                        h('th', { className: 'px-2 py-2.5 text-center text-xs font-bold text-slate-400 w-8' }, '📝'),
+                                        h('th', { className: 'px-3 py-2.5 text-right text-xs font-bold text-slate-500 uppercase' }, '')
+                                    )
+                                ),
+                                h('tbody', null,
+                                    sorted.map((entry, idx) =>
+                                        h(React.Fragment, { key: entry.id },
+                                            h('tr', {
+                                                className: `border-b border-slate-100 hover:bg-indigo-50/40 transition-colors ${selectedIds.has(entry.id) ? 'bg-indigo-50/60' : idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`
+                                            },
+                                                // Checkbox
+                                                h('td', { className: 'px-2 py-2.5 text-center' },
+                                                    h('input', {
+                                                        type: 'checkbox',
+                                                        checked: selectedIds.has(entry.id),
+                                                        onChange: () => toggleSelect(entry.id),
+                                                        className: 'w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 cursor-pointer'
+                                                    })
+                                                ),
+                                                h('td', { className: 'px-3 py-2.5 whitespace-nowrap' },
+                                                    h('div', { className: 'text-xs font-bold text-slate-700' }, fmtDate(entry.timestamp)),
+                                                    h('div', { className: 'text-[10px] text-slate-400' }, fmtTime(entry.timestamp))
+                                                ),
+                                                h('td', { className: 'px-3 py-2.5' },
+                                                    h('span', { className: 'text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-medium' }, entry.antecedent)
+                                                ),
+                                                h('td', { className: 'px-3 py-2.5' },
+                                                    h('span', { className: 'text-xs px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 font-bold' }, entry.behavior)
+                                                ),
+                                                h('td', { className: 'px-3 py-2.5' },
+                                                    h('span', { className: 'text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-medium' }, entry.consequence)
+                                                ),
+                                                h('td', { className: 'px-3 py-2.5 text-center' },
+                                                    h('div', { className: 'flex items-center gap-0.5 justify-center' },
+                                                        Array.from({ length: 5 }, (_, i) =>
+                                                            h('div', {
+                                                                key: i,
+                                                                className: `w-2 h-2 rounded-full ${i < entry.intensity ? 'bg-indigo-500' : 'bg-slate-200'}`
+                                                            })
+                                                        )
+                                                    )
+                                                ),
+                                                // Notes indicator
+                                                h('td', { className: 'px-2 py-2.5 text-center' },
+                                                    (entry.notes || entry.setting) && h('button', {
+                                                        onClick: () => setExpandedId(expandedId === entry.id ? null : entry.id),
+                                                        className: `text-xs transition-all ${expandedId === entry.id ? 'text-indigo-600' : 'text-slate-300 hover:text-indigo-400'}`,
+                                                        title: entry.notes ? 'View notes' : 'View setting'
+                                                    }, expandedId === entry.id ? '▾' : '📝')
+                                                ),
+                                                h('td', { className: 'px-3 py-2.5 text-right' },
+                                                    h('div', { className: 'flex justify-end gap-1' },
+                                                        h('button', {
+                                                            onClick: () => { setEditEntry(entry); setShowModal(true); },
+                                                            className: 'p-1 rounded hover:bg-indigo-100 text-slate-400 hover:text-indigo-600 transition-colors'
+                                                        }, h(Edit2, { size: 13 })),
+                                                        h('button', {
+                                                            onClick: () => handleDelete(entry.id),
+                                                            className: 'p-1 rounded hover:bg-red-100 text-slate-400 hover:text-red-600 transition-colors'
+                                                        }, h(Trash2, { size: 13 }))
+                                                    )
+                                                )
+                                            ),
+                                            // Expandable notes row
+                                            expandedId === entry.id && (entry.notes || entry.setting) &&
+                                            h('tr', { className: 'bg-indigo-50/30' },
+                                                h('td', { colSpan: 8, className: 'px-6 py-3' },
+                                                    h('div', { className: 'flex gap-6' },
+                                                        entry.setting && h('div', null,
+                                                            h('span', { className: 'text-[10px] font-bold text-slate-500 uppercase' }, '📍 Setting'),
+                                                            h('p', { className: 'text-xs text-slate-700 mt-0.5' }, entry.setting)
+                                                        ),
+                                                        entry.notes && h('div', { className: 'flex-1' },
+                                                            h('span', { className: 'text-[10px] font-bold text-slate-500 uppercase' }, '📝 Notes'),
+                                                            h('p', { className: 'text-xs text-slate-700 mt-0.5 leading-relaxed' }, entry.notes)
+                                                        )
+                                                    )
+                                                )
                                             )
                                         )
                                     )
                                 )
                             )
                         )
-                    )
-                ),
+                    ),
             // Modal
             showModal && h(ABCModal, {
                 entry: editEntry,
@@ -699,10 +872,55 @@
             const topConsequences = Object.entries(consequenceCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
             const topSettings = Object.entries(settingCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
             const avgIntensity = filtered.length > 0 ? (filtered.reduce((s, e) => s + (e.intensity || 0), 0) / filtered.length).toFixed(1) : '—';
+
+            // Week-over-week comparison
+            const twoWeeksAgo = new Date(now - 14 * 24 * 60 * 60 * 1000);
+            const lastWeek = abcEntries.filter(e => { const d = new Date(e.timestamp); return d >= twoWeeksAgo && d < weekAgo; });
+            const wowCountChange = thisWeek.length - lastWeek.length;
+            const wowCountPct = lastWeek.length > 0 ? Math.round(((thisWeek.length - lastWeek.length) / lastWeek.length) * 100) : null;
+            const thisWeekAvgI = thisWeek.length > 0 ? thisWeek.reduce((s, e) => s + (e.intensity || 0), 0) / thisWeek.length : 0;
+            const lastWeekAvgI = lastWeek.length > 0 ? lastWeek.reduce((s, e) => s + (e.intensity || 0), 0) / lastWeek.length : 0;
+            const wowIntensityChange = thisWeekAvgI - lastWeekAvgI;
+
+            // Antecedent → Behavior correlation matrix
+            const topBehaviors = Object.entries(filtered.reduce((m, e) => { if (e.behavior) m[e.behavior] = (m[e.behavior] || 0) + 1; return m; }, {})).sort((a, b) => b[1] - a[1]).slice(0, 5).map(x => x[0]);
+            const topAntecedentstNames = topAntecedents.map(x => x[0]);
+            const corrMatrix = {};
+            let corrMax = 1;
+            topAntecedentstNames.forEach(a => {
+                corrMatrix[a] = {};
+                topBehaviors.forEach(b => {
+                    const count = filtered.filter(e => e.antecedent === a && e.behavior === b).length;
+                    corrMatrix[a][b] = count;
+                    if (count > corrMax) corrMax = count;
+                });
+            });
+
+            // AI insight extraction
+            const abcChains = {};
+            filtered.forEach(e => {
+                if (e.antecedent && e.behavior && e.consequence) {
+                    const chain = `${e.antecedent} → ${e.behavior} → ${e.consequence}`;
+                    abcChains[chain] = (abcChains[chain] || 0) + 1;
+                }
+            });
+            const topChain = Object.entries(abcChains).sort((a, b) => b[1] - a[1])[0] || null;
+            // Peak risk = hour + setting combo
+            const hourSettingMap = {};
+            filtered.forEach(e => {
+                const hr = new Date(e.timestamp).getHours();
+                const key = `${hr}:00–${hr + 1}:00 in ${e.setting || 'unknown'}`;
+                hourSettingMap[key] = (hourSettingMap[key] || 0) + 1;
+            });
+            const peakRisk = Object.entries(hourSettingMap).sort((a, b) => b[1] - a[1])[0] || null;
+
             return {
-                filtered, thisWeek, topAntecedents, topConsequences, topSettings, intensities,
+                filtered, thisWeek, lastWeek, topAntecedents, topConsequences, topSettings, intensities,
                 dayMap, avgIntensity, totalAbc: filtered.length, totalObs: observationSessions.length,
-                trendData, hourMap, allAbc: abcEntries.length
+                trendData, hourMap, allAbc: abcEntries.length,
+                wowCountChange, wowCountPct, thisWeekAvgI, lastWeekAvgI, wowIntensityChange,
+                topBehaviors, corrMatrix, corrMax,
+                topChain, peakRisk
             };
         }, [abcEntries, observationSessions, dateRange]);
 
@@ -760,6 +978,44 @@
                 renderStatCard('🔍', 'Observations', stats.totalObs, 'emerald'),
                 renderStatCard('📅', 'This Week', stats.thisWeek.length, 'sky'),
                 renderStatCard('⚡', 'Avg Intensity', stats.avgIntensity, 'amber')
+            ),
+            // Week-over-week comparison strip
+            (stats.thisWeek.length > 0 || stats.lastWeek.length > 0) && h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 shadow-sm' },
+                h('h3', { className: 'text-xs font-black text-slate-500 uppercase mb-3' }, '📊 Week-over-Week Comparison'),
+                h('div', { className: 'grid grid-cols-2 gap-4' },
+                    // Count comparison
+                    h('div', { className: 'flex items-center gap-3 p-3 rounded-lg bg-slate-50' },
+                        h('div', { className: 'text-center' },
+                            h('div', { className: 'text-[10px] text-slate-400 uppercase font-bold' }, 'Last Week'),
+                            h('div', { className: 'text-xl font-black text-slate-500' }, stats.lastWeek.length)
+                        ),
+                        h('div', { className: 'text-lg font-black text-slate-300' }, '→'),
+                        h('div', { className: 'text-center' },
+                            h('div', { className: 'text-[10px] text-slate-400 uppercase font-bold' }, 'This Week'),
+                            h('div', { className: 'text-xl font-black text-slate-700' }, stats.thisWeek.length)
+                        ),
+                        h('div', { className: `text-center px-2.5 py-1 rounded-full text-xs font-black ${stats.wowCountChange <= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}` },
+                            stats.wowCountChange <= 0 ? '↓' : '↑',
+                            ' ', Math.abs(stats.wowCountChange),
+                            stats.wowCountPct !== null ? ` (${stats.wowCountPct > 0 ? '+' : ''}${stats.wowCountPct}%)` : ' (new)'
+                        )
+                    ),
+                    // Intensity comparison
+                    h('div', { className: 'flex items-center gap-3 p-3 rounded-lg bg-slate-50' },
+                        h('div', { className: 'text-center' },
+                            h('div', { className: 'text-[10px] text-slate-400 uppercase font-bold' }, 'Avg Intensity'),
+                            h('div', { className: 'text-xl font-black text-slate-500' }, stats.lastWeekAvgI.toFixed(1))
+                        ),
+                        h('div', { className: 'text-lg font-black text-slate-300' }, '→'),
+                        h('div', { className: 'text-center' },
+                            h('div', { className: 'text-[10px] text-slate-400 uppercase font-bold' }, 'Now'),
+                            h('div', { className: 'text-xl font-black text-slate-700' }, stats.thisWeekAvgI.toFixed(1))
+                        ),
+                        stats.wowIntensityChange !== 0 && h('div', { className: `text-center px-2.5 py-1 rounded-full text-xs font-black ${stats.wowIntensityChange <= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}` },
+                            stats.wowIntensityChange <= 0 ? '↓ Improving' : '↑ Rising'
+                        )
+                    )
+                )
             ),
             // Trend chart
             stats.trendData.length > 0 && h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm' },
@@ -863,6 +1119,45 @@
                     renderBarChart(stats.topConsequences, stats.topConsequences[0]?.[1] || 1, 'purple')
                 )
             ),
+            // Antecedent → Behavior Correlation Matrix
+            stats.topBehaviors.length > 0 && Object.keys(stats.corrMatrix).length > 0 &&
+            h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm' },
+                h('h3', { className: 'text-sm font-black text-slate-800 mb-1' }, '🔗 Antecedent → Behavior Correlations'),
+                h('p', { className: 'text-[10px] text-slate-400 mb-3' }, 'Darker cells indicate stronger co-occurrence between a trigger and behavior'),
+                h('div', { className: 'overflow-x-auto' },
+                    h('table', { className: 'w-full text-xs', style: { borderCollapse: 'separate', borderSpacing: '2px' } },
+                        h('thead', null,
+                            h('tr', null,
+                                h('th', { className: 'text-right pr-2 text-[10px] text-slate-400 font-bold w-28' }, ''),
+                                ...stats.topBehaviors.map(b => h('th', { key: b, className: 'text-center text-[10px] text-slate-500 font-bold px-1 py-1 max-w-[80px] truncate', title: b }, b))
+                            )
+                        ),
+                        h('tbody', null,
+                            Object.entries(stats.corrMatrix).map(([ante, bMap]) =>
+                                h('tr', { key: ante },
+                                    h('td', { className: 'text-right pr-2 text-[10px] text-slate-600 font-medium truncate max-w-[100px]', title: ante }, ante),
+                                    ...stats.topBehaviors.map(b => {
+                                        const count = bMap[b] || 0;
+                                        const opacity = count > 0 ? 0.15 + (count / stats.corrMax) * 0.85 : 0;
+                                        return h('td', {
+                                            key: b,
+                                            className: 'text-center rounded-md transition-all',
+                                            style: {
+                                                background: count > 0 ? `rgba(99, 102, 241, ${opacity})` : '#f8fafc',
+                                                padding: '6px 4px',
+                                                minWidth: '36px'
+                                            },
+                                            title: `${ante} + ${b}: ${count}`
+                                        },
+                                            h('span', { className: `font-black ${count > 0 ? (opacity > 0.5 ? 'text-white' : 'text-indigo-700') : 'text-slate-200'}` }, count)
+                                        );
+                                    })
+                                )
+                            )
+                        )
+                    )
+                )
+            ),
             // Intensity distribution
             h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm' },
                 h('h3', { className: 'text-sm font-black text-slate-800 mb-3' }, '🌡️ ', t('behavior_lens.overview.intensity_dist') || 'Intensity Distribution'),
@@ -882,13 +1177,34 @@
                     })
                 )
             ),
-            // AI Analysis summary (if available)
-            aiAnalysis && h('div', { className: 'bg-purple-50 rounded-xl border border-purple-200 p-5' },
-                h('h3', { className: 'text-sm font-black text-purple-800 mb-2' }, '🧠 ', t('behavior_lens.overview.ai_summary') || 'AI Analysis Summary'),
-                h('p', { className: 'text-sm text-purple-700' }, aiAnalysis.summary),
-                aiAnalysis.hypothesizedFunction && h('div', { className: 'mt-2 inline-flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-purple-200' },
-                    h('span', { className: 'text-xs font-bold text-purple-600' }, `Function: ${aiAnalysis.hypothesizedFunction}`),
-                    h('span', { className: 'text-xs text-purple-400' }, `(${aiAnalysis.confidence}% confidence)`)
+            // Structured AI Insight Cards
+            (aiAnalysis || stats.topChain || stats.peakRisk) &&
+            h('div', { className: 'space-y-3' },
+                h('h3', { className: 'text-sm font-black text-slate-800' }, '🧠 ', t('behavior_lens.overview.ai_summary') || 'Data Insights'),
+                h('div', { className: 'grid grid-cols-1 md:grid-cols-3 gap-3' },
+                    // Top Pattern card
+                    stats.topChain && h('div', { className: 'bg-gradient-to-br from-indigo-50 to-violet-50 rounded-xl border border-indigo-200 p-4' },
+                        h('div', { className: 'text-xs font-black text-indigo-500 uppercase mb-2 flex items-center gap-1' }, '🔗 Top Pattern'),
+                        h('p', { className: 'text-xs text-indigo-800 font-medium leading-relaxed' }, stats.topChain[0]),
+                        h('div', { className: 'mt-2 text-[10px] text-indigo-400 font-bold' }, `Occurred ${stats.topChain[1]}× in this period`)
+                    ),
+                    // Peak Risk Window card
+                    stats.peakRisk && h('div', { className: 'bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-200 p-4' },
+                        h('div', { className: 'text-xs font-black text-amber-600 uppercase mb-2 flex items-center gap-1' }, '⚠️ Peak Risk Window'),
+                        h('p', { className: 'text-xs text-amber-800 font-medium leading-relaxed' }, stats.peakRisk[0]),
+                        h('div', { className: 'mt-2 text-[10px] text-amber-500 font-bold' }, `${stats.peakRisk[1]} observations in this window`)
+                    ),
+                    // AI Recommended Focus card
+                    aiAnalysis && h('div', { className: 'bg-gradient-to-br from-purple-50 to-fuchsia-50 rounded-xl border border-purple-200 p-4' },
+                        h('div', { className: 'text-xs font-black text-purple-500 uppercase mb-2 flex items-center gap-1' }, '🎯 AI Focus'),
+                        aiAnalysis.hypothesizedFunction && h('div', { className: 'inline-flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-full border border-purple-200 mb-2' },
+                            h('span', { className: 'text-[10px] font-black text-purple-600' }, `Function: ${aiAnalysis.hypothesizedFunction}`),
+                            aiAnalysis.confidence && h('span', { className: 'text-[10px] text-purple-400' }, `${aiAnalysis.confidence}%`)
+                        ),
+                        h('p', { className: 'text-xs text-purple-700 leading-relaxed' },
+                            aiAnalysis.recommendations?.[0] || aiAnalysis.summary?.substring(0, 120) || 'Run AI analysis on your ABC data for personalized recommendations.'
+                        )
+                    )
                 )
             )
         );
@@ -2095,9 +2411,24 @@ Create a hypothesis diagram and return ONLY valid JSON:
         const [achievable, setAchievable] = useState('');
         const [relevant, setRelevant] = useState('');
         const [timeBound, setTimeBound] = useState('');
-        const [savedGoals, setSavedGoals] = useState([]);
         const [suggesting, setSuggesting] = useState(false);
         const [suggestions, setSuggestions] = useState(null);
+        const [progressGoalId, setProgressGoalId] = useState(null);
+        const [progressScore, setProgressScore] = useState(3);
+        const [progressNotes, setProgressNotes] = useState('');
+
+        const goalsKey = `behaviorLens_goals_${studentName || 'default'}`;
+        const [savedGoals, setSavedGoals] = useState(() => {
+            try {
+                const saved = localStorage.getItem(goalsKey);
+                return saved ? JSON.parse(saved) : [];
+            } catch { return []; }
+        });
+
+        // Persist on change
+        useEffect(() => {
+            try { localStorage.setItem(goalsKey, JSON.stringify(savedGoals)); } catch { }
+        }, [savedGoals, goalsKey]);
 
         const goalPreview = useMemo(() => {
             const parts = [specific, measurable, achievable, relevant, timeBound].filter(Boolean);
@@ -2145,7 +2476,11 @@ Generate 3 SMART behavioral goals and return ONLY valid JSON:
 
         const saveGoal = () => {
             if (!specific) return;
-            setSavedGoals(prev => [...prev, { id: uid(), specific, measurable, achievable, relevant, timeBound, preview: goalPreview, createdAt: new Date().toISOString() }]);
+            setSavedGoals(prev => [...prev, {
+                id: uid(), specific, measurable, achievable, relevant, timeBound,
+                preview: goalPreview, createdAt: new Date().toISOString(),
+                status: 'active', dataPoints: []
+            }]);
             setSpecific(''); setMeasurable(''); setAchievable(''); setRelevant(''); setTimeBound('');
             if (addToast) addToast('Goal saved ✅', 'success');
         };
@@ -2157,6 +2492,75 @@ Generate 3 SMART behavioral goals and return ONLY valid JSON:
             setRelevant(goal.relevant || '');
             setTimeBound(goal.timeBound || '');
             setSuggestions(null);
+        };
+
+        const setGoalStatus = (goalId, status) => {
+            setSavedGoals(prev => prev.map(g => g.id === goalId ? { ...g, status } : g));
+            if (addToast) addToast(`Goal marked as ${status}`, 'success');
+        };
+
+        const addProgressPoint = (goalId) => {
+            setSavedGoals(prev => prev.map(g => {
+                if (g.id !== goalId) return g;
+                return {
+                    ...g,
+                    dataPoints: [...(g.dataPoints || []), {
+                        date: new Date().toISOString(),
+                        score: progressScore,
+                        notes: progressNotes || null
+                    }]
+                };
+            }));
+            setProgressGoalId(null);
+            setProgressScore(3);
+            setProgressNotes('');
+            if (addToast) addToast('Progress logged 📊', 'success');
+        };
+
+        const deleteGoal = (goalId) => {
+            setSavedGoals(prev => prev.filter(g => g.id !== goalId));
+            if (addToast) addToast('Goal removed', 'info');
+        };
+
+        const statusColors = {
+            active: { bg: 'bg-emerald-100', text: 'text-emerald-700', label: '● Active' },
+            met: { bg: 'bg-blue-100', text: 'text-blue-700', label: '✓ Met' },
+            discontinued: { bg: 'bg-slate-100', text: 'text-slate-500', label: '— Discontinued' }
+        };
+
+        // CSS-only sparkline
+        const renderSparkline = (dataPoints) => {
+            if (!dataPoints || dataPoints.length < 2) return null;
+            const pts = dataPoints.slice(-12); // last 12 points
+            const maxScore = 5;
+            const w = 120;
+            const hh = 28;
+            const stepX = w / (pts.length - 1);
+            const pathParts = pts.map((p, i) => {
+                const x = i * stepX;
+                const y = hh - (p.score / maxScore) * hh;
+                return `${i === 0 ? 'M' : 'L'}${x},${y}`;
+            });
+            const lastScore = pts[pts.length - 1].score;
+            const firstScore = pts[0].score;
+            const trend = lastScore >= firstScore ? '#10b981' : '#f87171';
+            return h('svg', { width: w, height: hh + 4, className: 'inline-block' },
+                h('path', {
+                    d: pathParts.join(' '),
+                    fill: 'none',
+                    stroke: trend,
+                    strokeWidth: 2,
+                    strokeLinecap: 'round',
+                    strokeLinejoin: 'round'
+                }),
+                // Dots
+                ...pts.map((p, i) =>
+                    h('circle', {
+                        key: i, cx: i * stepX, cy: hh - (p.score / maxScore) * hh,
+                        r: 2.5, fill: 'white', stroke: trend, strokeWidth: 1.5
+                    })
+                )
+            );
         };
 
         const smartFields = [
@@ -2214,15 +2618,90 @@ Generate 3 SMART behavioral goals and return ONLY valid JSON:
                     className: 'mt-3 px-4 py-2 bg-lime-500 text-white rounded-lg font-bold text-sm hover:bg-lime-400 transition-all'
                 }, '✓ ' + (t('behavior_lens.goals.save') || 'Save Goal'))
             ),
-            // Saved goals
-            savedGoals.length > 0 && h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm' },
-                h('h4', { className: 'text-xs font-bold text-slate-600 uppercase mb-3' }, `📋 Saved Goals (${savedGoals.length})`),
-                h('div', { className: 'space-y-2' },
-                    savedGoals.map(g => h('div', { key: g.id, className: 'p-3 bg-slate-50 rounded-lg border border-slate-100 text-sm text-slate-700' },
-                        h('p', null, g.preview),
-                        h('div', { className: 'text-[10px] text-slate-400 mt-1' }, fmtDate(g.createdAt))
-                    ))
-                )
+            // Saved goals with progress tracking
+            savedGoals.length > 0 && h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4' },
+                h('h4', { className: 'text-xs font-bold text-slate-600 uppercase mb-1' }, `📋 Saved Goals (${savedGoals.length})`),
+                savedGoals.map(g => {
+                    const sc = statusColors[g.status || 'active'];
+                    const pts = g.dataPoints || [];
+                    const lastPt = pts[pts.length - 1];
+                    return h('div', { key: g.id, className: `rounded-xl border p-4 transition-all ${g.status === 'discontinued' ? 'border-slate-100 bg-slate-50/50 opacity-60' : g.status === 'met' ? 'border-blue-200 bg-blue-50/30' : 'border-slate-200 bg-white'}` },
+                        // Header row: status badge + goal text
+                        h('div', { className: 'flex items-start justify-between gap-2' },
+                            h('div', { className: 'flex-1' },
+                                h('div', { className: 'flex items-center gap-2 mb-1' },
+                                    h('span', { className: `text-[10px] px-2 py-0.5 rounded-full font-black ${sc.bg} ${sc.text}` }, sc.label),
+                                    h('span', { className: 'text-[10px] text-slate-400' }, fmtDate(g.createdAt))
+                                ),
+                                h('p', { className: 'text-sm text-slate-700 leading-relaxed' }, g.preview)
+                            ),
+                            h('button', {
+                                onClick: () => deleteGoal(g.id),
+                                className: 'p-1 rounded hover:bg-red-100 text-slate-300 hover:text-red-500 transition-colors shrink-0'
+                            }, '✕')
+                        ),
+                        // Sparkline + last score
+                        pts.length > 0 && h('div', { className: 'flex items-center gap-3 mt-3 pt-3 border-t border-slate-100' },
+                            renderSparkline(pts),
+                            h('div', { className: 'text-xs text-slate-500' },
+                                h('span', { className: 'font-bold text-slate-700' }, `${pts.length}`),
+                                ` data point${pts.length !== 1 ? 's' : ''}`,
+                                lastPt && h('span', null, ' · Last: ',
+                                    h('span', { className: 'font-bold' }, `${lastPt.score}/5`),
+                                    ` on ${fmtDate(lastPt.date)}`
+                                )
+                            )
+                        ),
+                        // Action buttons
+                        g.status === 'active' && h('div', { className: 'flex items-center gap-2 mt-3 pt-3 border-t border-slate-100' },
+                            h('button', {
+                                onClick: () => { setProgressGoalId(progressGoalId === g.id ? null : g.id); setProgressScore(3); setProgressNotes(''); },
+                                className: 'text-[10px] px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg font-bold hover:bg-emerald-100 transition-all'
+                            }, progressGoalId === g.id ? '▾ Close' : '📊 Log Progress'),
+                            h('button', {
+                                onClick: () => setGoalStatus(g.id, 'met'),
+                                className: 'text-[10px] px-3 py-1.5 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg font-bold hover:bg-blue-100 transition-all'
+                            }, '✓ Mark Met'),
+                            h('button', {
+                                onClick: () => setGoalStatus(g.id, 'discontinued'),
+                                className: 'text-[10px] px-3 py-1.5 bg-slate-50 text-slate-400 border border-slate-200 rounded-lg font-bold hover:bg-slate-100 transition-all'
+                            }, 'Discontinue')
+                        ),
+                        // Reactivate for non-active goals
+                        g.status !== 'active' && h('div', { className: 'mt-2 pt-2 border-t border-slate-100' },
+                            h('button', {
+                                onClick: () => setGoalStatus(g.id, 'active'),
+                                className: 'text-[10px] px-3 py-1.5 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-lg font-bold hover:bg-emerald-100 transition-all'
+                            }, '↩ Reactivate')
+                        ),
+                        // Inline progress form
+                        progressGoalId === g.id && g.status === 'active' && h('div', { className: 'mt-3 p-3 bg-emerald-50/50 rounded-xl border border-emerald-200 space-y-2' },
+                            h('div', { className: 'text-xs font-bold text-emerald-700 uppercase' }, '📊 Log Progress Point'),
+                            h('div', { className: 'flex items-center gap-3' },
+                                h('label', { className: 'text-[10px] text-slate-500 font-bold' }, 'Score (1–5):'),
+                                h('div', { className: 'flex gap-1' },
+                                    [1, 2, 3, 4, 5].map(s =>
+                                        h('button', {
+                                            key: s,
+                                            onClick: () => setProgressScore(s),
+                                            className: `w-8 h-8 rounded-lg font-black text-sm transition-all ${progressScore === s ? 'bg-emerald-600 text-white shadow-md' : 'bg-white text-slate-400 border border-slate-200 hover:border-emerald-300'}`
+                                        }, s)
+                                    )
+                                )
+                            ),
+                            h('input', {
+                                value: progressNotes,
+                                onChange: e => setProgressNotes(e.target.value),
+                                placeholder: 'Optional notes...',
+                                className: 'w-full text-xs p-2 border border-emerald-200 rounded-lg focus:border-emerald-400 outline-none'
+                            }),
+                            h('button', {
+                                onClick: () => addProgressPoint(g.id),
+                                className: 'px-4 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-500 transition-all'
+                            }, '✓ Save Data Point')
+                        )
+                    );
+                })
             )
         );
     };
@@ -3984,7 +4463,7 @@ Generate descriptors for each GAS level and return ONLY valid JSON:
     const HomeBehaviorLog = ({ studentName, t, addToast }) => {
         const [entries, setEntries] = useState([]);
         const [showForm, setShowForm] = useState(false);
-        const [newEntry, setNewEntry] = useState({ context: '', behavior: '', response: '', notes: '' });
+        const [newEntry, setNewEntry] = useState({ context: '', behavior: '', response: '', notes: '', mood: '' });
 
         const homeContexts = [
             'Morning routine', 'Getting ready for school', 'Mealtime', 'Homework time',
@@ -3996,6 +4475,12 @@ Generate descriptors for each GAS level and return ONLY valid JSON:
             'Redirected calmly', 'Gave a break', 'Used a timer', 'Offered choices',
             'Used first-then language', 'Ignored the behavior', 'Praised alternative behavior',
             'Removed the item/activity', 'Used a visual schedule', 'Other'
+        ];
+
+        const homeMoods = [
+            { emoji: '😊', label: 'Good day' },
+            { emoji: '😐', label: 'Okay' },
+            { emoji: '😟', label: 'Challenging' }
         ];
 
         // Load from localStorage
@@ -4013,23 +4498,97 @@ Generate descriptors for each GAS level and return ONLY valid JSON:
             const updated = [entry, ...entries];
             setEntries(updated);
             try { localStorage.setItem(`behaviorLens_homeLog_${studentName}`, JSON.stringify(updated)); } catch (e) { /* ignore */ }
-            setNewEntry({ context: '', behavior: '', response: '', notes: '' });
+            setNewEntry({ context: '', behavior: '', response: '', notes: '', mood: '' });
             setShowForm(false);
             if (addToast) addToast('Entry saved ✅', 'success');
         };
+
+        // Export home log entries as a Snapshot JSON file
+        const handleExportSnapshot = () => {
+            if (entries.length === 0) {
+                if (addToast) addToast('No entries to export', 'error');
+                return;
+            }
+            const snapshot = {
+                type: 'behaviorLens_homeLog_snapshot',
+                version: 1,
+                studentName: studentName || 'Unknown',
+                exportedAt: new Date().toISOString(),
+                homeLogEntries: entries
+            };
+            const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `home-log-${(studentName || 'student').replace(/\s+/g, '_')}-${new Date().toISOString().slice(0, 10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            if (addToast) addToast('Home log exported as snapshot 📦', 'success');
+        };
+
+        // Summary stats
+        const summary = useMemo(() => {
+            if (entries.length === 0) return null;
+            const contextCounts = {};
+            entries.forEach(e => {
+                if (e.context) contextCounts[e.context] = (contextCounts[e.context] || 0) + 1;
+            });
+            const topContext = Object.entries(contextCounts).sort((a, b) => b[1] - a[1])[0];
+            return {
+                count: entries.length,
+                topContext: topContext ? topContext[0] : null,
+                latest: entries[0]?.timestamp
+            };
+        }, [entries]);
 
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 p-4' },
                 h('h3', { className: 'text-sm font-black text-blue-800 mb-1' }, '🏠 ' + (t('behavior_lens.homelog.title') || 'Home Behavior Log')),
                 h('p', { className: 'text-xs text-blue-600' }, 'Track behaviors at home using simple, everyday language. This helps your child\'s school team see the full picture.')
             ),
-            // Add button
-            h('button', {
-                onClick: () => setShowForm(!showForm),
-                className: 'w-full py-3 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all'
-            }, showForm ? '▾ Close Form' : '➕ Log a Behavior'),
+            // Summary strip
+            summary && h('div', { className: 'flex flex-wrap gap-3 bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm' },
+                h('div', { className: 'flex items-center gap-1.5' },
+                    h('span', { className: 'text-xs font-bold text-blue-600' }, '📊'),
+                    h('span', { className: 'text-xs text-slate-600' }, `${summary.count} entries`)
+                ),
+                summary.topContext && h('div', { className: 'flex items-center gap-1.5' },
+                    h('span', { className: 'text-xs font-bold text-indigo-600' }, '📍'),
+                    h('span', { className: 'text-xs text-slate-600' }, `Most common: ${summary.topContext}`)
+                ),
+                summary.latest && h('div', { className: 'flex items-center gap-1.5' },
+                    h('span', { className: 'text-xs font-bold text-emerald-600' }, '🕒'),
+                    h('span', { className: 'text-xs text-slate-600' }, `Latest: ${fmtDate(summary.latest)}`)
+                )
+            ),
+            // Action buttons row
+            h('div', { className: 'flex gap-2' },
+                h('button', {
+                    onClick: () => setShowForm(!showForm),
+                    className: 'flex-1 py-3 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all text-sm'
+                }, showForm ? '▾ Close Form' : '➕ Log a Behavior'),
+                entries.length > 0 && h('button', {
+                    onClick: handleExportSnapshot,
+                    className: 'px-4 py-3 bg-cyan-50 border border-cyan-200 text-cyan-700 rounded-xl font-bold text-sm hover:bg-cyan-100 transition-all'
+                }, '📦 Export')
+            ),
             // Entry form
             showForm && h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-3' },
+                // Mood selector
+                h('div', null,
+                    h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-1' }, '🎭 How was the day overall?'),
+                    h('div', { className: 'flex gap-2' },
+                        homeMoods.map(m =>
+                            h('button', {
+                                key: m.emoji,
+                                onClick: () => setNewEntry(p => ({ ...p, mood: m.emoji })),
+                                className: `flex items-center gap-1.5 px-3 py-2 rounded-xl border-2 text-xs font-bold transition-all ${newEntry.mood === m.emoji
+                                    ? 'border-blue-400 bg-blue-50 text-blue-700 shadow-sm'
+                                    : 'border-slate-100 text-slate-500 hover:border-slate-300'}`
+                            }, m.emoji, ' ', m.label)
+                        )
+                    )
+                ),
                 h('div', null,
                     h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-1' }, '📍 When did it happen?'),
                     h('div', { className: 'flex flex-wrap gap-1.5' },
@@ -4085,7 +4644,10 @@ Generate descriptors for each GAS level and return ONLY valid JSON:
                 entries.slice(0, 20).map(e =>
                     h('div', { key: e.id, className: 'bg-white rounded-xl border border-slate-200 p-4 shadow-sm' },
                         h('div', { className: 'flex justify-between items-start mb-2' },
-                            h('span', { className: 'text-xs font-bold text-blue-600' }, e.context || 'General'),
+                            h('div', { className: 'flex items-center gap-2' },
+                                e.mood && h('span', { className: 'text-sm' }, e.mood),
+                                h('span', { className: 'text-xs font-bold text-blue-600' }, e.context || 'General')
+                            ),
                             h('span', { className: 'text-[10px] text-slate-400' }, fmtDate(e.timestamp))
                         ),
                         h('p', { className: 'text-sm text-slate-700 mb-1' }, e.behavior),
@@ -4500,6 +5062,188 @@ Respond only with the student's words:`;
         );
     };
 
+    // ─── StudentSelfCheck ───────────────────────────────────────────────
+    // Student-facing reflection tool: captures the student's own perspective
+    const StudentSelfCheck = ({ studentName, t, addToast }) => {
+        const MOODS = [
+            { emoji: '😊', label: 'Good', color: 'emerald' },
+            { emoji: '😐', label: 'Okay', color: 'amber' },
+            { emoji: '😟', label: 'Worried', color: 'blue' },
+            { emoji: '😡', label: 'Frustrated', color: 'red' },
+            { emoji: '😢', label: 'Sad', color: 'violet' }
+        ];
+
+        const [entries, setEntries] = useState([]);
+        const [showForm, setShowForm] = useState(false);
+        const [mood, setMood] = useState('');
+        const [answers, setAnswers] = useState({ happening: '', feeling: '', needed: '', nextTime: '' });
+        const storageKey = `behaviorLens_selfCheck_${studentName}`;
+
+        // Load from localStorage
+        useEffect(() => {
+            if (!studentName) return;
+            try {
+                const saved = localStorage.getItem(storageKey);
+                if (saved) setEntries(JSON.parse(saved));
+            } catch (e) { /* ignore */ }
+        }, [studentName]);
+
+        const saveReflection = () => {
+            if (!mood) return;
+            const entry = {
+                id: uid(),
+                timestamp: new Date().toISOString(),
+                mood,
+                ...answers
+            };
+            const updated = [entry, ...entries];
+            setEntries(updated);
+            try { localStorage.setItem(storageKey, JSON.stringify(updated)); } catch (e) { /* ignore */ }
+            setMood('');
+            setAnswers({ happening: '', feeling: '', needed: '', nextTime: '' });
+            setShowForm(false);
+            if (addToast) addToast('Reflection saved 🌟', 'success');
+        };
+
+        const deleteEntry = (id) => {
+            const updated = entries.filter(e => e.id !== id);
+            setEntries(updated);
+            try { localStorage.setItem(storageKey, JSON.stringify(updated)); } catch (e) { /* ignore */ }
+        };
+
+        // Mood trend: count moods over last 7 entries
+        const moodTrend = useMemo(() => {
+            const recent = entries.slice(0, 7);
+            const counts = {};
+            MOODS.forEach(m => { counts[m.emoji] = 0; });
+            recent.forEach(e => { if (counts[e.mood] !== undefined) counts[e.mood]++; });
+            return counts;
+        }, [entries]);
+
+        const moodColorClass = (color) => ({
+            emerald: 'bg-emerald-100 border-emerald-300 text-emerald-700',
+            amber: 'bg-amber-100 border-amber-300 text-amber-700',
+            blue: 'bg-blue-100 border-blue-300 text-blue-700',
+            red: 'bg-red-100 border-red-300 text-red-700',
+            violet: 'bg-violet-100 border-violet-300 text-violet-700'
+        }[color] || 'bg-slate-100 border-slate-300 text-slate-700');
+
+        return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
+            // Header
+            h('div', { className: 'bg-gradient-to-r from-violet-50 to-indigo-50 rounded-xl border border-violet-200 p-5' },
+                h('h3', { className: 'text-lg font-black text-violet-800 mb-1' }, '🪞 My Self-Check'),
+                h('p', { className: 'text-xs text-violet-600 leading-relaxed' },
+                    'This is your space. Tell us how you\'re feeling and what happened — in your own words. There are no wrong answers.'
+                ),
+                // Mood trend mini-bar (last 7)
+                entries.length > 0 && h('div', { className: 'mt-3 flex items-center gap-3' },
+                    h('span', { className: 'text-[10px] font-bold text-violet-500 uppercase' }, 'Recent moods:'),
+                    h('div', { className: 'flex gap-1' },
+                        MOODS.map(m =>
+                            moodTrend[m.emoji] > 0 && h('div', {
+                                key: m.emoji,
+                                className: `flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold border ${moodColorClass(m.color)}`
+                            }, m.emoji, ' ', moodTrend[m.emoji])
+                        )
+                    )
+                )
+            ),
+            // Add button
+            h('button', {
+                onClick: () => setShowForm(!showForm),
+                className: 'w-full py-3 bg-gradient-to-r from-violet-500 to-indigo-500 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all text-sm'
+            }, showForm ? '▾ Close' : '✨ How am I feeling right now?'),
+            // Form
+            showForm && h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4' },
+                // Mood picker
+                h('div', null,
+                    h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-2' }, '🎭 Pick your mood'),
+                    h('div', { className: 'flex gap-2 justify-center' },
+                        MOODS.map(m =>
+                            h('button', {
+                                key: m.emoji,
+                                onClick: () => setMood(m.emoji),
+                                className: `flex flex-col items-center p-3 rounded-xl border-2 transition-all min-w-[60px] ${mood === m.emoji
+                                    ? `${moodColorClass(m.color)} shadow-md scale-110`
+                                    : 'border-slate-100 hover:border-slate-300 bg-white'}`
+                            },
+                                h('span', { className: 'text-2xl mb-1' }, m.emoji),
+                                h('span', { className: 'text-[10px] font-bold' }, m.label)
+                            )
+                        )
+                    )
+                ),
+                // Structured prompts
+                [
+                    { key: 'happening', label: '📍 What was happening?', placeholder: 'What was going on before you felt this way?' },
+                    { key: 'feeling', label: '💭 How were you feeling inside?', placeholder: 'Nervous? Angry? Bored? Overwhelmed?' },
+                    { key: 'needed', label: '🤝 What did you need?', placeholder: 'A break? Help? Someone to listen? Space?' },
+                    { key: 'nextTime', label: '💡 What might help next time?', placeholder: 'What could you or a grown-up do differently?' }
+                ].map(q =>
+                    h('div', { key: q.key },
+                        h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-1' }, q.label),
+                        h('textarea', {
+                            value: answers[q.key],
+                            onChange: (e) => setAnswers(p => ({ ...p, [q.key]: e.target.value })),
+                            placeholder: q.placeholder,
+                            rows: 2,
+                            className: 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-violet-400 outline-none'
+                        })
+                    )
+                ),
+                h('button', {
+                    onClick: saveReflection,
+                    disabled: !mood,
+                    className: 'w-full py-2.5 bg-violet-500 text-white rounded-xl font-bold hover:bg-violet-600 disabled:opacity-40 transition-all'
+                }, '💾 Save My Reflection')
+            ),
+            // Timeline
+            entries.length > 0
+                ? h('div', { className: 'space-y-2' },
+                    h('h4', { className: 'text-xs font-black text-slate-500 uppercase' },
+                        `${entries.length} Reflection${entries.length !== 1 ? 's' : ''}`
+                    ),
+                    entries.slice(0, 20).map(e => {
+                        const moodObj = MOODS.find(m => m.emoji === e.mood) || MOODS[0];
+                        return h('div', {
+                            key: e.id,
+                            className: `bg-white rounded-xl border border-slate-200 p-4 shadow-sm`
+                        },
+                            h('div', { className: 'flex justify-between items-start mb-2' },
+                                h('div', { className: 'flex items-center gap-2' },
+                                    h('span', { className: `text-lg px-2 py-0.5 rounded-full border ${moodColorClass(moodObj.color)}` }, e.mood),
+                                    h('span', { className: 'text-xs font-bold text-slate-600' }, moodObj.label)
+                                ),
+                                h('div', { className: 'flex items-center gap-2' },
+                                    h('span', { className: 'text-[10px] text-slate-400' }, fmtDate(e.timestamp)),
+                                    h('button', {
+                                        onClick: () => deleteEntry(e.id),
+                                        className: 'text-slate-300 hover:text-red-500 transition-colors p-0.5'
+                                    }, h(Trash2, { size: 11 }))
+                                )
+                            ),
+                            e.happening && h('div', { className: 'text-xs text-slate-600 mb-1' },
+                                h('span', { className: 'font-bold text-slate-500' }, '📍 '), e.happening
+                            ),
+                            e.feeling && h('div', { className: 'text-xs text-slate-600 mb-1' },
+                                h('span', { className: 'font-bold text-slate-500' }, '💭 '), e.feeling
+                            ),
+                            e.needed && h('div', { className: 'text-xs text-slate-600 mb-1' },
+                                h('span', { className: 'font-bold text-slate-500' }, '🤝 '), e.needed
+                            ),
+                            e.nextTime && h('div', { className: 'text-xs text-emerald-600 bg-emerald-50 rounded px-2 py-1 mt-1' },
+                                h('span', { className: 'font-bold' }, '💡 '), e.nextTime
+                            )
+                        );
+                    })
+                )
+                : h('div', { className: 'text-center py-8 bg-slate-50 rounded-xl' },
+                    h('div', { className: 'text-3xl mb-2' }, '🪞'),
+                    h('p', { className: 'text-sm text-slate-500' }, 'No reflections yet. Tap the button above to check in with yourself!')
+                )
+        );
+    };
+
     // ─── SnapshotExchange ────────────────────────────────────────────────
     // Sneakernet JSON export/import for parent-teacher data exchange
     const SnapshotExchange = ({ studentName, abcEntries, observationSessions, aiAnalysis, setAbcEntries, setObservationSessions, t, addToast }) => {
@@ -4509,9 +5253,33 @@ Respond only with the student's words:`;
         const [includeAbc, setIncludeAbc] = useState(true);
         const [includeObs, setIncludeObs] = useState(true);
         const [includeAi, setIncludeAi] = useState(true);
+        const [includeHomeLog, setIncludeHomeLog] = useState(true);
+        const [includeSelfCheck, setIncludeSelfCheck] = useState(true);
         const [importPreview, setImportPreview] = useState(null);
         const [dragActive, setDragActive] = useState(false);
         const fileRef = useRef(null);
+
+        // Read home log and self-check entries from localStorage
+        const homeLogEntries = useMemo(() => {
+            try {
+                const saved = localStorage.getItem(`behaviorLens_homeLog_${studentName}`);
+                return saved ? JSON.parse(saved) : [];
+            } catch (e) { return []; }
+        }, [studentName]);
+        const selfCheckEntries = useMemo(() => {
+            try {
+                const saved = localStorage.getItem(`behaviorLens_selfCheck_${studentName}`);
+                return saved ? JSON.parse(saved) : [];
+            } catch (e) { return []; }
+        }, [studentName]);
+
+        const allChecks = [includeAbc, includeObs, includeAi, includeHomeLog, includeSelfCheck];
+        const allSelected = allChecks.every(Boolean);
+        const noneSelected = allChecks.every(v => !v);
+        const toggleAll = () => {
+            const next = !allSelected;
+            setIncludeAbc(next); setIncludeObs(next); setIncludeAi(next); setIncludeHomeLog(next); setIncludeSelfCheck(next);
+        };
 
         const SNAPSHOT_VERSION = '1.0';
 
@@ -4527,6 +5295,8 @@ Respond only with the student's words:`;
                     abcEntries: includeAbc ? abcEntries : [],
                     observationSessions: includeObs ? observationSessions : [],
                     aiAnalysis: includeAi ? (aiAnalysis || null) : null,
+                    homeLogEntries: includeHomeLog ? homeLogEntries : [],
+                    selfCheckEntries: includeSelfCheck ? selfCheckEntries : [],
                 },
                 crossModule: null,
             };
@@ -4613,11 +5383,19 @@ Respond only with the student's words:`;
             ),
             // Privacy controls
             h('div', null,
-                h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-2' }, 'Data to Include'),
+                h('div', { className: 'flex items-center justify-between mb-2' },
+                    h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase' }, 'Data to Include'),
+                    h('button', {
+                        onClick: toggleAll,
+                        className: 'text-[10px] font-bold text-cyan-600 hover:text-cyan-800 transition-colors'
+                    }, allSelected ? 'Deselect All' : 'Select All')
+                ),
                 h('div', { className: 'space-y-2' },
                     [['abc', includeAbc, setIncludeAbc, `📋 ABC Observations (${abcEntries.length})`],
                     ['obs', includeObs, setIncludeObs, `🔍 Observation Sessions (${observationSessions.length})`],
-                    ['ai', includeAi, setIncludeAi, '🧠 AI Analysis']].map(([key, val, setter, label]) =>
+                    ['ai', includeAi, setIncludeAi, `🧠 AI Analysis ${aiAnalysis ? '(Ready)' : '(None)'}`],
+                    ['homelog', includeHomeLog, setIncludeHomeLog, `🏠 Home Log Entries (${homeLogEntries.length})`],
+                    ['selfcheck', includeSelfCheck, setIncludeSelfCheck, `🪞 Student Self-Check (${selfCheckEntries.length})`]].map(([key, val, setter, label]) =>
                         h('label', { key, className: 'flex items-center gap-2 bg-slate-50 p-2.5 rounded-lg border border-slate-100 cursor-pointer hover:border-cyan-200 transition-colors' },
                             h('input', { type: 'checkbox', checked: val, onChange: () => setter(!val), className: 'w-4 h-4 text-cyan-600 rounded' }),
                             h('span', { className: 'text-sm font-medium text-slate-700' }, label)
@@ -4646,7 +5424,7 @@ Respond only with the student's words:`;
             // Export button
             h('button', {
                 onClick: handleExport,
-                disabled: !includeAbc && !includeObs && !includeAi,
+                disabled: noneSelected,
                 className: 'w-full py-3 bg-gradient-to-r from-cyan-600 to-teal-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl disabled:opacity-40 transition-all flex items-center justify-center gap-2'
             }, h('span', null, '📦'), `Export ${role === 'educator' ? 'Educator' : 'Family'} Snapshot`)
         );
@@ -5019,7 +5797,7 @@ Respond only with the student's words:`;
         const [isParentMode, setIsParentMode] = useState(!isTeacherMode && false);
 
         // Parent-friendly tool IDs (shown when isParentMode is true)
-        const parentTools = ['overview', 'token', 'traffic', 'choice', 'homelog', 'abaguide', 'homenote', 'pocket', 'snapshot'];
+        const parentTools = ['overview', 'token', 'traffic', 'choice', 'homelog', 'abaguide', 'homenote', 'pocket', 'snapshot', 'selfcheck'];
 
         // Two-dropdown codename system (adjective + animal)
         const adjectives = useMemo(() => t('codenames.adjectives') || [], [t]);
@@ -5383,6 +6161,13 @@ Analyze this data and return ONLY valid JSON:
                     desc: t('behavior_lens.hub.homelog_desc') || 'Simplified parent-friendly behavior logging with everyday language',
                     color: 'blue',
                 },
+                {
+                    id: 'selfcheck',
+                    icon: '🪞',
+                    title: t('behavior_lens.hub.selfcheck_title') || 'Student Self-Check',
+                    desc: t('behavior_lens.hub.selfcheck_desc') || 'Student-facing mood check-in and reflection journal — capturing their voice',
+                    color: 'violet',
+                },
             ].filter(tool => !isParentMode || parentTools.includes(tool.id));
 
             const colorClasses = {
@@ -5662,7 +6447,8 @@ Analyze this data and return ONLY valid JSON:
                                                                                                                                 activePanel === 'counseling' ? (t('behavior_lens.counseling.title') || 'Counseling Simulation') :
                                                                                                                                     activePanel === 'snapshot' ? (t('behavior_lens.snapshot.title') || 'Student Snapshot Exchange') :
                                                                                                                                         activePanel === 'consent' ? (t('behavior_lens.consent.title') || 'FERPA Consent Manager') :
-                                                                                                                                            activePanel === 'homelog' ? (t('behavior_lens.homelog.title') || 'Home Behavior Log') : ''
+                                                                                                                                            activePanel === 'homelog' ? (t('behavior_lens.homelog.title') || 'Home Behavior Log') :
+                                                                                                                                                activePanel === 'selfcheck' ? (t('behavior_lens.selfcheck.title') || 'Student Self-Check') : ''
                             )
                         )
                     ),
@@ -5870,6 +6656,11 @@ Analyze this data and return ONLY valid JSON:
                     addToast
                 }),
                 activePanel === 'consent' && h(ConsentManager, {
+                    studentName: selectedStudent,
+                    t,
+                    addToast
+                }),
+                activePanel === 'selfcheck' && h(StudentSelfCheck, {
                     studentName: selectedStudent,
                     t,
                     addToast
