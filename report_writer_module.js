@@ -92,6 +92,253 @@
         }
         return SCORE_CLASSIFICATIONS.find(c => score >= c.min && score <= c.max) || { label: 'Unknown', color: 'slate' };
     };
+
+    // ─── Tier 1 RAG: Clinical Reference Tables ─────────────────────────
+    const SCORE_INTERPRETATION_GUIDES = {
+        'WISC-V': {
+            description: 'Wechsler Intelligence Scale for Children, 5th Ed. Measures cognitive ability across five primary index scales.',
+            keyPatterns: [
+                'A >=15-point discrepancy between VCI and PSI may indicate processing speed concerns impacting academic fluency',
+                'A >=15-point discrepancy between VCI and WMI may suggest working memory difficulties despite strong verbal reasoning',
+                'FSIQ below 85 with uneven index profile warrants examination of specific processing strengths and weaknesses',
+                'WMI and PSI are most sensitive to attention-related difficulties'
+            ]
+        },
+        'BASC-3 (Teacher)': {
+            description: 'Behavior Assessment System for Children, 3rd Ed (Teacher). Measures behavioral/emotional functioning in school.',
+            keyPatterns: [
+                'T-scores >=70 on Externalizing scales are Clinically Significant and typically warrant intervention',
+                'Elevated Attention Problems (>=65) combined with elevated Hyperactivity (>=65) is convergent evidence for attention concerns',
+                'Low Adaptive Skills (<=35) alongside elevated BSI suggests pervasive functional impact',
+                'Teacher-Parent discrepancies >10 T-score points suggest setting-specific behavior patterns'
+            ]
+        },
+        'BASC-3 (Parent)': {
+            description: 'Behavior Assessment System for Children, 3rd Ed (Parent). Measures behavioral/emotional functioning at home.',
+            keyPatterns: [
+                'Parent ratings often differ from teacher due to setting-specific demands',
+                'Elevated Internalizing scales (Anxiety, Depression) may be more visible to parents than teachers',
+                'Compare Parent vs Teacher Externalizing profiles for setting specificity'
+            ]
+        },
+        'WIAT-4': {
+            description: 'Wechsler Individual Achievement Test, 4th Ed. Measures academic achievement in reading, math, written language.',
+            keyPatterns: [
+                'Achievement scores >=1 SD below cognitive ability (FSIQ) may indicate ability-achievement discrepancy relevant to SLD',
+                'Reading Composite below 85 with average or above FSIQ is a key pattern for SLD in Reading',
+                'Math Composite below 85 with intact reading suggests domain-specific learning difficulty',
+                'Written Language deficits often co-occur with fine motor or executive functioning concerns'
+            ]
+        },
+        'Vineland-3': {
+            description: 'Vineland Adaptive Behavior Scales, 3rd Ed. Measures adaptive functioning across communication, daily living, socialization, motor.',
+            keyPatterns: [
+                'ABC <=70 combined with FSIQ <=70 meets criteria pattern for Intellectual Disability',
+                'Significant discrepancy between cognitive ability and adaptive functioning suggests environmental masking or exacerbation',
+                'Socialization domain deficits are particularly relevant for autism spectrum evaluations'
+            ]
+        },
+        'BRIEF-2': {
+            description: 'Behavior Rating Inventory of Executive Function, 2nd Ed. Measures executive functioning in everyday environments.',
+            keyPatterns: [
+                'GEC T-score >=65 indicates clinically significant executive dysfunction',
+                'Elevated Working Memory + Plan/Organize suggests organizational support needs',
+                'Elevated Inhibit + Emotional Control aligns with behavioral regulation concerns',
+                'BRI-CRI discrepancy may differentiate behavioral vs cognitive executive profiles'
+            ]
+        },
+        'Conners-4': {
+            description: 'Conners 4th Ed. Measures ADHD symptoms and related concerns.',
+            keyPatterns: [
+                'Inattention/Executive Dysfunction >=65 is a primary indicator for ADHD-Inattentive presentation',
+                'Hyperactivity + Impulsivity both >=65 suggests ADHD-Hyperactive/Impulsive or Combined presentation',
+                'Emotional Dysregulation elevation may indicate comorbid mood concerns beyond ADHD'
+            ]
+        }
+    };
+
+    const DSM5_SCREENING_CRITERIA = {
+        'ADHD': {
+            code: '314.0x',
+            presentations: ['Predominantly Inattentive', 'Predominantly Hyperactive-Impulsive', 'Combined'],
+            keyIndicators: [
+                'Six or more symptoms of inattention and/or hyperactivity-impulsivity for children <=16 (five for >=17)',
+                'Symptoms present for >=6 months and inconsistent with developmental level',
+                'Several symptoms present before age 12',
+                'Symptoms present in >=2 settings (e.g., school, home)',
+                'Clear evidence symptoms interfere with or reduce quality of functioning'
+            ],
+            convergentEvidence: [
+                'Elevated BASC-3 Attention Problems + Hyperactivity scales',
+                'Elevated Conners-4 Inattention and/or Hyperactivity',
+                'Low BRIEF-2 Working Memory and Inhibit scales',
+                'WISC-V WMI and/or PSI significantly below VCI/FRI'
+            ],
+            exclusionary: 'Symptoms not better explained by another mental disorder (anxiety, mood, dissociative, personality, substance)'
+        },
+        'SLD': {
+            code: '315.xx',
+            presentations: ['With impairment in reading', 'With impairment in written expression', 'With impairment in mathematics'],
+            keyIndicators: [
+                'Academic skills substantially and quantifiably below expectations for age',
+                'Difficulties begin during school-age years',
+                'Not better accounted for by ID, sensory issues, neurological conditions, or inadequate instruction'
+            ],
+            convergentEvidence: [
+                'Achievement composite >=1 SD below FSIQ (ability-achievement discrepancy)',
+                'Low achievement despite adequate instruction (RTI/MTSS data)',
+                'Pattern of strengths and weaknesses in cognitive processing (PSW model)'
+            ],
+            exclusionary: 'Must rule out: ID, uncorrected vision/hearing, other mental/neurological disorders, psychosocial adversity, inadequate instruction, language proficiency'
+        },
+        'ASD': {
+            code: '299.00',
+            keyIndicators: [
+                'Persistent deficits in social communication and social interaction across multiple contexts',
+                'Restricted, repetitive patterns of behavior, interests, or activities',
+                'Symptoms present in early developmental period',
+                'Symptoms cause clinically significant impairment in current functioning'
+            ],
+            convergentEvidence: [
+                'Elevated SRS-2 Total Score (>=66 T-score)',
+                'Elevated GARS-3 Autism Index',
+                'Vineland-3 Socialization domain significantly below other domains',
+                'BASC-3 Social Skills and/or Leadership below average with elevated Withdrawal'
+            ],
+            exclusionary: 'Not better explained by intellectual disability or global developmental delay alone'
+        },
+        'ID': {
+            code: '319',
+            presentations: ['Mild', 'Moderate', 'Severe', 'Profound'],
+            keyIndicators: [
+                'Deficits in intellectual functions confirmed by clinical assessment AND testing (FSIQ approximately <=70)',
+                'Deficits in adaptive functioning (failure to meet standards for personal independence)',
+                'Onset during the developmental period'
+            ],
+            convergentEvidence: [
+                'WISC-V or similar FSIQ <=70 (consider SEM)',
+                'Vineland-3 ABC <=70',
+                'Consistent low performance across cognitive and adaptive measures'
+            ],
+            exclusionary: 'Must consider standard error of measurement; single score should not be sole determinant'
+        }
+    };
+
+    const IDEA_ELIGIBILITY = {
+        'SLD': {
+            category: 'Specific Learning Disability',
+            definition: 'A disorder in one or more basic psychological processes involved in understanding or using language that may manifest in imperfect ability to listen, think, speak, read, write, spell, or do math.',
+            requiredEvidence: [
+                'Student does not achieve adequately for age or meet State-approved grade-level standards',
+                'Student does not make sufficient progress (RTI) OR exhibits a pattern of strengths and weaknesses (PSW)',
+                'Findings are not primarily the result of visual/hearing/motor disability, ID, emotional disturbance, cultural factors, or limited English proficiency'
+            ],
+            qualifyingAreas: ['Oral expression', 'Listening comprehension', 'Written expression', 'Basic reading skill', 'Reading fluency', 'Reading comprehension', 'Math calculation', 'Math problem solving']
+        },
+        'OHI': {
+            category: 'Other Health Impairment',
+            definition: 'Having limited strength, vitality, or alertness (including heightened alertness to environmental stimuli) that results in limited alertness to the educational environment due to chronic or acute health problems including ADHD.',
+            requiredEvidence: [
+                'Documented health condition (e.g., ADHD diagnosis)',
+                'Condition results in limited alertness in the educational environment',
+                'Educational performance is adversely affected'
+            ]
+        },
+        'Autism': {
+            category: 'Autism',
+            definition: 'A developmental disability significantly affecting verbal and nonverbal communication and social interaction, generally evident before age three, that adversely affects educational performance.',
+            requiredEvidence: [
+                'Documentation of deficits in social communication/interaction',
+                'Documentation of restricted, repetitive behaviors or interests',
+                'Adverse effect on educational performance',
+                'Characteristics not primarily due to emotional disturbance'
+            ]
+        },
+        'ED': {
+            category: 'Emotional Disturbance',
+            definition: 'A condition exhibiting one or more characteristics over a long period of time and to a marked degree that adversely affects educational performance.',
+            requiredEvidence: [
+                'Inability to learn unexplained by intellectual, sensory, or health factors',
+                'Inability to build or maintain satisfactory interpersonal relationships',
+                'Inappropriate types of behavior or feelings under normal circumstances',
+                'General pervasive mood of unhappiness or depression',
+                'OR tendency to develop physical symptoms or fears associated with personal or school problems'
+            ]
+        },
+        'ID': {
+            category: 'Intellectual Disability',
+            definition: 'Significantly subaverage general intellectual functioning existing concurrently with deficits in adaptive behavior, manifested during the developmental period, that adversely affects educational performance.',
+            requiredEvidence: [
+                'Cognitive assessment indicating significantly subaverage functioning (approximately <=70)',
+                'Adaptive behavior assessment indicating concurrent deficits',
+                'Adverse effect on educational performance'
+            ]
+        }
+    };
+
+    // ── Tier 1 RAG: Context Builder ──────────────────────────────────
+    const buildReferenceContext = (scoreEntries, studentAge) => {
+        const parts = [];
+        // Pull interpretation guides for entered assessments
+        const usedAssessments = [...new Set(scoreEntries.map(s => s.assessment))];
+        usedAssessments.forEach(a => {
+            const guide = SCORE_INTERPRETATION_GUIDES[a];
+            if (guide) {
+                parts.push('[' + a + ']: ' + guide.description);
+                guide.keyPatterns.forEach(p => parts.push('  - ' + p));
+            }
+        });
+        // Cross-battery pattern detection
+        const scores = {};
+        scoreEntries.forEach(s => { scores[s.assessment + ':' + s.subtest] = s; });
+        const vci = scores['WISC-V:Verbal Comprehension'];
+        const psi = scores['WISC-V:Processing Speed'];
+        const wmi = scores['WISC-V:Working Memory'];
+        const fsiq = scores['WISC-V:Full Scale IQ'];
+        const readComp = scores['WIAT-4:Reading Composite'];
+        const mathComp = scores['WIAT-4:Math Composite'];
+        const attn = scores['BASC-3 (Teacher):Attention Problems'];
+        const hyper = scores['BASC-3 (Teacher):Hyperactivity'];
+        const connIn = scores['Conners-4:Inattention/Executive Dysfunction'];
+        if (vci && psi && Math.abs(vci.score - psi.score) >= 15)
+            parts.push('CROSS-BATTERY: ' + Math.abs(vci.score - psi.score) + '-point VCI-PSI discrepancy (' + vci.score + ' vs ' + psi.score + ')');
+        if (vci && wmi && Math.abs(vci.score - wmi.score) >= 15)
+            parts.push('CROSS-BATTERY: ' + Math.abs(vci.score - wmi.score) + '-point VCI-WMI discrepancy (' + vci.score + ' vs ' + wmi.score + ')');
+        if (fsiq && readComp && (fsiq.score - readComp.score) >= 15)
+            parts.push('ABILITY-ACHIEVEMENT: ' + (fsiq.score - readComp.score) + '-point FSIQ-Reading gap (' + fsiq.score + ' vs ' + readComp.score + ') — relevant for SLD-Reading');
+        if (fsiq && mathComp && (fsiq.score - mathComp.score) >= 15)
+            parts.push('ABILITY-ACHIEVEMENT: ' + (fsiq.score - mathComp.score) + '-point FSIQ-Math gap (' + fsiq.score + ' vs ' + mathComp.score + ') — relevant for SLD-Math');
+        if (attn && attn.score >= 65 && hyper && hyper.score >= 65)
+            parts.push('CONVERGENT: BASC-3 Attention (' + attn.score + ') + Hyperactivity (' + hyper.score + ') both elevated — ADHD pattern');
+        if (attn && attn.score >= 65 && connIn && connIn.score >= 65)
+            parts.push('CONVERGENT: BASC-3 Attention (' + attn.score + ') + Conners Inattention (' + connIn.score + ') — strong cross-measure ADHD convergence');
+        // Contextual DSM-5 + IDEA references
+        const hasBehElev = scoreEntries.some(s => s.scoreType === 'T-score' && s.score >= 65);
+        const hasLowCog = scoreEntries.some(s => s.scoreType === 'standard' && s.score <= 70);
+        const hasAchGap = (fsiq && readComp && (fsiq.score - readComp.score) >= 15) || (fsiq && mathComp && (fsiq.score - mathComp.score) >= 15);
+        if (hasBehElev) {
+            parts.push('\n--- DSM-5 Reference (ADHD) ---');
+            parts.push('Key: ' + DSM5_SCREENING_CRITERIA.ADHD.keyIndicators.join('; '));
+            parts.push('Exclusionary: ' + DSM5_SCREENING_CRITERIA.ADHD.exclusionary);
+            parts.push('--- IDEA: ' + IDEA_ELIGIBILITY.OHI.category + ' ---');
+            parts.push(IDEA_ELIGIBILITY.OHI.definition);
+        }
+        if (hasAchGap) {
+            parts.push('\n--- DSM-5 Reference (SLD) ---');
+            parts.push('Key: ' + DSM5_SCREENING_CRITERIA.SLD.keyIndicators.join('; '));
+            parts.push('Exclusionary: ' + DSM5_SCREENING_CRITERIA.SLD.exclusionary);
+            parts.push('--- IDEA: ' + IDEA_ELIGIBILITY.SLD.category + ' ---');
+            parts.push(IDEA_ELIGIBILITY.SLD.definition);
+        }
+        if (hasLowCog) {
+            parts.push('\n--- DSM-5 Reference (ID) ---');
+            parts.push('Key: ' + DSM5_SCREENING_CRITERIA.ID.keyIndicators.join('; '));
+            parts.push('--- IDEA: ' + IDEA_ELIGIBILITY.ID.category + ' ---');
+            parts.push(IDEA_ELIGIBILITY.ID.definition);
+        }
+        return parts.length > 0 ? parts.join('\n') : '';
+    };
+
     const crossReferenceDevNorms = (domain, value, studentAge) => {
         const norms = DEVELOPMENTAL_NORMS[domain];
         if (!norms || !studentAge) return null;
@@ -107,7 +354,12 @@
         return null;
     };
     // ─── Report Writer Panel ─────────────────────────────────────
-    const ReportWriterPanel = ({ studentName, abcEntries, observationSessions, aiAnalysis, studentProfile, callGemini, t, addToast }) => {
+    const DRAFT_KEY = 'allo_rw_draft';
+    const SAVED_KEY = 'allo_rw_saved';
+    const safeGetItem = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+    const safeSetItem = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { warnLog('localStorage write failed:', e); } };
+
+    const ReportWriterPanel = ({ studentName, abcEntries, observationSessions, aiAnalysis, studentProfile, longitudinalData, callGemini, t, addToast }) => {
         const STEPS = [
             { num: 1, label: 'Assessment Scores', icon: '📊' },
             { num: 2, label: 'Background & History', icon: '📋' },
@@ -141,6 +393,77 @@
         const [checking, setChecking] = useState(false);
         // Step 6: Export
         const [importText, setImportText] = useState('');
+        const [savedReports, setSavedReports] = useState([]);
+        const [saveReportName, setSaveReportName] = useState('');
+
+        // ── Auto-load draft from localStorage on mount ──
+        useEffect(() => {
+            try {
+                const draft = safeGetItem(DRAFT_KEY);
+                if (draft) {
+                    const d = JSON.parse(draft);
+                    if (d.reportTitle) setReportTitle(d.reportTitle);
+                    if (d.studentAge) setStudentAge(d.studentAge);
+                    if (d.studentGrade) setStudentGrade(d.studentGrade);
+                    if (d.scoreEntries?.length) setScoreEntries(d.scoreEntries);
+                    if (d.bgSections) setBgSections(prev => ({ ...prev, ...d.bgSections }));
+                    if (d.factChunks?.length) setFactChunks(d.factChunks);
+                    if (d.reportSections && Object.keys(d.reportSections).length) setReportSections(d.reportSections);
+                    if (d.accuracyResults?.length) setAccuracyResults(d.accuracyResults);
+                    debugLog('Draft restored from localStorage');
+                }
+                const saved = safeGetItem(SAVED_KEY);
+                if (saved) setSavedReports(JSON.parse(saved) || []);
+            } catch (e) { warnLog('Draft load error:', e); }
+        }, []);
+
+        // ── Auto-save draft (debounced) ──
+        useEffect(() => {
+            const timer = setTimeout(() => {
+                try {
+                    const snapshot = { reportTitle, studentAge, studentGrade, scoreEntries, bgSections, factChunks, reportSections, accuracyResults, savedAt: new Date().toISOString() };
+                    safeSetItem(DRAFT_KEY, JSON.stringify(snapshot));
+                } catch (e) { warnLog('Auto-save error:', e); }
+            }, 1500);
+            return () => clearTimeout(timer);
+        }, [reportTitle, studentAge, studentGrade, scoreEntries, bgSections, factChunks, reportSections, accuracyResults]);
+
+        // ── Saved Reports helpers ──
+        const saveReportToGallery = () => {
+            const name = saveReportName.trim() || `Report ${new Date().toLocaleDateString()}`;
+            const entry = { id: uid(), name, savedAt: new Date().toISOString(), reportTitle, studentAge, studentGrade, scoreEntries, bgSections, factChunks, reportSections, accuracyResults };
+            const updated = [entry, ...savedReports].slice(0, 20);
+            setSavedReports(updated);
+            safeSetItem(SAVED_KEY, JSON.stringify(updated));
+            setSaveReportName('');
+            if (addToast) addToast(`Report "${name}" saved ✅`, 'success');
+        };
+        const loadSavedReport = (entry) => {
+            if (entry.reportTitle) setReportTitle(entry.reportTitle);
+            if (entry.studentAge) setStudentAge(entry.studentAge);
+            if (entry.studentGrade) setStudentGrade(entry.studentGrade);
+            if (entry.scoreEntries) setScoreEntries(entry.scoreEntries);
+            if (entry.bgSections) setBgSections(entry.bgSections);
+            if (entry.factChunks) setFactChunks(entry.factChunks);
+            if (entry.reportSections) setReportSections(entry.reportSections);
+            if (entry.accuracyResults) setAccuracyResults(entry.accuracyResults);
+            setCurrentStep(1);
+            if (addToast) addToast(`Loaded "${entry.name}"`, 'success');
+        };
+        const deleteSavedReport = (id) => {
+            const updated = savedReports.filter(r => r.id !== id);
+            setSavedReports(updated);
+            safeSetItem(SAVED_KEY, JSON.stringify(updated));
+        };
+        const clearDraft = () => {
+            try { localStorage.removeItem(DRAFT_KEY); } catch { }
+            setReportTitle('Psychoeducational Evaluation Report');
+            setStudentAge(''); setStudentGrade('');
+            setScoreEntries([]); setBgSections({ referralReason: '', developmental: '', medical: '', educational: '', social: '', behavioral: '', observations: '' });
+            setFactChunks([]); setReportSections({}); setAccuracyResults([]);
+            setCurrentStep(1);
+            if (addToast) addToast('Draft cleared', 'info');
+        };
 
         // ── PII scrubbing ──
         const scrubPII = (text) => {
@@ -186,6 +509,49 @@
             }
             setBgSections(prev => ({ ...prev, behavioral, observations }));
             if (addToast) addToast('BehaviorLens data imported ✅', 'success');
+        };
+
+        // ── Step 2: Import Longitudinal Student Progress ──
+        const importStudentProgress = () => {
+            if (!longitudinalData) { if (addToast) addToast('No student progress data available', 'info'); return; }
+            let educational = bgSections.educational || '';
+            let behavioral = bgSections.behavioral || '';
+            // History: summarise topic interactions
+            const hist = longitudinalData.history || [];
+            if (hist.length > 0) {
+                educational += '\n\n--- Imported from AlloFlow Learning History ---\n';
+                const typeCounts = {};
+                hist.forEach(h => { typeCounts[h.type || 'unknown'] = (typeCounts[h.type || 'unknown'] || 0) + 1; });
+                educational += `Total learning interactions: ${hist.length}\n`;
+                educational += `Activity breakdown: ${Object.entries(typeCounts).map(([k, v]) => `${k}: ${v}`).join(', ')}\n`;
+                const recent = hist.slice(-5);
+                educational += `Recent activities: ${recent.map(h => h.type + (h.topic ? ' (' + h.topic.substring(0, 40) + ')' : '')).join('; ')}`;
+            }
+            // Math fluency history
+            const mathHist = longitudinalData.mathFluencyHistory || [];
+            if (mathHist.length > 0) {
+                educational += '\n\n--- Math Fluency Probe Results ---\n';
+                mathHist.slice(-5).forEach((r, i) => {
+                    educational += `Session ${i + 1}: ${r.operation || 'mixed'} | Correct: ${r.correct || 0}/${r.total || 0} | Time: ${r.timeUsed || 'N/A'}s\n`;
+                });
+                const avgCorrect = mathHist.length > 0 ? Math.round(mathHist.reduce((s, r) => s + (r.correct || 0), 0) / mathHist.length) : 0;
+                educational += `Average correct per session: ${avgCorrect}`;
+            }
+            // Explore score (STEM Lab XP)
+            if (longitudinalData.exploreScore) {
+                educational += `\nSTEM Lab Explore XP: ${longitudinalData.exploreScore}`;
+            }
+            // Dashboard data summary
+            const dash = longitudinalData.dashboardData || [];
+            if (dash.length > 0) {
+                behavioral += '\n\n--- Class Dashboard Analytics ---\n';
+                behavioral += `Dashboard entries: ${dash.length}\n`;
+                dash.slice(0, 5).forEach((d, i) => {
+                    behavioral += `Entry ${i + 1}: ${d.name || d.student || 'Student'} — ${d.score !== undefined ? 'Score: ' + d.score : 'N/A'}\n`;
+                });
+            }
+            setBgSections(prev => ({ ...prev, educational, behavioral }));
+            if (addToast) addToast('Student progress data imported ✅', 'success');
         };
 
         // ── Step 3: Extract fact chunks ──
@@ -273,6 +639,7 @@ Extract 5-20 key facts. Be precise and factual.`;
             const bgChunksText = verifiedChunks.filter(c => c.type === 'background').map(c =>
                 `${c.field}: ${c.value}`
             ).join('\n');
+            const referenceContext = buildReferenceContext(scoreEntries, parseFloat(studentAge));
             for (let i = 0; i < sections.length; i++) {
                 const section = sections[i];
                 setGenProgress(`Generating ${section} (${i + 1}/${sections.length})...`);
@@ -293,6 +660,8 @@ ${scoreChunksText || 'No assessment scores provided for this section.'}
 VERIFIED BACKGROUND FACTS:
 ${bgChunksText || 'No background information provided for this section.'}
 
+${referenceContext ? '\nCLINICAL REFERENCE CONTEXT (for interpretation accuracy — DO NOT diagnose, note convergent/divergent patterns only):\n' + referenceContext : ''}
+
 Write the "${section}" section (2-4 paragraphs). Return ONLY the section text, no headers or labels.`;
                     const result = await callGemini(prompt, false);
                     generated[section] = result.trim();
@@ -307,47 +676,139 @@ Write the "${section}" section (2-4 paragraphs). Return ONLY the section text, n
             if (addToast) addToast('Report generated ✨', 'success');
         };
 
-        // ── Step 5: Accuracy check ──
+        // ── Step 5: Dual-Pass Accuracy Check ──
         const runAccuracyCheck = async () => {
             if (!callGemini) return;
             setChecking(true);
             const verifiedChunks = factChunks.filter(c => c.verified);
             const fullDraft = Object.entries(reportSections).map(([k, v]) => `## ${k}\n${v}`).join('\n\n');
+            const referenceCtx = buildReferenceContext(scoreEntries, parseFloat(studentAge));
+            const chunksText = verifiedChunks.map(c => `- [${c.id}] ${c.source} ${c.field}: ${c.value} (${c.classification || ''})`).join('\n');
+            const scrubbedDraft = scrubPII(fullDraft).substring(0, 6000);
             try {
-                const prompt = `You are a clinical accuracy auditor. Compare this report draft against the verified fact chunks and identify any discrepancies.
-
+                // ── Pass A: Claim Verifier ──
+                const promptA = `You are a clinical accuracy auditor (Pass A: Claim Verification). Compare this report draft against the verified fact chunks.
 VERIFIED FACT CHUNKS (ground truth):
-${verifiedChunks.map(c => `- [${c.id}] ${c.source} ${c.field}: ${c.value} (${c.classification || ''})`).join('\n')}
+${chunksText}
+${referenceCtx ? '\nCLINICAL REFERENCE:\n' + referenceCtx : ''}
 
 REPORT DRAFT:
 """
-${scrubPII(fullDraft).substring(0, 6000)}
+${scrubbedDraft}
 """
 
 For each claim in the report, determine:
 - "verified" = directly supported by a fact chunk
 - "unsourced" = plausible but not directly traceable to a fact chunk
-- "contradicts" = conflicts with a fact chunk
+- "contradicts" = conflicts with a fact chunk OR misinterprets a score classification
 
 Return ONLY valid JSON:
 {"results":[{"claim":"brief claim text","status":"verified|unsourced|contradicts","chunkId":"matching chunk id or null","explanation":"brief reason"}]}
 
-Check every numerical score, every classification, and every factual claim.`;
-                const result = await callGemini(prompt, true);
-                const cleaned = result.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-                let parsed;
-                try { parsed = JSON.parse(cleaned); }
-                catch { const m = result.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); else parsed = { results: [] }; }
-                setAccuracyResults(parsed.results || []);
+Check every numerical score, every classification label, and every factual claim.`;
+
+                // ── Pass B: Contradiction Hunter (skeptical auditor) ──
+                const promptB = `You are a clinical accuracy auditor (Pass B: Contradiction Detection). Your ONLY job is to find errors. Be maximally skeptical.
+VERIFIED FACT CHUNKS (ground truth):
+${chunksText}
+${referenceCtx ? '\nCLINICAL REFERENCE:\n' + referenceCtx : ''}
+
+REPORT DRAFT:
+"""
+${scrubbedDraft}
+"""
+
+For every claim, ask: "Does a fact chunk DIRECTLY prove this?" Be especially vigilant for:
+1. Score misclassifications (e.g., saying "Average" for 85, which is actually "Low Average")
+2. Invented information not in any fact chunk
+3. Exaggerated or minimized descriptions of scores
+4. Unsupported diagnostic language or conclusions
+
+Return ONLY valid JSON:
+{"results":[{"claim":"brief claim text","status":"verified|unsourced|contradicts","chunkId":"matching chunk id or null","explanation":"brief reason"}]}`;
+
+                // Run both passes in parallel
+                const [resultA, resultB] = await Promise.all([
+                    callGemini(promptA, true),
+                    callGemini(promptB, true)
+                ]);
+                const parseAudit = (raw) => {
+                    try {
+                        const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+                        let parsed;
+                        try { parsed = JSON.parse(cleaned); }
+                        catch { const m = raw.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); else parsed = { results: [] }; }
+                        return parsed.results || [];
+                    } catch { return []; }
+                };
+                const passA = parseAudit(resultA);
+                const passB = parseAudit(resultB);
+                // ── Reconciliation Engine ──
+                const reconciled = reconcileAuditPasses(passA, passB);
+                setAccuracyResults(reconciled);
                 if (addToast) {
-                    const v = (parsed.results || []).filter(r => r.status === 'verified').length;
-                    const total = (parsed.results || []).length;
-                    addToast(`Accuracy: ${v}/${total} claims verified ✅`, v === total ? 'success' : 'info');
+                    const v = reconciled.filter(r => r.status === 'verified').length;
+                    const d = reconciled.filter(r => r.status === 'discrepancy').length;
+                    const c = reconciled.filter(r => r.status === 'contradicts').length;
+                    const total = reconciled.length;
+                    addToast(`Dual-pass audit: ${v}/${total} verified${d > 0 ? ', ' + d + ' discrepancies' : ''}${c > 0 ? ', ' + c + ' contradictions' : ''}`, v === total ? 'success' : 'info');
                 }
             } catch (err) {
                 warnLog('Accuracy check error:', err);
                 if (addToast) addToast('Accuracy check failed', 'error');
             } finally { setChecking(false); }
+        };
+        // ── Dual-Pass Reconciliation Engine ──
+        const reconcileAuditPasses = (passA, passB) => {
+            const norm = (s) => (s || '').toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
+            const findMatch = (claim, pool) => {
+                const n = norm(claim);
+                let best = pool.find(p => norm(p.claim) === n);
+                if (best) return best;
+                const words = n.split(/\s+/).filter(w => w.length > 3);
+                let bestScore = 0;
+                pool.forEach(p => {
+                    const pWords = norm(p.claim).split(/\s+/).filter(w => w.length > 3);
+                    const overlap = words.filter(w => pWords.includes(w)).length;
+                    const score = overlap / Math.max(words.length, pWords.length, 1);
+                    if (score > bestScore && score > 0.4) { bestScore = score; best = p; }
+                });
+                return best || null;
+            };
+            const reconciled = [];
+            const usedB = new Set();
+            passA.forEach(claimA => {
+                const matchB = findMatch(claimA.claim, passB);
+                if (matchB) usedB.add(passB.indexOf(matchB));
+                if (!matchB) {
+                    reconciled.push({ ...claimA, auditSource: 'single-pass', confidence: claimA.status === 'verified' ? 'medium' : 'low' });
+                } else if (claimA.status === matchB.status) {
+                    reconciled.push({ ...claimA, auditSource: 'dual-pass-agree', confidence: 'high', passAStatus: claimA.status, passBStatus: matchB.status });
+                } else if ((claimA.status === 'contradicts') !== (matchB.status === 'contradicts')) {
+                    reconciled.push({
+                        claim: claimA.claim, status: 'discrepancy',
+                        chunkId: claimA.chunkId || matchB.chunkId,
+                        explanation: 'DUAL-PASS DISAGREEMENT: Pass A says "' + claimA.status + '" (' + (claimA.explanation || '') + '), Pass B says "' + matchB.status + '" (' + (matchB.explanation || '') + ')',
+                        auditSource: 'dual-pass-disagree', confidence: 'needs-review',
+                        passAStatus: claimA.status, passBStatus: matchB.status
+                    });
+                } else {
+                    const worseStatus = claimA.status === 'unsourced' || matchB.status === 'unsourced' ? 'unsourced' : claimA.status;
+                    reconciled.push({
+                        claim: claimA.claim, status: worseStatus,
+                        chunkId: claimA.chunkId || matchB.chunkId,
+                        explanation: (claimA.explanation || matchB.explanation || '') + ' [Passes disagree: A="' + claimA.status + '", B="' + matchB.status + '"]',
+                        auditSource: 'dual-pass-minor-disagree', confidence: 'medium',
+                        passAStatus: claimA.status, passBStatus: matchB.status
+                    });
+                }
+            });
+            passB.forEach((claimB, i) => {
+                if (!usedB.has(i)) {
+                    reconciled.push({ ...claimB, auditSource: 'pass-b-only', confidence: claimB.status === 'contradicts' ? 'high' : 'medium' });
+                }
+            });
+            return reconciled;
         };
 
         // ── Step 6: Export ──
@@ -507,10 +968,16 @@ Check every numerical score, every classification, and every factual claim.`;
             currentStep === 2 && h('div', { className: 'bg-white rounded-xl p-4 border border-slate-200 space-y-3' },
                 h('h3', { className: 'text-sm font-bold text-slate-800 flex items-center gap-2' }, '📋 Background & History'),
                 h('p', { className: 'text-[10px] text-slate-500' }, 'Enter background information. PII is auto-scrubbed before any AI processing.'),
-                (abcEntries?.length > 0 || observationSessions?.length > 0) && h('button', {
-                    className: 'px-3 py-1.5 bg-indigo-50 text-indigo-700 text-[10px] font-medium rounded-lg border border-indigo-200 hover:bg-indigo-100 transition-colors',
-                    onClick: importFromBehaviorLens
-                }, `📥 Import from BehaviorLens (${(abcEntries?.length || 0)} ABC + ${(observationSessions?.length || 0)} observations)`),
+                h('div', { className: 'flex flex-wrap gap-2' },
+                    (abcEntries?.length > 0 || observationSessions?.length > 0) && h('button', {
+                        className: 'px-3 py-1.5 bg-indigo-50 text-indigo-700 text-[10px] font-medium rounded-lg border border-indigo-200 hover:bg-indigo-100 transition-colors',
+                        onClick: importFromBehaviorLens
+                    }, `📥 Import from BehaviorLens (${(abcEntries?.length || 0)} ABC + ${(observationSessions?.length || 0)} observations)`),
+                    longitudinalData && h('button', {
+                        className: 'px-3 py-1.5 bg-teal-50 text-teal-700 text-[10px] font-medium rounded-lg border border-teal-200 hover:bg-teal-100 transition-colors',
+                        onClick: importStudentProgress
+                    }, `📈 Import Student Progress (${(longitudinalData.history?.length || 0)} activities${longitudinalData.mathFluencyHistory?.length ? ' + ' + longitudinalData.mathFluencyHistory.length + ' probes' : ''})`)
+                ),
                 [
                     { key: 'referralReason', label: 'Reason for Referral', placeholder: 'Why was this student referred for evaluation?', rows: 2 },
                     { key: 'developmental', label: 'Developmental History', placeholder: 'Developmental milestones, prenatal/birth history...', rows: 3 },
@@ -628,7 +1095,7 @@ Check every numerical score, every classification, and every factual claim.`;
             // ═══ STEP 5: Accuracy Dashboard ═══
             currentStep === 5 && h('div', { className: 'bg-white rounded-xl p-4 border border-slate-200 space-y-3' },
                 h('h3', { className: 'text-sm font-bold text-slate-800 flex items-center gap-2' }, '🎯 Accuracy Dashboard'),
-                h('p', { className: 'text-[10px] text-slate-500' }, 'Triple-check verification: each claim cross-referenced against immutable fact chunks.'),
+                h('p', { className: 'text-[10px] text-slate-500' }, 'Dual-pass verification: two independent AI auditors cross-reference each claim against immutable fact chunks.'),
                 checking ? h('div', { className: 'text-center py-8' },
                     h('div', { className: 'inline-block animate-spin w-8 h-8 border-2 border-violet-300 border-t-violet-600 rounded-full' }),
                     h('p', { className: 'text-xs text-slate-500 mt-3' }, 'Running accuracy audit against fact chunks...')
@@ -647,6 +1114,10 @@ Check every numerical score, every classification, and every factual claim.`;
                             h('p', { className: 'text-lg font-bold text-red-600' }, accuracyResults.filter(r => r.status === 'contradicts').length),
                             h('p', { className: 'text-[9px] text-slate-500' }, '🔴 Contradicts')
                         ),
+                        h('div', { className: 'text-center' },
+                            h('p', { className: 'text-lg font-bold text-purple-600' }, accuracyResults.filter(r => r.status === 'discrepancy').length),
+                            h('p', { className: 'text-[9px] text-slate-500' }, '\u26A0\uFE0F Discrepancy')
+                        ),
                         h('div', { className: 'ml-auto text-center' },
                             h('p', { className: 'text-lg font-bold text-violet-700' }, `${accuracyResults.length > 0 ? Math.round((accuracyResults.filter(r => r.status === 'verified').length / accuracyResults.length) * 100) : 0}%`),
                             h('p', { className: 'text-[9px] text-slate-500' }, 'Accuracy')
@@ -656,11 +1127,13 @@ Check every numerical score, every classification, and every factual claim.`;
                     // Claim-by-claim results
                     accuracyResults.length > 0 && h('div', { className: 'space-y-1 max-h-[350px] overflow-y-auto' },
                         accuracyResults.map((r, i) =>
-                            h('div', { key: i, className: `flex items-start gap-2 px-3 py-2 rounded-lg text-[10px] border ${r.status === 'verified' ? 'bg-green-50 border-green-200' : r.status === 'unsourced' ? 'bg-amber-50 border-amber-200' : 'bg-red-50 border-red-200'}` },
-                                h('span', { className: 'text-sm flex-shrink-0 mt-0.5' }, r.status === 'verified' ? '🟢' : r.status === 'unsourced' ? '🟡' : '🔴'),
+                            h('div', { key: i, className: `flex items-start gap-2 px-3 py-2 rounded-lg text-[10px] border ${r.status === 'verified' ? 'bg-green-50 border-green-200' : r.status === 'unsourced' ? 'bg-amber-50 border-amber-200' : r.status === 'discrepancy' ? 'bg-purple-50 border-purple-200' : 'bg-red-50 border-red-200'}` },
+                                h('span', { className: 'text-sm flex-shrink-0 mt-0.5' }, r.status === 'verified' ? '🟢' : r.status === 'unsourced' ? '🟡' : r.status === 'discrepancy' ? '\u26A0\uFE0F' : '🔴'),
                                 h('div', { className: 'flex-1 min-w-0' },
                                     h('p', { className: 'font-medium text-slate-800 break-words' }, r.claim),
-                                    h('p', { className: 'text-slate-500 mt-0.5' }, r.explanation || '')
+                                    h('p', { className: 'text-slate-500 mt-0.5' }, r.explanation || ''),
+                                    r.confidence && h('span', { className: 'inline-block mt-0.5 text-[8px] px-1.5 py-0.5 rounded-full ' + (r.confidence === 'high' ? 'bg-green-100 text-green-700' : r.confidence === 'needs-review' ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-500') }, r.confidence === 'high' ? 'High Confidence' : r.confidence === 'needs-review' ? 'Needs Review' : 'Medium'),
+                                    r.auditSource && r.auditSource.startsWith('dual') && h('span', { className: 'inline-block mt-0.5 ml-1 text-[8px] px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-600' }, 'Dual-Pass')
                                 )
                             )
                         )
@@ -714,6 +1187,30 @@ Check every numerical score, every classification, and every factual claim.`;
                     }),
                     importText.trim() && h('button', { className: 'mt-1 px-3 py-1 bg-emerald-600 text-white text-[10px] rounded-lg hover:bg-emerald-700', onClick: importJSON }, '📂 Import Data')
                 ),
+                // ── Saved Reports Gallery ──
+                h('div', { className: 'mt-3 bg-violet-50 rounded-lg border border-violet-200 p-3 space-y-2' },
+                    h('h4', { className: 'text-xs font-bold text-violet-800 flex items-center gap-1' }, '📚 Saved Reports'),
+                    h('div', { className: 'flex items-center gap-2' },
+                        h('input', { type: 'text', className: 'flex-1 text-[10px] border rounded-lg px-2 py-1', placeholder: 'Report name (optional)...', value: saveReportName, onChange: e => setSaveReportName(e.target.value) }),
+                        h('button', { className: 'px-3 py-1 bg-violet-600 text-white text-[10px] font-medium rounded-lg hover:bg-violet-700 transition-colors whitespace-nowrap', onClick: saveReportToGallery }, '💾 Save Report'),
+                        h('button', { className: 'px-3 py-1 bg-red-100 text-red-600 text-[10px] font-medium rounded-lg hover:bg-red-200 transition-colors whitespace-nowrap', onClick: clearDraft }, '🗑️ New Report')
+                    ),
+                    savedReports.length > 0 && h('div', { className: 'space-y-1 max-h-40 overflow-y-auto mt-1' },
+                        savedReports.map(r =>
+                            h('div', { key: r.id, className: 'flex items-center justify-between px-2 py-1.5 bg-white rounded border border-violet-100 text-[10px]' },
+                                h('div', { className: 'flex-1 min-w-0' },
+                                    h('span', { className: 'font-medium text-slate-800 truncate block' }, r.name),
+                                    h('span', { className: 'text-slate-400' }, new Date(r.savedAt).toLocaleDateString() + ' • ' + (r.scoreEntries?.length || 0) + ' scores')
+                                ),
+                                h('div', { className: 'flex gap-1 ml-2' },
+                                    h('button', { className: 'px-2 py-0.5 bg-violet-100 text-violet-700 rounded hover:bg-violet-200', onClick: () => loadSavedReport(r) }, 'Load'),
+                                    h('button', { className: 'px-2 py-0.5 bg-red-50 text-red-500 rounded hover:bg-red-100', onClick: () => deleteSavedReport(r.id) }, '✕')
+                                )
+                            )
+                        )
+                    ),
+                    savedReports.length === 0 && h('p', { className: 'text-[9px] text-violet-400 text-center py-2' }, 'No saved reports yet. Use "Save Report" to keep a copy.')
+                ),
                 // Quick report preview
                 Object.keys(reportSections).length > 0 && h('details', { className: 'mt-2 bg-slate-50 rounded-lg border border-slate-200' },
                     h('summary', { className: 'text-xs font-medium text-slate-700 px-3 py-2 cursor-pointer hover:bg-slate-100 rounded-lg' }, '📄 Preview Full Report'),
@@ -744,7 +1241,8 @@ Check every numerical score, every classification, and every factual claim.`;
         addToast,
         t,
         studentNickname,
-        behaviorLensData
+        behaviorLensData,
+        longitudinalData
     }) => {
         // Extract BehaviorLens data if provided (for cross-module data bridging)
         const blAbcEntries = behaviorLensData?.abcEntries || [];
@@ -769,6 +1267,7 @@ Check every numerical score, every classification, and every factual claim.`;
                     observationSessions: blObsSessions,
                     aiAnalysis: blAiAnalysis,
                     studentProfile: blStudentProfile,
+                    longitudinalData: longitudinalData || null,
                     callGemini,
                     t,
                     addToast
