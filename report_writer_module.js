@@ -353,6 +353,67 @@
         if (ageNorm.stage) return { type: 'reference', label: ageNorm.stage, color: 'sky', explanation: `Typical for age ${studentAge}: ${ageNorm.stage} — ${ageNorm.desc}` };
         return null;
     };
+
+    // ── Hypothesis Presets ──────────────────────────────────────
+    const HYPOTHESIS_PRESETS = [
+        'ADHD — Predominantly Inattentive',
+        'ADHD — Combined Presentation',
+        'Specific Learning Disability — Reading',
+        'Specific Learning Disability — Math',
+        'Specific Learning Disability — Written Expression',
+        'Autism Spectrum Disorder',
+        'Intellectual Disability',
+        'Emotional Disturbance',
+        'Speech/Language Impairment',
+        'No Diagnosis / Does Not Qualify',
+    ];
+
+    // ── Blueprint Templates ────────────────────────────────────
+    const BLUEPRINT_TEMPLATES = {
+        'Psychoeducational': [
+            { name: 'Reason for Referral', notes: '', enabled: true },
+            { name: 'Background Information', notes: '', enabled: true },
+            { name: 'Assessment Results & Interpretation', notes: '', enabled: true },
+            { name: 'Behavioral Observations', notes: '', enabled: true },
+            { name: 'Differential Analysis', notes: '', enabled: true },
+            { name: 'Summary & Diagnostic Impressions', notes: '', enabled: true },
+            { name: 'Recommendations', notes: '', enabled: true },
+        ],
+        'Functional Behavior Assessment': [
+            { name: 'Reason for Referral', notes: '', enabled: true },
+            { name: 'Background & History', notes: '', enabled: true },
+            { name: 'Operational Definitions of Behavior', notes: '', enabled: true },
+            { name: 'Data Collection & Analysis', notes: '', enabled: true },
+            { name: 'Antecedent-Behavior-Consequence Analysis', notes: '', enabled: true },
+            { name: 'Setting Events & Motivating Operations', notes: '', enabled: true },
+            { name: 'Hypothesis Statement', notes: '', enabled: true },
+            { name: 'Replacement Behaviors', notes: '', enabled: true },
+            { name: 'Recommendations & Intervention Plan', notes: '', enabled: true },
+        ],
+        'Speech-Language': [
+            { name: 'Reason for Referral', notes: '', enabled: true },
+            { name: 'Background Information', notes: '', enabled: true },
+            { name: 'Assessment Procedures', notes: '', enabled: true },
+            { name: 'Language Assessment Results', notes: '', enabled: true },
+            { name: 'Articulation/Phonology Results', notes: '', enabled: true },
+            { name: 'Pragmatic Language Observations', notes: '', enabled: true },
+            { name: 'Summary & Impressions', notes: '', enabled: true },
+            { name: 'Recommendations', notes: '', enabled: true },
+        ],
+        'Occupational Therapy': [
+            { name: 'Reason for Referral', notes: '', enabled: true },
+            { name: 'Background Information', notes: '', enabled: true },
+            { name: 'Fine Motor Assessment', notes: '', enabled: true },
+            { name: 'Sensory Processing Assessment', notes: '', enabled: true },
+            { name: 'Visual-Motor Integration', notes: '', enabled: true },
+            { name: 'Functional Performance', notes: '', enabled: true },
+            { name: 'Summary & Recommendations', notes: '', enabled: true },
+        ],
+    };
+
+    const REFS_STORAGE_KEY = 'allo_rw_refs';
+    const STYLE_STORAGE_KEY = 'allo_rw_style';
+
     // ─── Report Writer Panel ─────────────────────────────────────
     const DRAFT_KEY = 'allo_rw_draft';
     const SAVED_KEY = 'allo_rw_saved';
@@ -364,9 +425,11 @@
             { num: 1, label: 'Assessment Scores', icon: '📊' },
             { num: 2, label: 'Background & History', icon: '📋' },
             { num: 3, label: 'Fact Chunk Review', icon: '🔒' },
-            { num: 4, label: 'Generate Report', icon: '✍️' },
-            { num: 5, label: 'Accuracy Dashboard', icon: '🎯' },
-            { num: 6, label: 'Export', icon: '📥' },
+            { num: 4, label: 'Diagnostic Hypotheses', icon: '🔬' },
+            { num: 5, label: 'Report Blueprint', icon: '📐' },
+            { num: 6, label: 'Generate Report', icon: '✍️' },
+            { num: 7, label: 'Accuracy Dashboard', icon: '🎯' },
+            { num: 8, label: 'Export', icon: '📥' },
         ];
         const [currentStep, setCurrentStep] = useState(1);
         const [studentAge, setStudentAge] = useState('');
@@ -395,6 +458,27 @@
         const [importText, setImportText] = useState('');
         const [savedReports, setSavedReports] = useState([]);
         const [saveReportName, setSaveReportName] = useState('');
+        // Reference Library
+        const [referenceLibrary, setReferenceLibrary] = useState([]);
+        const [newRefName, setNewRefName] = useState('');
+        const [newRefText, setNewRefText] = useState('');
+        // Step 4: Diagnostic Hypotheses
+        const [hypotheses, setHypotheses] = useState(['No Diagnosis / Does Not Qualify']);
+        const [selectedHypotheses, setSelectedHypotheses] = useState([]);
+        const [differentialResults, setDifferentialResults] = useState({});
+        const [runningDifferential, setRunningDifferential] = useState(false);
+        const [newHypothesis, setNewHypothesis] = useState('');
+        // Step 5: Blueprint
+        const [blueprint, setBlueprint] = useState(BLUEPRINT_TEMPLATES['Psychoeducational'].map(s => ({ ...s, id: uid() })));
+        const [styleProfile, setStyleProfile] = useState('');
+        const [reportType, setReportType] = useState('Psychoeducational');
+        // Phase 2: Evidence Mapping & Section Drafting
+        const [sectionEvidenceMap, setSectionEvidenceMap] = useState({});
+        const [editingSection, setEditingSection] = useState(null);
+        const [editSectionText, setEditSectionText] = useState('');
+        const [regenSection, setRegenSection] = useState(null);
+        const [regenInstructions, setRegenInstructions] = useState('');
+        const [showRegenInput, setShowRegenInput] = useState(null);
 
         // ── Auto-load draft from localStorage on mount ──
         useEffect(() => {
@@ -410,8 +494,19 @@
                     if (d.factChunks?.length) setFactChunks(d.factChunks);
                     if (d.reportSections && Object.keys(d.reportSections).length) setReportSections(d.reportSections);
                     if (d.accuracyResults?.length) setAccuracyResults(d.accuracyResults);
+                    if (d.hypotheses?.length) setHypotheses(d.hypotheses);
+                    if (d.selectedHypotheses?.length) setSelectedHypotheses(d.selectedHypotheses);
+                    if (d.differentialResults) setDifferentialResults(d.differentialResults);
+                    if (d.blueprint?.length) setBlueprint(d.blueprint);
+                    if (d.styleProfile) setStyleProfile(d.styleProfile);
+                    if (d.reportType) setReportType(d.reportType);
+                    if (d.sectionEvidenceMap) setSectionEvidenceMap(d.sectionEvidenceMap);
                     debugLog('Draft restored from localStorage');
                 }
+                const refs = safeGetItem(REFS_STORAGE_KEY);
+                if (refs) setReferenceLibrary(JSON.parse(refs) || []);
+                const styleSaved = safeGetItem(STYLE_STORAGE_KEY);
+                if (styleSaved) setStyleProfile(styleSaved);
                 const saved = safeGetItem(SAVED_KEY);
                 if (saved) setSavedReports(JSON.parse(saved) || []);
             } catch (e) { warnLog('Draft load error:', e); }
@@ -421,12 +516,16 @@
         useEffect(() => {
             const timer = setTimeout(() => {
                 try {
-                    const snapshot = { reportTitle, studentAge, studentGrade, scoreEntries, bgSections, factChunks, reportSections, accuracyResults, savedAt: new Date().toISOString() };
+                    const snapshot = { reportTitle, studentAge, studentGrade, scoreEntries, bgSections, factChunks, reportSections, accuracyResults, hypotheses, selectedHypotheses, differentialResults, blueprint, styleProfile, reportType, sectionEvidenceMap, savedAt: new Date().toISOString() };
                     safeSetItem(DRAFT_KEY, JSON.stringify(snapshot));
                 } catch (e) { warnLog('Auto-save error:', e); }
             }, 1500);
             return () => clearTimeout(timer);
-        }, [reportTitle, studentAge, studentGrade, scoreEntries, bgSections, factChunks, reportSections, accuracyResults]);
+        }, [reportTitle, studentAge, studentGrade, scoreEntries, bgSections, factChunks, reportSections, accuracyResults, hypotheses, selectedHypotheses, differentialResults, blueprint, styleProfile, reportType, sectionEvidenceMap]);
+
+        // ── Reference Library + Style persistence ──
+        useEffect(() => { try { safeSetItem(REFS_STORAGE_KEY, JSON.stringify(referenceLibrary)); } catch (e) { } }, [referenceLibrary]);
+        useEffect(() => { try { safeSetItem(STYLE_STORAGE_KEY, styleProfile); } catch (e) { } }, [styleProfile]);
 
         // ── Saved Reports helpers ──
         const saveReportToGallery = () => {
@@ -623,33 +722,49 @@ Extract 5-20 key facts. Be precise and factual.`;
         const verifyAllChunks = () => factChunks.filter(c => !c.verified).forEach(c => verifyChunk(c.id));
         const rejectChunk = (chunkId) => setFactChunks(prev => prev.filter(c => c.id !== chunkId));
 
-        // ── Step 4: Generate report ──
-        const generateReport = async () => {
-            if (!callGemini) return;
-            setGenerating(true);
+        // ── Step 4: Differential Analysis ──
+        const runDifferentialAnalysis = async () => {
+            if (!callGemini || hypotheses.length === 0) return;
+            setRunningDifferential(true);
             const verifiedChunks = factChunks.filter(c => c.verified);
-            if (verifiedChunks.length === 0) { setGenerating(false); if (addToast) addToast('No verified fact chunks', 'error'); return; }
-            const sections = ['Reason for Referral', 'Background Information', 'Assessment Results & Interpretation', 'Behavioral Observations', 'Summary & Diagnostic Impressions', 'Recommendations'];
-            const generated = {};
+            const chunksText = verifiedChunks.map(c => c.source + ' ' + c.field + ': ' + c.value + ' (' + (c.classification || '') + ')').join('\n');
+            const referenceCtx = buildReferenceContext(scoreEntries, parseFloat(studentAge));
+            const userRefsText = referenceLibrary.map(r => '--- ' + r.name + ' ---\n' + r.text).join('\n\n').substring(0, 3000);
+            const userRefs = referenceLibrary.map(r => '--- ' + r.name + ' ---\n' + r.text).join('\n\n');
+            const prompt = 'You are a clinical evidence organizer. Given verified assessment data, organize the evidence for and against each diagnostic hypothesis.\n\nVERIFIED FACT CHUNKS:\n' + chunksText + (referenceCtx ? '\n\nCLINICAL REFERENCE:\n' + referenceCtx : '') + (userRefs ? '\n\nUSER-PROVIDED REFERENCES:\n' + userRefs : '') + '\n\nHYPOTHESES TO EVALUATE:\n' + hypotheses.map((h, i) => (i + 1) + '. ' + h).join('\n') + '\n\nFor each hypothesis provide:\n1. Evidence FOR (specific facts that support, with strength: strong/moderate/weak)\n2. Evidence AGAINST (facts that contradict)\n3. Evidence GAPS (additional data needed)\n4. Overall strength score (1-10)\n\nIMPORTANT: Organize EXISTING evidence only. Do NOT diagnose. All evidence must trace to fact chunks.\n\nReturn ONLY valid JSON:\n{"hypotheses":[{"name":"name","strengthScore":7,"evidenceFor":[{"fact":"desc","strength":"strong","explanation":"why"}],"evidenceAgainst":[{"fact":"desc","explanation":"why"}],"evidenceGaps":["missing data"]}]}';
+            try {
+                const result = await callGemini(prompt, true);
+                const cleaned = result.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+                let parsed;
+                try { parsed = JSON.parse(cleaned); }
+                catch { const m = result.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); else parsed = { hypotheses: [] }; }
+                const results = {};
+                (parsed.hypotheses || []).forEach(h => { results[h.name] = h; });
+                setDifferentialResults(results);
+                if (addToast) addToast('Differential analysis complete \u2705', 'success');
+            } catch (err) {
+                warnLog('Differential analysis error:', err);
+                if (addToast) addToast('Differential analysis failed', 'error');
+            } finally { setRunningDifferential(false); }
+        };
+
+        // ── Shared prompt builder for report sections ──
+        const buildSectionPrompt = (section, verifiedChunks, customInstructions) => {
             const age = studentAge ? `${studentAge} years old` : 'age not specified';
             const grade = studentGrade || 'grade not specified';
             const scoreChunksText = verifiedChunks.filter(c => c.type === 'score').map(c =>
-                `${c.source} — ${c.field}: ${c.value} (${c.classification})${c.devNormResult ? ' [' + c.devNormResult.label + ']' : ''}`
+                `[${c.id}] ${c.source} \u2014 ${c.field}: ${c.value} (${c.classification})${c.devNormResult ? ' [' + c.devNormResult.label + ']' : ''}`
             ).join('\n');
             const bgChunksText = verifiedChunks.filter(c => c.type === 'background').map(c =>
-                `${c.field}: ${c.value}`
+                `[${c.id}] ${c.field}: ${c.value}`
             ).join('\n');
             const referenceContext = buildReferenceContext(scoreEntries, parseFloat(studentAge));
-            for (let i = 0; i < sections.length; i++) {
-                const section = sections[i];
-                setGenProgress(`Generating ${section} (${i + 1}/${sections.length})...`);
-                try {
-                    const prompt = `You are writing the "${section}" section of a ${reportTitle} for a student who is ${age}, ${grade}.
+            return `You are writing the "${section}" section of a ${reportTitle} for a student who is ${age}, ${grade}.
 ${RESTORATIVE_PREAMBLE}
 
 CRITICAL RULES:
 1. Use ONLY the verified facts below. Do NOT invent any scores, dates, or claims.
-2. Every statement must trace directly to a fact chunk below.
+2. Every statement must trace directly to a fact chunk below (each prefixed with [chunk-id]).
 3. Use person-first, strengths-based language.
 4. Reference the student as "[Student]" (we will replace with actual name later).
 5. Write in professional clinical language appropriate for a formal report.
@@ -660,20 +775,87 @@ ${scoreChunksText || 'No assessment scores provided for this section.'}
 VERIFIED BACKGROUND FACTS:
 ${bgChunksText || 'No background information provided for this section.'}
 
-${referenceContext ? '\nCLINICAL REFERENCE CONTEXT (for interpretation accuracy — DO NOT diagnose, note convergent/divergent patterns only):\n' + referenceContext : ''}
+${referenceContext ? '\nCLINICAL REFERENCE CONTEXT (for interpretation accuracy \u2014 DO NOT diagnose, note convergent/divergent patterns only):\n' + referenceContext : ''}
+${referenceLibrary.length > 0 ? '\nUSER-PROVIDED REFERENCES:\n' + referenceLibrary.map(r => '--- ' + r.name + ' ---\n' + r.text).join('\n\n').substring(0, 3000) : ''}
 
-Write the "${section}" section (2-4 paragraphs). Return ONLY the section text, no headers or labels.`;
+${(() => { const bp = blueprint.find(b => b.name === section); return bp && bp.notes ? '\nSECTION-SPECIFIC INSTRUCTIONS: ' + bp.notes : ''; })()}
+${styleProfile ? '\nWRITING STYLE GUIDE (match this professional writing style):\n' + styleProfile.substring(0, 2000) : ''}
+${Object.keys(differentialResults).length > 0 && selectedHypotheses.length > 0 ? '\nSELECTED DIAGNOSTIC HYPOTHESES: ' + selectedHypotheses.join(', ') + '\nDIFFERENTIAL ANALYSIS SUMMARY: ' + selectedHypotheses.map(h => { const r = differentialResults[h]; return r ? h + ' (strength: ' + r.strengthScore + '/10)' : h; }).join('; ') : ''}
+${customInstructions ? '\nADDITIONAL INSTRUCTIONS FOR THIS SECTION: ' + customInstructions : ''}
+Write the "${section}" section (2-4 paragraphs). After the section text, on a NEW line write EXACTLY:
+USED_CHUNKS: id1, id2, id3
+listing only the [chunk-id] values you actually referenced. Return the section text first, then the USED_CHUNKS line.`;
+        };
+
+        // ── Parse evidence from AI response ──
+        const parseEvidenceResponse = (rawResult) => {
+            const lines = rawResult.trim().split('\n');
+            let usedChunks = [];
+            let textLines = [];
+            for (let i = lines.length - 1; i >= 0; i--) {
+                const line = lines[i].trim();
+                if (line.startsWith('USED_CHUNKS:')) {
+                    usedChunks = line.replace('USED_CHUNKS:', '').split(',').map(s => s.trim()).filter(Boolean);
+                    textLines = lines.slice(0, i);
+                    break;
+                }
+            }
+            if (textLines.length === 0) textLines = lines;
+            return { text: textLines.join('\n').trim(), usedChunks };
+        };
+
+        // ── Step 6: Generate report (with evidence mapping) ──
+        const generateReport = async () => {
+            if (!callGemini) return;
+            setGenerating(true);
+            const verifiedChunks = factChunks.filter(c => c.verified);
+            if (verifiedChunks.length === 0) { setGenerating(false); if (addToast) addToast('No verified fact chunks', 'error'); return; }
+            const sections = blueprint.filter(s => s.enabled).map(s => s.name);
+            const generated = {};
+            const evidenceMap = {};
+            for (let i = 0; i < sections.length; i++) {
+                const section = sections[i];
+                setGenProgress(`Generating ${section} (${i + 1}/${sections.length})...`);
+                try {
+                    const prompt = buildSectionPrompt(section, verifiedChunks, null);
                     const result = await callGemini(prompt, false);
-                    generated[section] = result.trim();
+                    const { text, usedChunks } = parseEvidenceResponse(result);
+                    generated[section] = text;
+                    evidenceMap[section] = usedChunks;
                 } catch (err) {
                     warnLog(`Generation error for ${section}:`, err);
-                    generated[section] = `[Error generating ${section} — please retry]`;
+                    generated[section] = `[Error generating ${section} \u2014 please retry]`;
+                    evidenceMap[section] = [];
                 }
             }
             setReportSections(generated);
+            setSectionEvidenceMap(evidenceMap);
             setGenProgress('');
             setGenerating(false);
-            if (addToast) addToast('Report generated ✨', 'success');
+            if (addToast) addToast('Report generated \u2728', 'success');
+        };
+
+        // ── Section-by-Section: Regenerate a single section ──
+        const regenerateSection = async (sectionName, customInstructions) => {
+            if (!callGemini) return;
+            setRegenSection(sectionName);
+            const verifiedChunks = factChunks.filter(c => c.verified);
+            try {
+                const prompt = buildSectionPrompt(sectionName, verifiedChunks, customInstructions || null);
+                const result = await callGemini(prompt, false);
+                const { text, usedChunks } = parseEvidenceResponse(result);
+                setReportSections(prev => ({ ...prev, [sectionName]: text }));
+                setSectionEvidenceMap(prev => ({ ...prev, [sectionName]: usedChunks }));
+                setAccuracyResults([]); // clear stale accuracy data
+                if (addToast) addToast(`"${sectionName}" regenerated \u2705`, 'success');
+            } catch (err) {
+                warnLog(`Regeneration error for ${sectionName}:`, err);
+                if (addToast) addToast(`Failed to regenerate "${sectionName}"`, 'error');
+            } finally {
+                setRegenSection(null);
+                setShowRegenInput(null);
+                setRegenInstructions('');
+            }
         };
 
         // ── Step 5: Dual-Pass Accuracy Check ──
@@ -996,6 +1178,34 @@ Return ONLY valid JSON:
                         })
                     )
                 ),
+                // ── Reference Library ──
+                h('details', { className: 'mt-3 bg-indigo-50 rounded-lg border border-indigo-200' },
+                    h('summary', { className: 'text-xs font-medium text-indigo-700 px-3 py-2 cursor-pointer hover:bg-indigo-100 rounded-t-lg' }, '\u{1F4DA} Reference Library (DSM-5-TR + Custom Documents)'),
+                    h('div', { className: 'px-3 pb-3 space-y-2' },
+                        h('p', { className: 'text-[9px] text-indigo-500' }, 'Add clinical references (e.g., MUSER, district protocols) for cross-referencing in analysis and report generation.'),
+                        h('div', { className: 'px-2 py-1.5 bg-white rounded border border-indigo-100 flex items-center justify-between text-[10px]' },
+                            h('span', { className: 'font-medium text-indigo-800' }, '\u{1F4D6} DSM-5-TR (Paraphrased Criteria) — Built-in'),
+                            h('span', { className: 'text-[8px] px-1.5 py-0.5 bg-indigo-100 text-indigo-600 rounded-full' }, 'Default')
+                        ),
+                        referenceLibrary.map(ref =>
+                            h('div', { key: ref.id, className: 'px-2 py-1.5 bg-white rounded border border-slate-200 flex items-center justify-between text-[10px]' },
+                                h('div', { className: 'flex-1 min-w-0' },
+                                    h('span', { className: 'font-medium text-slate-800 block truncate' }, ref.name),
+                                    h('span', { className: 'text-slate-400 text-[8px]' }, ref.text.substring(0, 80) + '...')
+                                ),
+                                h('button', { className: 'ml-2 text-red-400 hover:text-red-600 text-xs', onClick: () => setReferenceLibrary(prev => prev.filter(r => r.id !== ref.id)) }, '\u2715')
+                            )
+                        ),
+                        h('div', { className: 'space-y-1 mt-2 bg-white rounded-lg p-2 border border-indigo-100' },
+                            h('input', { type: 'text', className: 'w-full text-[10px] border rounded px-2 py-1', placeholder: 'Reference name (e.g., "MUSER Ch. 101")...', value: newRefName, onChange: e => setNewRefName(e.target.value) }),
+                            h('textarea', { className: 'w-full text-[10px] border rounded px-2 py-1 h-20 resize-none font-mono', placeholder: 'Paste reference text here...', value: newRefText, onChange: e => setNewRefText(e.target.value) }),
+                            newRefName.trim() && newRefText.trim() && h('button', {
+                                className: 'px-3 py-1 bg-indigo-600 text-white text-[10px] rounded hover:bg-indigo-700',
+                                onClick: () => { setReferenceLibrary(prev => [...prev, { id: uid(), name: newRefName.trim(), text: newRefText.trim(), addedAt: new Date().toISOString() }]); setNewRefName(''); setNewRefText(''); if (addToast) addToast('Reference added', 'success'); }
+                            }, '\u2795 Add Reference')
+                        )
+                    )
+                ),
                 h('div', { className: 'flex justify-between pt-2' },
                     h('button', { className: 'px-4 py-2 bg-slate-100 text-slate-600 text-xs rounded-lg hover:bg-slate-200', onClick: () => setCurrentStep(1) }, '← Scores'),
                     h('button', { className: 'px-4 py-2 bg-violet-600 text-white text-xs font-medium rounded-lg hover:bg-violet-700', onClick: () => { setCurrentStep(3); if (factChunks.length === 0) extractFactChunks(); } }, 'Next: Review Facts →')
@@ -1051,11 +1261,167 @@ Return ONLY valid JSON:
                     h('button', {
                         className: `px-4 py-2 text-xs font-medium rounded-lg transition-colors ${verifiedCount > 0 ? 'bg-violet-600 text-white hover:bg-violet-700' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`,
                         disabled: verifiedCount === 0, onClick: () => setCurrentStep(4)
-                    }, `Next: Generate Report (${verifiedCount} facts) →`)
+                    }, `Next: Hypotheses (${verifiedCount} facts) →`)
                 )
             ),
-            // ═══ STEP 4: Generate Report ═══
+
+            // ═══ STEP 4: Diagnostic Hypotheses ═══
             currentStep === 4 && h('div', { className: 'bg-white rounded-xl p-4 border border-slate-200 space-y-3' },
+                h('h3', { className: 'text-sm font-bold text-slate-800 flex items-center gap-2' }, '\u{1F52C} Diagnostic Hypotheses'),
+                h('p', { className: 'text-[10px] text-slate-500' }, 'Enter diagnostic hypotheses to evaluate. The AI will organize your verified evidence for and against each hypothesis.'),
+                // Hypothesis presets
+                h('div', { className: 'space-y-2' },
+                    h('label', { className: 'text-[10px] font-medium text-slate-600' }, 'Quick Add:'),
+                    h('div', { className: 'flex flex-wrap gap-1' },
+                        HYPOTHESIS_PRESETS.filter(p => !hypotheses.includes(p)).map(preset =>
+                            h('button', {
+                                key: preset,
+                                className: 'px-2 py-1 bg-violet-50 text-violet-700 text-[9px] rounded-full border border-violet-200 hover:bg-violet-100 transition-colors',
+                                onClick: () => setHypotheses(prev => [...prev, preset])
+                            }, '+ ' + preset)
+                        )
+                    ),
+                    // Custom hypothesis
+                    h('div', { className: 'flex gap-2 mt-1' },
+                        h('input', { type: 'text', className: 'flex-1 text-[10px] border rounded-lg px-2 py-1', placeholder: 'Custom hypothesis...', value: newHypothesis, onChange: e => setNewHypothesis(e.target.value), onKeyDown: e => { if (e.key === 'Enter' && newHypothesis.trim()) { setHypotheses(prev => [...prev, newHypothesis.trim()]); setNewHypothesis(''); } } }),
+                        h('button', { className: 'px-3 py-1 bg-violet-600 text-white text-[10px] rounded-lg hover:bg-violet-700', disabled: !newHypothesis.trim(), onClick: () => { if (newHypothesis.trim()) { setHypotheses(prev => [...prev, newHypothesis.trim()]); setNewHypothesis(''); } } }, 'Add')
+                    )
+                ),
+                // Current hypotheses
+                hypotheses.length > 0 && h('div', { className: 'bg-slate-50 rounded-lg p-3 space-y-1' },
+                    h('label', { className: 'text-[10px] font-medium text-slate-600 block mb-1' }, 'Active Hypotheses:'),
+                    hypotheses.map((hyp, i) =>
+                        h('div', { key: i, className: 'flex items-center justify-between px-2 py-1.5 bg-white rounded border text-[10px] ' + (selectedHypotheses.includes(hyp) ? 'border-violet-300 bg-violet-50' : 'border-slate-200') },
+                            h('div', { className: 'flex items-center gap-2 flex-1' },
+                                h('input', { type: 'checkbox', checked: selectedHypotheses.includes(hyp), onChange: e => { if (e.target.checked) setSelectedHypotheses(prev => [...prev, hyp]); else setSelectedHypotheses(prev => prev.filter(h => h !== hyp)); } }),
+                                h('span', { className: 'font-medium text-slate-800' }, hyp),
+                                differentialResults[hyp] && h('span', {
+                                    className: 'px-1.5 py-0.5 rounded-full text-[8px] font-bold ' + (differentialResults[hyp].strengthScore >= 7 ? 'bg-green-100 text-green-700' : differentialResults[hyp].strengthScore >= 4 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700')
+                                }, differentialResults[hyp].strengthScore + '/10')
+                            ),
+                            hyp !== 'No Diagnosis / Does Not Qualify' && h('button', { className: 'text-red-400 hover:text-red-600 ml-2', onClick: () => { setHypotheses(prev => prev.filter(h => h !== hyp)); setSelectedHypotheses(prev => prev.filter(h => h !== hyp)); } }, '\u2715')
+                        )
+                    ),
+                    h('p', { className: 'text-[8px] text-slate-400 mt-1' }, '\u2611\uFE0F Check hypotheses to include in report generation. "No Diagnosis" is always evaluated as baseline.')
+                ),
+                // Run analysis button
+                factChunks.filter(c => c.verified).length > 0 && h('div', { className: 'pt-2' },
+                    h('button', {
+                        className: 'w-full px-4 py-2.5 text-xs font-medium rounded-lg transition-colors ' + (runningDifferential ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:from-violet-700 hover:to-indigo-700'),
+                        disabled: runningDifferential || hypotheses.length < 2,
+                        onClick: runDifferentialAnalysis
+                    }, runningDifferential ? '\u23F3 Analyzing evidence...' : '\u{1F52C} Run Differential Analysis')
+                ),
+                hypotheses.length < 2 && h('p', { className: 'text-[9px] text-amber-600 text-center' }, 'Add at least 2 hypotheses (including "No Diagnosis") to run analysis.'),
+                // Differential results
+                Object.keys(differentialResults).length > 0 && h('div', { className: 'space-y-2 mt-2' },
+                    h('h4', { className: 'text-xs font-bold text-indigo-700' }, '\u{1F4CA} Differential Evidence Summary'),
+                    Object.entries(differentialResults).map(([name, data]) =>
+                        h('details', { key: name, className: 'bg-slate-50 rounded-lg border border-slate-200', open: true },
+                            h('summary', { className: 'text-xs font-medium text-slate-700 px-3 py-2 cursor-pointer hover:bg-slate-100 rounded-t-lg flex items-center gap-2' },
+                                h('span', {
+                                    className: 'w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white ' + (data.strengthScore >= 7 ? 'bg-green-500' : data.strengthScore >= 4 ? 'bg-amber-500' : 'bg-red-400')
+                                }, data.strengthScore || '?'),
+                                name
+                            ),
+                            h('div', { className: 'px-3 pb-2 space-y-1 text-[10px]' },
+                                data.evidenceFor && data.evidenceFor.length > 0 && h('div', null,
+                                    h('p', { className: 'font-medium text-green-700' }, '\u2705 Evidence For:'),
+                                    data.evidenceFor.map((e, i) => h('p', { key: i, className: 'ml-3 text-slate-600' }, '- ' + e.fact + ' (' + e.strength + ': ' + (e.explanation || '') + ')'))
+                                ),
+                                data.evidenceAgainst && data.evidenceAgainst.length > 0 && h('div', null,
+                                    h('p', { className: 'font-medium text-red-600' }, '\u274C Evidence Against:'),
+                                    data.evidenceAgainst.map((e, i) => h('p', { key: i, className: 'ml-3 text-slate-600' }, '- ' + e.fact + ': ' + (e.explanation || '')))
+                                ),
+                                data.evidenceGaps && data.evidenceGaps.length > 0 && h('div', null,
+                                    h('p', { className: 'font-medium text-amber-600' }, '\u26A0\uFE0F Evidence Gaps:'),
+                                    data.evidenceGaps.map((g, i) => h('p', { key: i, className: 'ml-3 text-slate-500' }, '- ' + g))
+                                )
+                            )
+                        )
+                    )
+                ),
+                h('div', { className: 'flex justify-between pt-2' },
+                    h('button', { className: 'px-4 py-2 bg-slate-100 text-slate-600 text-xs rounded-lg hover:bg-slate-200', onClick: () => setCurrentStep(3) }, '\u2190 Fact Chunks'),
+                    h('button', { className: 'px-4 py-2 bg-violet-600 text-white text-xs font-medium rounded-lg hover:bg-violet-700', onClick: () => setCurrentStep(5) }, 'Next: Blueprint \u2192')
+                )
+            ),
+
+            // ═══ STEP 5: Report Blueprint ═══
+            currentStep === 5 && h('div', { className: 'bg-white rounded-xl p-4 border border-slate-200 space-y-3' },
+                h('h3', { className: 'text-sm font-bold text-slate-800 flex items-center gap-2' }, '\u{1F4D0} Report Blueprint'),
+                h('p', { className: 'text-[10px] text-slate-500' }, 'Customize your report structure, section order, and add notes to guide each section\'s generation.'),
+                // Report type selector
+                h('div', { className: 'flex items-center gap-2' },
+                    h('label', { className: 'text-[10px] font-medium text-slate-600' }, 'Report Type:'),
+                    h('select', {
+                        className: 'text-xs border rounded-lg px-2 py-1',
+                        value: reportType,
+                        onChange: e => {
+                            const t = e.target.value;
+                            setReportType(t);
+                            setBlueprint(BLUEPRINT_TEMPLATES[t].map(s => ({ ...s, id: uid() })));
+                        }
+                    },
+                        Object.keys(BLUEPRINT_TEMPLATES).map(t => h('option', { key: t, value: t }, t))
+                    )
+                ),
+                // Section list
+                h('div', { className: 'space-y-1' },
+                    blueprint.map((section, idx) =>
+                        h('div', { key: section.id, className: 'bg-slate-50 rounded-lg border border-slate-200 p-2 ' + (!section.enabled ? 'opacity-50' : '') },
+                            h('div', { className: 'flex items-center gap-2' },
+                                h('div', { className: 'flex flex-col gap-0.5' },
+                                    h('button', {
+                                        className: 'text-[9px] text-slate-400 hover:text-slate-700 leading-none',
+                                        disabled: idx === 0,
+                                        onClick: () => { const nw = [...blueprint]; const tmp = nw[idx]; nw[idx] = nw[idx - 1]; nw[idx - 1] = tmp; setBlueprint(nw); }
+                                    }, '\u25B2'),
+                                    h('button', {
+                                        className: 'text-[9px] text-slate-400 hover:text-slate-700 leading-none',
+                                        disabled: idx === blueprint.length - 1,
+                                        onClick: () => { const nw = [...blueprint]; const tmp = nw[idx]; nw[idx] = nw[idx + 1]; nw[idx + 1] = tmp; setBlueprint(nw); }
+                                    }, '\u25BC')
+                                ),
+                                h('input', { type: 'checkbox', checked: section.enabled, onChange: e => { const nw = [...blueprint]; nw[idx] = { ...nw[idx], enabled: e.target.checked }; setBlueprint(nw); } }),
+                                h('span', { className: 'text-[10px] font-medium text-slate-800 flex-1' }, (idx + 1) + '. ' + section.name),
+                                h('button', { className: 'text-red-400 hover:text-red-600 text-xs', onClick: () => setBlueprint(prev => prev.filter(s => s.id !== section.id)) }, '\u2715')
+                            ),
+                            h('input', {
+                                type: 'text',
+                                className: 'w-full text-[9px] border rounded px-2 py-0.5 mt-1 text-slate-500',
+                                placeholder: 'Section notes (e.g., "focus on classroom accommodations")...',
+                                value: section.notes,
+                                onChange: e => { const nw = [...blueprint]; nw[idx] = { ...nw[idx], notes: e.target.value }; setBlueprint(nw); }
+                            })
+                        )
+                    ),
+                    h('button', {
+                        className: 'w-full px-3 py-1.5 bg-slate-100 text-slate-600 text-[10px] rounded-lg hover:bg-slate-200 border border-dashed border-slate-300',
+                        onClick: () => setBlueprint(prev => [...prev, { id: uid(), name: 'New Section', notes: '', enabled: true }])
+                    }, '\u2795 Add Section')
+                ),
+                // Style profile
+                h('details', { className: 'mt-2 bg-amber-50 rounded-lg border border-amber-200' },
+                    h('summary', { className: 'text-xs font-medium text-amber-700 px-3 py-2 cursor-pointer hover:bg-amber-100 rounded-t-lg' }, '\u{1F3A8} Writing Style (paste sample report)'),
+                    h('div', { className: 'px-3 pb-3' },
+                        h('p', { className: 'text-[9px] text-amber-600 mb-1' }, 'Paste a redacted sample report to match your professional writing style.'),
+                        h('textarea', {
+                            className: 'w-full text-[10px] border rounded-lg px-2 py-1 h-32 resize-none font-mono',
+                            placeholder: 'Paste a sample report here (redact student names)...',
+                            value: styleProfile,
+                            onChange: e => setStyleProfile(e.target.value)
+                        }),
+                        styleProfile && h('p', { className: 'text-[8px] text-amber-500 mt-1' }, '\u2705 Style profile loaded (' + styleProfile.length + ' chars) — will guide AI writing tone and structure.')
+                    )
+                ),
+                h('div', { className: 'flex justify-between pt-2' },
+                    h('button', { className: 'px-4 py-2 bg-slate-100 text-slate-600 text-xs rounded-lg hover:bg-slate-200', onClick: () => setCurrentStep(4) }, '\u2190 Hypotheses'),
+                    h('button', { className: 'px-4 py-2 bg-violet-600 text-white text-xs font-medium rounded-lg hover:bg-violet-700', onClick: () => setCurrentStep(6) }, 'Next: Generate \u2192')
+                )
+            ),
+            // ═══ STEP 6: Generate Report ═══
+            currentStep === 6 && h('div', { className: 'bg-white rounded-xl p-4 border border-slate-200 space-y-3' },
                 h('h3', { className: 'text-sm font-bold text-slate-800 flex items-center gap-2' }, '✍️ Generate Report'),
                 h('div', { className: 'flex items-center gap-3 mb-2' },
                     h('div', { className: 'flex-1' },
@@ -1073,27 +1439,97 @@ Return ONLY valid JSON:
                     ),
                     h('p', { className: 'text-[10px] text-center text-violet-600' }, genProgress)
                 ),
-                // Generated sections
+                // Generated sections with evidence mapping & per-section controls
                 Object.keys(reportSections).length > 0 && h('div', { className: 'space-y-3 mt-3' },
                     Object.entries(reportSections).map(([section, text]) =>
                         h('div', { key: section, className: 'bg-slate-50 rounded-lg p-3 border border-slate-200' },
-                            h('h4', { className: 'text-xs font-bold text-indigo-700 mb-2 border-b border-slate-200 pb-1' }, section),
-                            h('div', { className: 'text-[11px] text-slate-700 leading-relaxed whitespace-pre-wrap' },
-                                text.replace(/\[Student\]/g, studentName || '[Student]')
+                            // Section header with controls
+                            h('div', { className: 'flex items-center justify-between mb-2 border-b border-slate-200 pb-1' },
+                                h('h4', { className: 'text-xs font-bold text-indigo-700' }, section),
+                                h('div', { className: 'flex items-center gap-1' },
+                                    // Edit button
+                                    editingSection !== section && h('button', {
+                                        className: 'text-[9px] px-2 py-0.5 rounded bg-slate-200 text-slate-600 hover:bg-slate-300 transition-colors',
+                                        onClick: () => { setEditingSection(section); setEditSectionText(text); }
+                                    }, '\u270F\uFE0F Edit'),
+                                    // Regenerate button
+                                    h('button', {
+                                        className: `text-[9px] px-2 py-0.5 rounded transition-colors ${regenSection === section ? 'bg-amber-200 text-amber-700 cursor-wait' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`,
+                                        disabled: regenSection === section,
+                                        onClick: () => showRegenInput === section ? setShowRegenInput(null) : setShowRegenInput(section)
+                                    }, regenSection === section ? '\u23F3 Regenerating...' : '\uD83D\uDD04 Regen')
+                                )
+                            ),
+                            // Regeneration input panel
+                            showRegenInput === section && h('div', { className: 'mb-2 p-2 bg-amber-50 rounded-lg border border-amber-200 space-y-1' },
+                                h('p', { className: 'text-[9px] text-amber-700 font-medium' }, 'Custom instructions for regeneration (optional):'),
+                                h('textarea', {
+                                    className: 'w-full text-[10px] border rounded px-2 py-1 h-16 resize-none',
+                                    placeholder: 'e.g., "Make more concise" or "Emphasize processing speed findings"...',
+                                    value: regenInstructions,
+                                    onChange: e => setRegenInstructions(e.target.value)
+                                }),
+                                h('div', { className: 'flex gap-1' },
+                                    h('button', {
+                                        className: 'text-[9px] px-3 py-1 rounded bg-amber-500 text-white hover:bg-amber-600 font-medium',
+                                        onClick: () => regenerateSection(section, regenInstructions)
+                                    }, '\u2728 Regenerate'),
+                                    h('button', {
+                                        className: 'text-[9px] px-2 py-1 rounded bg-slate-200 text-slate-600 hover:bg-slate-300',
+                                        onClick: () => { setShowRegenInput(null); setRegenInstructions(''); }
+                                    }, 'Cancel')
+                                )
+                            ),
+                            // Inline editing or display
+                            editingSection === section
+                                ? h('div', { className: 'space-y-1' },
+                                    h('textarea', {
+                                        className: 'w-full text-[11px] text-slate-700 leading-relaxed border rounded-lg px-2 py-1.5 h-48 resize-y font-mono',
+                                        value: editSectionText,
+                                        onChange: e => setEditSectionText(e.target.value)
+                                    }),
+                                    h('div', { className: 'flex gap-1' },
+                                        h('button', {
+                                            className: 'text-[9px] px-3 py-1 rounded bg-emerald-500 text-white hover:bg-emerald-600 font-medium',
+                                            onClick: () => { setReportSections(prev => ({ ...prev, [section]: editSectionText })); setEditingSection(null); setAccuracyResults([]); if (addToast) addToast(`"${section}" updated`, 'success'); }
+                                        }, '\u2705 Save'),
+                                        h('button', {
+                                            className: 'text-[9px] px-2 py-1 rounded bg-slate-200 text-slate-600 hover:bg-slate-300',
+                                            onClick: () => setEditingSection(null)
+                                        }, 'Cancel')
+                                    )
+                                )
+                                : h('div', { className: 'text-[11px] text-slate-700 leading-relaxed whitespace-pre-wrap' },
+                                    text.replace(/\[Student\]/g, studentName || '[Student]')
+                                ),
+                            // Evidence chips
+                            (sectionEvidenceMap[section] || []).length > 0 && h('div', { className: 'flex flex-wrap gap-1 mt-2 pt-1 border-t border-slate-100' },
+                                h('span', { className: 'text-[8px] text-slate-400 mr-1 self-center' }, 'Evidence:'),
+                                (sectionEvidenceMap[section] || []).map(chunkId => {
+                                    const chunk = factChunks.find(c => c.id === chunkId);
+                                    const chipColor = chunk ? (chunk.type === 'score' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700') : 'bg-slate-100 text-slate-500';
+                                    const chipLabel = chunk ? `${chunk.source}:${(chunk.field || '').substring(0, 15)}` : chunkId.substring(0, 8);
+                                    return h('span', {
+                                        key: chunkId,
+                                        className: `text-[7px] px-1.5 py-0.5 rounded-full font-medium cursor-pointer hover:ring-1 hover:ring-offset-1 ${chipColor}`,
+                                        title: chunk ? `${chunk.source} - ${chunk.field}: ${chunk.value}` : chunkId,
+                                        onClick: () => setCurrentStep(3)
+                                    }, chipLabel);
+                                })
                             )
                         )
                     )
                 ),
                 h('div', { className: 'flex justify-between pt-2' },
-                    h('button', { className: 'px-4 py-2 bg-slate-100 text-slate-600 text-xs rounded-lg hover:bg-slate-200', onClick: () => setCurrentStep(3) }, '← Fact Chunks'),
+                    h('button', { className: 'px-4 py-2 bg-slate-100 text-slate-600 text-xs rounded-lg hover:bg-slate-200', onClick: () => setCurrentStep(5) }, '← Blueprint'),
                     h('button', {
                         className: `px-4 py-2 text-xs font-medium rounded-lg transition-colors ${Object.keys(reportSections).length > 0 ? 'bg-violet-600 text-white hover:bg-violet-700' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`,
-                        disabled: Object.keys(reportSections).length === 0, onClick: () => { setCurrentStep(5); if (accuracyResults.length === 0) runAccuracyCheck(); }
+                        disabled: Object.keys(reportSections).length === 0, onClick: () => { setCurrentStep(7); if (accuracyResults.length === 0) runAccuracyCheck(); }
                     }, 'Next: Accuracy Check →')
                 )
             ),
-            // ═══ STEP 5: Accuracy Dashboard ═══
-            currentStep === 5 && h('div', { className: 'bg-white rounded-xl p-4 border border-slate-200 space-y-3' },
+            // ═══ STEP 7: Accuracy Dashboard ═══
+            currentStep === 7 && h('div', { className: 'bg-white rounded-xl p-4 border border-slate-200 space-y-3' },
                 h('h3', { className: 'text-sm font-bold text-slate-800 flex items-center gap-2' }, '🎯 Accuracy Dashboard'),
                 h('p', { className: 'text-[10px] text-slate-500' }, 'Dual-pass verification: two independent AI auditors cross-reference each claim against immutable fact chunks.'),
                 checking ? h('div', { className: 'text-center py-8' },
@@ -1144,12 +1580,12 @@ Return ONLY valid JSON:
                     )
                 ),
                 h('div', { className: 'flex justify-between pt-2' },
-                    h('button', { className: 'px-4 py-2 bg-slate-100 text-slate-600 text-xs rounded-lg hover:bg-slate-200', onClick: () => setCurrentStep(4) }, '← Report'),
-                    h('button', { className: 'px-4 py-2 bg-violet-600 text-white text-xs font-medium rounded-lg hover:bg-violet-700', onClick: () => setCurrentStep(6) }, 'Next: Export →')
+                    h('button', { className: 'px-4 py-2 bg-slate-100 text-slate-600 text-xs rounded-lg hover:bg-slate-200', onClick: () => setCurrentStep(6) }, '← Report'),
+                    h('button', { className: 'px-4 py-2 bg-violet-600 text-white text-xs font-medium rounded-lg hover:bg-violet-700', onClick: () => setCurrentStep(8) }, 'Next: Export →')
                 )
             ),
-            // ═══ STEP 6: Export ═══
-            currentStep === 6 && h('div', { className: 'bg-white rounded-xl p-4 border border-slate-200 space-y-3' },
+            // ═══ STEP 8: Export ═══
+            currentStep === 8 && h('div', { className: 'bg-white rounded-xl p-4 border border-slate-200 space-y-3' },
                 h('h3', { className: 'text-sm font-bold text-slate-800 flex items-center gap-2' }, '📥 Export & Save'),
                 // Accuracy summary
                 accuracyResults.length > 0 && h('div', { className: `rounded-lg p-3 border ${accuracyResults.filter(r => r.status === 'contradicts').length > 0 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}` },
@@ -1227,7 +1663,7 @@ Return ONLY valid JSON:
                     )
                 ),
                 h('div', { className: 'flex justify-start pt-2' },
-                    h('button', { className: 'px-4 py-2 bg-slate-100 text-slate-600 text-xs rounded-lg hover:bg-slate-200', onClick: () => setCurrentStep(5) }, '← Accuracy')
+                    h('button', { className: 'px-4 py-2 bg-slate-100 text-slate-600 text-xs rounded-lg hover:bg-slate-200', onClick: () => setCurrentStep(7) }, '← Accuracy')
                 )
             )
         );
