@@ -4135,6 +4135,158 @@
                                 </div>
                             </div>
 
+                            <!-- Slide 23: Self-Hosted AI / School Box -->
+                            <div class="slide">
+                                <div class="slide-content">
+                                    <div class="slide-tag">Self-Hosted AI</div>
+                                    <h3
+                                        style="background: linear-gradient(135deg, #f59e0b, #fbbf24); -webkit-background-clip: text; background-clip: text;">
+                                        Your AI, Your Hardware</h3>
+                                    <div class="stat-callout"
+                                        style="background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(251,191,36,0.08)); border: 1px solid rgba(245,158,11,0.3);">
+                                        <span class="stat-number" style="color:#fbbf24;">$0/yr</span>
+                                        <span class="stat-label">AI costs after hardware</span>
+                                    </div>
+                                    <p>AlloFlow supports <strong>model-agnostic AI backends</strong>. Run the entire
+                                        platform on a single school workstation — no cloud subscriptions, no data
+                                        leaving the building. One command deploys everything.</p>
+
+                                    <div class="info-box" style="border-left: 4px solid #f59e0b;">
+                                        <div class="info-title">🐳 Docker "School Box" Deploy</div>
+                                        <div class="info-desc"><code
+                                                style="color:#fbbf24;background:#1e293b;padding:2px 6px;border-radius:4px">docker compose up -d</code>
+                                            launches Ollama
+                                            (text AI), Flux (image generation), Piper (text-to-speech), and SearXNG
+                                            (web search) — all running locally on your network.</div>
+                                    </div>
+                                    <div class="info-box" style="border-left: 4px solid #fbbf24;">
+                                        <div class="info-title">🔒 Total Data Sovereignty</div>
+                                        <div class="info-desc">Every AI call — text generation, image creation,
+                                            voice synthesis — happens on-premises. Student data never touches external
+                                            servers. FERPA compliance by architecture, not policy.</div>
+                                    </div>
+                                    <div class="info-box" style="border-left: 4px solid #d97706;">
+                                        <div class="info-title">🔌 Pluggable Backends</div>
+                                        <div class="info-desc">Choose your AI provider: Gemini, Ollama, OpenAI,
+                                            Claude, or any OpenAI-compatible endpoint. Switch backends in one click —
+                                            zero code changes required.</div>
+                                    </div>
+                                    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                                        <div class="stat-callout"
+                                            style="border-color: rgba(245, 158, 11, 0.3); background: rgba(245, 158, 11, 0.08);">
+                                            <span class="stat-number"
+                                                style="background: linear-gradient(135deg, #f59e0b, #fbbf24); -webkit-background-clip: text; background-clip: text;">~$3K</span>
+                                            <span class="stat-label">One-time hardware</span>
+                                        </div>
+                                        <div class="stat-callout"
+                                            style="border-color: rgba(251, 191, 36, 0.3); background: rgba(251, 191, 36, 0.08);">
+                                            <span class="stat-number"
+                                                style="background: linear-gradient(135deg, #f59e0b, #fbbf24); -webkit-background-clip: text; background-clip: text;">vs
+                                                $23.5K</span>
+                                            <span class="stat-label">/yr in SaaS subscriptions</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="slide-visual">
+                                    <svg class="svg-container" viewBox="0 0 400 300">
+                                        <defs>
+                                            <radialGradient id="schoolBoxGlow" cx="50%" cy="50%" r="50%">
+                                                <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.12" />
+                                                <stop offset="100%" stop-color="#f59e0b" stop-opacity="0" />
+                                            </radialGradient>
+                                        </defs>
+
+                                        <circle cx="200" cy="150" r="140" fill="url(#schoolBoxGlow)">
+                                            <animate attributeName="r" values="130;145;130" dur="4s"
+                                                repeatCount="indefinite" />
+                                        </circle>
+
+                                        <!-- School Building -->
+                                        <rect x="80" y="30" width="240" height="240" rx="16" fill="#0f172a"
+                                            stroke="#f59e0b" stroke-width="2" />
+                                        <text x="200" y="55" class="node-text" font-size="13">School Network</text>
+                                        <text x="200" y="70" font-size="9" fill="#fbbf24" text-anchor="middle"
+                                            font-weight="600">100% ON-PREMISES</text>
+
+                                        <!-- Docker Services -->
+                                        <rect x="95" y="85" width="85" height="45" rx="8" fill="#1e293b"
+                                            stroke="#f59e0b" stroke-width="1.5" />
+                                        <text x="137" y="105" font-size="16" text-anchor="middle">🧠</text>
+                                        <text x="137" y="122" font-size="9" fill="#f8fafc" text-anchor="middle">Ollama
+                                            LLM</text>
+
+                                        <rect x="220" y="85" width="85" height="45" rx="8" fill="#1e293b"
+                                            stroke="#fbbf24" stroke-width="1.5" />
+                                        <text x="262" y="105" font-size="16" text-anchor="middle">🎨</text>
+                                        <text x="262" y="122" font-size="9" fill="#f8fafc" text-anchor="middle">Flux
+                                            Images</text>
+
+                                        <rect x="95" y="145" width="85" height="45" rx="8" fill="#1e293b"
+                                            stroke="#d97706" stroke-width="1.5" />
+                                        <text x="137" y="165" font-size="16" text-anchor="middle">🔊</text>
+                                        <text x="137" y="182" font-size="9" fill="#f8fafc" text-anchor="middle">Piper
+                                            TTS</text>
+
+                                        <rect x="220" y="145" width="85" height="45" rx="8" fill="#1e293b"
+                                            stroke="#92400e" stroke-width="1.5" />
+                                        <text x="262" y="165" font-size="16" text-anchor="middle">🔍</text>
+                                        <text x="262" y="182" font-size="9" fill="#f8fafc"
+                                            text-anchor="middle">SearXNG</text>
+
+                                        <!-- Devices -->
+                                        <rect x="100" y="210" width="55" height="30" rx="4" fill="#1e293b"
+                                            stroke="#475569" />
+                                        <text x="127" y="229" font-size="8" fill="#94a3b8" text-anchor="middle">💻
+                                            Laptop</text>
+
+                                        <rect x="170" y="210" width="55" height="30" rx="4" fill="#1e293b"
+                                            stroke="#475569" />
+                                        <text x="197" y="229" font-size="8" fill="#94a3b8" text-anchor="middle">📱
+                                            Tablet</text>
+
+                                        <rect x="240" y="210" width="55" height="30" rx="4" fill="#1e293b"
+                                            stroke="#475569" />
+                                        <text x="267" y="229" font-size="8" fill="#94a3b8" text-anchor="middle">📱
+                                            Phone</text>
+
+                                        <!-- Cloud crossed out -->
+                                        <rect x="340" y="100" width="55" height="45" rx="8" fill="#0f172a"
+                                            stroke="#475569" stroke-dasharray="4" opacity="0.4" />
+                                        <text x="367" y="123" font-size="9" fill="#64748b"
+                                            text-anchor="middle">Cloud</text>
+                                        <text x="367" y="140" font-size="16" fill="#ef4444"
+                                            text-anchor="middle">✕</text>
+                                        <line x1="340" y1="142" x2="395" y2="103" stroke="#ef4444" stroke-width="2"
+                                            stroke-linecap="round" />
+
+                                        <!-- Animated data packet -->
+                                        <circle r="3" fill="#fbbf24" opacity="0.8">
+                                            <animateMotion dur="3s" repeatCount="indefinite"
+                                                path="M 137 130 L 137 145" />
+                                            <animate attributeName="opacity" values="0.8;0.3;0.8" dur="3s"
+                                                repeatCount="indefinite" />
+                                        </circle>
+                                        <circle r="3" fill="#f59e0b" opacity="0.6">
+                                            <animateMotion dur="3.5s" repeatCount="indefinite"
+                                                path="M 262 130 L 262 145" />
+                                            <animate attributeName="opacity" values="0.6;0.2;0.6" dur="3.5s"
+                                                repeatCount="indefinite" />
+                                        </circle>
+
+                                        <!-- Lock badge -->
+                                        <circle cx="200" cy="260" r="14" fill="#451a03" stroke="#f59e0b"
+                                            stroke-width="2" />
+                                        <text x="200" y="265" font-size="14" fill="#fbbf24"
+                                            text-anchor="middle">🔒</text>
+
+                                        <!-- Bottom label -->
+                                        <text x="200" y="290" font-size="9" fill="#64748b" text-anchor="middle"
+                                            font-family="Inter">One Command → 4 AI Services → Zero Cloud
+                                            Dependencies</text>
+                                    </svg>
+                                </div>
+                            </div>
+
                         </div>
 
                         <div id="controls">
@@ -4168,6 +4320,7 @@
                                     <button class="dot" data-slide="19" aria-label="Go to slide 20"></button>
                                     <button class="dot" data-slide="20" aria-label="Go to slide 21"></button>
                                     <button class="dot" data-slide="21" aria-label="Go to slide 22"></button>
+                                    <button class="dot" data-slide="22" aria-label="Go to slide 23"></button>
                                 </div>
                                 <div class="slide-title-label" id="slide-title">Equity First — Local-First Architecture
                                 </div>
