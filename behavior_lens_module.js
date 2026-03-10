@@ -18,27 +18,27 @@
     // ─── Constants ──────────────────────────────────────────────────────
     const ABC_CATEGORIES = {
         antecedent: [
-            t('behavior_lens.abc_ant_demand_task_presented') || 'Demand/task presented', t('behavior_lens.abc_ant_transition') || 'Transition', t('behavior_lens.abc_ant_denied_access') || 'Denied access', t('behavior_lens.abc_ant_unstructured_time') || 'Unstructured time',
-            t('behavior_lens.abc_ant_peer_interaction') || 'Peer interaction', t('behavior_lens.abc_ant_left_alone') || 'Left alone', t('behavior_lens.abc_ant_change_in_routine') || 'Change in routine', t('behavior_lens.abc_ant_sensory_input') || 'Sensory input', 'Other'
+            'Demand/task presented', 'Transition', 'Denied access', 'Unstructured time',
+            'Peer interaction', 'Left alone', 'Change in routine', 'Sensory input', 'Other'
         ],
         behavior: [
-            t('behavior_lens.abc_beh_physical_contact_toward_others') || 'Physical contact toward others', t('behavior_lens.abc_beh_vocal_verbal_outburst') || 'Vocal/verbal outburst', t('behavior_lens.abc_beh_elopement') || 'Elopement', t('behavior_lens.abc_beh_difficulty_following_directions') || 'Difficulty following directions',
-            t('behavior_lens.abc_beh_self_directed_physical_behavior') || 'Self-directed physical behavior', t('behavior_lens.abc_beh_damage_to_materials_property') || 'Damage to materials/property', t('behavior_lens.abc_beh_withdrawal') || 'Withdrawal', t('behavior_lens.abc_beh_emotional_escalation') || 'Emotional escalation', 'Other'
+            'Physical contact toward others', 'Vocal/verbal outburst', 'Elopement', 'Difficulty following directions',
+            'Self-directed physical behavior', 'Damage to materials/property', 'Withdrawal', 'Emotional escalation', 'Other'
         ],
         consequence: [
-            t('behavior_lens.abc_con_verbal_redirect') || 'Verbal redirect', t('behavior_lens.abc_con_given_break') || 'Given break', t('behavior_lens.abc_con_relocated_to_calm_space') || 'Relocated to calm space', t('behavior_lens.abc_con_peer_attention') || 'Peer attention',
-            t('behavior_lens.abc_con_adult_attention') || 'Adult attention', t('behavior_lens.abc_con_task_removed') || 'Task removed', t('behavior_lens.abc_con_planned_ignoring_extinction_') || 'Planned ignoring (extinction)', t('behavior_lens.abc_con_reinforcement_given') || 'Reinforcement given', 'Other'
+            'Verbal redirect', 'Given break', 'Relocated to calm space', 'Peer attention',
+            'Adult attention', 'Task removed', 'Planned ignoring (extinction)', 'Reinforcement given', 'Other'
         ]
     };
 
     const FUNCTION_COLORS = {
-        [t('behavior_lens.func_attention') || 'Attention']: { bg: '#dbeafe', border: '#3b82f6', text: '#1e40af', emoji: '👀' },
-        [t('behavior_lens.func_escape') || 'Escape']: { bg: '#fef3c7', border: '#f59e0b', text: '#92400e', emoji: '🏃' },
-        [t('behavior_lens.func_tangible') || 'Tangible']: { bg: '#d1fae5', border: '#10b981', text: '#065f46', emoji: '🎁' },
-        [t('behavior_lens.func_sensory') || 'Sensory']: { bg: '#ede9fe', border: '#8b5cf6', text: '#5b21b6', emoji: '🌀' },
+        ['Attention']: { bg: '#dbeafe', border: '#3b82f6', text: '#1e40af', emoji: '👀' },
+        ['Escape']: { bg: '#fef3c7', border: '#f59e0b', text: '#92400e', emoji: '🏃' },
+        ['Tangible']: { bg: '#d1fae5', border: '#10b981', text: '#065f46', emoji: '🎁' },
+        ['Sensory']: { bg: '#ede9fe', border: '#8b5cf6', text: '#5b21b6', emoji: '🌀' },
     };
 
-    const OBSERVATION_METHODS = [t('behavior_lens.obs_method_frequency') || 'frequency', t('behavior_lens.obs_method_duration') || 'duration', t('behavior_lens.obs_method_interval') || 'interval', t('behavior_lens.obs_method_latency') || 'latency'];
+    const OBSERVATION_METHODS = ['frequency', 'duration', 'interval', 'latency'];
 
     const RESTORATIVE_PREAMBLE = `IMPORTANT — Language Guidelines: Use person-first, strengths-based language throughout your response. Frame challenges as unmet needs or lagging skills, not deficits. Say "the student demonstrates difficulty with..." rather than "the student refuses to..." or "is non-compliant." Avoid punitive framing; focus on teaching replacement skills and building supportive environments.`;
 
