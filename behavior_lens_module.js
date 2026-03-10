@@ -42,6 +42,49 @@
 
     const RESTORATIVE_PREAMBLE = `IMPORTANT — Language Guidelines: Use person-first, strengths-based language throughout your response. Frame challenges as unmet needs or lagging skills, not deficits. Say "the student demonstrates difficulty with..." rather than "the student refuses to..." or "is non-compliant." Avoid punitive framing; focus on teaching replacement skills and building supportive environments.`;
 
+    // ─── Dual-Label Terminology ─────────────────────────────────────────
+    // Maps clinical ABA terms → affirming, person-centered equivalents.
+    // Both appear in the UI: affirming label first, clinical term in parenthetical.
+    const DUAL_LABELS = {
+        'Replacement Behavior Planner': 'Self-Regulation Strategy Builder',
+        'Reinforcement Inventory': 'Motivation & Preferences Survey',
+        'Antecedent Modification Planner': 'Proactive Environment Planner',
+        'Token Board': 'Positive Behavior Tracker',
+        'De-escalation Toolkit': 'Calming & Co-Regulation Toolkit',
+        'FCT Template': 'Communication Skills Planner',
+        'DR Strategy Selector': 'Positive Reinforcement Planner',
+        'Reinforcer Assessment': 'Preference & Motivation Finder',
+        'Behavior Contract': 'Student–Teacher Agreement',
+        'Escalation Cycle': 'Emotional Regulation Cycle',
+        'Bias Reflection Monitor': 'Equity & Self-Awareness Check',
+        'Risk Screening': 'Safety & Wellbeing Screening',
+        'BCBA Consultation': 'Specialist Consultation Dashboard',
+        'ABC Data Collection': 'Observe–Describe–Respond Logging',
+        'Cumulative Record': 'Cumulative Progress View',
+        'Treatment Integrity': 'Support Plan Fidelity',
+        'DTT Data Sheet': 'Structured Learning Trials',
+        'Scatterplot Analysis': 'Time Pattern Finder',
+        'Counseling Simulation': 'Supportive Conversation Practice',
+        'Discrete Trial Training': 'Structured Learning Trials',
+        'Preference Assessment': 'What Motivates Me Survey',
+        'Conditional Probability': 'Pattern Validation Analysis',
+        'Social Validity': 'Stakeholder Feedback Survey',
+    };
+
+    /** Renders affirming label + clinical term in parenthetical. Passthrough if no mapping. */
+    const DualLabel = (clinicalTitle) => {
+        if (!clinicalTitle) return clinicalTitle;
+        // Strip leading emoji + space if present (e.g. '🔄 Escalation Cycle')
+        const stripped = typeof clinicalTitle === 'string' ? clinicalTitle.replace(/^[\p{Emoji}\s]+/u, '').trim() : '';
+        const affirming = DUAL_LABELS[stripped] || DUAL_LABELS[clinicalTitle];
+        if (!affirming) return clinicalTitle;
+        return h('span', { className: 'bl-dual-label' },
+            affirming,
+            h('span', { className: 'text-[9px] italic text-slate-400 ml-1.5 font-normal' },
+                `(${stripped || clinicalTitle})`)
+        );
+    };
+
     // ─── Utility helpers ────────────────────────────────────────────────
     const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
     const fmtDate = (iso) => {
@@ -3251,7 +3294,7 @@ Personalize each phase of the cycle and return ONLY valid JSON:
             ),
             // Cycle visualization
             h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm' },
-                h('h3', { className: 'text-sm font-black text-slate-800 mb-4 text-center' }, '🔄 ' + (t('behavior_lens.cycle.title') || 'Escalation Cycle (Colvin & Sugai)')),
+                h('h3', { className: 'text-sm font-black text-slate-800 mb-4 text-center' }, DualLabel('🔄 Escalation Cycle') || '🔄 ' + (t('behavior_lens.cycle.title') || 'Escalation Cycle (Colvin & Sugai)')),
                 h('div', { className: 'space-y-2' },
                     defaultPhases.map((phase, idx) => {
                         const p = personalized[phase.name] || {};
@@ -8722,7 +8765,7 @@ Remember: this is about growth, not guilt. Keep the tone supportive and empoweri
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '🪞'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'Bias Reflection Monitor'),
+                h('h2', { className: 'text-lg font-black text-slate-800' }, DualLabel('Bias Reflection Monitor')),
                 h('p', { className: 'text-xs text-slate-500 mt-1' }, 'Gently surfaces patterns for reflection — growth, not guilt')
             ),
             abcEntries.length < 5 && h('div', { className: 'text-center py-8 bg-white rounded-xl border border-slate-200' },
@@ -9347,7 +9390,7 @@ Remember: this is about growth, not guilt. Keep the tone supportive and empoweri
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '🧘'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'De-escalation Toolkit'),
+                h('h2', { className: 'text-lg font-black text-slate-800' }, DualLabel('De-escalation Toolkit')),
                 h('p', { className: 'text-xs text-slate-500 mt-1' }, 'Real-time calming tools for in-the-moment support')
             ),
             // Tool selector or active tool
@@ -9538,7 +9581,7 @@ Remember: this is about growth, not guilt. Keep the tone supportive and empoweri
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '🔄'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'Replacement Behavior Planner'),
+                h('h2', { className: 'text-lg font-black text-slate-800' }, DualLabel('Replacement Behavior Planner')),
                 h('p', { className: 'text-xs text-slate-500 mt-1' }, 'Map target behaviors to functionally equivalent replacements')
             ),
             // Auto-suggest from data
@@ -9702,7 +9745,7 @@ Remember: this is about growth, not guilt. Keep the tone supportive and empoweri
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '⭐'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'Reinforcement Inventory'),
+                h('h2', { className: 'text-lg font-black text-slate-800' }, DualLabel('Reinforcement Inventory')),
                 h('p', { className: 'text-xs text-slate-500 mt-1' }, `Identifying what motivates ${studentName || 'your student'}`)
             ),
             // Progress
@@ -9879,7 +9922,7 @@ For each suggestion, rate the effort level (Low/Medium/High) and expected impact
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '🛠️'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'Antecedent Modification Planner'),
+                h('h2', { className: 'text-lg font-black text-slate-800' }, DualLabel('Antecedent Modification Planner')),
                 h('p', { className: 'text-xs text-slate-500 mt-1' }, 'Modify the environment to prevent behaviors before they start')
             ),
             // Antecedent patterns
@@ -12234,7 +12277,7 @@ Keep under 200 words. Use bullet points.`);
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '🎯'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'DR Strategy Selector'),
+                h('h2', { className: 'text-lg font-black text-slate-800' }, DualLabel('DR Strategy Selector')),
                 h('p', { className: 'text-xs text-slate-500 mt-1' }, 'Choose the right differential reinforcement strategy')
             ),
             h('div', { className: 'space-y-3' },
@@ -12331,7 +12374,7 @@ Keep under 250 words. Use clear sections.`);
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '💬'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'FCT Template'),
+                h('h2', { className: 'text-lg font-black text-slate-800' }, DualLabel('FCT Template')),
                 h('p', { className: 'text-xs text-slate-500 mt-1' }, 'Functional Communication Training planning tool')
             ),
             // Current behavior
@@ -16144,7 +16187,7 @@ Analyze this data and return ONLY valid JSON:
                                 title: isFav ? 'Remove from favorites' : 'Add to favorites'
                             }, isFav ? '★' : '☆'),
                             h('div', { className: `w-12 h-12 rounded-xl ${cc.icon} flex items-center justify-center text-2xl mb-3` }, tool.icon),
-                            h('h4', { className: 'text-sm font-black text-slate-800 mb-1' }, tool.title),
+                            h('h4', { className: 'text-sm font-black text-slate-800 mb-1' }, DualLabel(tool.title)),
                             h('p', { className: 'text-xs text-slate-500 leading-relaxed' }, tool.desc),
                             tool.badge && h('div', { className: `mt-3 inline-block text-[10px] font-bold px-2 py-0.5 rounded-full ${cc.bg} text-slate-600` }, tool.badge)
                         );
@@ -16421,17 +16464,17 @@ Analyze this data and return ONLY valid JSON:
                             h('p', { className: 'text-xs text-slate-500' },
                                 ({
                                     hub: t('behavior_lens.subtitle') || 'Behavioral Observation & Analysis',
-                                    abc: t('behavior_lens.abc.title') || 'ABC Data Collection',
+                                    abc: DualLabel(t('behavior_lens.abc.title') || 'ABC Data Collection'),
                                     overview: t('behavior_lens.overview.title') || 'Behavior Overview',
-                                    token: t('behavior_lens.token.title') || 'Token Board',
+                                    token: DualLabel(t('behavior_lens.token.title') || 'Token Board'),
                                     hotspot: t('behavior_lens.hotspot.title') || 'Routine Hotspot Matrix',
                                     export: t('behavior_lens.export.title') || 'Export Data',
                                     record: t('behavior_lens.record.title') || 'Record Review',
                                     hypothesis: t('behavior_lens.hypothesis.title') || 'Hypothesis Diagram',
                                     goals: t('behavior_lens.goals.title') || 'SMART Goal Builder',
-                                    contract: t('behavior_lens.contract.title') || 'Behavior Contract',
-                                    cycle: t('behavior_lens.cycle.title') || 'Escalation Cycle',
-                                    reinforcer: t('behavior_lens.reinforcer.title') || 'Reinforcer Assessment',
+                                    contract: DualLabel(t('behavior_lens.contract.title') || 'Behavior Contract'),
+                                    cycle: DualLabel(t('behavior_lens.cycle.title') || 'Escalation Cycle'),
+                                    reinforcer: DualLabel(t('behavior_lens.reinforcer.title') || 'Reinforcer Assessment'),
                                     audit: t('behavior_lens.audit.title') || 'Environment Audit',
                                     triangulation: t('behavior_lens.triangulation.title') || 'Data Triangulation',
                                     impact: t('behavior_lens.impact.title') || 'Impact Calculator',
@@ -16444,7 +16487,7 @@ Analyze this data and return ONLY valid JSON:
                                     gas: t('behavior_lens.gas.title') || 'GAS Rubric',
                                     pocket: t('behavior_lens.pocket.title') || 'Pocket BIP',
                                     abaguide: t('behavior_lens.abaguide.title') || 'ABA Quick Guide',
-                                    counseling: t('behavior_lens.counseling.title') || 'Counseling Simulation',
+                                    counseling: DualLabel(t('behavior_lens.counseling.title') || 'Counseling Simulation'),
                                     snapshot: t('behavior_lens.snapshot.title') || 'Student Snapshot Exchange',
                                     consent: t('behavior_lens.consent.title') || 'FERPA Consent Manager',
                                     homelog: t('behavior_lens.homelog.title') || 'Home Behavior Log',
@@ -16462,15 +16505,15 @@ Analyze this data and return ONLY valid JSON:
                                     gamify: t('behavior_lens.hub.gamify_title') || 'My Progress Quest',
                                     cultural: t('behavior_lens.hub.cultural_title') || 'Cultural Context Reflection',
                                     reframe: t('behavior_lens.hub.reframe_title') || 'Strength-Based Reframe',
-                                    biascheck: t('behavior_lens.hub.biascheck_title') || 'Bias Reflection Monitor',
+                                    biascheck: DualLabel(t('behavior_lens.hub.biascheck_title') || 'Bias Reflection Monitor'),
                                     restorative: t('behavior_lens.hub.restorative_title') || 'Restorative Conversation Guide',
                                     relmap: t('behavior_lens.hub.relmap_title') || 'Relationship Map',
                                     familyvoice: t('behavior_lens.hub.familyvoice_title') || 'Family Voice',
                                     commlog: t('behavior_lens.hub.commlog_title') || 'Communication Log',
-                                    deescalate: t('behavior_lens.hub.deescalate_title') || 'De-escalation Toolkit',
-                                    replacebehavior: t('behavior_lens.hub.replacebehavior_title') || 'Replacement Behavior Planner',
-                                    reinforcement: t('behavior_lens.hub.reinforcement_title') || 'Reinforcement Inventory',
-                                    antecedentmod: t('behavior_lens.hub.antecedentmod_title') || 'Antecedent Modification Planner',
+                                    deescalate: DualLabel(t('behavior_lens.hub.deescalate_title') || 'De-escalation Toolkit'),
+                                    replacebehavior: DualLabel(t('behavior_lens.hub.replacebehavior_title') || 'Replacement Behavior Planner'),
+                                    reinforcement: DualLabel(t('behavior_lens.hub.reinforcement_title') || 'Reinforcement Inventory'),
+                                    antecedentmod: DualLabel(t('behavior_lens.hub.antecedentmod_title') || 'Antecedent Modification Planner'),
                                     sessionnotes: t('behavior_lens.hub.sessionnotes_title') || 'Session Notes',
                                     alloBotChat: t('behavior_lens.allobot_chat.title') || 'Ask AlloBot',
                                 })[activePanel] || ''
