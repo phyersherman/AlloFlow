@@ -2510,7 +2510,67 @@ Analyze which routines are behavioral hotspots and return ONLY valid JSON:
                     onClick: handleExport,
                     disabled: filteredAbc.length === 0 && filteredObs.length === 0,
                     className: 'w-full py-3 bg-gradient-to-r from-slate-700 to-slate-900 text-white rounded-xl font-bold shadow-lg hover:shadow-xl disabled:opacity-40 transition-all'
-                }, '📥 ' + (t('behavior_lens.export.download') || 'Download Export'))
+                }, '📥 ' + (t('behavior_lens.export.download') || 'Download Export')),
+                // Portfolio PDF (print-optimized)
+                h('button', {
+                    onClick: () => {
+                        const student = studentName || 'Student';
+                        const now = new Date().toLocaleString();
+                        let html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>BehaviorLens Portfolio — ${student}</title><style>
+                            body { font-family: 'Segoe UI', Tahoma, sans-serif; max-width: 800px; margin: 0 auto; padding: 24px; color: #1e293b; font-size: 11pt; }
+                            h1 { font-size: 18pt; border-bottom: 3px solid #334155; padding-bottom: 8px; margin-bottom: 4px; }
+                            h2 { font-size: 14pt; color: #475569; margin-top: 24px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+                            .subtitle { font-size: 10pt; color: #94a3b8; margin-bottom: 20px; }
+                            table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 9pt; }
+                            th, td { border: 1px solid #e2e8f0; padding: 6px 8px; text-align: left; }
+                            th { background: #f1f5f9; font-weight: 700; }
+                            .stat-row { display: flex; gap: 16px; margin: 8px 0; }
+                            .stat { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px; flex: 1; text-align: center; }
+                            .stat-value { font-size: 18pt; font-weight: 800; }
+                            .stat-label { font-size: 8pt; color: #94a3b8; text-transform: uppercase; }
+                            .ai-box { background: #f5f3ff; border: 1px solid #c4b5fd; border-radius: 8px; padding: 12px; margin-top: 8px; }
+                            @media print { body { padding: 0; } @page { margin: 0.75in; } }
+                        </style></head><body>`;
+                        html += `<h1>📊 BehaviorLens Portfolio</h1><div class="subtitle">Student: <strong>${student}</strong> | Generated: ${now}</div>`;
+                        // Summary stats
+                        const avgInt = filteredAbc.length > 0 ? (filteredAbc.reduce((s, e) => s + (e.intensity || 0), 0) / filteredAbc.length).toFixed(1) : '—';
+                        html += `<div class="stat-row"><div class="stat"><div class="stat-value">${filteredAbc.length}</div><div class="stat-label">ABC Entries</div></div><div class="stat"><div class="stat-value">${filteredObs.length}</div><div class="stat-label">Observations</div></div><div class="stat"><div class="stat-value">${avgInt}</div><div class="stat-label">Avg Intensity</div></div></div>`;
+                        // ABC table
+                        if (filteredAbc.length > 0) {
+                            html += '<h2>📋 ABC Data Log</h2><table><tr><th>#</th><th>Date</th><th>Antecedent</th><th>Behavior</th><th>Consequence</th><th>Setting</th><th>Int.</th></tr>';
+                            filteredAbc.forEach((e, i) => {
+                                html += `<tr><td>${i + 1}</td><td>${fmtDate(e.timestamp)}</td><td>${e.antecedent || '—'}</td><td>${e.behavior || '—'}</td><td>${e.consequence || '—'}</td><td>${e.setting || '—'}</td><td>${e.intensity || '—'}</td></tr>`;
+                            });
+                            html += '</table>';
+                        }
+                        // Observation sessions
+                        if (filteredObs.length > 0) {
+                            html += '<h2>🔍 Observation Sessions</h2><table><tr><th>#</th><th>Date</th><th>Method</th><th>Duration</th><th>Result</th></tr>';
+                            filteredObs.forEach((s, i) => {
+                                const detail = s.method === 'frequency' ? `${s.data?.count || 0} (${s.data?.rate || 0}/min)` : s.method === 'interval' ? `${s.data?.occurredCount || 0}/${s.data?.totalIntervals || 0} intervals` : s.method === 'duration' ? `${s.data?.totalDuration || 0}s` : '—';
+                                html += `<tr><td>${i + 1}</td><td>${fmtDate(s.timestamp)}</td><td>${s.method || '—'}</td><td>${fmtDuration(s.duration)}</td><td>${detail}</td></tr>`;
+                            });
+                            html += '</table>';
+                        }
+                        // AI Analysis
+                        if (aiAnalysis) {
+                            html += '<h2>🧠 AI Analysis</h2><div class="ai-box">';
+                            if (aiAnalysis.hypothesizedFunction) html += `<p><strong>Hypothesized Function:</strong> ${aiAnalysis.hypothesizedFunction} (${aiAnalysis.confidence || '?'}% confidence)</p>`;
+                            if (aiAnalysis.summary) html += `<p>${aiAnalysis.summary}</p>`;
+                            if (aiAnalysis.recommendations && Array.isArray(aiAnalysis.recommendations)) {
+                                html += '<p><strong>Recommendations:</strong></p><ul>';
+                                aiAnalysis.recommendations.forEach(r => { html += `<li>${r}</li>`; });
+                                html += '</ul>';
+                            }
+                            html += '</div>';
+                        }
+                        html += `<div style="margin-top:24px;padding-top:8px;border-top:1px solid #e2e8f0;font-size:8pt;color:#94a3b8;text-align:center;">Generated by BehaviorLens — AlloFlow UDL Platform</div></body></html>`;
+                        const w = window.open('', '_blank');
+                        if (w) { w.document.write(html); w.document.close(); w.print(); }
+                    },
+                    disabled: filteredAbc.length === 0 && filteredObs.length === 0,
+                    className: 'w-full py-3 bg-gradient-to-r from-violet-600 to-purple-700 text-white rounded-xl font-bold shadow-lg hover:shadow-xl disabled:opacity-40 transition-all'
+                }, '📄 Print Portfolio PDF')
             )
         );
     };
@@ -13237,11 +13297,27 @@ Keep under 250 words. Use clear sections.`);
 
     // ─── LatencyRecorder ────────────────────────────────────────────────
     // Stimulus-to-response latency measurement
-    const LatencyRecorder = ({ t, addToast }) => {
+    const LatencyRecorder = ({ t, addToast, onSaveSession }) => {
         const [trials, setTrials] = useState([]);
         const [stimulusTime, setStimulusTime] = useState(null);
         const [waitingForResponse, setWaitingForResponse] = useState(false);
         const [behaviorName, setBehaviorName] = useState('');
+
+        const saveToSessionHistory = () => {
+            if (trials.length === 0 || !onSaveSession) return;
+            const validTrials = trials.filter(t => t.latency !== null);
+            const avgLatency = validTrials.length > 0 ? (validTrials.reduce((a, t) => a + t.latency, 0) / validTrials.length) : 0;
+            onSaveSession({
+                date: new Date().toISOString().split('T')[0],
+                behavior: behaviorName || 'Latency Recording',
+                count: trials.length,
+                rate: parseFloat(avgLatency.toFixed(2)),
+                phase: 'Latency',
+                duration: `${trials.length} trials`,
+                source: 'latency-recorder'
+            });
+            if (addToast) addToast('Saved to session history!', 'success');
+        };
 
         const presentStimulus = () => {
             setStimulusTime(Date.now());
@@ -13297,7 +13373,11 @@ Keep under 250 words. Use clear sections.`);
                 ),
                 h('div', { className: 'flex flex-wrap gap-1' },
                     trials.map((t, i) => h('span', { key: i, className: `px-2 py-1 rounded-lg text-[10px] font-bold ${t.noResponse ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'}` }, t.noResponse ? 'NR' : `${t.latency}s`))
-                )
+                ),
+                onSaveSession && h('button', {
+                    onClick: saveToSessionHistory,
+                    className: 'mt-3 w-full py-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg text-xs font-bold hover:from-emerald-600 hover:to-teal-600 transition-all'
+                }, '💾 Save to Session History')
             )
         );
     };
@@ -14846,6 +14926,183 @@ Keep under 250 words. Use clear sections.`);
 
 
 
+
+    // ─── ComparisonDashboard ──────────────────────────────────────
+    const ComparisonDashboard = ({ comparisonWorkspaces, setComparisonWorkspaces, compareFileInputRef, handleLoadComparisonFiles, callGemini, t, addToast }) => {
+        const [compareAnalysis, setCompareAnalysis] = useState('');
+        const [compareLoading, setCompareLoading] = useState(false);
+        const [sortKey, setSortKey] = useState('abcCount');
+        const [sortDir, setSortDir] = useState('desc');
+
+        const sorted = useMemo(() => {
+            return [...comparisonWorkspaces].sort((a, b) => {
+                const dir = sortDir === 'asc' ? 1 : -1;
+                if (sortKey === 'student') return dir * (a.student || '').localeCompare(b.student || '');
+                return dir * ((a[sortKey] || 0) - (b[sortKey] || 0));
+            });
+        }, [comparisonWorkspaces, sortKey, sortDir]);
+
+        // Gather all unique behaviors across all students
+        const allBehaviors = useMemo(() => {
+            const set = new Set();
+            comparisonWorkspaces.forEach(w => (w.topBehaviors || []).forEach(([b]) => set.add(b)));
+            return Array.from(set).slice(0, 8);
+        }, [comparisonWorkspaces]);
+
+        // Build behavior matrix: student → behavior → count
+        const behaviorMatrix = useMemo(() => {
+            const m = {};
+            comparisonWorkspaces.forEach(w => {
+                m[w.student] = {};
+                (w.topBehaviors || []).forEach(([b, c]) => { m[w.student][b] = c; });
+            });
+            return m;
+        }, [comparisonWorkspaces]);
+
+        const maxBehaviorCount = useMemo(() => {
+            let max = 1;
+            Object.values(behaviorMatrix).forEach(bm => Object.values(bm).forEach(c => { if (c > max) max = c; }));
+            return max;
+        }, [behaviorMatrix]);
+
+        const toggleSort = (key) => {
+            if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+            else { setSortKey(key); setSortDir('desc'); }
+        };
+
+        const handleCompareAI = async () => {
+            if (!callGemini || comparisonWorkspaces.length < 2) return;
+            setCompareLoading(true);
+            try {
+                const data = comparisonWorkspaces.map(w =>
+                    `${w.student}: ${w.abcCount} ABC entries, avg intensity=${w.avgIntensity}, top behaviors=[${(w.topBehaviors || []).map(([b, c]) => `${b}(${c})`).join(', ')}], sessions=${w.sessionCount}`
+                ).join('\n');
+                const prompt = `You are a school BCBA comparing multiple students in your caseload. Analyze the following student data and provide insights:\n\n${data}\n\nProvide: 1) Which students need most urgent attention and why, 2) Common patterns across students, 3) Students who might benefit from group interventions, 4) Data collection recommendations. Keep response concise (150-200 words).`;
+                const result = await callGemini(prompt);
+                setCompareAnalysis(result);
+            } catch (e) { if (addToast) addToast('Failed to generate comparison', 'error'); }
+            setCompareLoading(false);
+        };
+
+        const removeStudent = (student) => {
+            setComparisonWorkspaces(prev => prev.filter(w => w.student !== student));
+        };
+
+        const intensityColor = (val) => {
+            if (val >= 4) return '#ef4444';
+            if (val >= 3) return '#f59e0b';
+            if (val >= 2) return '#22c55e';
+            return '#94a3b8';
+        };
+
+        return h('div', { className: 'space-y-4' },
+            // Header
+            h('div', { className: 'bg-gradient-to-r from-violet-50 to-fuchsia-50 rounded-xl p-4 border border-violet-200' },
+                h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '📊'), h('h3', { className: 'text-lg font-black text-violet-800' }, 'Cross-Student Comparison')),
+                h('p', { className: 'text-xs text-violet-600' }, 'Load multiple student workspace files to compare behavior patterns, intensity levels, and trends side-by-side.')
+            ),
+
+            // File loader
+            h('div', { className: 'flex items-center gap-3' },
+                h('button', {
+                    onClick: () => compareFileInputRef.current?.click(),
+                    className: 'flex items-center gap-1.5 px-4 py-2 bg-violet-600 text-white font-bold rounded-xl text-xs hover:bg-violet-700 transition-all shadow-sm'
+                }, '📂 Load Student Workspaces'),
+                h('input', { ref: compareFileInputRef, type: 'file', accept: '.json', multiple: true, onChange: handleLoadComparisonFiles, className: 'hidden' }),
+                h('span', { className: 'text-xs text-slate-400' }, comparisonWorkspaces.length + ' student(s) loaded'),
+                comparisonWorkspaces.length > 0 && h('button', { onClick: () => setComparisonWorkspaces([]), className: 'text-[10px] text-red-400 hover:text-red-600 ml-auto' }, '✕ Clear All')
+            ),
+
+            // Empty state
+            comparisonWorkspaces.length === 0 && h('div', { className: 'bg-slate-50 rounded-xl border border-dashed border-slate-300 p-10 text-center' },
+                h('div', { className: 'text-3xl mb-2' }, '📁'),
+                h('p', { className: 'text-sm text-slate-500 font-bold' }, 'No workspaces loaded yet'),
+                h('p', { className: 'text-xs text-slate-400 mt-1' }, 'Click "Load Student Workspaces" and select multiple .json files saved from BehaviorLens')
+            ),
+
+            // Summary table
+            comparisonWorkspaces.length > 0 && h('div', { className: 'bg-white rounded-xl border border-slate-200 overflow-hidden' },
+                h('div', { className: 'bg-slate-50 border-b border-slate-200 px-4 py-2 flex items-center text-[10px] font-black text-slate-500 uppercase tracking-wider gap-4' },
+                    h('div', { className: 'flex-1 cursor-pointer hover:text-slate-700', onClick: () => toggleSort('student') }, '👤 Student', sortKey === 'student' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''),
+                    h('div', { className: 'w-16 text-center cursor-pointer hover:text-slate-700', onClick: () => toggleSort('abcCount') }, 'ABCs', sortKey === 'abcCount' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''),
+                    h('div', { className: 'w-16 text-center cursor-pointer hover:text-slate-700', onClick: () => toggleSort('sessionCount') }, 'Sessions', sortKey === 'sessionCount' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''),
+                    h('div', { className: 'w-20 text-center cursor-pointer hover:text-slate-700', onClick: () => toggleSort('avgIntensity') }, 'Avg Intensity', sortKey === 'avgIntensity' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''),
+                    h('div', { className: 'w-32 text-center' }, 'Top Behavior'),
+                    h('div', { className: 'w-24 text-center' }, 'Last Entry'),
+                    h('div', { className: 'w-8' })
+                ),
+                sorted.map((w, i) => h('div', { key: i, className: 'flex items-center px-4 py-3 border-b border-slate-100 hover:bg-violet-50/30 transition-all gap-4 text-xs' },
+                    h('div', { className: 'flex-1 font-bold text-slate-800 flex items-center gap-2' },
+                        h('div', { className: 'w-6 h-6 rounded-md bg-violet-500 text-white flex items-center justify-center text-[10px] font-black' }, (w.student || '?')[0].toUpperCase()),
+                        w.student
+                    ),
+                    h('div', { className: 'w-16 text-center font-bold text-indigo-600' }, w.abcCount),
+                    h('div', { className: 'w-16 text-center text-slate-600' }, w.sessionCount),
+                    h('div', { className: 'w-20 text-center' },
+                        h('span', { className: 'inline-block px-2 py-0.5 rounded-full text-white text-[10px] font-bold', style: { backgroundColor: intensityColor(w.avgIntensity) } }, w.avgIntensity)
+                    ),
+                    h('div', { className: 'w-32 text-center text-[10px] text-slate-500 truncate' }, (w.topBehaviors || [])[0]?.[0] || '—'),
+                    h('div', { className: 'w-24 text-center text-[10px] text-slate-400' }, w.lastEntry ? new Date(w.lastEntry).toLocaleDateString() : '—'),
+                    h('button', { onClick: () => removeStudent(w.student), className: 'w-8 text-center text-red-300 hover:text-red-500 text-sm' }, '✕')
+                ))
+            ),
+
+            // Behavior comparison chart (CSS bars)
+            comparisonWorkspaces.length >= 2 && allBehaviors.length > 0 && h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4' },
+                h('h4', { className: 'text-xs font-black text-slate-700 uppercase tracking-wider mb-3' }, '📊 Behavior Frequency Comparison'),
+                h('div', { className: 'space-y-3' },
+                    allBehaviors.map(behavior =>
+                        h('div', { key: behavior, className: 'space-y-1' },
+                            h('div', { className: 'text-[10px] font-bold text-slate-600' }, behavior),
+                            h('div', { className: 'space-y-0.5' },
+                                sorted.map((w, i) => {
+                                    const count = (behaviorMatrix[w.student] || {})[behavior] || 0;
+                                    const pct = Math.round((count / maxBehaviorCount) * 100);
+                                    const colors = ['#8b5cf6', '#ec4899', '#06b6d4', '#f59e0b', '#22c55e', '#ef4444', '#6366f1', '#14b8a6'];
+                                    return h('div', { key: i, className: 'flex items-center gap-2' },
+                                        h('div', { className: 'w-16 text-[9px] text-slate-500 truncate text-right' }, w.student),
+                                        h('div', { className: 'flex-1 h-3 bg-slate-100 rounded-full overflow-hidden' },
+                                            h('div', { className: 'h-full rounded-full transition-all', style: { width: pct + '%', backgroundColor: colors[i % colors.length] } })
+                                        ),
+                                        h('span', { className: 'text-[9px] font-bold text-slate-500 w-6 text-right' }, count || '')
+                                    );
+                                })
+                            )
+                        )
+                    )
+                )
+            ),
+
+            // Intensity heatmap
+            comparisonWorkspaces.length >= 2 && h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4' },
+                h('h4', { className: 'text-xs font-black text-slate-700 uppercase tracking-wider mb-3' }, '🌡️ Intensity Heatmap'),
+                h('div', { className: 'grid gap-2', style: { gridTemplateColumns: `repeat(${Math.min(sorted.length, 6)}, 1fr)` } },
+                    sorted.map((w, i) =>
+                        h('div', { key: i, className: 'rounded-xl p-3 text-center border', style: { backgroundColor: intensityColor(w.avgIntensity) + '15', borderColor: intensityColor(w.avgIntensity) + '40' } },
+                            h('div', { className: 'text-[10px] font-bold text-slate-700 truncate' }, w.student),
+                            h('div', { className: 'text-2xl font-black mt-1', style: { color: intensityColor(w.avgIntensity) } }, w.avgIntensity),
+                            h('div', { className: 'text-[9px] text-slate-400 mt-0.5' }, w.abcCount + ' entries')
+                        )
+                    )
+                )
+            ),
+
+            // AI comparison
+            comparisonWorkspaces.length >= 2 && h('div', { className: 'flex flex-col gap-2' },
+                h('button', {
+                    onClick: handleCompareAI,
+                    disabled: compareLoading || !callGemini,
+                    className: 'flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-bold rounded-xl text-xs hover:from-violet-700 hover:to-fuchsia-700 transition-all shadow-sm disabled:opacity-40 self-start'
+                }, compareLoading ? '⏳ Analyzing...' : '🤖 AI Cross-Student Analysis'),
+                compareAnalysis && h('div', { className: 'bg-violet-50 border border-violet-200 rounded-xl p-4' },
+                    h('p', { className: 'text-xs text-violet-800 leading-relaxed whitespace-pre-wrap' }, compareAnalysis)
+                )
+            )
+        );
+    };
+
+
+
     // ─── BehaviorTab (Hub) ──────────────────────────────────────────────
     // The main hub component that renders inside a fullscreen overlay
     window.AlloModules = window.AlloModules || {};
@@ -14879,6 +15136,8 @@ Keep under 250 words. Use clear sections.`);
         const [workflowSubSteps, setWorkflowSubSteps] = useState({});
         const [graphExport, setGraphExport] = useState(null);
         const [effectSizeResults, setEffectSizeResults] = useState(null);
+        const [lastSavedAt, setLastSavedAt] = useState(null);
+        const [dataChangedSinceSave, setDataChangedSinceSave] = useState(false);
         const [fullSummary, setFullSummary] = useState('');
         const [summaryLoading, setSummaryLoading] = useState(false);
         const [dismissedAlerts, setDismissedAlerts] = useState(new Set());
@@ -14892,6 +15151,8 @@ Keep under 250 words. Use clear sections.`);
         const [collapsedCategories, setCollapsedCategories] = useState({});
         const [visitedPanels, setVisitedPanels] = useState(new Set());
         const fileInputRef = useRef(null);
+        const compareFileInputRef = useRef(null);
+        const [comparisonWorkspaces, setComparisonWorkspaces] = useState([]);
         const [studentProfile, setStudentProfile] = useState({
             interests: '', strengths: '', triggers: '',
             goals: '', accommodations: '', notes: ''
@@ -14998,9 +15259,10 @@ Keep under 250 words. Use clear sections.`);
 
         // ── JSON Workspace Save/Load ──
         const handleSaveWorkspace = () => {
+            const now = new Date().toISOString();
             const workspace = {
-                version: 1,
-                savedAt: new Date().toISOString(),
+                version: 2,
+                savedAt: now,
                 student: selectedStudent,
                 abcEntries,
                 observationSessions,
@@ -15016,6 +15278,9 @@ Keep under 250 words. Use clear sections.`);
                 workflowSubSteps,
                 graphExport,
                 effectSizeResults,
+                aiAnalysis: aiAnalysis || null,
+                dismissedAlerts: Array.from(dismissedAlerts),
+                visitedPanels: Array.from(visitedPanels),
             };
             const json = JSON.stringify(workspace, null, 2);
             const blob = new Blob([json], { type: 'application/json' });
@@ -15027,6 +15292,8 @@ Keep under 250 words. Use clear sections.`);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
+            setLastSavedAt(now);
+            setDataChangedSinceSave(false);
             if (addToast) addToast(t('behavior_lens.toast_workspace_saved') || 'Workspace saved to file 💾', 'success');
         };
 
@@ -15052,7 +15319,11 @@ Keep under 250 words. Use clear sections.`);
                     if (data.workflowSubSteps) setWorkflowSubSteps(data.workflowSubSteps);
                     if (data.graphExport) setGraphExport(data.graphExport);
                     if (data.effectSizeResults) setEffectSizeResults(data.effectSizeResults);
-                    setAiAnalysis(null);
+                    if (data.aiAnalysis) setAiAnalysis(data.aiAnalysis); else setAiAnalysis(null);
+                    if (data.dismissedAlerts) setDismissedAlerts(new Set(data.dismissedAlerts));
+                    if (data.visitedPanels) setVisitedPanels(new Set(data.visitedPanels));
+                    setLastSavedAt(data.savedAt || null);
+                    setDataChangedSinceSave(false);
                     if (addToast) addToast(`Workspace loaded (${(data.abcEntries || []).length} entries, ${(data.sessionNotes || []).length} notes) 📂`, 'success');
                 } catch (err) {
                     warnLog('Failed to parse workspace file:', err);
@@ -15061,6 +15332,57 @@ Keep under 250 words. Use clear sections.`);
             };
             reader.readAsText(file);
             // Reset input so the same file can be re-loaded
+            e.target.value = '';
+        };
+
+        // ── Multi-workspace comparison file loader ──
+        const handleLoadComparisonFiles = (e) => {
+            const files = Array.from(e.target.files || []);
+            if (files.length === 0) return;
+            const loaded = [];
+            let processed = 0;
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    try {
+                        const data = JSON.parse(ev.target.result);
+                        const entries = data.abcEntries || [];
+                        const sessions = data.sessionHistory || [];
+                        // Extract behavior frequency counts
+                        const behaviorCounts = {};
+                        entries.forEach(e => { const b = (e.behavior || '').trim(); if (b) behaviorCounts[b] = (behaviorCounts[b] || 0) + 1; });
+                        // Calculate avg intensity
+                        const avgIntensity = entries.length > 0 ? entries.reduce((s, e) => s + (e.intensity || 3), 0) / entries.length : 0;
+                        // Last entry date
+                        const lastEntry = entries.length > 0 ? entries[entries.length - 1].timestamp : null;
+                        const topBehaviors = Object.entries(behaviorCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+                        loaded.push({
+                            student: data.student || file.name.replace('.json', ''),
+                            fileName: file.name,
+                            abcCount: entries.length,
+                            sessionCount: sessions.length,
+                            avgIntensity: parseFloat(avgIntensity.toFixed(1)),
+                            topBehaviors,
+                            lastEntry,
+                            savedAt: data.savedAt,
+                            profile: data.studentProfile || {},
+                            sessionHistory: sessions.slice(0, 20),
+                            designPhases: data.designPhases || [],
+                            effectSizeResults: data.effectSizeResults,
+                        });
+                    } catch (err) { warnLog('Failed to parse comparison file:', file.name, err); }
+                    processed++;
+                    if (processed === files.length) {
+                        setComparisonWorkspaces(prev => {
+                            const existing = new Set(prev.map(w => w.student));
+                            const newOnes = loaded.filter(w => !existing.has(w.student));
+                            return [...prev, ...newOnes];
+                        });
+                        if (addToast) addToast(`Loaded ${loaded.length} workspace(s) for comparison`, 'success');
+                    }
+                };
+                reader.readAsText(file);
+            });
             e.target.value = '';
         };
 
@@ -15277,6 +15599,20 @@ Use professional language. Refer to "the student" (not the codename).`;
             }
         }, [observationSessions, selectedStudent]);
 
+        // Track data changes for save reminder
+        useEffect(() => { setDataChangedSinceSave(true); }, [abcEntries, observationSessions, sessionHistory, sessionNotes, designPhases]);
+
+        // Auto-save reminder toast (every 10 min if unsaved changes exist)
+        useEffect(() => {
+            if (!dataChangedSinceSave) return;
+            const timer = setTimeout(() => {
+                if (dataChangedSinceSave && addToast) {
+                    addToast('💡 You have unsaved changes — consider saving your workspace.', 'info');
+                }
+            }, 10 * 60 * 1000);
+            return () => clearTimeout(timer);
+        }, [dataChangedSinceSave, addToast]);
+
         // Available students from dashboardData
         const studentOptions = useMemo(() => {
             if (!dashboardData || !Array.isArray(dashboardData)) return [];
@@ -15336,7 +15672,100 @@ Analyze this data and return ONLY valid JSON:
             setObservationSessions(prev => [sessionData, ...prev]);
         };
 
-        // ─── Hub View (Tool Cards) ──────────────────────────────────
+        // ── Per-Tool Export Utilities ──────────────────────────────
+        const [showExportMenu, setShowExportMenu] = useState(false);
+
+        const exportSvgAsPng = (filename) => {
+            const svgEl = document.querySelector('.flex-1.overflow-y-auto svg');
+            if (!svgEl) { if (addToast) addToast('No graph found to export', 'error'); return; }
+            const svgData = new XMLSerializer().serializeToString(svgEl);
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+            img.onload = () => {
+                canvas.width = img.width * 2;
+                canvas.height = img.height * 2;
+                ctx.scale(2, 2);
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0);
+                canvas.toBlob(blob => {
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = filename || 'behaviorlens-graph.png';
+                    a.click();
+                    URL.revokeObjectURL(a.href);
+                    if (addToast) addToast('PNG exported!', 'success');
+                }, 'image/png');
+            };
+            img.onerror = () => { if (addToast) addToast('PNG export failed', 'error'); };
+            img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+        };
+
+        const getToolExportData = (panelId) => {
+            const studentLabel = selectedStudent || 'Unknown Student';
+            const timestamp = new Date().toLocaleString();
+            const lines = [`BehaviorLens Export — ${panelId}`, `Student: ${studentLabel}`, `Date: ${timestamp}`, ''];
+            if (['abc', 'overview', 'trends', 'hypothesis', 'condprob', 'scatterplot', 'hotspot', 'nlabc', 'qualitycheck', 'predict', 'triangulation'].includes(panelId)) {
+                lines.push(`ABC Entries (${abcEntries.length}):`);
+                abcEntries.forEach((e, i) => {
+                    lines.push(`  ${i + 1}. [${e.date || ''}] A: ${e.antecedent || ''} | B: ${e.behavior || ''} | C: ${e.consequence || ''} | Setting: ${e.setting || ''} | Intensity: ${e.intensity || ''}`);
+                });
+            }
+            if (['sessiontracker', 'abagraph', 'cumrecord', 'effectsize', 'trends', 'progressreport'].includes(panelId)) {
+                lines.push('', `Session History (${sessionHistory.length}):`);
+                sessionHistory.forEach((s, i) => {
+                    lines.push(`  ${i + 1}. [${s.date || ''}] Behavior: ${s.behavior || ''} | Count: ${s.count ?? ''} | Rate: ${s.rate ?? ''} | Phase: ${s.phase || ''}`);
+                });
+            }
+            if (['analysis', 'overview', 'triangulation'].includes(panelId) && aiAnalysis) {
+                lines.push('', 'AI Analysis:', aiAnalysis);
+            }
+            if (['observation'].includes(panelId)) {
+                lines.push(`Observation Sessions (${observationSessions.length}):`);
+                observationSessions.forEach((s, i) => {
+                    lines.push(`  ${i + 1}. [${s.date || s.timestamp || ''}] Type: ${s.type || ''} | Duration: ${s.duration || ''}`);
+                });
+            }
+            return lines.join('\n');
+        };
+
+        const handleCopyToolText = () => {
+            const text = getToolExportData(activePanel);
+            navigator.clipboard.writeText(text).then(() => {
+                if (addToast) addToast('Copied to clipboard!', 'success');
+            });
+            setShowExportMenu(false);
+        };
+
+        const handleDownloadToolCsv = () => {
+            const studentLabel = selectedStudent || 'Student';
+            let csvContent = '';
+            if (['abc', 'overview', 'trends', 'hypothesis'].includes(activePanel) && abcEntries.length > 0) {
+                csvContent = 'Date,Antecedent,Behavior,Consequence,Setting,Intensity,Function\n';
+                abcEntries.forEach(e => {
+                    csvContent += `"${e.date || ''}","${(e.antecedent || '').replace(/"/g, '""')}","${(e.behavior || '').replace(/"/g, '""')}","${(e.consequence || '').replace(/"/g, '""')}","${e.setting || ''}","${e.intensity || ''}","${e.function || ''}"\n`;
+                });
+            } else if (['sessiontracker', 'abagraph', 'cumrecord', 'effectsize'].includes(activePanel) && sessionHistory.length > 0) {
+                csvContent = 'Date,Behavior,Count,Rate,Phase,Duration\n';
+                sessionHistory.forEach(s => {
+                    csvContent += `"${s.date || ''}","${(s.behavior || '').replace(/"/g, '""')}","${s.count ?? ''}","${s.rate ?? ''}","${s.phase || ''}","${s.duration || ''}"\n`;
+                });
+            } else {
+                csvContent = getToolExportData(activePanel);
+            }
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `behaviorlens-${activePanel}-${studentLabel.replace(/\s+/g, '_')}.csv`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+            if (addToast) addToast('CSV downloaded!', 'success');
+            setShowExportMenu(false);
+        };
+
+        const graphPanels = ['abagraph', 'cumrecord', 'scatterplot', 'trends', 'hotspot'];
+
         const renderHub = () => {
             const tools = [
                 {
@@ -15399,6 +15828,7 @@ Analyze this data and return ONLY valid JSON:
                     title: t('behavior_lens.hub.hotspot_title') || 'Routine Hotspot Matrix',
                     desc: t('behavior_lens.hub.hotspot_desc') || 'Map behavioral patterns to daily routine periods with AI analysis',
                     color: 'orange',
+                    badge: abcEntries.length > 0 ? `📋 ${abcEntries.length} entries` : null,
                 },
                 {
                     id: 'export',
@@ -15406,6 +15836,7 @@ Analyze this data and return ONLY valid JSON:
                     title: t('behavior_lens.hub.export_title') || 'Export Data',
                     desc: t('behavior_lens.hub.export_desc') || 'Download behavioral data as JSON or formatted text reports',
                     color: 'slate',
+                    badge: (abcEntries.length + observationSessions.length) > 0 ? `${abcEntries.length + observationSessions.length} records` : null,
                 },
                 {
                     id: 'record',
@@ -15421,6 +15852,7 @@ Analyze this data and return ONLY valid JSON:
                     desc: t('behavior_lens.hub.hypothesis_desc') || 'Visual function hypothesis flow from ABC data with AI generation',
                     color: 'violet',
                     disabled: abcEntries.length < 2,
+                    badge: abcEntries.length >= 2 ? `📋 ${abcEntries.length} ABC entries` : null,
                 },
                 {
                     id: 'goals',
@@ -15470,6 +15902,7 @@ Analyze this data and return ONLY valid JSON:
                     title: t('behavior_lens.hub.triangulation_title') || 'Data Triangulation',
                     desc: t('behavior_lens.hub.triangulation_desc') || 'Cross-reference ABC, observations, and AI analysis for convergence',
                     color: 'zinc',
+                    badge: (abcEntries.length > 0 && observationSessions.length > 0) ? '✅ Multi-source data' : null,
                 },
                 {
                     id: 'impact',
@@ -15640,6 +16073,7 @@ Analyze this data and return ONLY valid JSON:
                     title: t('behavior_lens.hub.iepprep_title') || 'IEP Meeting Prep',
                     desc: t('behavior_lens.hub.iepprep_desc') || 'AI-generated meeting preparation packet with data summary, talking points, and next steps',
                     color: 'blue',
+                    badge: abcEntries.length >= 3 ? '📋 Data ready' : null,
                 },
                 {
                     id: 'predict',
@@ -15647,6 +16081,7 @@ Analyze this data and return ONLY valid JSON:
                     title: t('behavior_lens.hub.predict_title') || 'Predictive Insights',
                     desc: t('behavior_lens.hub.predict_desc') || 'AI-powered pattern analysis predicting when, where, and what triggers behaviors — with prevention strategies',
                     color: 'fuchsia',
+                    badge: abcEntries.length >= 5 ? '📋 Data ready' : null,
                 },
                 {
                     id: 'gamify',
@@ -15857,6 +16292,7 @@ Analyze this data and return ONLY valid JSON:
                     title: t('behavior_lens.hub.scatterplot_title') || 'Scatterplot Analysis',
                     desc: t('behavior_lens.hub.scatterplot_desc') || 'Time-of-day × behavior grid to identify temporal patterns — auto-populates from ABC data',
                     color: 'orange',
+                    badge: abcEntries.length > 0 ? `📋 ${abcEntries.length} entries` : null,
                 },
                 {
                     id: 'latency',
@@ -15892,6 +16328,7 @@ Analyze this data and return ONLY valid JSON:
                     title: t('behavior_lens.hub.condprob_title') || 'Conditional Probability',
                     desc: t('behavior_lens.hub.condprob_desc') || 'Foreground vs background probability analysis to validate ABC hypotheses with data',
                     color: 'rose',
+                    badge: abcEntries.length >= 3 ? `📋 ${abcEntries.length} entries` : null,
                 },
                 {
                     id: 'treatintegrity',
@@ -15914,6 +16351,7 @@ Analyze this data and return ONLY valid JSON:
                     desc: t('behavior_lens.hub.iepgoals_desc') || 'AI-generated present levels, SMART goals, objectives, accommodations, and progress monitoring plans',
                     color: 'sky',
                     disabled: abcEntries.length < 1,
+                    badge: abcEntries.length >= 1 ? `📋 ${abcEntries.length} entries` : null,
                 },
                 {
                     id: 'caseload',
@@ -15921,6 +16359,14 @@ Analyze this data and return ONLY valid JSON:
                     title: t('behavior_lens.hub.caseload_title') || 'Caseload Dashboard',
                     desc: t('behavior_lens.hub.caseload_desc') || 'Bird\'s-eye overview of all students — status indicators, trends, safety alerts, and AI caseload summary',
                     color: 'teal',
+                },
+                {
+                    id: 'compare',
+                    icon: '📊',
+                    title: 'Cross-Student Comparison',
+                    desc: 'Load multiple student workspaces to compare behavior patterns, intensity levels, and trends side-by-side with AI analysis',
+                    color: 'violet',
+                    badge: comparisonWorkspaces.length > 0 ? `👤 ${comparisonWorkspaces.length} loaded` : null,
                 },
                 {
                     id: 'mtss',
@@ -15935,6 +16381,7 @@ Analyze this data and return ONLY valid JSON:
                     title: t('behavior_lens.hub.progressreport_title') || 'Progress Reports',
                     desc: t('behavior_lens.hub.progressreport_desc') || 'AI-generated progress reports with data summaries, trend analysis, goal progress, and parent-friendly language option',
                     color: 'emerald',
+                    badge: (abcEntries.length + sessionHistory.length) > 0 ? `${abcEntries.length + sessionHistory.length} data points` : null,
                 },
                 {
                     id: 'effectsize',
@@ -15942,6 +16389,7 @@ Analyze this data and return ONLY valid JSON:
                     title: t('behavior_lens.hub.effectsize_title') || 'Effect Size Calculator',
                     desc: t('behavior_lens.hub.effectsize_desc') || 'Calculate Tau-U, NAP, and PND to quantify intervention effectiveness with visual phase comparison',
                     color: 'indigo',
+                    badge: sessionHistory.length >= 3 ? '📊 Data ready' : null,
                 },
                 {
                     id: 'obscoach',
@@ -16248,13 +16696,14 @@ Analyze this data and return ONLY valid JSON:
                         h('div', { className: 'flex flex-wrap items-center gap-2' },
                             h('button', {
                                 onClick: handleSaveWorkspace,
-                                className: 'flex items-center gap-1.5 px-4 py-2 bg-indigo-50 border border-indigo-200 rounded-xl text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition-all'
-                            }, '💾 ', t('behavior_lens.hub.save_workspace') || 'Save Workspace'),
+                                className: `flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all ${dataChangedSinceSave ? 'bg-amber-50 border-2 border-amber-300 text-amber-700 hover:bg-amber-100 animate-pulse' : 'bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100'}`
+                            }, dataChangedSinceSave ? '🔴 ' : '💾 ', t('behavior_lens.hub.save_workspace') || 'Save Workspace'),
                             h('button', {
                                 onClick: () => fileInputRef.current?.click(),
                                 className: 'flex items-center gap-1.5 px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-700 hover:bg-emerald-100 transition-all'
                             }, '📂 ', t('behavior_lens.hub.load_workspace') || 'Load Workspace'),
-                            h('input', { ref: fileInputRef, type: 'file', accept: '.json', onChange: handleLoadWorkspace, className: 'hidden' })
+                            h('input', { ref: fileInputRef, type: 'file', accept: '.json', onChange: handleLoadWorkspace, className: 'hidden' }),
+                            lastSavedAt && h('span', { className: 'text-[10px] text-slate-400 italic' }, `Last saved: ${new Date(lastSavedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`)
                         ),
 
                         // ── Favorites Bar ──
@@ -16350,13 +16799,15 @@ Analyze this data and return ONLY valid JSON:
                         h('div', { className: 'flex flex-wrap items-center gap-2 pt-2' },
                             h('button', {
                                 onClick: handleSaveWorkspace,
-                                className: 'flex items-center gap-1.5 px-4 py-2 bg-indigo-50 border border-indigo-200 rounded-xl text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition-all'
-                            }, '💾 ', t('behavior_lens.hub.save_workspace') || 'Save Workspace'),
+                                className: `flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all ${dataChangedSinceSave ? 'bg-amber-50 border-2 border-amber-300 text-amber-700 hover:bg-amber-100 animate-pulse' : 'bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100'}`
+                            }, dataChangedSinceSave ? '🔴 ' : '💾 ', t('behavior_lens.hub.save_workspace') || 'Save Workspace'),
                             h('button', {
                                 onClick: () => fileInputRef.current?.click(),
                                 className: 'flex items-center gap-1.5 px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-700 hover:bg-emerald-100 transition-all'
                             }, '📂 ', t('behavior_lens.hub.load_workspace') || 'Load Workspace'),
-                            h('input', { ref: fileInputRef, type: 'file', accept: '.json', onChange: handleLoadWorkspace, className: 'hidden' })
+                            h('input', { ref: fileInputRef, type: 'file', accept: '.json', onChange: handleLoadWorkspace, className: 'hidden' }),
+                            h('input', { ref: compareFileInputRef, type: 'file', accept: '.json', multiple: true, onChange: handleLoadComparisonFiles, className: 'hidden' }),
+                            lastSavedAt && h('span', { className: 'text-[10px] text-slate-400 italic' }, `Last saved: ${new Date(lastSavedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`)
                         )
                     );
                 })(),
@@ -16538,6 +16989,31 @@ Analyze this data and return ONLY valid JSON:
                                 ? 'bg-blue-500 text-white border-blue-500 shadow-md'
                                 : 'bg-white text-slate-500 border-slate-200 hover:border-blue-300 hover:text-blue-500'}`
                         }, isParentMode ? '👨‍👩‍👧 ' + (t('behavior_lens.family_mode') || 'Family Mode') : '👨‍👩‍👧 ' + (t('behavior_lens.family') || 'Family')),
+                        // Per-tool export button (all non-hub panels)
+                        activePanel !== 'hub' && h('div', { className: 'relative' },
+                            h('button', {
+                                onClick: () => setShowExportMenu(v => !v),
+                                className: 'p-2 rounded-full text-slate-500 hover:bg-emerald-50 hover:text-emerald-600 transition-colors',
+                                title: 'Export this tool\'s data'
+                            }, '📤'),
+                            showExportMenu && h('div', {
+                                className: 'absolute right-0 top-10 z-50 bg-white border border-slate-200 rounded-xl shadow-xl py-1 min-w-[180px] animate-in fade-in',
+                                onClick: e => e.stopPropagation()
+                            },
+                                h('button', {
+                                    onClick: handleCopyToolText,
+                                    className: 'w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2'
+                                }, '📋 Copy as Text'),
+                                h('button', {
+                                    onClick: handleDownloadToolCsv,
+                                    className: 'w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2'
+                                }, '📁 Download CSV'),
+                                graphPanels.includes(activePanel) && h('button', {
+                                    onClick: () => { exportSvgAsPng(`behaviorlens-${activePanel}.png`); setShowExportMenu(false); },
+                                    className: 'w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2'
+                                }, '🖼️ Export as PNG')
+                            )
+                        ),
                         h('button', {
                             onClick: onClose,
                             className: 'p-2 rounded-full text-slate-500 hover:bg-slate-100 transition-colors'
@@ -16984,6 +17460,11 @@ Analyze this data and return ONLY valid JSON:
                     abcEntries, dashboardData, callGemini: callGeminiWithContext,
                     t, addToast, selectedStudent, setSelectedStudent, openPanel
                 }),
+                activePanel === 'compare' && h(ComparisonDashboard, {
+                    comparisonWorkspaces, setComparisonWorkspaces,
+                    compareFileInputRef, handleLoadComparisonFiles,
+                    callGemini: callGeminiWithContext, t, addToast
+                }),
                 activePanel === 'mtss' && h(MTSSTierManager, {
                     dashboardData, abcEntries, callGemini: callGeminiWithContext,
                     t, addToast, selectedStudent
@@ -17001,12 +17482,185 @@ Analyze this data and return ONLY valid JSON:
                 activePanel === 'dtt' && h(DTTDataSheet, { studentName: selectedStudent, t, addToast }),
                 activePanel === 'prefassess' && h(PreferenceAssessment, { studentName: selectedStudent, t, addToast }),
                 activePanel === 'scatterplot' && h(ScatterplotAnalysis, { abcEntries, t, addToast }),
-                activePanel === 'latency' && h(LatencyRecorder, { t, addToast }),
+                activePanel === 'latency' && h(LatencyRecorder, { t, addToast, onSaveSession: (s) => setSessionHistory(prev => [s, ...prev]) }),
                 activePanel === 'socialvalidity' && h(SocialValidityMeasures, { studentName: selectedStudent, callGemini: callGeminiWithContext, t, addToast }),
                 activePanel === 'maintenance' && h(MaintenanceTracker, { studentName: selectedStudent, t, addToast }),
                 activePanel === 'cumrecord' && h(CumulativeRecord, { sessionHistory, t, addToast }),
                 activePanel === 'condprob' && h(ConditionalProbability, { abcEntries, t, addToast }),
                 activePanel === 'treatintegrity' && h(TreatmentIntegrityTracker, { t, addToast }),
+                // ── Related Tools Footer ──────────────────────────────
+                (() => {
+                    if (activePanel === 'hub') return null;
+                    const relatedToolsMap = {
+                        abc: [
+                            { id: 'hypothesis', icon: '🔗', label: 'Hypothesis Diagram' },
+                            { id: 'condprob', icon: '📐', label: 'Conditional Probability' },
+                            { id: 'nlabc', icon: '✏️', label: 'Natural Language ABC' },
+                            { id: 'analysis', icon: '🧠', label: 'AI Analysis' },
+                            { id: 'trends', icon: '📊', label: 'Trend Dashboard' },
+                            { id: 'scatterplot', icon: '📅', label: 'Scatterplot' },
+                        ],
+                        analysis: [
+                            { id: 'abc', icon: '📋', label: 'ABC Data' },
+                            { id: 'hypothesis', icon: '🔗', label: 'Hypothesis Diagram' },
+                            { id: 'iepgoals', icon: '📄', label: 'IEP Goals' },
+                            { id: 'intervention', icon: '📋', label: 'Intervention Plan' },
+                        ],
+                        hypothesis: [
+                            { id: 'abc', icon: '📋', label: 'ABC Data' },
+                            { id: 'condprob', icon: '📐', label: 'Conditional Probability' },
+                            { id: 'analysis', icon: '🧠', label: 'AI Analysis' },
+                            { id: 'replacebehavior', icon: '🔄', label: 'Replacement Behavior' },
+                        ],
+                        sessiontracker: [
+                            { id: 'abagraph', icon: '📈', label: 'ABA Graph Engine' },
+                            { id: 'cumrecord', icon: '📈', label: 'Cumulative Record' },
+                            { id: 'trends', icon: '📊', label: 'Trend Dashboard' },
+                            { id: 'effectsize', icon: '📐', label: 'Effect Size' },
+                        ],
+                        abagraph: [
+                            { id: 'sessiontracker', icon: '📋', label: 'Session Tracker' },
+                            { id: 'effectsize', icon: '📐', label: 'Effect Size' },
+                            { id: 'scdmanager', icon: '🔬', label: 'SCD Manager' },
+                            { id: 'iepprep', icon: '📄', label: 'IEP Prep' },
+                            { id: 'progressreport', icon: '📊', label: 'Progress Reports' },
+                        ],
+                        scdmanager: [
+                            { id: 'abagraph', icon: '📈', label: 'ABA Graph Engine' },
+                            { id: 'effectsize', icon: '📐', label: 'Effect Size' },
+                            { id: 'sessiontracker', icon: '📋', label: 'Session Tracker' },
+                        ],
+                        effectsize: [
+                            { id: 'abagraph', icon: '📈', label: 'ABA Graph Engine' },
+                            { id: 'scdmanager', icon: '🔬', label: 'SCD Manager' },
+                            { id: 'progressreport', icon: '📊', label: 'Progress Reports' },
+                        ],
+                        condprob: [
+                            { id: 'abc', icon: '📋', label: 'ABC Data' },
+                            { id: 'hypothesis', icon: '🔗', label: 'Hypothesis Diagram' },
+                            { id: 'scatterplot', icon: '📅', label: 'Scatterplot' },
+                        ],
+                        scatterplot: [
+                            { id: 'abc', icon: '📋', label: 'ABC Data' },
+                            { id: 'condprob', icon: '📐', label: 'Conditional Probability' },
+                            { id: 'hotspot', icon: '🗓️', label: 'Hotspot Matrix' },
+                        ],
+                        trends: [
+                            { id: 'abc', icon: '📋', label: 'ABC Data' },
+                            { id: 'abagraph', icon: '📈', label: 'ABA Graph Engine' },
+                            { id: 'predict', icon: '🔮', label: 'Predictive Insights' },
+                        ],
+                        latency: [
+                            { id: 'sessiontracker', icon: '📋', label: 'Session Tracker' },
+                            { id: 'abagraph', icon: '📈', label: 'ABA Graph Engine' },
+                        ],
+                        iepgoals: [
+                            { id: 'goals', icon: '🎯', label: 'SMART Goals' },
+                            { id: 'progressreport', icon: '📊', label: 'Progress Reports' },
+                            { id: 'iepprep', icon: '📄', label: 'IEP Prep' },
+                        ],
+                        goals: [
+                            { id: 'iepgoals', icon: '📄', label: 'IEP Goal Generator' },
+                            { id: 'contract', icon: '📜', label: 'Behavior Contract' },
+                            { id: 'intervention', icon: '📋', label: 'Intervention Plan' },
+                            { id: 'gas', icon: '📐', label: 'GAS Rubric' },
+                        ],
+                        iepprep: [
+                            { id: 'abagraph', icon: '📈', label: 'ABA Graph Engine' },
+                            { id: 'iepgoals', icon: '📄', label: 'IEP Goals' },
+                            { id: 'progress', icon: '📈', label: 'Progress Narrative' },
+                            { id: 'bcbahandoff', icon: '📊', label: 'BCBA Consultation' },
+                        ],
+                        progressreport: [
+                            { id: 'abagraph', icon: '📈', label: 'ABA Graph Engine' },
+                            { id: 'iepgoals', icon: '📄', label: 'IEP Goals' },
+                            { id: 'treatintegrity', icon: '✅', label: 'Treatment Integrity' },
+                        ],
+                        treatintegrity: [
+                            { id: 'progressreport', icon: '📊', label: 'Progress Reports' },
+                            { id: 'bcbahandoff', icon: '📊', label: 'BCBA Consultation' },
+                            { id: 'fidelity', icon: '✅', label: 'Fidelity Checklist' },
+                        ],
+                        ioacalc: [
+                            { id: 'qualitycheck', icon: '✅', label: 'Data Quality Check' },
+                            { id: 'socialvalidity', icon: '📋', label: 'Social Validity' },
+                        ],
+                        prefassess: [
+                            { id: 'reinforcement', icon: '⭐', label: 'Reinforcement Inventory' },
+                            { id: 'reinforcer', icon: '🏆', label: 'Reinforcer Assessment' },
+                        ],
+                        taskanalysis: [
+                            { id: 'dtt', icon: '🎯', label: 'DTT Data Sheet' },
+                            { id: 'maintenance', icon: '🔄', label: 'Maintenance Tracker' },
+                        ],
+                        dtt: [
+                            { id: 'taskanalysis', icon: '📝', label: 'Task Analysis' },
+                            { id: 'maintenance', icon: '🔄', label: 'Maintenance Tracker' },
+                        ],
+                        predict: [
+                            { id: 'abc', icon: '📋', label: 'ABC Data' },
+                            { id: 'trends', icon: '📊', label: 'Trend Dashboard' },
+                            { id: 'antecedentmod', icon: '🛠️', label: 'Antecedent Modification' },
+                        ],
+                        hotspot: [
+                            { id: 'abc', icon: '📋', label: 'ABC Data' },
+                            { id: 'scatterplot', icon: '📅', label: 'Scatterplot' },
+                            { id: 'antecedentmod', icon: '🛠️', label: 'Antecedent Modification' },
+                        ],
+                        cumrecord: [
+                            { id: 'sessiontracker', icon: '📋', label: 'Session Tracker' },
+                            { id: 'abagraph', icon: '📈', label: 'ABA Graph Engine' },
+                        ],
+                        bcbahandoff: [
+                            { id: 'abc', icon: '📋', label: 'ABC Data' },
+                            { id: 'abagraph', icon: '📈', label: 'ABA Graph Engine' },
+                            { id: 'treatintegrity', icon: '✅', label: 'Treatment Integrity' },
+                            { id: 'iepprep', icon: '📄', label: 'IEP Prep' },
+                        ],
+                        nlabc: [
+                            { id: 'abc', icon: '📋', label: 'ABC Data' },
+                            { id: 'analysis', icon: '🧠', label: 'AI Analysis' },
+                        ],
+                        maintenance: [
+                            { id: 'abagraph', icon: '📈', label: 'ABA Graph Engine' },
+                            { id: 'taskanalysis', icon: '📝', label: 'Task Analysis' },
+                        ],
+                        overview: [
+                            { id: 'abc', icon: '📋', label: 'ABC Data' },
+                            { id: 'trends', icon: '📊', label: 'Trend Dashboard' },
+                            { id: 'analysis', icon: '🧠', label: 'AI Analysis' },
+                        ],
+                        compare: [
+                            { id: 'caseload', icon: '👥', label: 'Caseload Dashboard' },
+                            { id: 'trends', icon: '📊', label: 'Trend Dashboard' },
+                            { id: 'progressreport', icon: '📊', label: 'Progress Reports' },
+                        ],
+                        caseload: [
+                            { id: 'compare', icon: '⚖️', label: 'Student Comparison' },
+                            { id: 'mtss', icon: '🏗️', label: 'MTSS Tiers' },
+                            { id: 'abc', icon: '📋', label: 'ABC Data' },
+                        ],
+                        mtss: [
+                            { id: 'caseload', icon: '👥', label: 'Caseload Dashboard' },
+                            { id: 'abc', icon: '📋', label: 'ABC Data' },
+                            { id: 'iepgoals', icon: '📄', label: 'IEP Goals' },
+                        ],
+                    };
+                    const related = relatedToolsMap[activePanel];
+                    if (!related || related.length === 0) return null;
+                    return h('div', { className: 'mt-6 pt-4 border-t border-slate-200' },
+                        h('div', { className: 'flex items-center gap-2 mb-2' },
+                            h('span', { className: 'text-[10px] font-bold text-slate-400 uppercase tracking-wider' }, '📎 Related Tools')
+                        ),
+                        h('div', { className: 'flex flex-wrap gap-2' },
+                            related.map(rt => h('button', {
+                                key: rt.id,
+                                onClick: () => openPanel(rt.id),
+                                className: 'flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 transition-all'
+                            }, h('span', null, rt.icon), rt.label))
+                        )
+                    );
+                })(),
             ),
             // Fullscreen live observation overlay
             showLiveObs && h(LiveObsOverlay, {
