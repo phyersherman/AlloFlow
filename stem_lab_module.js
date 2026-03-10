@@ -26397,6 +26397,42 @@
             ]
           };
 
+          // ═══ PLANT SPECIES CATALOG ═══
+          // Each plant has real aquatic properties that affect the ecosystem simulation
+          var PLANT_SPECIES = {
+            freshwater: [
+              { id: 'java_fern', name: 'Java Fern', icon: '🌿', o2: 0.3, co2Need: 0.2, nitrateAbsorb: 0.2, light: 'low', growth: 0.02, maxSize: 3, desc: 'Hardy epiphyte — attaches to rocks and driftwood. Thrives in low light. Absorbs nutrients through leaves, not roots.', fact: 'Java Fern reproduces by growing tiny plantlets on its leaves!' },
+              { id: 'amazon_sword', name: 'Amazon Sword', icon: '🌱', o2: 0.8, co2Need: 0.5, nitrateAbsorb: 0.7, light: 'medium', growth: 0.05, maxSize: 5, desc: 'Large rosette plant with broad leaves. Heavy root feeder — needs nutrient-rich substrate. Excellent nitrate absorber.', fact: 'A single Amazon Sword can grow over 20 inches tall and consume enormous amounts of nitrate.' },
+              { id: 'java_moss', name: 'Java Moss', icon: '🌿', o2: 0.2, co2Need: 0.15, nitrateAbsorb: 0.3, light: 'low', growth: 0.06, maxSize: 4, desc: 'Versatile moss that carpets surfaces. Provides hiding spots for fry and shrimp. Nearly indestructible.', fact: 'Java Moss can survive in almost any water conditions and even grow emersed above water.' },
+              { id: 'hornwort', name: 'Hornwort', icon: '🌿', o2: 1.0, co2Need: 0.4, nitrateAbsorb: 0.9, light: 'medium', growth: 0.08, maxSize: 6, desc: 'Fast-growing floating/anchored stem plant. Champion nitrate absorber and oxygenator. Can grow 1-5 inches per week.', fact: 'Hornwort releases allelopathic chemicals that actively inhibit algae growth!' },
+              { id: 'anubias', name: 'Anubias', icon: '🍀', o2: 0.2, co2Need: 0.1, nitrateAbsorb: 0.15, light: 'low', growth: 0.01, maxSize: 3, desc: 'Extremely slow-growing but nearly unkillable. Thick, waxy leaves resist algae and herbivorous fish.', fact: 'Anubias grows so slowly that algae often colonizes its leaves before new ones emerge.' },
+              { id: 'water_wisteria', name: 'Water Wisteria', icon: '🌿', o2: 0.7, co2Need: 0.4, nitrateAbsorb: 0.6, light: 'medium', growth: 0.07, maxSize: 5, desc: 'Fast-growing stem plant with finely divided leaves. Excellent for absorbing excess nutrients and preventing algae.', fact: 'Water Wisteria leaf shape changes dramatically based on whether it grows submerged or above water.' },
+              { id: 'duckweed', name: 'Duckweed', icon: '🟢', o2: 0.5, co2Need: 0.1, nitrateAbsorb: 0.8, light: 'high', growth: 0.1, maxSize: 8, desc: 'Tiny floating plant that doubles in mass every 2-3 days. Absorbs nitrate voraciously but blocks light to plants below.', fact: 'Duckweed is the fastest-growing flowering plant on Earth — used in wastewater treatment worldwide.' }
+            ],
+            planted: [
+              { id: 'dwarf_hairgrass', name: 'Dwarf Hairgrass', icon: '🌾', o2: 0.5, co2Need: 0.7, nitrateAbsorb: 0.4, light: 'high', growth: 0.04, maxSize: 3, desc: 'Carpet-forming grass that creates lush green lawns. Requires high CO2 and bright light to thrive.', fact: 'Dwarf Hairgrass sends out runners underground, forming a dense carpet over weeks.' },
+              { id: 'red_root_floater', name: 'Red Root Floater', icon: '🔴', o2: 0.4, co2Need: 0.1, nitrateAbsorb: 0.5, light: 'high', growth: 0.06, maxSize: 4, desc: 'Floating plant with red-purple roots that dangle into the water. Roots absorb nutrients directly from the water column.', fact: 'The roots turn deep red under intense light — a sign of anthocyanin pigment production.' },
+              { id: 'rotala', name: 'Rotala Rotundifolia', icon: '🌺', o2: 0.6, co2Need: 0.6, nitrateAbsorb: 0.5, light: 'high', growth: 0.05, maxSize: 5, desc: 'Colorful stem plant that turns pink-red under high light and CO2. One of the most popular aquascaping plants.', fact: 'Rotala can grow completely red when iron levels are high, creating stunning underwater landscapes.' },
+              { id: 'monte_carlo', name: 'Monte Carlo', icon: '🌿', o2: 0.4, co2Need: 0.6, nitrateAbsorb: 0.3, light: 'high', growth: 0.03, maxSize: 2, desc: 'Low-growing carpet plant with small round leaves. Creates dense ground cover. Needs CO2 injection.', fact: 'Monte Carlo was discovered in Argentina and named after Monte Carlo, the famous Mediterranean city.' },
+              { id: 'java_fern', name: 'Java Fern', icon: '🌿', o2: 0.3, co2Need: 0.2, nitrateAbsorb: 0.2, light: 'low', growth: 0.02, maxSize: 3, desc: 'Hardy epiphyte — attaches to rocks and driftwood. Thrives in low light.', fact: 'Java Fern reproduces by growing tiny plantlets on its leaves!' },
+              { id: 'hornwort', name: 'Hornwort', icon: '🌿', o2: 1.0, co2Need: 0.4, nitrateAbsorb: 0.9, light: 'medium', growth: 0.08, maxSize: 6, desc: 'Champion oxygenator and nitrate absorber. Grows fast and releases algae-inhibiting chemicals.', fact: 'Hornwort allelopathy actively suppresses algae growth in the water column.' },
+              { id: 'water_wisteria', name: 'Water Wisteria', icon: '🌿', o2: 0.7, co2Need: 0.4, nitrateAbsorb: 0.6, light: 'medium', growth: 0.07, maxSize: 5, desc: 'Fast-growing nutrient sponge with beautiful lacey leaves.', fact: 'Water Wisteria can be propagated from just a single stem cutting.' }
+            ],
+            reef: [
+              { id: 'chaeto', name: 'Chaetomorpha', icon: '🌿', o2: 0.8, co2Need: 0.6, nitrateAbsorb: 0.9, light: 'high', growth: 0.07, maxSize: 5, desc: 'Green macroalgae grown in refugiums. The ultimate nitrate and phosphate remover for saltwater tanks.', fact: 'Chaeto is so effective at nutrient export that reefers harvest and discard overgrown portions regularly.' },
+              { id: 'mangrove', name: 'Mangrove Seedling', icon: '🌳', o2: 0.4, co2Need: 0.2, nitrateAbsorb: 0.6, light: 'high', growth: 0.01, maxSize: 4, desc: 'Grows roots in saltwater while leaves emerge above. Excellent natural denitrifier and provides habitat structure.', fact: 'Mangrove forests protect coastlines from storms and serve as nurseries for 75% of commercially caught fish species.' },
+              { id: 'caulerpa', name: 'Caulerpa', icon: '🌿', o2: 0.5, co2Need: 0.4, nitrateAbsorb: 0.7, light: 'medium', growth: 0.06, maxSize: 5, desc: 'Fast-growing marine macroalgae. Can become invasive if not pruned — known to "go sexual" and release spores in a toxic crash.', fact: 'Caulerpa is a single-celled organism — one of the largest single cells on Earth, up to 3 meters long!' }
+            ],
+            brackish: [
+              { id: 'mangrove', name: 'Mangrove Seedling', icon: '🌳', o2: 0.4, co2Need: 0.2, nitrateAbsorb: 0.6, light: 'high', growth: 0.01, maxSize: 4, desc: 'Grows roots in brackish water while leaves emerge above. Natural denitrifier.', fact: 'Mangroves can filter salt from seawater — their roots excrete salt crystals.' },
+              { id: 'java_fern', name: 'Java Fern', icon: '🌿', o2: 0.3, co2Need: 0.2, nitrateAbsorb: 0.2, light: 'low', growth: 0.02, maxSize: 3, desc: 'Tolerates mild brackish conditions. Hardy and low-maintenance.', fact: 'Java Fern is one of the few plants that can tolerate slight salinity.' }
+            ]
+          };
+          // Fallback: tanks without plant lists get generic hardies
+          var getPlantsForTank = function (tankId) {
+            return PLANT_SPECIES[tankId] || PLANT_SPECIES['freshwater'] || [];
+          };
+
           // ── Current state ──
           var selectedTank = d.selectedTank || null;
           var tankFish = d.tankFish || [];
@@ -26419,6 +26455,12 @@
           var lightsOn = d.lightsOn !== undefined ? d.lightsOn : true;
           var fishSickness = d.fishSickness || {}; // { speciesId: { disease: 'ich', severity: 1-3, tick: when } }
           var algaeLevel = d.algaeLevel || 0; // 0-100
+
+          // ── Plant ecosystem state ──
+          var tankPlants = d.tankPlants || []; // array of plant IDs in the tank
+          var plantHealth = d.plantHealth || {}; // { plantId: 0-100 }
+          var plantBiomass = d.plantBiomass || {}; // { plantId: currentSize (0 to maxSize) }
+          var plantCatalog = getPlantsForTank(selectedTank); // available plants for current tank type
 
           // ── Species animation behaviors ──
           var SPECIES_ANIM = {
@@ -26802,6 +26844,30 @@
                 return 'Current: ' + wc.salinity + ' ppt (parts per thousand)\n1 ppt = 1g salt per 1000g water\nSeawater: ~35 ppt = 3.5% salt by weight';
               },
               fix: 'Adjust slowly through water changes with correctly mixed water. Never change > 2 ppt per day.'
+            },
+            dissolvedO2: {
+              name: 'Dissolved Oxygen (O\u2082)',
+              icon: '\uD83D\uDCA8',
+              what: 'The amount of gaseous oxygen dissolved in the water. Fish breathe by passing water over their gills to extract O\u2082. Plants produce O\u2082 during photosynthesis (daytime) and consume it at night during respiration.',
+              safeRange: '> 6 mg/L ideal | 5-6 mg/L acceptable | 3-5 mg/L stressful | < 3 mg/L lethal',
+              danger: 'Low O\u2082 causes fish to gasp at the surface. Oxygen-starved water becomes anaerobic, producing toxic hydrogen sulfide (H\u2082S) in the substrate.',
+              math: function (wc, tank, bioload, fishCount) {
+                var fishUse = bioload * 0.05;
+                return 'Fish O\u2082 consumption: ' + bioload + ' bioload \u00D7 0.05 = ' + fishUse.toFixed(2) + ' mg/L/tick\nCurrent dissolved O\u2082: ' + wc.dissolvedO2.toFixed(2) + ' mg/L\nPlants produce O\u2082 during daylight, consume at night\nSurface exchange equilibrates toward ~7 mg/L';
+              },
+              fix: 'Add an air pump/airstone. Increase surface agitation. Add live plants. Reduce fish stocking.'
+            },
+            co2: {
+              name: 'Carbon Dioxide (CO\u2082)',
+              icon: '\uD83C\uDF2B\uFE0F',
+              what: 'Fish exhale CO\u2082 as a waste product of metabolism. Plants need CO\u2082 for photosynthesis. Excess CO\u2082 dissolves in water to form carbonic acid (H\u2082CO\u2083), lowering pH.',
+              safeRange: '< 15 mg/L safe for fish | 15-25 mg/L moderate | 25-35 mg/L dangerous | > 35 mg/L lethal',
+              danger: 'High CO\u2082 causes respiratory distress \u2014 fish cannot expel CO\u2082 from their blood when water CO\u2082 is high. Also suppresses pH, creating acidic conditions.',
+              math: function (wc, tank, bioload) {
+                var fishProduce = bioload * 0.04;
+                return 'Fish CO\u2082 production: ' + bioload + ' bioload \u00D7 0.04 = ' + fishProduce.toFixed(2) + ' mg/L/tick\nCurrent CO\u2082: ' + wc.co2.toFixed(2) + ' mg/L\nPlants consume CO\u2082 during daylight\nExcess off-gasses to atmosphere slowly';
+              },
+              fix: 'Increase surface agitation to off-gas CO\u2082. Reduce fish stocking. Plants consume CO\u2082 during the day but produce it at night.'
             }
           };
           // ── Tank setup helpers ──
@@ -26811,8 +26877,9 @@
             updMulti({
               selectedTank: tankId,
               tankFish: [],
-              waterChem: { pH: tank.pH, temp: tank.temp, ammonia: 0, nitrite: 0, nitrate: 5, salinity: tank.salinity },
-              simTick: 0, simRunning: false, fishHealth: {}, eventLog: [{ tick: 0, msg: '🐠 ' + tank.name + ' tank initialized!' }]
+              waterChem: { pH: tank.pH, temp: tank.temp, ammonia: 0, nitrite: 0, nitrate: 5, salinity: tank.salinity, dissolvedO2: 7.0, co2: 3.0 },
+              simTick: 0, simRunning: false, fishHealth: {}, eventLog: [{ tick: 0, msg: '🐠 ' + tank.name + ' tank initialized!' }],
+              tankPlants: [], plantHealth: {}, plantBiomass: {}
             });
           };
 
@@ -26844,6 +26911,41 @@
             updMulti({ tankFish: newFish, eventLog: eventLog.concat([{ tick: simTick, msg: '🔄 Removed ' + (sp ? sp.name : removed) }]) });
           };
 
+          // ── Plant management helpers ──
+          var addPlant = function (plantId) {
+            var plantCatalog = getPlantsForTank(selectedTank);
+            var plant = plantCatalog.find(function (p) { return p.id === plantId; });
+            if (!plant) return;
+            // Max 8 plant slots
+            if (tankPlants.length >= 8) {
+              if (addToast) addToast('🌿 Maximum plant slots reached! Remove a plant first.', 'warning');
+              return;
+            }
+            var newPlants = tankPlants.concat([plantId]);
+            var newPH = Object.assign({}, plantHealth);
+            newPH[plantId] = newPH[plantId] !== undefined ? newPH[plantId] : 80; // start healthy
+            var newPB = Object.assign({}, plantBiomass);
+            newPB[plantId] = newPB[plantId] !== undefined ? newPB[plantId] : 1; // start at size 1
+            updMulti({
+              tankPlants: newPlants,
+              plantHealth: newPH,
+              plantBiomass: newPB,
+              eventLog: eventLog.concat([{ tick: simTick, msg: '🌿 Planted ' + plant.name }])
+            });
+            awardStemXP('aquarium', 3, 'Planted ' + plant.name);
+          };
+
+          var removePlant = function (idx) {
+            var newPlants = tankPlants.slice();
+            var removed = newPlants.splice(idx, 1)[0];
+            var plantCatalog = getPlantsForTank(selectedTank);
+            var plant = plantCatalog.find(function (p) { return p.id === removed; });
+            updMulti({
+              tankPlants: newPlants,
+              eventLog: eventLog.concat([{ tick: simTick, msg: '🔄 Removed ' + (plant ? plant.name : removed) }])
+            });
+          };
+
           // ── Water chemistry helpers ──
           var getChemStatus = function (param, value) {
             var tank = TANK_TYPES.find(function (t) { return t.id === selectedTank; });
@@ -26851,6 +26953,8 @@
             if (param === 'ammonia') return value < 0.25 ? 'ok' : value < 1.0 ? 'warn' : 'danger';
             if (param === 'nitrite') return value < 0.25 ? 'ok' : value < 1.0 ? 'warn' : 'danger';
             if (param === 'nitrate') return value < 40 ? 'ok' : value < 80 ? 'warn' : 'danger';
+            if (param === 'dissolvedO2') return value > 5.0 ? 'ok' : value > 3.0 ? 'warn' : 'danger';
+            if (param === 'co2') return value < 25 ? 'ok' : value < 35 ? 'warn' : 'danger';
             if (param === 'pH') {
               var diff = Math.abs(value - tank.pH);
               return diff < 0.5 ? 'ok' : diff < 1.0 ? 'warn' : 'danger';
@@ -27014,6 +27118,13 @@
               var _algaeLevel = aq.algaeLevel || 0;
               var _selectedTank = aq.selectedTank;
               var _waterChem = aq.waterChem;
+              // ── Plant state ──
+              var _tankPlants = aq.tankPlants || [];
+              var _plantHealth = Object.assign({}, aq.plantHealth || {});
+              var _plantBiomass = Object.assign({}, aq.plantBiomass || {});
+              var _dissolvedO2 = _waterChem.dissolvedO2 !== undefined ? _waterChem.dissolvedO2 : 7.0;
+              var _co2 = _waterChem.co2 !== undefined ? _waterChem.co2 : 3.0;
+              var plantCatalog = getPlantsForTank(_selectedTank);
               var bioload = _tankFish.reduce(function (sum, f) {
                 var sp = (SPECIES_BY_TANK[_selectedTank] || []).find(function (s) { return s.id === f; });
                 return sum + (sp ? sp.load : 0);
@@ -27024,7 +27135,78 @@
               var newNitrite = Math.max(0, _waterChem.nitrite + nitriteBact - _waterChem.nitrite * 0.08);
               var nitrateBact = _waterChem.nitrite * 0.2;
               var newNitrate = Math.max(0, _waterChem.nitrate + nitrateBact);
+              // ── Fish respiration: consume O2, produce CO2 ──
+              // Each unit of bioload consumes ~0.05 mg/L O2 and produces ~0.04 mg/L CO2 per tick
+              var fishO2Consume = bioload * 0.05;
+              var fishCO2Produce = bioload * 0.04;
+              var deltaO2 = -fishO2Consume;
+              var deltaCO2 = fishCO2Produce;
+              // ── Plant photosynthesis & respiration ──
+              // Day cycle: if lights are on AND it's daytime (6-20), plants photosynthesize
+              var isDaylight = _lightsOn && (_simHour >= 6 && _simHour < 20);
+              var plantNitrateAbsorb = 0;
+              var plantChanged = false;
+              _tankPlants.forEach(function (pId) {
+                var pDef = plantCatalog.find(function (p) { return p.id === pId; });
+                if (!pDef) return;
+                var health = _plantHealth[pId] !== undefined ? _plantHealth[pId] : 80;
+                var biomass = _plantBiomass[pId] !== undefined ? _plantBiomass[pId] : 1;
+                var healthFactor = health / 100; // 0-1
+                var biomassFactor = biomass / pDef.maxSize; // 0-1 relative to max
+                if (isDaylight) {
+                  // Photosynthesis: produce O2, consume CO2 & nitrate
+                  // Scaled by health, biomass, and light requirements
+                  var lightEff = 1.0;
+                  if (pDef.light === 'high' && _algaeLevel > 50) lightEff = 0.6; // algae blocks light
+                  if (pDef.light === 'low') lightEff = 1.0; // low-light plants always fine
+                  var photoRate = healthFactor * biomassFactor * lightEff;
+                  deltaO2 += pDef.o2 * photoRate;
+                  deltaCO2 -= pDef.co2Need * photoRate;
+                  plantNitrateAbsorb += pDef.nitrateAbsorb * photoRate;
+                } else {
+                  // Night respiration: plants consume a small amount of O2 and release CO2
+                  deltaO2 -= pDef.o2 * 0.15 * biomassFactor;
+                  deltaCO2 += pDef.co2Need * 0.1 * biomassFactor;
+                }
+                // ── Plant health update ──
+                var healthDelta = 0;
+                // Good conditions: adequate light, nutrients, CO2
+                if (isDaylight && newNitrate > 5 && _co2 > 2) {
+                  healthDelta += 1; // thriving
+                }
+                // Bad: no light when needed
+                if (!isDaylight && pDef.light === 'high') healthDelta -= 0.5;
+                // Bad: very low nitrates (no nutrients)
+                if (newNitrate < 2) healthDelta -= 1;
+                // Bad: very low CO2
+                if (_co2 < 1) healthDelta -= 0.5;
+                // Bad: extreme ammonia damages plants too
+                if (newAmm > 2) healthDelta -= 1;
+                // Bad: very low O2 (anaerobic stress)
+                if (_dissolvedO2 < 2) healthDelta -= 1.5;
+                _plantHealth[pId] = Math.max(0, Math.min(100, health + healthDelta));
+                // ── Plant growth ──
+                if (health > 40 && isDaylight && newNitrate > 3) {
+                  _plantBiomass[pId] = Math.min(pDef.maxSize, biomass + pDef.growth * healthFactor);
+                } else if (health <= 20) {
+                  // Dying plants lose biomass
+                  _plantBiomass[pId] = Math.max(0, biomass - 0.02);
+                }
+                plantChanged = true;
+              });
+              // Apply plant nitrate absorption
+              newNitrate = Math.max(0, newNitrate - plantNitrateAbsorb);
+              // Atmospheric O2 exchange (surface equilibration toward ~7 mg/L)
+              var surfaceExchange = (_dissolvedO2 < 7 ? 0.15 : -0.05);
+              deltaO2 += surfaceExchange;
+              var newO2 = Math.max(0, Math.min(14, _dissolvedO2 + deltaO2));
+              var newCO2 = Math.max(0, Math.min(50, _co2 + deltaCO2));
+              // CO2 atmospheric off-gassing (tendency toward ~3 mg/L)
+              if (newCO2 > 3) newCO2 -= Math.min(0.1, (newCO2 - 3) * 0.05);
               var pHdrift = (Math.random() - 0.5) * 0.05;
+              // CO2 influences pH: high CO2 lowers pH (carbonic acid)
+              if (newCO2 > 10) pHdrift -= 0.02;
+              if (newCO2 > 25) pHdrift -= 0.03;
               var tempDrift = (Math.random() - 0.5) * 0.3;
               var newChem = {
                 pH: Math.max(5.5, Math.min(9.0, _waterChem.pH + pHdrift)),
@@ -27032,7 +27214,9 @@
                 ammonia: Math.round(newAmm * 100) / 100,
                 nitrite: Math.round(newNitrite * 100) / 100,
                 nitrate: Math.round(newNitrate * 10) / 10,
-                salinity: _waterChem.salinity
+                salinity: _waterChem.salinity,
+                dissolvedO2: Math.round(newO2 * 100) / 100,
+                co2: Math.round(newCO2 * 100) / 100
               };
               var newTick = _simTick + 1;
               // Advance time: each tick = 1 hour
@@ -27145,18 +27329,44 @@
                 finalTankFish = _tankFish.slice();
                 fishToRemove.forEach(function (ri) { if (ri >= 0 && ri < finalTankFish.length) finalTankFish.splice(ri, 1); });
               }
-              // ── Algae growth ──
+              // ── Algae growth (competes with plants) ──
               var newAlgae = _algaeLevel;
-              if (_lightsOn) { newAlgae = Math.min(100, newAlgae + 0.5 + (newChem.nitrate > 40 ? 1 : 0)); }
-              else { newAlgae = Math.max(0, newAlgae - 0.3); }
+              var totalPlantBiomass = _tankPlants.reduce(function (s, pId) { return s + (_plantBiomass[pId] || 0); }, 0);
+              // Plants compete with algae for nutrients & light
+              var plantSuppression = Math.min(0.8, totalPlantBiomass * 0.08); // up to 80% suppression
+              if (_lightsOn) {
+                var algaeGrowth = (0.5 + (newChem.nitrate > 40 ? 1 : 0) + (newChem.nitrate > 60 ? 0.5 : 0)) * (1 - plantSuppression);
+                newAlgae = Math.min(100, newAlgae + algaeGrowth);
+              } else {
+                newAlgae = Math.max(0, newAlgae - 0.3);
+              }
+              // Low O2 events
+              if (newO2 < 2 && _tankFish.length > 0 && newTick % 3 === 0) {
+                newLog.push({ tick: newTick, msg: '⚠️ Fish are gasping at the surface — dangerously low oxygen!' });
+              }
+              // Plant death event
+              _tankPlants.forEach(function (pId) {
+                if (_plantHealth[pId] !== undefined && _plantHealth[pId] <= 0 && _plantBiomass[pId] > 0) {
+                  var pDef = plantCatalog.find(function (p) { return p.id === pId; });
+                  _plantBiomass[pId] = 0;
+                  newLog.push({ tick: newTick, msg: '🥀 ' + (pDef ? pDef.name : pId) + ' has died and is decomposing.' });
+                  // Dead plant biomass releases ammonia
+                  newChem.ammonia = Math.min(5, newChem.ammonia + 0.3);
+                  plantChanged = true;
+                }
+              });
               // Build final update
               var tickUpdate = {
                 waterChem: newChem, simTick: newTick, simDay: newDay, simHour: newHour,
-                hungerLevels: newHunger, eventLog: newLog.slice(-20),
+                hungerLevels: newHunger, eventLog: newLog.slice(-25),
                 algaeLevel: Math.round(newAlgae * 10) / 10, fishStress: newStress
               };
               if (sickChanged) tickUpdate.fishSickness = newSickness;
               if (fishToRemove.length > 0) tickUpdate.tankFish = finalTankFish;
+              if (plantChanged) {
+                tickUpdate.plantHealth = _plantHealth;
+                tickUpdate.plantBiomass = _plantBiomass;
+              }
               aq = Object.assign(aq, tickUpdate);
               return Object.assign({}, prev, { _aquarium: aq });
             });
@@ -27602,7 +27812,9 @@
                       { key: 'ammonia', label: 'NH\u2083', val: waterChem.ammonia.toFixed(2) + ' ppm' },
                       { key: 'nitrite', label: 'NO\u2082', val: waterChem.nitrite.toFixed(2) + ' ppm' },
                       { key: 'nitrate', label: 'NO\u2083', val: waterChem.nitrate.toFixed(1) + ' ppm' },
-                      { key: 'salinity', label: 'Salt', val: waterChem.salinity + ' ppt' }
+                      { key: 'salinity', label: 'Salt', val: waterChem.salinity + ' ppt' },
+                      { key: 'dissolvedO2', label: 'O\u2082', val: (waterChem.dissolvedO2 !== undefined ? waterChem.dissolvedO2.toFixed(1) : '7.0') + ' mg/L' },
+                      { key: 'co2', label: 'CO\u2082', val: (waterChem.co2 !== undefined ? waterChem.co2.toFixed(1) : '3.0') + ' mg/L' }
                     ].map(function (p) {
                       var st = getChemStatus(p.key, waterChem[p.key]);
                       var isActive = chemTooltip === p.key;
@@ -27665,6 +27877,85 @@
                     React.createElement("span", { className: "ml-1 text-slate-400" }, "(Nitrogen Cycle)")
                   )
                 ),
+
+                // â”€â”€ Plant Management Panel â”€â”€
+                React.createElement("div", { className: "bg-gradient-to-br from-emerald-50 via-green-50 to-lime-50 rounded-2xl p-4 border border-emerald-200/60 shadow-sm" },
+                  React.createElement("div", { className: "flex items-center justify-between mb-2" },
+                    React.createElement("h4", { className: "text-xs font-bold text-emerald-700" }, "\uD83C\uDF31 Aquatic Plants (" + tankPlants.length + "/8)"),
+                    tankPlants.length > 0 && React.createElement("span", { className: "text-[9px] text-emerald-500 italic" },
+                      "\uD83C\uDF3F " + tankPlants.reduce(function(s, pid) { var b = plantBiomass[pid]; return s + (b ? b : 0); }, 0).toFixed(1) + " total biomass"
+                    )
+                  ),
+                  // Current plants list
+                  tankPlants.length === 0
+                    ? React.createElement("div", { className: "text-center py-4 text-sm text-emerald-400 italic" },
+                        "\uD83C\uDF3E No plants yet \u2014 add some to boost O\u2082 and absorb nitrates!"
+                      )
+                    : React.createElement("div", { className: "space-y-1.5 mb-3" },
+                        tankPlants.map(function(pid, idx) {
+                          var pSpec = plantCatalog.find(function(ps) { return ps.id === pid; });
+                          if (!pSpec) return null;
+                          var hp = (plantHealth[pid] !== undefined ? plantHealth[pid] : 100);
+                          var bm = (plantBiomass[pid] !== undefined ? plantBiomass[pid] : 1.0);
+                          var hpColor = hp > 70 ? 'bg-green-500' : hp > 40 ? 'bg-yellow-500' : 'bg-red-500';
+                          var hpTextColor = hp > 70 ? 'text-green-600' : hp > 40 ? 'text-yellow-600' : 'text-red-600';
+                          return React.createElement("div", {
+                            key: pid + '-' + idx,
+                            className: "flex items-center gap-2 bg-white/80 rounded-lg p-2 border border-emerald-100 hover:border-emerald-300 transition-all"
+                          },
+                            React.createElement("span", { className: "text-lg" }, pSpec.icon || '\uD83C\uDF3F'),
+                            React.createElement("div", { className: "flex-1 min-w-0" },
+                              React.createElement("div", { className: "text-[11px] font-bold text-emerald-800 truncate" }, pSpec.name),
+                              React.createElement("div", { className: "flex items-center gap-2 mt-0.5" },
+                                React.createElement("div", { className: "flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden" },
+                                  React.createElement("div", { style: { width: Math.max(0, Math.min(100, hp)) + '%', transition: 'width 0.5s' }, className: "h-full rounded-full " + hpColor })
+                                ),
+                                React.createElement("span", { className: "text-[9px] font-mono " + hpTextColor }, hp.toFixed(0) + '%'),
+                                React.createElement("span", { className: "text-[9px] text-slate-400" }, '\uD83C\uDF3F' + bm.toFixed(1))
+                              )
+                            ),
+                            React.createElement("button", {
+                              onClick: function() { removePlant(idx); },
+                              className: "text-[10px] text-red-400 hover:text-red-600 font-bold px-1",
+                              title: "Remove plant"
+                            }, "\u2715")
+                          );
+                        })
+                      ),
+                  // Add plant selector
+                  tankPlants.length < 8 && React.createElement("div", { className: "mt-2" },
+                    React.createElement("div", { className: "text-[10px] font-bold text-emerald-600 mb-1" }, "\u2795 Add a Plant:"),
+                    React.createElement("div", { className: "grid grid-cols-2 gap-1.5 max-h-32 overflow-y-auto" },
+                      plantCatalog.map(function(ps) {
+                        var alreadyAdded = tankPlants.indexOf(ps.id) !== -1;
+                        return React.createElement("button", {
+                          key: ps.id,
+                          onClick: function() { if (!alreadyAdded) addPlant(ps.id); },
+                          disabled: alreadyAdded,
+                          className: "text-left rounded-lg p-1.5 text-[10px] transition-all " +
+                            (alreadyAdded
+                              ? "bg-emerald-100/50 text-emerald-400 cursor-not-allowed opacity-60"
+                              : "bg-white/70 hover:bg-white border border-emerald-100 hover:border-emerald-300 hover:shadow-sm cursor-pointer")
+                        },
+                          React.createElement("span", { className: "font-bold" }, (ps.icon || '\uD83C\uDF3F') + ' ' + ps.name),
+                          React.createElement("div", { className: "text-[8px] text-slate-400 mt-0.5 leading-tight" },
+                            "O\u2082:" + (ps.o2 > 0 ? '+' : '') + ps.o2.toFixed(2) +
+                            " | NO\u2083:" + (ps.nitrateAbsorb > 0 ? '-' : '') + ps.nitrateAbsorb.toFixed(2) +
+                            " | \u2600\uFE0F" + ps.light
+                          )
+                        );
+                      })
+                    )
+                  ),
+                  // Ecosystem tip
+                  tankPlants.length > 0 && React.createElement("div", { className: "mt-2 text-[9px] text-emerald-600/80 bg-emerald-100/40 rounded-lg p-2 leading-relaxed" },
+                    "\uD83D\uDCA1 ",
+                    React.createElement("strong", null, "Ecosystem Tip: "),
+                    "Plants produce O\u2082 during the day via photosynthesis but consume it at night. Balance fish load with plant biomass to keep dissolved oxygen stable. Too many nutrients without enough plants can trigger algae blooms!"
+                  )
+                ),
+
+
 
                 // Bioload Meter
                 React.createElement("div", { className: "bg-white rounded-xl p-3 border border-slate-200" },
