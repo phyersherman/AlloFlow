@@ -104,6 +104,107 @@
         return `${m}:${s.toString().padStart(2, '0')}`;
     };
 
+    // ─── Glossary Tooltip System ─────────────────────────────────────────
+    // Shared term→definition map used by the GlossaryTip component to
+    // render inline, hover-activated tooltips across all tools.
+    const GLOSSARY_TIPS = {
+        'ABC': { def: 'Antecedent-Behavior-Consequence: A recording method capturing what happens before (A), the behavior (B), and what happens after (C).', affirming: 'Observe–Describe–Respond' },
+        'Antecedent': { def: 'What happens immediately before a behavior occurs — the trigger or preceding event.', affirming: 'Trigger or Preceding Event' },
+        'Behavior': { def: 'An observable, measurable action. Must be specific enough that two observers would agree on its occurrence.', affirming: 'Observable Action' },
+        'Consequence': { def: 'What happens immediately after a behavior. Can reinforce (increase) or reduce the behavior.', affirming: 'What Happened Next' },
+        'FBA': { def: 'Functional Behavior Assessment: A systematic process to determine WHY a behavior occurs using data and analysis.', affirming: 'Understanding the "Why"' },
+        'BIP': { def: 'Behavior Intervention Plan: A documented plan based on FBA findings that outlines prevention, replacement behaviors, and reinforcement strategies.', affirming: 'Student Support Blueprint' },
+        'Function': { def: 'The purpose a behavior serves: Attention, Escape/Avoidance, Access to Tangibles, or Sensory/Automatic.', affirming: 'Purpose or Unmet Need' },
+        'Replacement Behavior': { def: 'A socially appropriate behavior that serves the same function as the challenging behavior.', affirming: 'Self-Regulation Strategy' },
+        'Reinforcement': { def: 'A consequence that increases the likelihood of a behavior occurring again.', affirming: 'Encouragement' },
+        'Extinction': { def: 'Withholding reinforcement for a previously reinforced behavior. May cause a temporary "extinction burst."', affirming: 'Planned Non-Reinforcement' },
+        'Baseline': { def: 'Data collected before intervention begins, used as the comparison point for measuring progress.', affirming: 'Starting Point Snapshot' },
+        'DRA': { def: 'Differential Reinforcement of Alternative behavior: Reinforce a specific alternative while withholding reinforcement for the problem behavior.', affirming: 'Rewarding the Better Choice' },
+        'DRO': { def: 'Differential Reinforcement of Other behavior: Reinforce the absence of the problem behavior in a set interval.', affirming: 'Rewarding Calm Moments' },
+        'DRI': { def: 'Differential Reinforcement of Incompatible behavior: Reinforce a behavior physically incompatible with the problem behavior.', affirming: 'Rewarding the Positive Opposite' },
+        'FCT': { def: 'Functional Communication Training: Teaching a student to communicate their needs as a replacement for challenging behavior.', affirming: 'Communication Skills Building' },
+        'IOA': { def: 'Inter-Observer Agreement: A measure of consistency between two observers recording the same behavior.', affirming: 'Observer Consistency Check' },
+        'Prompt': { def: 'An extra cue to help a student perform a behavior. Types: verbal, gestural, visual, model, physical.', affirming: 'Supportive Cue' },
+        'Generalization': { def: 'The ability to use a learned skill across different settings, people, and situations.', affirming: 'Skill Transfer' },
+        'Token Economy': { def: 'A system where tokens earned for desired behaviors can be exchanged for preferred activities or items.', affirming: 'Positive Behavior Tracker' },
+        'Setting Events': { def: 'Broader environmental or internal factors that make a behavior more or less likely.', affirming: 'Background Influences' },
+        'Frequency': { def: 'Counting how many times a behavior occurs within a specified time period.', affirming: 'Counting How Often' },
+        'Duration': { def: 'Measuring how long a behavior lasts from start to finish.', affirming: 'Measuring How Long' },
+        'Interval Recording': { def: 'Dividing observation time into equal intervals and recording whether behavior occurred in each.', affirming: 'Time-Window Sampling' },
+        'Latency': { def: 'The time between a trigger/instruction and the onset of the behavior.', affirming: 'Response Time' },
+        'MTSS': { def: 'Multi-Tiered System of Supports: A framework with Tier 1 (universal), Tier 2 (targeted), and Tier 3 (intensive) interventions.', affirming: 'Layered Support Framework' },
+        'SCD': { def: 'Single-Case Design: A research methodology to evaluate intervention effects for individual students.', affirming: 'Individual Progress Evidence' },
+        'Effect Size': { def: 'A statistical measure of the magnitude of change between baseline and intervention phases.', affirming: 'How Big the Change Was' },
+    };
+
+    /**
+     * GlossaryTip — inline tooltip for ABA terminology.
+     * Renders the term with a dotted underline; hover shows a tooltip with the
+     * definition and affirming label. Falls through as plain text if the term
+     * is not in GLOSSARY_TIPS.
+     * @param {{ term: string, children?: string }} props
+     */
+    const GlossaryTip = ({ term, children }) => {
+        const [show, setShow] = useState(false);
+        const entry = GLOSSARY_TIPS[term];
+        if (!entry) return h('span', null, children || term);
+        return h('span', {
+            className: 'relative inline-block',
+            onMouseEnter: () => setShow(true),
+            onMouseLeave: () => setShow(false),
+            onFocus: () => setShow(true),
+            onBlur: () => setShow(false),
+            tabIndex: 0,
+            role: 'button',
+            'aria-label': `Definition of ${term}`
+        },
+            h('span', {
+                className: 'border-b border-dotted border-indigo-400 text-indigo-700 cursor-help transition-colors hover:text-indigo-900 hover:border-indigo-600'
+            }, children || term),
+            show && h('div', {
+                className: 'absolute z-[999] bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 p-3 bg-slate-900 text-white rounded-xl shadow-xl text-xs leading-relaxed pointer-events-none animate-in fade-in',
+                style: { animationDuration: '150ms' }
+            },
+                h('div', { className: 'font-bold text-indigo-300 text-[11px] mb-1' }, `${term} — ${entry.affirming}`),
+                h('div', { className: 'text-slate-200' }, entry.def),
+                h('div', {
+                    className: 'absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-l-transparent border-r-transparent border-t-slate-900'
+                })
+            )
+        );
+    };
+
+    /**
+     * autoTip — scan a plain-text string for known ABA terms from
+     * GLOSSARY_TIPS and wrap each first occurrence in a GlossaryTip.
+     * Returns an array of React nodes (strings + GlossaryTip elements).
+     * @param {string} text
+     */
+    const _glossaryTermsSorted = Object.keys(GLOSSARY_TIPS).sort((a, b) => b.length - a.length);
+    const _glossaryRegex = new RegExp(`\\b(${_glossaryTermsSorted.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b`, 'i');
+    const autoTip = (text) => {
+        if (!text || typeof text !== 'string') return text;
+        const parts = [];
+        let remaining = text;
+        const seen = new Set();
+        let safety = 0;
+        while (remaining && safety++ < 20) {
+            const match = remaining.match(_glossaryRegex);
+            if (!match) { parts.push(remaining); break; }
+            const term = _glossaryTermsSorted.find(t => t.toLowerCase() === match[1].toLowerCase());
+            if (!term || seen.has(term)) {
+                parts.push(remaining.slice(0, match.index + match[0].length));
+                remaining = remaining.slice(match.index + match[0].length);
+                continue;
+            }
+            seen.add(term);
+            if (match.index > 0) parts.push(remaining.slice(0, match.index));
+            parts.push(h(GlossaryTip, { key: `gt-${term}`, term }, match[0]));
+            remaining = remaining.slice(match.index + match[0].length);
+        }
+        return parts.length === 1 && typeof parts[0] === 'string' ? parts[0] : parts;
+    };
+
     // ─── ABCModal ───────────────────────────────────────────────────────
     // Modal for adding/editing a single ABC data entry
     const ABCModal = ({ entry, onSave, onClose, t, callGemini }) => {
@@ -4785,6 +4886,61 @@ Return the note as plain text (no JSON). Include date placeholder and signature 
             return days;
         }, [history]);
 
+        // ── Function-based Quick Fill templates ──────────────────────
+        const FIDELITY_TEMPLATES = {
+            escape: [
+                'Previewed schedule and changes before transitions',
+                'Offered breaks or a break card before escalation',
+                'Provided choice between two equivalent tasks',
+                'Used first-then board for non-preferred activities',
+                'Reduced task length or difficulty as needed',
+                'Acknowledged effort before requesting more work',
+            ],
+            attention: [
+                'Provided 5:1 positive to corrective ratio',
+                'Gave specific, labeled praise for appropriate behavior',
+                'Scheduled regular 1-on-1 check-ins throughout the day',
+                'Avoided extended verbal interaction during challenging behavior',
+                'Used proximity praise with peers near the student',
+                'Provided a leadership role or helper job',
+            ],
+            sensory: [
+                'Offered sensory tools (fidget, weighted item) proactively',
+                'Allowed scheduled movement breaks',
+                'Checked lighting and noise levels in the environment',
+                'Provided an alternative sensory-appropriate replacement',
+                'Monitored for signs of overstimulation and intervened early',
+                'Ensured seating arrangement minimizes distracting stimuli',
+            ],
+            tangible: [
+                'Used visual timer to show when preferred items would be available',
+                'Offered preferred items contingent on meeting expectations',
+                'Provided a token board or reinforcement system',
+                'Pre-taught waiting skills before denying access',
+                'Avoided removing items as punishment unnecessarily',
+                'Rotated reinforcers to maintain motivation',
+            ],
+            universal: [
+                'Greeted the student positively at arrival',
+                'Followed the BIP/support plan as written',
+                'Collected data on target behavior occurrences',
+                'Communicated with team members about the student\'s day',
+            ],
+        };
+
+        const handleQuickFill = () => {
+            const func = (aiAnalysis?.hypothesizedFunction || '').toLowerCase();
+            let template = [...(FIDELITY_TEMPLATES.universal)];
+            if (func.includes('escape') || func.includes('avoid')) template = [...FIDELITY_TEMPLATES.escape, ...template];
+            else if (func.includes('attention')) template = [...FIDELITY_TEMPLATES.attention, ...template];
+            else if (func.includes('sensory') || func.includes('automatic')) template = [...FIDELITY_TEMPLATES.sensory, ...template];
+            else if (func.includes('tangible') || func.includes('access')) template = [...FIDELITY_TEMPLATES.tangible, ...template];
+            else template = [...FIDELITY_TEMPLATES.escape.slice(0, 2), ...FIDELITY_TEMPLATES.attention.slice(0, 2), ...template];
+            setItems(template);
+            setChecks({});
+            if (addToast) addToast(`Quick Fill: ${template.length} items loaded ⚡`, 'success');
+        };
+
         const handleGenerate = async () => {
             if (!callGemini) return;
             setGenerating(true);
@@ -4831,6 +4987,11 @@ Generate a daily fidelity checklist (5-8 items) and return ONLY valid JSON:
                     onClick: handleGenerate, disabled: generating,
                     className: 'flex-1 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl disabled:opacity-40 transition-all'
                 }, generating ? '⏳ Generating...' : ('🧠 ' + (t('behavior_lens.fidelity.generate') || 'AI Generate Checklist from BIP'))),
+                h('button', {
+                    onClick: handleQuickFill,
+                    className: 'px-4 py-3 bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all',
+                    title: 'Instantly fill function-matched fidelity items (no AI needed)'
+                }, '⚡ Quick Fill'),
                 items.length > 0 && h('button', { onClick: saveToday, className: 'px-4 py-3 bg-emerald-500 text-white rounded-xl font-bold shadow-lg hover:bg-emerald-600 transition-all' }, '💾 Save Today'),
                 items.length > 0 && h('button', { onClick: clearChecks, className: 'px-4 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all' }, '🔄 Clear')
             ),
@@ -5285,7 +5446,7 @@ Generate descriptors for each GAS level and return ONLY valid JSON:
 
     // ─── HomeBehaviorLog ────────────────────────────────────────────────
     // Simplified ABC logging designed for parents/family context
-    const HomeBehaviorLog = ({ studentName, t, addToast, callGemini }) => {
+    const HomeBehaviorLog = ({ studentName, t, addToast, callGemini, setAbcEntries }) => {
         const [entries, setEntries] = useState([]);
         const [showForm, setShowForm] = useState(false);
         const [newEntry, setNewEntry] = useState({ context: '', behavior: '', response: '', notes: '', mood: '' });
@@ -5394,6 +5555,33 @@ Generate descriptors for each GAS level and return ONLY valid JSON:
                     onClick: () => setShowForm(!showForm),
                     className: 'flex-1 py-3 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all text-sm'
                 }, showForm ? '▾ Close Form' : '➕ Log a Behavior'),
+                // Enhancement #3: Push home log entries into the main ABC data stream
+                setAbcEntries && entries.length > 0 && h('button', {
+                    onClick: () => {
+                        const newAbcEntries = entries.map(e => ({
+                            id: `home_${e.id}`,
+                            timestamp: e.timestamp,
+                            antecedent: e.context || 'Home setting',
+                            behavior: e.behavior,
+                            consequence: e.response || 'Parent response recorded',
+                            intensity: 3,
+                            duration: null,
+                            notes: `[Home Log] ${e.mood ? `Mood: ${e.mood}` : ''} ${e.notes || ''}`.trim(),
+                            setting: 'Home',
+                        }));
+                        setAbcEntries(prev => {
+                            const existingIds = new Set(prev.map(p => p.id));
+                            const fresh = newAbcEntries.filter(n => !existingIds.has(n.id));
+                            if (fresh.length === 0) {
+                                if (addToast) addToast('All entries already synced to ABC data', 'info');
+                                return prev;
+                            }
+                            if (addToast) addToast(`${fresh.length} home entries pushed to ABC data ✅`, 'success');
+                            return [...fresh, ...prev];
+                        });
+                    },
+                    className: 'px-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-bold text-sm shadow-lg hover:shadow-xl transition-all'
+                }, '📤 Push to ABC'),
                 entries.length > 0 && h('button', {
                     onClick: handleExportSnapshot,
                     className: 'px-4 py-3 bg-cyan-50 border border-cyan-200 text-cyan-700 rounded-xl font-bold text-sm hover:bg-cyan-100 transition-all'
@@ -7657,7 +7845,7 @@ Based on this progress, recommend the ONE most important next action. Be specifi
                         // Expanded content
                         isExpanded && h('div', { className: 'px-4 pb-4 space-y-3' },
                             // Description
-                            h('p', { className: 'text-xs text-slate-600 leading-relaxed' }, step.desc),
+                            h('p', { className: 'text-xs text-slate-600 leading-relaxed' }, autoTip(step.desc)),
                             // Tip
                             h('div', { className: 'bg-amber-50 rounded-lg p-2.5 border border-amber-100' },
                                 h('p', { className: 'text-[10px] text-amber-700 font-medium' }, '💡 ' + step.tip)
@@ -9597,8 +9785,9 @@ Remember: this is about growth, not guilt. Keep the tone supportive and empoweri
 
     // ─── ReplacementBehaviorPlanner ──────────────────────────────────────
     // Map target behaviors to replacement/expected behaviors with strategies
-    const ReplacementBehaviorPlanner = ({ abcEntries, t, addToast }) => {
+    const ReplacementBehaviorPlanner = ({ abcEntries, t, addToast, callGemini }) => {
         const [plans, setPlans] = useState([]);
+        const [aiSuggestLoading, setAiSuggestLoading] = useState(false);
         const [form, setForm] = useState({
             targetBehavior: '',
             function: 'escape',
@@ -9704,8 +9893,40 @@ Remember: this is about growth, not guilt. Keep the tone supportive and empoweri
                 h('button', {
                     onClick: handleAdd,
                     disabled: !form.targetBehavior.trim() || !form.replacement.trim(),
-                    className: 'w-full py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold shadow hover:shadow-md disabled:opacity-40 transition-all'
-                }, '✅ Add Replacement Plan')
+                    className: 'flex-1 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold shadow hover:shadow-md disabled:opacity-40 transition-all'
+                }, '✅ Add Replacement Plan'),
+                // Enhancement #6: AI-powered replacement suggestion
+                callGemini && form.targetBehavior.trim() && h('button', {
+                    onClick: async () => {
+                        setAiSuggestLoading(true);
+                        try {
+                            const fn = functions.find(f => f.id === form.function);
+                            const prompt = `You are a Board Certified Behavior Analyst (BCBA). Given a target behavior and its hypothesized function, suggest a functionally equivalent replacement behavior, a teaching strategy, and a reinforcement plan.
+${RESTORATIVE_PREAMBLE}
+
+Target behavior: ${form.targetBehavior}
+Hypothesized function: ${fn ? fn.label + ' - ' + fn.desc : form.function}
+
+Respond in valid JSON with these keys:
+- replacement: a brief functionally equivalent replacement behavior (1 sentence)
+- teachingStrategy: how to teach it (1 sentence)
+- reinforcement: how to reinforce it (1 sentence)
+
+JSON only, no markdown.`;
+                            const result = await callGemini(prompt, true);
+                            let parsed;
+                            try { parsed = JSON.parse(result); }
+                            catch { const m = result.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); else throw new Error('Parse failed'); }
+                            if (parsed.replacement) setForm(prev => ({ ...prev, replacement: parsed.replacement, teachingStrategy: parsed.teachingStrategy || prev.teachingStrategy, reinforcement: parsed.reinforcement || prev.reinforcement }));
+                            if (addToast) addToast('AI suggestion applied ✨', 'success');
+                        } catch (err) {
+                            warnLog('AI suggest failed:', err);
+                            if (addToast) addToast('AI suggestion failed', 'error');
+                        } finally { setAiSuggestLoading(false); }
+                    },
+                    disabled: aiSuggestLoading,
+                    className: 'px-4 py-2.5 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-xl font-bold shadow hover:shadow-md disabled:opacity-40 transition-all'
+                }, aiSuggestLoading ? '⏳ Thinking...' : '🧠 AI Suggest')
             ),
             // Plans list
             plans.length === 0
@@ -10748,14 +10969,30 @@ Keep it encouraging and professional. Under 300 words.`;
     // ─── AlloBotChat ────────────────────────────────────────────────────
     // Conversational AI chat panel for behavioral analysis questions
     const AlloBotChat = ({ callGemini, studentName, studentProfile, sessionNotes, abcEntries, aiAnalysis, buildStudentContext, t, addToast, alloBotRef }) => {
-        const [messages, setMessages] = useState([]);
+        const chatLsKey = `bl_allobot_${studentName || '_'}`;
+        const loadChatHistory = () => { try { return JSON.parse(localStorage.getItem(chatLsKey) || '[]'); } catch { return []; } };
+        const [messages, setMessages] = useState(() => loadChatHistory());
         const [input, setInput] = useState('');
         const [isSending, setIsSending] = useState(false);
         const chatEndRef = useRef(null);
 
+        // Persist chat history to localStorage
+        useEffect(() => {
+            if (messages.length > 0) {
+                try { localStorage.setItem(chatLsKey, JSON.stringify(messages.slice(-30))); } catch { }
+            }
+        }, [messages, chatLsKey]);
+
         useEffect(() => {
             if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
         }, [messages]);
+
+        const clearChat = () => {
+            if (messages.length === 0) return;
+            setMessages([]);
+            try { localStorage.removeItem(chatLsKey); } catch { }
+            if (addToast) addToast('Chat cleared', 'info');
+        };
 
         const handleSend = async () => {
             const text = input.trim();
@@ -10772,12 +11009,15 @@ Keep it encouraging and professional. Under 300 words.`;
                 const analysisSummary = aiAnalysis
                     ? `\nPrevious AI Analysis Summary: ${String(aiAnalysis).slice(0, 300)}`
                     : '';
+                // Build richer context thread (multi-turn memory up to 10 messages)
+                const threadHistory = messages.slice(-10).map(m => `${m.role === 'user' ? 'Teacher' : 'AlloBot'}: ${m.content}`).join('\n');
                 const prompt = `You are AlloBot, an AI behavioral analysis assistant specializing in FBA/BIP for educators and behavioral specialists. You provide practical, evidence-based guidance using person-first, strengths-based language.
 ${RESTORATIVE_PREAMBLE}
 ${studentName ? `Student: ${studentName}` : ''}${contextBlock}${abcSummary}${analysisSummary}
+This is message #${messages.length + 1} in an ongoing conversation. Maintain continuity with prior discussion.
 
 Conversation so far:
-${messages.slice(-6).map(m => `${m.role === 'user' ? 'Teacher' : 'AlloBot'}: ${m.content}`).join('\n')}
+${threadHistory}
 Teacher: ${text}
 
 Respond helpfully and concisely as AlloBot:`;
@@ -10801,10 +11041,18 @@ Respond helpfully and concisely as AlloBot:`;
             // Header
             h('div', { className: 'flex items-center gap-3 mb-4' },
                 h('div', { className: 'w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-lg shadow-md' }, '🤖'),
-                h('div', null,
+                h('div', { className: 'flex-1' },
                     h('h3', { className: 'text-lg font-black text-slate-800' }, t('behavior_lens.allobot_chat.title') || 'Ask AlloBot'),
-                    h('p', { className: 'text-xs text-slate-500' }, t('behavior_lens.allobot_chat.subtitle') || 'AI-powered behavioral analysis assistant')
-                )
+                    h('p', { className: 'text-xs text-slate-500' },
+                        (t('behavior_lens.allobot_chat.subtitle') || 'AI-powered behavioral analysis assistant'),
+                        messages.length > 0 && ` · ${messages.length} messages`
+                    )
+                ),
+                messages.length > 0 && h('button', {
+                    onClick: clearChat,
+                    className: 'text-xs px-3 py-1.5 border border-red-200 text-red-500 rounded-lg hover:bg-red-50 transition-colors font-medium',
+                    title: 'Clear chat history'
+                }, '🗑️ Clear')
             ),
             // Chat messages
             h('div', { className: 'flex-1 overflow-y-auto space-y-3 bg-slate-50 rounded-xl border border-slate-200 p-4 mb-4' },
@@ -15670,6 +15918,23 @@ Analyze this data and return ONLY valid JSON:
 
         const handleSaveObsSession = (sessionData) => {
             setObservationSessions(prev => [sessionData, ...prev]);
+            // Enhancement #1: Auto-bridge observation sessions → sessionHistory
+            // This enables ABA Graph Engine, Cumulative Record, Effect Size Calculator
+            // to automatically include data from frequency, interval, and duration recordings
+            const d = sessionData.data || sessionData;
+            const count = d.count ?? d.occurredCount ?? d.totalCount ?? null;
+            const rate = d.rate ?? d.percentage ?? null;
+            if (count !== null || rate !== null) {
+                setSessionHistory(prev => [{
+                    date: sessionData.timestamp ? new Date(sessionData.timestamp).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+                    behavior: sessionData.behavior || sessionData.method || 'Observation',
+                    count: count ?? 0,
+                    rate: rate !== null ? parseFloat(Number(rate).toFixed(2)) : 0,
+                    phase: 'Observation',
+                    duration: sessionData.duration ? `${sessionData.duration}s` : '',
+                    source: `observation-${sessionData.method || 'live'}`
+                }, ...prev]);
+            }
         };
 
         // ── Per-Tool Export Utilities ──────────────────────────────
@@ -16051,6 +16316,16 @@ Analyze this data and return ONLY valid JSON:
                     title: t('behavior_lens.hub.qualitycheck_title') || 'Data Quality Check',
                     desc: t('behavior_lens.hub.qualitycheck_desc') || 'AI-powered review of your ABC entries with specific improvement suggestions',
                     color: 'green',
+                    badge: (() => {
+                        if (abcEntries.length === 0) return null;
+                        const issues = [
+                            abcEntries.filter(e => e.behavior && e.behavior.length < 15).length > 0,
+                            abcEntries.filter(e => !e.setting || e.setting.trim() === '').length > Math.floor(abcEntries.length * 0.3),
+                            abcEntries.filter(e => !e.intensity).length > Math.floor(abcEntries.length * 0.3),
+                            abcEntries.length < 5,
+                        ].filter(Boolean).length;
+                        return issues === 0 ? '🟢 Good' : issues <= 2 ? '🟡 Fair' : '🔴 Needs Work';
+                    })(),
                 },
                 {
                     id: 'trends',
@@ -16646,7 +16921,7 @@ Analyze this data and return ONLY valid JSON:
                             }, isFav ? '★' : '☆'),
                             h('div', { className: `w-12 h-12 rounded-xl ${cc.icon} flex items-center justify-center text-2xl mb-3` }, tool.icon),
                             h('h4', { className: 'text-sm font-black text-slate-800 mb-1' }, DualLabel(tool.title)),
-                            h('p', { className: 'text-xs text-slate-500 leading-relaxed' }, tool.desc),
+                            h('p', { className: 'text-xs text-slate-500 leading-relaxed' }, autoTip(tool.desc)),
                             tool.badge && h('div', { className: `mt-3 inline-block text-[10px] font-bold px-2 py-0.5 rounded-full ${cc.bg} text-slate-600` }, tool.badge)
                         );
                     };
@@ -17192,6 +17467,7 @@ Analyze this data and return ONLY valid JSON:
                 activePanel === 'homelog' && h(HomeBehaviorLog, {
                     studentName: selectedStudent,
                     callGemini: callGeminiWithContext,
+                    setAbcEntries,
                     t,
                     addToast
                 }),
@@ -17342,6 +17618,7 @@ Analyze this data and return ONLY valid JSON:
                 }),
                 activePanel === 'replacebehavior' && h(ReplacementBehaviorPlanner, {
                     abcEntries,
+                    callGemini: callGeminiWithContext,
                     t,
                     addToast
                 }),
@@ -17645,19 +17922,83 @@ Analyze this data and return ONLY valid JSON:
                             { id: 'abc', icon: '📋', label: 'ABC Data' },
                             { id: 'iepgoals', icon: '📄', label: 'IEP Goals' },
                         ],
+                        replacebehavior: [
+                            { id: 'abc', icon: '📋', label: 'ABC Data' },
+                            { id: 'hypothesis', icon: '🔗', label: 'Hypothesis Diagram' },
+                            { id: 'reinforcement', icon: '⭐', label: 'Reinforcement Inventory' },
+                            { id: 'antecedentmod', icon: '🛠️', label: 'Antecedent Modification' },
+                        ],
+                        drstrategy: [
+                            { id: 'replacebehavior', icon: '🔄', label: 'Replacement Behavior' },
+                            { id: 'reinforcement', icon: '⭐', label: 'Reinforcement Inventory' },
+                            { id: 'sessiontracker', icon: '📋', label: 'Session Tracker' },
+                        ],
+                        fcttemplate: [
+                            { id: 'replacebehavior', icon: '🔄', label: 'Replacement Behavior' },
+                            { id: 'drstrategy', icon: '📐', label: 'DR Strategy' },
+                            { id: 'reinforcement', icon: '⭐', label: 'Reinforcement Inventory' },
+                            { id: 'socialvalidity', icon: '📋', label: 'Social Validity' },
+                        ],
+                        intervention: [
+                            { id: 'abc', icon: '📋', label: 'ABC Data' },
+                            { id: 'hypothesis', icon: '🔗', label: 'Hypothesis Diagram' },
+                            { id: 'fidelity', icon: '✅', label: 'Fidelity Checklist' },
+                            { id: 'progressreport', icon: '📊', label: 'Progress Reports' },
+                        ],
                     };
                     const related = relatedToolsMap[activePanel];
-                    if (!related || related.length === 0) return null;
-                    return h('div', { className: 'mt-6 pt-4 border-t border-slate-200' },
-                        h('div', { className: 'flex items-center gap-2 mb-2' },
-                            h('span', { className: 'text-[10px] font-bold text-slate-400 uppercase tracking-wider' }, '📎 Related Tools')
+                    // ── Intervention Workflow Chain ───────────────────
+                    const interventionChain = [
+                        { id: 'analysis', icon: '🧠', label: 'Analyze' },
+                        { id: 'replacebehavior', icon: '🔄', label: 'Replace' },
+                        { id: 'drstrategy', icon: '📐', label: 'DR Schedule' },
+                        { id: 'fcttemplate', icon: '🗣️', label: 'FCT' },
+                        { id: 'intervention', icon: '📋', label: 'BIP' },
+                    ];
+                    const chainIds = interventionChain.map(c => c.id);
+                    const isInChain = chainIds.includes(activePanel);
+                    const chainIdx = chainIds.indexOf(activePanel);
+                    return h('div', { className: 'mt-6 space-y-4' },
+                        // Workflow chain breadcrumb (intervention tools only)
+                        isInChain && h('div', { className: 'pt-4 border-t border-purple-200' },
+                            h('div', { className: 'flex items-center gap-1 mb-2' },
+                                h('span', { className: 'text-[10px] font-bold text-purple-400 uppercase tracking-wider' }, '🔗 Intervention Workflow')
+                            ),
+                            h('div', { className: 'flex items-center gap-1 flex-wrap' },
+                                ...interventionChain.flatMap((step, i) => {
+                                    const isCurrent = i === chainIdx;
+                                    const isDone = i < chainIdx;
+                                    const btn = h('button', {
+                                        key: step.id,
+                                        onClick: () => openPanel(step.id),
+                                        className: `flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
+                                            isCurrent ? 'bg-purple-600 text-white shadow-md ring-2 ring-purple-300' :
+                                            isDone ? 'bg-purple-100 text-purple-700 border border-purple-200' :
+                                            'bg-slate-50 text-slate-500 border border-slate-200 hover:bg-purple-50 hover:text-purple-600'
+                                        }`
+                                    }, h('span', null, isDone ? '✓' : step.icon), step.label);
+                                    return i < interventionChain.length - 1
+                                        ? [btn, h('span', { key: `arr-${i}`, className: 'text-slate-300 text-xs' }, '→')]
+                                        : [btn];
+                                })
+                            ),
+                            chainIdx < chainIds.length - 1 && h('button', {
+                                onClick: () => openPanel(chainIds[chainIdx + 1]),
+                                className: 'mt-2 w-full py-2 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-lg text-xs font-bold shadow hover:shadow-lg transition-all flex items-center justify-center gap-2'
+                            }, `Next: ${interventionChain[chainIdx + 1].icon} ${interventionChain[chainIdx + 1].label} →`)
                         ),
-                        h('div', { className: 'flex flex-wrap gap-2' },
-                            related.map(rt => h('button', {
-                                key: rt.id,
-                                onClick: () => openPanel(rt.id),
-                                className: 'flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 transition-all'
-                            }, h('span', null, rt.icon), rt.label))
+                        // Related tools (existing)
+                        related && related.length > 0 && h('div', { className: isInChain ? '' : 'pt-4 border-t border-slate-200' },
+                            h('div', { className: 'flex items-center gap-2 mb-2' },
+                                h('span', { className: 'text-[10px] font-bold text-slate-400 uppercase tracking-wider' }, '📎 Related Tools')
+                            ),
+                            h('div', { className: 'flex flex-wrap gap-2' },
+                                related.map(rt => h('button', {
+                                    key: rt.id,
+                                    onClick: () => openPanel(rt.id),
+                                    className: 'flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 transition-all'
+                                }, h('span', null, rt.icon), rt.label))
+                            )
                         )
                     );
                 })(),
