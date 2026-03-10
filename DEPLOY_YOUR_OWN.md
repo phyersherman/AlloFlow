@@ -137,6 +137,24 @@ To run AI processing on school hardware instead of cloud:
 
 ---
 
+## Gemini API Free Tier Notes
+
+The Gemini API free tier (available on Firebase Spark plan, no billing required) includes:
+
+| Feature | Spark (Free) | Blaze (Pay-as-you-go) |
+|---------|:---:|:---:|
+| Text generation (Gemini Flash) | ✅ ~1,500 req/day | ✅ Higher limits |
+| Image generation (Gemini Flash Image) | ✅ Limited | ✅ Higher limits |
+| Text-to-Speech (Gemini TTS) | ✅ Limited | ✅ Higher limits |
+| Standalone Imagen API | ⚠️ May require Blaze | ✅ Full access |
+| Rate limit | 100 RPM/user | Configurable |
+
+> **Tip**: For schools with heavy usage or needing image generation at scale,
+> consider either upgrading to Blaze (pay-as-you-go, still very affordable)
+> or using **local AI models** (Ollama) which have no rate limits at all.
+
+---
+
 ## Updating AlloFlow
 
 When a new version is released:
