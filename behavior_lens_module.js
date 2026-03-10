@@ -7981,7 +7981,7 @@ Keep it concise and encouraging. Use plain language.`;
 
     // ─── IEPPrepGenerator ───────────────────────────────────────────────
     // AI generates complete IEP meeting prep packet
-    const IEPPrepGenerator = ({ studentName, abcEntries, observationSessions, aiAnalysis, callGemini, t, addToast }) => {
+    const IEPPrepGenerator = ({ studentName, abcEntries, observationSessions, aiAnalysis, graphExport, effectSizeResults, setActivePanel, callGemini, t, addToast }) => {
         const [packet, setPacket] = useState('');
         const [generating, setGenerating] = useState(false);
         const [preAiPacket, setPreAiPacket] = useState(null);
@@ -7997,6 +7997,28 @@ Keep it concise and encouraging. Use plain language.`;
                 const obsSummary = observationSessions.slice(-3).map((s, i) =>
                     `Session ${i + 1}: ${s.method || 'observation'}, ${s.notes || 'no notes'}`
                 ).join('\n');
+
+                // Build graph data context
+                let graphContext = '';
+                if (graphExport && graphExport.phaseAnalysis && graphExport.phaseAnalysis.length >= 2) {
+                    graphContext = `\n\nGRAPH DATA (${graphExport.behaviorName}):\n`;
+                    graphExport.phaseAnalysis.forEach(pa => {
+                        graphContext += `- ${pa.label}: Mean=${pa.mean.toFixed(1)}, Trend=${pa.trendSlope > 0.1 ? 'Increasing' : pa.trendSlope < -0.1 ? 'Decreasing' : 'Stable'}, ${pa.data.length} data points\n`;
+                    });
+                    const baseline = graphExport.phaseAnalysis[0];
+                    const intervention = graphExport.phaseAnalysis[graphExport.phaseAnalysis.length - 1];
+                    graphContext += `Level change: ${(intervention.mean - baseline.mean).toFixed(1)} (${baseline.label} → ${intervention.label})\n`;
+                }
+
+                // Build effect size context
+                let effectContext = '';
+                if (effectSizeResults) {
+                    effectContext = `\n\nEFFECT SIZE DATA:\n`;
+                    effectContext += `- Tau-U: ${effectSizeResults.tauU} (${effectSizeResults.tauInterp})\n`;
+                    effectContext += `- NAP: ${effectSizeResults.nap}% (${effectSizeResults.napInterp})\n`;
+                    effectContext += `- PND: ${effectSizeResults.pnd}% (${effectSizeResults.pndInterp})\n`;
+                    effectContext += `- Baseline Mean: ${effectSizeResults.baseMean}, Intervention Mean: ${effectSizeResults.intMean}, % Change: ${effectSizeResults.pctChange}%\n`;
+                }
 
                 const prompt = `You are a special education coordinator preparing for an IEP meeting.
 ${RESTORATIVE_PREAMBLE}
@@ -8014,15 +8036,19 @@ ${recentEntries || 'No data collected yet'}
 Observation summaries:
 ${obsSummary || 'No observations recorded'}
 
-${aiAnalysis ? `AI Analysis Summary: ${JSON.stringify(aiAnalysis).substring(0, 500)}` : ''}
+${aiAnalysis ? `AI Analysis Summary: ${JSON.stringify(aiAnalysis).substring(0, 500)}` : ''}${graphContext}${effectContext}
 
 Format the packet with these sections:
 📊 DATA SUMMARY
 - Key behavioral metrics (frequency, intensity trends, most common settings)
+${graphContext ? '- Include the graph phase analysis data provided above' : ''}
+${effectContext ? '- Include the effect size metrics (Tau-U, NAP, PND) and their interpretations' : ''}
 
 📈 PROGRESS TOWARD GOALS
 - Current performance levels based on data
 - Comparison to baseline if identifiable
+${graphContext ? '- Reference specific level changes and trend direction from the graph data' : ''}
+${effectContext ? '- Cite effect sizes to quantify intervention effectiveness' : ''}
 
 💡 KEY PATTERNS IDENTIFIED
 - Top antecedent triggers
@@ -8058,27 +8084,48 @@ Keep the language strengths-based and restorative. Use "your child" not the code
                 h('h2', { className: 'text-lg font-black text-slate-800' }, 'IEP Meeting Prep'),
                 h('p', { className: 'text-xs text-slate-500 mt-1' }, 'AI-generated meeting preparation packet from your behavioral data')
             ),
-            // Stats overview
-            h('div', { className: 'grid grid-cols-3 gap-3' },
-                h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 text-center shadow-sm' },
-                    h('div', { className: 'text-2xl font-black text-indigo-600' }, abcEntries.length),
-                    h('div', { className: 'text-[10px] text-slate-500 font-bold' }, 'ABC Entries')
+            // Stats overview - expanded grid
+            h('div', { className: 'grid grid-cols-5 gap-2' },
+                h('div', { className: 'bg-white rounded-xl border border-slate-200 p-3 text-center shadow-sm' },
+                    h('div', { className: 'text-xl font-black text-indigo-600' }, abcEntries.length),
+                    h('div', { className: 'text-[9px] text-slate-500 font-bold' }, 'ABC Entries')
                 ),
-                h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 text-center shadow-sm' },
-                    h('div', { className: 'text-2xl font-black text-emerald-600' }, observationSessions.length),
-                    h('div', { className: 'text-[10px] text-slate-500 font-bold' }, 'Observations')
+                h('div', { className: 'bg-white rounded-xl border border-slate-200 p-3 text-center shadow-sm' },
+                    h('div', { className: 'text-xl font-black text-emerald-600' }, observationSessions.length),
+                    h('div', { className: 'text-[9px] text-slate-500 font-bold' }, 'Observations')
                 ),
-                h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 text-center shadow-sm' },
-                    h('div', { className: 'text-2xl font-black text-purple-600' }, aiAnalysis ? '✅' : '—'),
-                    h('div', { className: 'text-[10px] text-slate-500 font-bold' }, 'AI Analysis')
+                h('div', { className: 'bg-white rounded-xl border border-slate-200 p-3 text-center shadow-sm' },
+                    h('div', { className: 'text-xl font-black text-purple-600' }, aiAnalysis ? '✅' : '—'),
+                    h('div', { className: 'text-[9px] text-slate-500 font-bold' }, 'AI Analysis')
+                ),
+                h('div', { className: `bg-white rounded-xl border p-3 text-center shadow-sm ${graphExport ? 'border-indigo-200' : 'border-slate-200'}` },
+                    h('div', { className: `text-xl font-black ${graphExport ? 'text-indigo-600' : 'text-slate-300'}` }, graphExport ? (graphExport.phaseAnalysis?.length || 0) : '—'),
+                    h('div', { className: 'text-[9px] text-slate-500 font-bold' }, 'Graph Phases')
+                ),
+                h('div', { className: `bg-white rounded-xl border p-3 text-center shadow-sm ${effectSizeResults ? 'border-purple-200' : 'border-slate-200'}` },
+                    h('div', { className: `text-xl font-black ${effectSizeResults ? 'text-purple-600' : 'text-slate-300'}` }, effectSizeResults ? '✅' : '—'),
+                    h('div', { className: 'text-[9px] text-slate-500 font-bold' }, 'Effect Sizes')
                 )
             ),
+
+            // Guidance cards for missing data
+            (!graphExport || !effectSizeResults) && setActivePanel && h('div', { className: 'flex gap-2' },
+                !graphExport && h('button', {
+                    onClick: () => setActivePanel('abagraph'),
+                    className: 'flex-1 py-2 bg-indigo-50 border border-dashed border-indigo-200 rounded-xl text-[10px] font-bold text-indigo-400 hover:bg-indigo-100 hover:text-indigo-600 transition-all'
+                }, '📈 Open Graph to add phase data'),
+                !effectSizeResults && h('button', {
+                    onClick: () => setActivePanel('effectsize'),
+                    className: 'flex-1 py-2 bg-purple-50 border border-dashed border-purple-200 rounded-xl text-[10px] font-bold text-purple-400 hover:bg-purple-100 hover:text-purple-600 transition-all'
+                }, '📐 Open Effect Size to add metrics')
+            ),
+
             // Generate button
             callGemini && h('button', {
                 onClick: handleGenerate,
                 disabled: generating || abcEntries.length === 0,
                 className: 'w-full py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl disabled:opacity-40 transition-all'
-            }, generating ? '⏳ Preparing Packet...' : '🧠 Generate IEP Prep Packet'),
+            }, generating ? '⏳ Preparing Packet...' : `🧠 Generate IEP Prep Packet${graphExport || effectSizeResults ? ' (with graph/effect data)' : ''}`),
             abcEntries.length === 0 && h('p', { className: 'text-[10px] text-slate-400 text-center' }, 'Collect some ABC data first to generate a meaningful packet.'),
             // Packet display
             packet && h('div', { className: 'bg-white rounded-xl border border-blue-200 p-5 shadow-sm' },
@@ -11467,7 +11514,7 @@ Format as a professional report with clear sections. Keep under 300 words.`);
     // Convention-following ABA graphs with phase lines, trend/level, print-ready
     const ABA_GRAPH_COLORS = ['#6366f1', '#f43f5e', '#10b981', '#f59e0b', '#8b5cf6'];
 
-    const ABAGraphEngine = ({ sessionHistory, phases, designType, t, addToast }) => {
+    const ABAGraphEngine = ({ sessionHistory, phases, designType, onExportData, setActivePanel, t, addToast }) => {
         const [showTrend, setShowTrend] = useState(true);
         const [showLevel, setShowLevel] = useState(true);
         const [showAim, setShowAim] = useState(false);
@@ -11599,6 +11646,19 @@ Format as a professional report with clear sections. Keep under 300 words.`);
                 };
             });
         }, [phases, dataSeries]);
+
+        // ── Auto-publish graph data for inter-tool flow ──
+        useEffect(() => {
+            if (onExportData && dataSeries.length > 0) {
+                onExportData({
+                    dataSeries,
+                    phaseAnalysis,
+                    behaviorName: behaviorNames[selectedBehavior] || 'Behavior',
+                    graphTitle: graphTitle || 'ABA Graph',
+                    dataMode,
+                });
+            }
+        }, [dataSeries, phaseAnalysis, graphTitle, dataMode, selectedBehavior]);
 
         // SVG rendering
         const W = 700, H = 300, padL = 60, padR = 30, padT = 50, padB = 50;
@@ -11926,7 +11986,7 @@ Format as a professional report with clear sections. Keep under 300 words.`);
                 })()
             ),
             // Print / Export
-            dataSeries.length > 0 && h('div', { className: 'flex gap-2' },
+            dataSeries.length > 0 && h('div', { className: 'flex gap-2 flex-wrap' },
                 h('button', { onClick: handlePrint, className: 'flex-1 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200' }, '🖨️ Print Graph'),
                 h('button', {
                     onClick: () => {
@@ -11940,6 +12000,17 @@ Format as a professional report with clear sections. Keep under 300 words.`);
                     },
                     className: 'flex-1 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200'
                 }, '💾 Export SVG')
+            ),
+            // ── Inter-tool Navigation ──
+            dataSeries.length > 0 && phaseAnalysis.length >= 2 && setActivePanel && h('div', { className: 'flex gap-2' },
+                h('button', {
+                    onClick: () => { if (addToast) addToast('Graph data ready — auto-fill available in Effect Size!', 'success'); setActivePanel('effectsize'); },
+                    className: 'flex-1 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl text-xs font-bold hover:from-indigo-600 hover:to-purple-600 shadow-md transition-all'
+                }, '📐 Send to Effect Size →'),
+                h('button', {
+                    onClick: () => { if (addToast) addToast('Graph data attached to IEP Prep!', 'success'); setActivePanel('iepprep'); },
+                    className: 'flex-1 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl text-xs font-bold hover:from-blue-600 hover:to-indigo-600 shadow-md transition-all'
+                }, '📄 Send to IEP Prep →')
             )
         );
     };
@@ -14441,7 +14512,7 @@ Keep under 250 words. Use clear sections.`);
 
     // ─── EffectSizeCalculator ───────────────────────────────────
 
-    const EffectSizeCalculator = ({ sessionHistory, designPhases, t, addToast }) => {
+    const EffectSizeCalculator = ({ sessionHistory, designPhases, graphExport, onResultsChange, setActivePanel, t, addToast }) => {
 
         const [baselineData, setBaselineData] = useState('');
 
@@ -14450,6 +14521,25 @@ Keep under 250 words. Use clear sections.`);
         const [results, setResults] = useState(null);
 
         const parseData = (str) => str.split(/[,\s]+/).map(Number).filter(n => !isNaN(n));
+
+        // Auto-fill from graph phase data
+        const handleAutoFill = () => {
+            if (!graphExport?.phaseAnalysis || graphExport.phaseAnalysis.length < 2) {
+                if (addToast) addToast('Need at least 2 phases in the Graph (baseline + intervention)', 'warning');
+                return;
+            }
+            const baseline = graphExport.phaseAnalysis[0];
+            const intervention = graphExport.phaseAnalysis[graphExport.phaseAnalysis.length - 1];
+            const baseVals = baseline.data.map(d => d.value);
+            const intVals = intervention.data.map(d => d.value);
+            if (baseVals.length < 2 || intVals.length < 2) {
+                if (addToast) addToast('Each phase needs at least 2 data points', 'warning');
+                return;
+            }
+            setBaselineData(baseVals.join(', '));
+            setInterventionData(intVals.join(', '));
+            if (addToast) addToast(`Auto-filled: ${baseVals.length} baseline + ${intVals.length} intervention points from "${graphExport.behaviorName}"`, 'success');
+        };
 
         const calculate = () => {
 
@@ -14500,6 +14590,14 @@ Keep under 250 words. Use clear sections.`);
 
             });
 
+            if (onResultsChange) onResultsChange({
+                pnd: pnd.toFixed(1), nap: nap.toFixed(1), tauU: tauU.toFixed(3),
+                baseMean: baseMean.toFixed(2), intMean: intMean.toFixed(2), pctChange: pctChange.toFixed(1),
+                pndInterp: pnd >= 90 ? 'Very effective' : pnd >= 70 ? 'Effective' : pnd >= 50 ? 'Questionable' : 'Ineffective',
+                napInterp: nap >= 93 ? 'Large' : nap >= 66 ? 'Medium' : nap >= 50 ? 'Small' : 'Weak',
+                tauInterp: Math.abs(tauU) >= 0.8 ? 'Large' : Math.abs(tauU) >= 0.5 ? 'Medium' : Math.abs(tauU) >= 0.2 ? 'Small' : 'Negligible',
+            });
+
             if (addToast) addToast('Effect sizes calculated!', 'success');
 
         };
@@ -14515,6 +14613,17 @@ Keep under 250 words. Use clear sections.`);
             ),
 
             h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 space-y-3' },
+
+                // Auto-fill from graph button
+                graphExport && graphExport.phaseAnalysis && graphExport.phaseAnalysis.length >= 2 && h('button', {
+                    onClick: handleAutoFill,
+                    className: 'w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl text-xs font-bold hover:from-emerald-600 hover:to-teal-600 shadow-md transition-all mb-2'
+                }, `📊 Auto-fill from Graph ("${graphExport.behaviorName}" — ${graphExport.phaseAnalysis.length} phases)`),
+
+                !graphExport && setActivePanel && h('button', {
+                    onClick: () => setActivePanel('abagraph'),
+                    className: 'w-full py-2 bg-slate-50 border border-dashed border-slate-300 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-all mb-2'
+                }, '📈 Open ABA Graph to enable auto-fill'),
 
                 h('div', null, h('label', { className: 'text-xs font-bold text-slate-500 uppercase tracking-wider' }, '📊 Baseline Phase (A)'), h('input', { value: baselineData, onChange: e => setBaselineData(e.target.value), placeholder: 'e.g. 12, 15, 14, 13, 16', className: 'w-full mt-1 p-2 border border-slate-200 rounded-lg text-xs' })),
 
@@ -14546,7 +14655,13 @@ Keep under 250 words. Use clear sections.`);
 
                 h('div', { className: 'grid grid-cols-3 gap-3' }, [['Baseline Mean', results.baseMean], ['Intervention Mean', results.intMean], ['% Change', results.pctChange + '%']].map(([label, val]) => h('div', { key: label, className: 'bg-white rounded-lg border border-slate-200 p-3 text-center' }, h('div', { className: 'text-[10px] font-bold text-slate-500' }, label), h('div', { className: 'text-lg font-bold text-slate-800' }, val)))),
 
-                h('div', { className: 'bg-amber-50 border border-amber-200 rounded-xl p-3' }, h('p', { className: 'text-[10px] text-amber-700' }, '💡 Tau-U corrects for baseline trend. NAP counts nonoverlapping pairs. PND uses highest baseline point as threshold.'))
+                h('div', { className: 'bg-amber-50 border border-amber-200 rounded-xl p-3' }, h('p', { className: 'text-[10px] text-amber-700' }, '💡 Tau-U corrects for baseline trend. NAP counts nonoverlapping pairs. PND uses highest baseline point as threshold.')),
+
+                // Inter-tool: Send to IEP
+                setActivePanel && h('button', {
+                    onClick: () => { if (addToast) addToast('Effect sizes attached to IEP Prep!', 'success'); setActivePanel('iepprep'); },
+                    className: 'w-full py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl text-xs font-bold hover:from-blue-600 hover:to-indigo-600 shadow-md transition-all'
+                }, '📄 Send Effect Sizes to IEP Prep →')
 
             )
 
@@ -14709,6 +14824,8 @@ Keep under 250 words. Use clear sections.`);
         const [activeDesign, setActiveDesign] = useState(null);
         const [workflowTrack, setWorkflowTrack] = useState(null);
         const [workflowSubSteps, setWorkflowSubSteps] = useState({});
+        const [graphExport, setGraphExport] = useState(null);
+        const [effectSizeResults, setEffectSizeResults] = useState(null);
         const [fullSummary, setFullSummary] = useState('');
         const [summaryLoading, setSummaryLoading] = useState(false);
         const [dismissedAlerts, setDismissedAlerts] = useState(new Set());
@@ -14844,6 +14961,8 @@ Keep under 250 words. Use clear sections.`);
                 activeDesign,
                 workflowTrack,
                 workflowSubSteps,
+                graphExport,
+                effectSizeResults,
             };
             const json = JSON.stringify(workspace, null, 2);
             const blob = new Blob([json], { type: 'application/json' });
@@ -14878,6 +14997,8 @@ Keep under 250 words. Use clear sections.`);
                     if (data.activeDesign) setActiveDesign(data.activeDesign);
                     if (data.workflowTrack) setWorkflowTrack(data.workflowTrack);
                     if (data.workflowSubSteps) setWorkflowSubSteps(data.workflowSubSteps);
+                    if (data.graphExport) setGraphExport(data.graphExport);
+                    if (data.effectSizeResults) setEffectSizeResults(data.effectSizeResults);
                     setAiAnalysis(null);
                     if (addToast) addToast(`Workspace loaded (${(data.abcEntries || []).length} entries, ${(data.sessionNotes || []).length} notes) 📂`, 'success');
                 } catch (err) {
@@ -16636,6 +16757,9 @@ Analyze this data and return ONLY valid JSON:
                     abcEntries,
                     observationSessions,
                     aiAnalysis,
+                    graphExport,
+                    effectSizeResults,
+                    setActivePanel: openPanel,
                     callGemini: callGeminiWithContext,
                     t,
                     addToast
@@ -16763,6 +16887,8 @@ Analyze this data and return ONLY valid JSON:
                     sessionHistory,
                     phases: designPhases,
                     designType: activeDesign,
+                    onExportData: setGraphExport,
+                    setActivePanel: openPanel,
                     t,
                     addToast
                 }),
@@ -16791,7 +16917,11 @@ Analyze this data and return ONLY valid JSON:
                     callGemini: callGeminiWithContext, t, addToast
                 }),
                 activePanel === 'effectsize' && h(EffectSizeCalculator, {
-                    sessionHistory, designPhases, t, addToast
+                    sessionHistory, designPhases,
+                    graphExport,
+                    onResultsChange: setEffectSizeResults,
+                    setActivePanel: openPanel,
+                    t, addToast
                 }),
                 activePanel === 'obscoach' && h(ObservationCoach, {
                     abcEntries, observationSessions,
