@@ -535,7 +535,7 @@ Make questions warm, specific to THIS incident (not generic), and age-appropriat
                 setRestorativeText(result);
             } catch (err) {
                 warnLog('Restorative questions failed:', err);
-                if (addToast) addToast('Failed to generate questions', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.failed_to_generate_questions') || 'Failed to generate questions', 'error');
                 setRestorativeId(null);
             } finally { setRestorativeLoading(false); }
         };
@@ -566,12 +566,12 @@ Return ONLY valid JSON with the modified fields (include ALL fields, even unchan
                 const updated = { ...entry, ...parsed, intensity: Math.min(5, Math.max(1, parseInt(parsed.intensity) || entry.intensity)) };
                 handleSaveEntry(updated);
                 setShowModal(false);
-                if (addToast) addToast('Entry updated via AI ✨', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.entry_updated_via_ai') || 'Entry updated via AI ✨', 'success');
                 setNlEditId(null);
                 setNlEditInput('');
             } catch (err) {
                 warnLog('NL edit failed:', err);
-                if (addToast) addToast('AI edit failed', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.ai_edit_failed') || 'AI edit failed', 'error');
             } finally { setNlEditLoading(false); }
         };
 
@@ -647,7 +647,7 @@ Return ONLY valid JSON with the modified fields (include ALL fields, even unchan
         const handleBulkDelete = () => {
             if (selectedIds.size === 0) return;
             setEntries(prev => prev.filter(e => !selectedIds.has(e.id)));
-            if (addToast) addToast(`${selectedIds.size} entries deleted`, 'info');
+            if (addToast) addToast(t('behavior_lens.toast.n_entries_deleted') || `${selectedIds.size} entries deleted`, 'info');
             setSelectedIds(new Set());
             setConfirmBulkDelete(false);
         };
@@ -1708,7 +1708,7 @@ Return ONLY valid JSON with the modified fields (include ALL fields, even unchan
                             h('input', {
                                 value: counter.label,
                                 onChange: (e) => setCounters(prev => prev.map(c => c.id === counter.id ? { ...c, label: e.target.value } : c)),
-                                placeholder: 'Behavior...',
+                                placeholder: t('behavior_lens.ph.behavior') || 'Behavior...',
                                 className: 'flex-1 bg-transparent text-white text-xs text-center border-b border-white/20 focus:border-indigo-400 outline-none py-0.5'
                             }),
                             counters.length > 1 && h('button', {
@@ -1742,7 +1742,7 @@ Return ONLY valid JSON with the modified fields (include ALL fields, even unchan
                 h('input', {
                     value: newLabel,
                     onChange: (e) => setNewLabel(e.target.value),
-                    placeholder: 'New behavior label...',
+                    placeholder: t('behavior_lens.ph.new_behavior_label') || 'New behavior label...',
                     onKeyDown: (e) => { if (e.key === 'Enter') addCounter(); },
                     className: 'bg-white/10 border border-white/20 text-white text-sm rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-48'
                 }),
@@ -1998,7 +1998,7 @@ Return ONLY valid JSON:
                 if (addToast) addToast(parsed.rationale || 'Setup suggested ✨', 'success');
             } catch (err) {
                 warnLog('Token AI suggest failed:', err);
-                if (addToast) addToast('AI suggestion failed — try again', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.ai_suggestion_failed_try_again') || 'AI suggestion failed — try again', 'error');
             } finally { setAiSuggestLoading(false); }
         };
 
@@ -2034,7 +2034,7 @@ Return ONLY valid JSON:
                 try { localStorage.setItem(`behaviorLens_tokenHistory_${studentName}`, JSON.stringify(updated)); } catch (e) { /* localStorage may be unavailable in Canvas — workspace JSON is primary */ }
                 return updated;
             });
-            if (addToast) addToast('Session saved ✨', 'success');
+            if (addToast) addToast(t('behavior_lens.toast.session_saved') || 'Session saved ✨', 'success');
         }, [studentName, responseCount, scheduleType, scheduleParam, targetBehavior, reward, tokens, slots]);
 
         // Compute next reinforcement point for ratio schedules
@@ -2096,11 +2096,11 @@ Return ONLY valid JSON:
                             setTimeout(() => setReinforceNow(false), 3000);
                             const nextEmpty = tokens.findIndex((t2, i) => !t2 && i < slots);
                             if (nextEmpty >= 0) toggleToken(nextEmpty);
-                            if (addToast) addToast('🎉 DRO interval complete — REINFORCE! No target behavior occurred!', 'success');
+                            if (addToast) addToast(t('behavior_lens.toast.dro_interval_complete_reinforce_no_target_behavior') || '🎉 DRO interval complete — REINFORCE! No target behavior occurred!', 'success');
                             // auto-restart DRO timer
                             return 0;
                         }
-                        if (addToast) addToast('⏰ Interval ready — reinforce next behavior!', 'info');
+                        if (addToast) addToast(t('behavior_lens.toast.interval_ready_reinforce_next_behavior') || '⏰ Interval ready — reinforce next behavior!', 'info');
                     }
                     return next;
                 });
@@ -2124,7 +2124,7 @@ Return ONLY valid JSON:
                 if (nextReinforceAt && newCount >= nextReinforceAt) {
                     setReinforceNow(true);
                     setTimeout(() => setReinforceNow(false), 3000);
-                    if (addToast) addToast('🎉 REINFORCE NOW!', 'success');
+                    if (addToast) addToast(t('behavior_lens.toast.reinforce_now') || '🎉 REINFORCE NOW!', 'success');
                     const nextEmpty = tokens.findIndex((t2, i) => !t2 && i < slots);
                     if (nextEmpty >= 0) toggleToken(nextEmpty);
                     setNextReinforceAt(computeNextReinforce(scheduleType, scheduleParam, newCount));
@@ -2135,7 +2135,7 @@ Return ONLY valid JSON:
                 setReinforceNow(true);
                 setIntervalReady(false);
                 setTimeout(() => setReinforceNow(false), 3000);
-                if (addToast) addToast('🎉 REINFORCE NOW!', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.reinforce_now') || '🎉 REINFORCE NOW!', 'success');
                 const nextEmpty = tokens.findIndex((t2, i) => !t2 && i < slots);
                 if (nextEmpty >= 0) toggleToken(nextEmpty);
                 setTimerSeconds(0);
@@ -2145,7 +2145,7 @@ Return ONLY valid JSON:
             if (scheduleType === 'DRO') {
                 setTimerSeconds(0);
                 setIntervalReady(false);
-                if (addToast) addToast('⚠️ Behavior occurred — DRO timer reset', 'warning');
+                if (addToast) addToast(t('behavior_lens.toast.behavior_occurred_dro_timer_reset') || '⚠️ Behavior occurred — DRO timer reset', 'warning');
             }
         };
 
@@ -2431,7 +2431,7 @@ Analyze which routines are behavioral hotspots and return ONLY valid JSON:
                 setAnalysis(parsed);
             } catch (err) {
                 warnLog('Hotspot analysis failed:', err);
-                if (addToast) addToast('Analysis failed', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.analysis_failed') || 'Analysis failed', 'error');
             } finally { setAnalyzing(false); }
         };
 
@@ -2775,10 +2775,10 @@ Analyze this document and return ONLY valid JSON:
                 try { parsed = JSON.parse(cleaned); }
                 catch { const m = result.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); else throw new Error('Parse failed'); }
                 setSummary(parsed);
-                if (addToast) addToast('Record review complete ✨', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.record_review_complete') || 'Record review complete ✨', 'success');
             } catch (err) {
                 warnLog('Record review failed:', err);
-                if (addToast) addToast('Review failed — try again', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.review_failed_try_again') || 'Review failed — try again', 'error');
             } finally { setLoading(false); }
         };
 
@@ -2871,10 +2871,10 @@ Create a hypothesis diagram and return ONLY valid JSON:
                 try { parsed = JSON.parse(cleaned); }
                 catch { const m = result.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); else throw new Error('Parse failed'); }
                 setBoxes(parsed);
-                if (addToast) addToast('Hypothesis generated ✨', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.hypothesis_generated') || 'Hypothesis generated ✨', 'success');
             } catch (err) {
                 warnLog('Hypothesis generation failed:', err);
-                if (addToast) addToast('Generation failed', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.generation_failed') || 'Generation failed', 'error');
             } finally { setGenerating(false); }
         };
 
@@ -2989,10 +2989,10 @@ Generate 3 SMART behavioral goals and return ONLY valid JSON:
                 try { parsed = JSON.parse(cleaned); }
                 catch { const m = result.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); else throw new Error('Parse failed'); }
                 setSuggestions(parsed.goals || []);
-                if (addToast) addToast('Goals suggested ✨', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.goals_suggested') || 'Goals suggested ✨', 'success');
             } catch (err) {
                 warnLog('Goal suggestion failed:', err);
-                if (addToast) addToast('Suggestion failed', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.suggestion_failed') || 'Suggestion failed', 'error');
             } finally { setSuggesting(false); }
         };
 
@@ -3004,7 +3004,7 @@ Generate 3 SMART behavioral goals and return ONLY valid JSON:
                 status: 'active', dataPoints: []
             }]);
             setSpecific(''); setMeasurable(''); setAchievable(''); setRelevant(''); setTimeBound('');
-            if (addToast) addToast('Goal saved ✅', 'success');
+            if (addToast) addToast(t('behavior_lens.toast.goal_saved') || 'Goal saved ✅', 'success');
         };
 
         const applySuggestion = (goal) => {
@@ -3018,7 +3018,7 @@ Generate 3 SMART behavioral goals and return ONLY valid JSON:
 
         const setGoalStatus = (goalId, status) => {
             setSavedGoals(prev => prev.map(g => g.id === goalId ? { ...g, status } : g));
-            if (addToast) addToast(`Goal marked as ${status}`, 'success');
+            if (addToast) addToast(t('behavior_lens.toast.goal_marked_as_n') || `Goal marked as ${status}`, 'success');
         };
 
         const addProgressPoint = (goalId) => {
@@ -3036,12 +3036,12 @@ Generate 3 SMART behavioral goals and return ONLY valid JSON:
             setProgressGoalId(null);
             setProgressScore(3);
             setProgressNotes('');
-            if (addToast) addToast('Progress logged 📊', 'success');
+            if (addToast) addToast(t('behavior_lens.toast.progress_logged') || 'Progress logged 📊', 'success');
         };
 
         const deleteGoal = (goalId) => {
             setSavedGoals(prev => prev.filter(g => g.id !== goalId));
-            if (addToast) addToast('Goal removed', 'info');
+            if (addToast) addToast(t('behavior_lens.toast.goal_removed') || 'Goal removed', 'info');
         };
 
         const statusColors = {
@@ -3086,11 +3086,11 @@ Generate 3 SMART behavioral goals and return ONLY valid JSON:
         };
 
         const smartFields = [
-            { key: 'S', label: 'Specific', value: specific, set: setSpecific, placeholder: 'What behavior will change?', color: '#3b82f6' },
-            { key: 'M', label: 'Measurable', value: measurable, set: setMeasurable, placeholder: 'How will progress be measured?', color: '#10b981' },
-            { key: 'A', label: 'Achievable', value: achievable, set: setAchievable, placeholder: 'What supports are needed?', color: '#f59e0b' },
-            { key: 'R', label: 'Relevant', value: relevant, set: setRelevant, placeholder: 'Why does this matter?', color: '#8b5cf6' },
-            { key: 'T', label: 'Time-Bound', value: timeBound, set: setTimeBound, placeholder: 'By when?', color: '#ef4444' },
+            { key: 'S', label: 'Specific', value: specific, set: setSpecific, placeholder: t('behavior_lens.ph.what_behavior_will_change') || 'What behavior will change?', color: '#3b82f6' },
+            { key: 'M', label: 'Measurable', value: measurable, set: setMeasurable, placeholder: t('behavior_lens.ph.how_will_progress_be_measured') || 'How will progress be measured?', color: '#10b981' },
+            { key: 'A', label: 'Achievable', value: achievable, set: setAchievable, placeholder: t('behavior_lens.ph.what_supports_are_needed') || 'What supports are needed?', color: '#f59e0b' },
+            { key: 'R', label: 'Relevant', value: relevant, set: setRelevant, placeholder: t('behavior_lens.ph.why_does_this_matter') || 'Why does this matter?', color: '#8b5cf6' },
+            { key: 'T', label: 'Time-Bound', value: timeBound, set: setTimeBound, placeholder: t('behavior_lens.ph.by_when') || 'By when?', color: '#ef4444' },
         ];
 
         return h('div', { className: 'max-w-3xl mx-auto space-y-4' },
@@ -3270,12 +3270,12 @@ Generate 3 SMART behavioral goals and return ONLY valid JSON:
         }, [studentName]);
 
         const saveContract = () => {
-            if (!target.trim()) { if (addToast) addToast('Enter a target behavior first', 'error'); return; }
+            if (!target.trim()) { if (addToast) addToast(t('behavior_lens.toast.enter_a_target_behavior_first') || 'Enter a target behavior first', 'error'); return; }
             const entry = { id: uid(), savedAt: new Date().toISOString(), target, studentExpectations, rewards, teacherSupports, supportPlan, duration, studentSig, studentSigDate, teacherSig, teacherSigDate, status };
             const updated = [entry, ...history.filter(c => c.id !== entry.id)].slice(0, 20);
             setHistory(updated);
             try { localStorage.setItem(lsKey, JSON.stringify(updated)); } catch { }
-            if (addToast) addToast('Contract saved ✨', 'success');
+            if (addToast) addToast(t('behavior_lens.toast.contract_saved') || 'Contract saved ✨', 'success');
         };
 
         const loadContract = (c) => {
@@ -3326,10 +3326,10 @@ Generate a behavior contract and return ONLY valid JSON:
                 setSupportPlan(parsed.supportPlan || parsed.consequences || '');
                 setDuration(parsed.duration || '2 weeks');
                 setStatus('active');
-                if (addToast) addToast('Contract drafted ✨', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.contract_drafted') || 'Contract drafted ✨', 'success');
             } catch (err) {
                 warnLog('Contract drafting failed:', err);
-                if (addToast) addToast('Drafting failed', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.drafting_failed') || 'Drafting failed', 'error');
             } finally { setDrafting(false); }
         };
 
@@ -3408,12 +3408,12 @@ Generate a behavior contract and return ONLY valid JSON:
                 h('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-200 mt-4' },
                     h('div', { className: 'space-y-2' },
                         h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block' }, '👤 Student Signature'),
-                        h('input', { type: 'text', value: studentSig, onChange: (e) => setStudentSig(e.target.value), placeholder: 'Type full name', maxLength: 80, className: 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm italic font-serif focus:ring-2 focus:ring-fuchsia-400 outline-none' }),
+                        h('input', { type: 'text', value: studentSig, onChange: (e) => setStudentSig(e.target.value), placeholder: t('behavior_lens.ph.type_full_name') || 'Type full name', maxLength: 80, className: 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm italic font-serif focus:ring-2 focus:ring-fuchsia-400 outline-none' }),
                         h('input', { type: 'date', value: studentSigDate, onChange: (e) => setStudentSigDate(e.target.value), className: 'w-full border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-600 focus:ring-2 focus:ring-fuchsia-400 outline-none' })
                     ),
                     h('div', { className: 'space-y-2' },
                         h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block' }, '👩‍🏫 Teacher Signature'),
-                        h('input', { type: 'text', value: teacherSig, onChange: (e) => setTeacherSig(e.target.value), placeholder: 'Type full name', maxLength: 80, className: 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm italic font-serif focus:ring-2 focus:ring-fuchsia-400 outline-none' }),
+                        h('input', { type: 'text', value: teacherSig, onChange: (e) => setTeacherSig(e.target.value), placeholder: t('behavior_lens.ph.type_full_name') || 'Type full name', maxLength: 80, className: 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm italic font-serif focus:ring-2 focus:ring-fuchsia-400 outline-none' }),
                         h('input', { type: 'date', value: teacherSigDate, onChange: (e) => setTeacherSigDate(e.target.value), className: 'w-full border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-600 focus:ring-2 focus:ring-fuchsia-400 outline-none' })
                     )
                 )
@@ -3454,13 +3454,13 @@ Generate a behavior contract and return ONLY valid JSON:
 
         const saveCycle = () => {
             try { localStorage.setItem(lsKey, JSON.stringify(personalized)); } catch { }
-            if (addToast) addToast('Escalation cycle saved ✅', 'success');
+            if (addToast) addToast(t('behavior_lens.toast.escalation_cycle_saved') || 'Escalation cycle saved ✅', 'success');
         };
 
         const resetCycle = () => {
             setPersonalized({});
             try { localStorage.removeItem(lsKey); } catch { }
-            if (addToast) addToast('Reset to defaults', 'info');
+            if (addToast) addToast(t('behavior_lens.toast.reset_to_defaults') || 'Reset to defaults', 'info');
         };
 
         const updatePhaseField = (phaseName, field, val) => {
@@ -3497,10 +3497,10 @@ Personalize each phase of the cycle and return ONLY valid JSON:
                 try { parsed = JSON.parse(cleaned); }
                 catch { const m = result.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); else throw new Error('Parse failed'); }
                 setPersonalized(parsed);
-                if (addToast) addToast('Cycle personalized ✨', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.cycle_personalized') || 'Cycle personalized ✨', 'success');
             } catch (err) {
                 warnLog('Personalization failed:', err);
-                if (addToast) addToast('Personalization failed', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.personalization_failed') || 'Personalization failed', 'error');
             } finally { setPersonalizing(false); }
         };
 
@@ -3607,13 +3607,13 @@ Personalize each phase of the cycle and return ONLY valid JSON:
 
         const saveRatings = () => {
             try { localStorage.setItem(lsKey, JSON.stringify(ratings)); } catch { }
-            if (addToast) addToast('Ratings saved ✅', 'success');
+            if (addToast) addToast(t('behavior_lens.toast.ratings_saved') || 'Ratings saved ✅', 'success');
         };
 
         const takeSnapshot = () => {
             const ratedCount = Object.values(ratings).filter(v => v > 0).length;
             if (ratedCount === 0) {
-                if (addToast) addToast('Rate at least one item first', 'warning');
+                if (addToast) addToast(t('behavior_lens.toast.rate_at_least_one_item_first') || 'Rate at least one item first', 'warning');
                 return;
             }
             const snap = {
@@ -3624,7 +3624,7 @@ Personalize each phase of the cycle and return ONLY valid JSON:
             const updated = [snap, ...snapshots].slice(0, 10);
             setSnapshots(updated);
             try { localStorage.setItem(snapKey, JSON.stringify(updated)); } catch { }
-            if (addToast) addToast('Snapshot saved 📸', 'success');
+            if (addToast) addToast(t('behavior_lens.toast.snapshot_saved') || 'Snapshot saved 📸', 'success');
         };
 
         const rankedItems = useMemo(() => {
@@ -3659,10 +3659,10 @@ Recommend reinforcers and return ONLY valid JSON:
                 try { parsed = JSON.parse(cleaned); }
                 catch { const m = result.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); else throw new Error('Parse failed'); }
                 setAiSuggestions(parsed);
-                if (addToast) addToast('Reinforcers recommended ✨', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.reinforcers_recommended') || 'Reinforcers recommended ✨', 'success');
             } catch (err) {
                 warnLog('Reinforcer suggestion failed:', err);
-                if (addToast) addToast('Suggestion failed', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.suggestion_failed') || 'Suggestion failed', 'error');
             } finally { setSuggesting(false); }
         };
 
@@ -3817,10 +3817,10 @@ Generate 4 calming/coping choice items. Return ONLY valid JSON:
                 if (parsed.choices && Array.isArray(parsed.choices)) setChoices(parsed.choices.slice(0, 6));
                 if (parsed.firstItem) setFirstItem(parsed.firstItem);
                 if (parsed.thenItem) setThenItem(parsed.thenItem);
-                if (addToast) addToast('Choices suggested ✨', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.choices_suggested') || 'Choices suggested ✨', 'success');
             } catch (err) {
                 warnLog('Choice AI suggest failed:', err);
-                if (addToast) addToast('AI suggestion failed', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.ai_suggestion_failed') || 'AI suggestion failed', 'error');
             } finally { setAiChoiceLoading(false); }
         };
 
@@ -3836,7 +3836,7 @@ Generate 4 calming/coping choice items. Return ONLY valid JSON:
         const handleSelect = (idx) => {
             setSelected(idx);
             setLog(prev => [...prev, { choice: choices[idx].label, time: new Date().toISOString() }]);
-            if (addToast) addToast(`Choice: ${choices[idx].label} `, 'success');
+            if (addToast) addToast(t('behavior_lens.toast.choice_n') || `Choice: ${choices[idx].label} `, 'success');
             setTimeout(() => setSelected(null), 2000);
         };
 
@@ -3875,15 +3875,15 @@ Generate 4 calming/coping choice items. Return ONLY valid JSON:
                         h('div', { className: 'space-y-2' },
                             h('div', { className: 'flex gap-2' },
                                 h('input', { value: firstItem.emoji, onChange: (e) => setFirstItem(p => ({ ...p, emoji: e.target.value })), className: 'w-12 text-center text-xl border rounded-lg', maxLength: 2 }),
-                                h('input', { value: firstItem.label, onChange: (e) => setFirstItem(p => ({ ...p, label: e.target.value })), className: 'flex-1 border rounded-lg px-3 py-2 text-sm', placeholder: 'FIRST (task)...' })
+                                h('input', { value: firstItem.label, onChange: (e) => setFirstItem(p => ({ ...p, label: e.target.value })), className: 'flex-1 border rounded-lg px-3 py-2 text-sm', placeholder: t('behavior_lens.ph.first_task') || 'FIRST (task)...' })
                             ),
                             h('div', { className: 'flex gap-2' },
                                 h('input', { value: thenItem.emoji, onChange: (e) => setThenItem(p => ({ ...p, emoji: e.target.value })), className: 'w-12 text-center text-xl border rounded-lg', maxLength: 2 }),
-                                h('input', { value: thenItem.label, onChange: (e) => setThenItem(p => ({ ...p, label: e.target.value })), className: 'flex-1 border rounded-lg px-3 py-2 text-sm', placeholder: 'THEN (reward)...' })
+                                h('input', { value: thenItem.label, onChange: (e) => setThenItem(p => ({ ...p, label: e.target.value })), className: 'flex-1 border rounded-lg px-3 py-2 text-sm', placeholder: t('behavior_lens.ph.then_reward') || 'THEN (reward)...' })
                             )
                         )
                     ),
-                    h('button', { onClick: () => setEditing(false), className: 'w-full py-2 bg-indigo-500 text-white rounded-lg font-bold' }, 'Done')
+                    h('button', { onClick: () => setEditing(false), className: 'w-full py-2 bg-indigo-500 text-white rounded-lg font-bold' }, t('behavior_lens.ui.done') || 'Done')
                 )
             );
         }
@@ -3902,7 +3902,7 @@ Generate 4 calming/coping choice items. Return ONLY valid JSON:
                 h('div', { className: 'flex-1 grid grid-cols-2 gap-6 p-6' },
                     // FIRST panel
                     h('button', {
-                        onClick: () => { setFirstDone(true); if (addToast) addToast('First task complete! ✅', 'success'); },
+                        onClick: () => { setFirstDone(true); if (addToast) addToast(t('behavior_lens.toast.first_task_complete') || 'First task complete! ✅', 'success'); },
                         className: `rounded - 3xl flex flex - col items - center justify - center shadow - 2xl transition - all duration - 500 ${firstDone
                             ? 'bg-gradient-to-br from-emerald-400 to-emerald-600 scale-95 ring-4 ring-emerald-300/50'
                             : 'bg-gradient-to-br from-blue-400 to-indigo-600 hover:scale-[1.02] active:scale-95'
@@ -4012,10 +4012,10 @@ Provide improvement recommendations and return ONLY valid JSON:
                 try { parsed = JSON.parse(cleaned); }
                 catch { const m = result.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); else throw new Error('Parse failed'); }
                 setAiRecs(parsed);
-                if (addToast) addToast('Recommendations ready ✨', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.recommendations_ready') || 'Recommendations ready ✨', 'success');
             } catch (err) {
                 warnLog('Audit recs failed:', err);
-                if (addToast) addToast('Failed — try again', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.failed_try_again') || 'Failed — try again', 'error');
             } finally { setLoading(false); }
         };
 
@@ -4134,10 +4134,10 @@ Analyze data convergence and return ONLY valid JSON:
                 try { parsed = JSON.parse(cleaned); }
                 catch { const m = result.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); else throw new Error('Parse failed'); }
                 setAnalysis(parsed);
-                if (addToast) addToast('Triangulation complete ✨', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.triangulation_complete') || 'Triangulation complete ✨', 'success');
             } catch (err) {
                 warnLog('Triangulation failed:', err);
-                if (addToast) addToast('Analysis failed', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.analysis_failed') || 'Analysis failed', 'error');
             } finally { setLoading(false); }
         };
 
@@ -4238,10 +4238,10 @@ Provide a brief impact interpretation and return ONLY valid JSON:
                 try { parsed = JSON.parse(cleaned); }
                 catch { const m = result.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); else throw new Error('Parse failed'); }
                 setAiInsight(parsed);
-                if (addToast) addToast('Impact analyzed ✨', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.impact_analyzed') || 'Impact analyzed ✨', 'success');
             } catch (err) {
                 warnLog('Impact analysis failed:', err);
-                if (addToast) addToast('Analysis failed', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.analysis_failed') || 'Analysis failed', 'error');
             } finally { setLoading(false); }
         };
 
@@ -4340,7 +4340,7 @@ Provide a brief impact interpretation and return ONLY valid JSON:
             const data = { plan, contacts: contacts.filter(c => c.name || c.role || c.phone), lastReviewed: new Date().toISOString() };
             setLastReviewed(data.lastReviewed);
             try { localStorage.setItem(lsKey, JSON.stringify(data)); } catch { }
-            if (addToast) addToast('Crisis plan saved ✅', 'success');
+            if (addToast) addToast(t('behavior_lens.toast.crisis_plan_saved') || 'Crisis plan saved ✅', 'success');
         };
 
         const addContact = () => setContacts(prev => [...prev, { name: '', role: '', phone: '' }]);
@@ -4388,10 +4388,10 @@ Generate a 3-tier crisis intervention plan and return ONLY valid JSON:
                     if (Array.isArray(parsed.emergencyContacts)) setContacts(parsed.emergencyContacts);
                     else setContacts([{ name: String(parsed.emergencyContacts), role: '', phone: '' }]);
                 }
-                if (addToast) addToast('Crisis plan drafted ✨', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.crisis_plan_drafted') || 'Crisis plan drafted ✨', 'success');
             } catch (err) {
                 warnLog('Crisis plan failed:', err);
-                if (addToast) addToast('Drafting failed', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.drafting_failed') || 'Drafting failed', 'error');
             } finally { setDrafting(false); }
         };
 
@@ -4502,10 +4502,10 @@ Create student-friendly language and return ONLY valid JSON:
                 try { parsed = JSON.parse(cleaned); }
                 catch { const m = result.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); else throw new Error('Parse failed'); }
                 setZones(parsed);
-                if (addToast) addToast('Traffic light generated ✨', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.traffic_light_generated') || 'Traffic light generated ✨', 'success');
             } catch (err) {
                 warnLog('Traffic light failed:', err);
-                if (addToast) addToast('Generation failed', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.generation_failed') || 'Generation failed', 'error');
             } finally { setGenerating(false); }
         };
 
@@ -4550,7 +4550,7 @@ Create student-friendly language and return ONLY valid JSON:
                             h('textarea', {
                                 value: zone.items || '',
                                 onChange: (e) => setZones(prev => ({ ...prev, [z.key]: { ...prev[z.key], items: e.target.value } })),
-                                placeholder: 'Items separated by semicolons',
+                                placeholder: t('behavior_lens.ph.items_separated_by_semicolons') || 'Items separated by semicolons',
                                 rows: 1,
                                 className: 'w-full mt-2 bg-white/50 rounded-lg px-3 py-1.5 text-xs border border-transparent focus:border-slate-200 outline-none resize-none print:hidden'
                             })
@@ -4604,7 +4604,7 @@ Return ONLY valid JSON:
                 if (addToast) addToast(parsed.rationale || 'Config suggested ✨', 'success');
             } catch (err) {
                 warnLog('DataSheet AI config failed:', err);
-                if (addToast) addToast('AI suggestion failed', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.ai_suggestion_failed') || 'AI suggestion failed', 'error');
             } finally { setAiConfigLoading(false); }
         };
 
@@ -4726,7 +4726,7 @@ Return ONLY valid JSON:
                     ),
                     h('div', null,
                         h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase' }, t('behavior_lens.behavior_label') || 'Behavior Label'),
-                        h('input', { value: behaviorLabel, onChange: (e) => setBehaviorLabel(e.target.value), placeholder: 'e.g., Off-task behavior', className: 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm mt-0.5' })
+                        h('input', { value: behaviorLabel, onChange: (e) => setBehaviorLabel(e.target.value), placeholder: t('behavior_lens.ph.eg_offtask_behavior') || 'e.g., Off-task behavior', className: 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm mt-0.5' })
                     ),
                     method === 'frequency' && h('div', null,
                         h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase' }, t('behavior_lens.periods_per_day') || 'Periods per day'),
@@ -4777,11 +4777,11 @@ Return ONLY valid JSON:
                 setPreAiNote(note);
                 const result = await callGemini(prompt, true);
                 setNote(result);
-                if (addToast) addToast(`Translated to ${translateLang.trim()} ✨`, 'success');
+                if (addToast) addToast(t('behavior_lens.toast.translated_to_n') || `Translated to ${translateLang.trim()} ✨`, 'success');
                 setTranslateLang('');
             } catch (err) {
                 warnLog('Translation failed:', err);
-                if (addToast) addToast('Translation failed', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.translation_failed') || 'Translation failed', 'error');
             } finally { setTranslating(false); }
         };
 
@@ -4814,10 +4814,10 @@ Do NOT use the student codename in the note — use "your child" or "your studen
 Return the note as plain text (no JSON). Include date placeholder and signature line.`;
                 const result = await callGemini(prompt, true);
                 setNote(result);
-                if (addToast) addToast('Home note generated ✨', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.home_note_generated') || 'Home note generated ✨', 'success');
             } catch (err) {
                 warnLog('Home note failed:', err);
-                if (addToast) addToast('Generation failed', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.generation_failed') || 'Generation failed', 'error');
             } finally { setGenerating(false); }
         };
 
@@ -4854,7 +4854,7 @@ Return the note as plain text (no JSON). Include date placeholder and signature 
                 }),
                 h('div', { className: 'flex gap-2 mt-3 print:hidden flex-wrap' },
                     h('button', {
-                        onClick: () => { navigator.clipboard.writeText(note); if (addToast) addToast('Copied!', 'success'); },
+                        onClick: () => { navigator.clipboard.writeText(note); if (addToast) addToast(t('behavior_lens.toast.copied') || 'Copied!', 'success'); },
                         className: 'px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-bold hover:bg-slate-200'
                     }, '📋 Copy'),
                     h('button', { onClick: () => window.print(), className: 'px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-bold hover:bg-slate-200' }, '🖨️ Print'),
@@ -4866,14 +4866,14 @@ Return the note as plain text (no JSON). Include date placeholder and signature 
                             className: 'px-4 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-sm font-bold hover:bg-blue-100 transition-all'
                         }, translating ? '⏳ Translating...' : '🌐 Translate'),
                         showTranslate && h('div', { className: 'absolute bottom-full mb-1 left-0 bg-white border border-slate-200 rounded-xl shadow-lg z-10 p-3 min-w-56' },
-                            h('label', { className: 'text-[10px] font-bold text-slate-500 mb-1 block' }, 'Translate to any language:'),
+                            h('label', { className: 'text-[10px] font-bold text-slate-500 mb-1 block' }, t('behavior_lens.ui.translate_to_any_language') || 'Translate to any language:'),
                             h('div', { className: 'flex gap-1.5' },
                                 h('input', {
                                     type: 'text',
                                     value: translateLang,
                                     onChange: e => setTranslateLang(e.target.value),
                                     onKeyDown: e => { if (e.key === 'Enter' && translateLang.trim()) handleTranslate(); },
-                                    placeholder: 'e.g. Spanish, Arabic, Somali…',
+                                    placeholder: t('behavior_lens.ph.eg_spanish_arabic_somali') || 'e.g. Spanish, Arabic, Somali…',
                                     className: 'flex-1 px-3 py-1.5 text-sm border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-300',
                                     autoFocus: true
                                 }),
@@ -4887,7 +4887,7 @@ Return the note as plain text (no JSON). Include date placeholder and signature 
                     ),
                     // Undo AI
                     preAiNote !== null && h('button', {
-                        onClick: () => { setNote(preAiNote); setPreAiNote(null); if (addToast) addToast('Reverted', 'info'); },
+                        onClick: () => { setNote(preAiNote); setPreAiNote(null); if (addToast) addToast(t('behavior_lens.toast.reverted') || 'Reverted', 'info'); },
                         className: 'px-4 py-2 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg text-sm font-bold hover:bg-amber-100'
                     }, '↩️ Undo AI')
                 )
@@ -4923,11 +4923,11 @@ Return the note as plain text (no JSON). Include date placeholder and signature 
         const pct = totalItems > 0 ? Math.round((checkedCount / totalItems) * 100) : 0;
 
         const saveToday = () => {
-            if (items.length === 0) { if (addToast) addToast('Generate a checklist first', 'error'); return; }
+            if (items.length === 0) { if (addToast) addToast(t('behavior_lens.toast.generate_a_checklist_first') || 'Generate a checklist first', 'error'); return; }
             const updated = { ...history, [date]: { checks: { ...checks }, score: checkedCount, total: totalItems, pct } };
             setHistory(updated);
             try { localStorage.setItem(lsKey, JSON.stringify({ items, history: updated })); } catch { }
-            if (addToast) addToast(`Fidelity saved for ${date} ✅`, 'success');
+            if (addToast) addToast(t('behavior_lens.toast.fidelity_saved_for_n') || `Fidelity saved for ${date} ✅`, 'success');
         };
 
         const clearChecks = () => { setChecks({}); };
@@ -5003,7 +5003,7 @@ Return the note as plain text (no JSON). Include date placeholder and signature 
             else template = [...FIDELITY_TEMPLATES.escape.slice(0, 2), ...FIDELITY_TEMPLATES.attention.slice(0, 2), ...template];
             setItems(template);
             setChecks({});
-            if (addToast) addToast(`Quick Fill: ${template.length} items loaded ⚡`, 'success');
+            if (addToast) addToast(t('behavior_lens.toast.quick_fill_n_items_loaded') || `Quick Fill: ${template.length} items loaded ⚡`, 'success');
         };
 
         const handleGenerate = async () => {
@@ -5034,10 +5034,10 @@ Generate a daily fidelity checklist (5-8 items) and return ONLY valid JSON:
                 catch { const m = result.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); else throw new Error('Parse failed'); }
                 setItems(parsed.items || []);
                 setChecks({});
-                if (addToast) addToast('Checklist generated ✨', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.checklist_generated') || 'Checklist generated ✨', 'success');
             } catch (err) {
                 warnLog('Fidelity gen failed:', err);
-                if (addToast) addToast('Generation failed', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.generation_failed') || 'Generation failed', 'error');
             } finally { setGenerating(false); }
         };
 
@@ -5100,7 +5100,7 @@ Generate a daily fidelity checklist (5-8 items) and return ONLY valid JSON:
                             h('span', { className: `text-sm ${checks[i] ? 'text-emerald-700 line-through' : 'text-slate-700'}` }, item)
                         )
                     )
-                ) : h('p', { className: 'text-xs text-slate-400 text-center py-6' }, 'Click "AI Generate Checklist" to create items based on the BIP'),
+                ) : h('p', { className: 'text-xs text-slate-400 text-center py-6' }, t('behavior_lens.ui.click_ai_generate_checklist_to_create_items_based') || 'Click "AI Generate Checklist" to create items based on the BIP'),
                 // Score
                 items.length > 0 && h('div', { className: 'mt-4 p-3 rounded-lg border text-center', style: { background: scoreBg(pct), borderColor: scoreBorder(pct) } },
                     h('div', { className: 'text-xs font-bold uppercase', style: { color: scoreColor(pct) } }, t('behavior_lens.fidelity_score') || 'Fidelity Score'),
@@ -5155,17 +5155,17 @@ Provide recommendations to improve feasibility. Return ONLY valid JSON:
                 try { parsed = JSON.parse(cleaned); }
                 catch { const m = result.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); else throw new Error('Parse failed'); }
                 setAiRecs(parsed);
-                if (addToast) addToast('Assessment complete ✨', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.assessment_complete') || 'Assessment complete ✨', 'success');
             } catch (err) {
                 warnLog('Feasibility failed:', err);
-                if (addToast) addToast('Failed', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.failed') || 'Failed', 'error');
             } finally { setLoading(false); }
         };
 
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm' },
                 h('h3', { className: 'text-sm font-black text-slate-800 mb-1' }, '⚖️ ' + (t('behavior_lens.feasibility.title') || 'Contextual Fit Assessment')),
-                h('p', { className: 'text-[10px] text-slate-400 mb-4' }, 'Based on Horner, Salentine, & Albin (2003)'),
+                h('p', { className: 'text-[10px] text-slate-400 mb-4' }, t('behavior_lens.ui.based_on_horner_salentine_albin_2003') || 'Based on Horner, Salentine, & Albin (2003)'),
                 h('div', { className: 'space-y-3' },
                     questions.map(q =>
                         h('div', { key: q.id },
@@ -5253,10 +5253,10 @@ Generate descriptors for each GAS level and return ONLY valid JSON:
                 try { parsed = JSON.parse(cleaned); }
                 catch { const m = result.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); else throw new Error('Parse failed'); }
                 setDescriptors(parsed);
-                if (addToast) addToast('GAS rubric generated ✨', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.gas_rubric_generated') || 'GAS rubric generated ✨', 'success');
             } catch (err) {
                 warnLog('GAS gen failed:', err);
-                if (addToast) addToast('Generation failed', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.generation_failed') || 'Generation failed', 'error');
             } finally { setGenerating(false); }
         };
 
@@ -5267,7 +5267,7 @@ Generate descriptors for each GAS level and return ONLY valid JSON:
                 h('textarea', {
                     value: goalText,
                     onChange: (e) => setGoalText(e.target.value),
-                    placeholder: 'Enter the behavioral goal to scale (e.g., "Student will remain in seat during independent work for 15 minutes")',
+                    placeholder: t('behavior_lens.ph.enter_the_behavioral_goal_to_scale_eg_student_will') || 'Enter the behavioral goal to scale (e.g., "Student will remain in seat during independent work for 15 minutes")',
                     rows: 2,
                     className: 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm resize-none'
                 })
@@ -5306,7 +5306,7 @@ Generate descriptors for each GAS level and return ONLY valid JSON:
                                         value: descriptors[String(lv.score)] || '',
                                         onChange: (e) => setDescriptors(prev => ({ ...prev, [String(lv.score)]: e.target.value })),
                                         className: 'w-full bg-transparent outline-none text-sm',
-                                        placeholder: 'Enter descriptor...'
+                                        placeholder: t('behavior_lens.ph.enter_descriptor') || 'Enter descriptor...'
                                     })
                                 )
                             )
@@ -5407,7 +5407,7 @@ Generate descriptors for each GAS level and return ONLY valid JSON:
                 h('input', {
                     value: searchTerm,
                     onChange: (e) => setSearchTerm(e.target.value),
-                    placeholder: '🔍 Search ABA terms...',
+                    placeholder: t('behavior_lens.ph.search_aba_terms') || '🔍 Search ABA terms...',
                     className: 'w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm shadow-sm focus:ring-2 focus:ring-indigo-400 outline-none'
                 }),
                 categories.map(cat => {
@@ -5436,7 +5436,7 @@ Generate descriptors for each GAS level and return ONLY valid JSON:
             activeTab === 'schedules' && h('div', { className: 'space-y-3' },
                 h('div', { className: 'bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border border-indigo-200 p-4' },
                     h('h3', { className: 'text-sm font-black text-indigo-800 mb-1' }, '📋 Reinforcement Schedules Explained'),
-                    h('p', { className: 'text-xs text-indigo-600' }, 'How often and when to deliver reinforcement. Use the Token Board tool to implement these schedules in practice.')
+                    h('p', { className: 'text-xs text-indigo-600' }, t('behavior_lens.ui.how_often_and_when_to_deliver_reinforcement_use_th') || 'How often and when to deliver reinforcement. Use the Token Board tool to implement these schedules in practice.')
                 ),
                 scheduleExplainer.map(s =>
                     h('div', { key: s.type, className: 'bg-white rounded-xl border border-slate-200 p-4 shadow-sm' },
@@ -5446,7 +5446,7 @@ Generate descriptors for each GAS level and return ONLY valid JSON:
                                 h('div', { className: 'text-sm font-black text-slate-800' }, s.type),
                                 h('div', { className: 'text-xs text-slate-600 mt-0.5' }, s.desc),
                                 h('div', { className: 'mt-2 p-2 bg-blue-50 rounded-lg text-xs text-blue-700' },
-                                    h('span', { className: 'font-bold' }, 'Example: '), s.example
+                                    h('span', { className: 'font-bold' }, t('behavior_lens.ui.example') || 'Example: '), s.example
                                 ),
                                 h('div', { className: 'mt-1 text-[10px] text-slate-400 italic' }, `Best used: ${s.when}`)
                             )
@@ -5455,7 +5455,7 @@ Generate descriptors for each GAS level and return ONLY valid JSON:
                 ),
                 h('div', { className: 'bg-amber-50 rounded-xl border border-amber-200 p-4 text-xs text-amber-800' },
                     h('p', { className: 'font-bold mb-1' }, '📈 Schedule Thinning Path:'),
-                    h('p', null, 'CRF (every time) → FR-2 → FR-3 → FR-5 → VR-5 → VR-8 → Natural reinforcement'),
+                    h('p', null, t('behavior_lens.ui.crf_every_time_fr2_fr3_fr5_vr5_vr8_natural_reinfor') || 'CRF (every time) → FR-2 → FR-3 → FR-5 → VR-5 → VR-8 → Natural reinforcement'),
                     h('p', { className: 'italic mt-1' }, '⚠️ If behavior breaks down, go back one step.')
                 )
             ),
@@ -5464,7 +5464,7 @@ Generate descriptors for each GAS level and return ONLY valid JSON:
             activeTab === 'decision' && h('div', { className: 'space-y-3' },
                 h('div', { className: 'bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl border border-emerald-200 p-4' },
                     h('h3', { className: 'text-sm font-black text-emerald-800 mb-1' }, '🌲 Function Identification Decision Tree'),
-                    h('p', { className: 'text-xs text-emerald-600' }, 'Use this flow to hypothesize the function of a challenging behavior.')
+                    h('p', { className: 'text-xs text-emerald-600' }, t('behavior_lens.ui.use_this_flow_to_hypothesize_the_function_of_a_cha') || 'Use this flow to hypothesize the function of a challenging behavior.')
                 ),
                 decisionTree.map((step, i) =>
                     h('div', { key: i, className: 'bg-white rounded-xl border border-slate-200 p-4 shadow-sm' },
@@ -5486,7 +5486,7 @@ Generate descriptors for each GAS level and return ONLY valid JSON:
                 ),
                 h('div', { className: 'bg-purple-50 rounded-xl border border-purple-200 p-4 text-xs text-purple-700' },
                     h('p', { className: 'font-bold mb-1' }, '💡 Pro Tip:'),
-                    h('p', null, 'Behaviors can serve MULTIPLE functions. Always collect enough data (10+ ABC entries) before finalizing your hypothesis. Use the AI Pattern Analysis tool for data-driven confirmation.')
+                    h('p', null, t('behavior_lens.ui.behaviors_can_serve_multiple_functions_always_coll') || 'Behaviors can serve MULTIPLE functions. Always collect enough data (10+ ABC entries) before finalizing your hypothesis. Use the AI Pattern Analysis tool for data-driven confirmation.')
                 )
             ),
 
@@ -5494,7 +5494,7 @@ Generate descriptors for each GAS level and return ONLY valid JSON:
             activeTab === 'mistakes' && h('div', { className: 'space-y-3' },
                 h('div', { className: 'bg-gradient-to-r from-red-50 to-orange-50 rounded-xl border border-red-200 p-4' },
                     h('h3', { className: 'text-sm font-black text-red-800 mb-1' }, '⚠️ Common ABA Implementation Mistakes'),
-                    h('p', { className: 'text-xs text-red-600' }, 'Avoid these frequently seen errors to improve behavioral outcomes.')
+                    h('p', { className: 'text-xs text-red-600' }, t('behavior_lens.ui.avoid_these_frequently_seen_errors_to_improve_beha') || 'Avoid these frequently seen errors to improve behavioral outcomes.')
                 ),
                 commonMistakes.map((m, i) =>
                     h('div', { key: i, className: 'bg-white rounded-xl border border-slate-200 p-4 shadow-sm' },
@@ -5553,13 +5553,13 @@ Generate descriptors for each GAS level and return ONLY valid JSON:
             try { localStorage.setItem(`behaviorLens_homeLog_${studentName}`, JSON.stringify(updated)); } catch (e) { /* ignore */ }
             setNewEntry({ context: '', behavior: '', response: '', notes: '', mood: '' });
             setShowForm(false);
-            if (addToast) addToast('Entry saved ✅', 'success');
+            if (addToast) addToast(t('behavior_lens.toast.entry_saved') || 'Entry saved ✅', 'success');
         };
 
         // Export home log entries as a Snapshot JSON file
         const handleExportSnapshot = () => {
             if (entries.length === 0) {
-                if (addToast) addToast('No entries to export', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.no_entries_to_export') || 'No entries to export', 'error');
                 return;
             }
             const snapshot = {
@@ -5576,7 +5576,7 @@ Generate descriptors for each GAS level and return ONLY valid JSON:
             a.download = `home-log-${(studentName || 'student').replace(/\s+/g, '_')}-${new Date().toISOString().slice(0, 10)}.json`;
             a.click();
             URL.revokeObjectURL(url);
-            if (addToast) addToast('Home log exported as snapshot 📦', 'success');
+            if (addToast) addToast(t('behavior_lens.toast.home_log_exported_as_snapshot') || 'Home log exported as snapshot 📦', 'success');
         };
 
         // Summary stats
@@ -5597,7 +5597,7 @@ Generate descriptors for each GAS level and return ONLY valid JSON:
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 p-4' },
                 h('h3', { className: 'text-sm font-black text-blue-800 mb-1' }, '🏠 ' + (t('behavior_lens.homelog.title') || 'Home Behavior Log')),
-                h('p', { className: 'text-xs text-blue-600' }, 'Track behaviors at home using simple, everyday language. This helps your child\'s school team see the full picture.')
+                h('p', { className: 'text-xs text-blue-600' }, t('behavior_lens.ui.track_behaviors_at_home_using_simple_everyday_lang') || 'Track behaviors at home using simple, everyday language. This helps your child\'s school team see the full picture.')
             ),
             // Summary strip
             summary && h('div', { className: 'flex flex-wrap gap-3 bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm' },
@@ -5638,10 +5638,10 @@ Generate descriptors for each GAS level and return ONLY valid JSON:
                             const existingIds = new Set(prev.map(p => p.id));
                             const fresh = newAbcEntries.filter(n => !existingIds.has(n.id));
                             if (fresh.length === 0) {
-                                if (addToast) addToast('All entries already synced to ABC data', 'info');
+                                if (addToast) addToast(t('behavior_lens.toast.all_entries_already_synced_to_abc_data') || 'All entries already synced to ABC data', 'info');
                                 return prev;
                             }
-                            if (addToast) addToast(`${fresh.length} home entries pushed to ABC data ✅`, 'success');
+                            if (addToast) addToast(t('behavior_lens.toast.n_home_entries_pushed_to_abc_data') || `${fresh.length} home entries pushed to ABC data ✅`, 'success');
                             return [...fresh, ...prev];
                         });
                     },
@@ -5670,10 +5670,10 @@ Provide a brief analysis (3-5 bullet points) covering:
 - 1-2 practical suggestions for the family`;
                             const result = await callGemini(prompt, true);
                             setAiPatternResult(result);
-                            if (addToast) addToast('Pattern analysis complete ✨', 'success');
+                            if (addToast) addToast(t('behavior_lens.toast.pattern_analysis_complete') || 'Pattern analysis complete ✨', 'success');
                         } catch (err) {
                             warnLog('Home log AI analysis failed:', err);
-                            if (addToast) addToast('AI analysis failed', 'error');
+                            if (addToast) addToast(t('behavior_lens.toast.ai_analysis_failed') || 'AI analysis failed', 'error');
                         } finally { setAiPatternLoading(false); }
                     },
                     disabled: aiPatternLoading,
@@ -5722,7 +5722,7 @@ Provide a brief analysis (3-5 bullet points) covering:
                     h('textarea', {
                         value: newEntry.behavior,
                         onChange: (e) => setNewEntry(p => ({ ...p, behavior: e.target.value })),
-                        placeholder: 'Describe what your child did...',
+                        placeholder: t('behavior_lens.ph.describe_what_your_child_did') || 'Describe what your child did...',
                         rows: 2,
                         className: 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-blue-400 outline-none'
                     })
@@ -5744,7 +5744,7 @@ Provide a brief analysis (3-5 bullet points) covering:
                     h('input', {
                         value: newEntry.notes,
                         onChange: (e) => setNewEntry(p => ({ ...p, notes: e.target.value })),
-                        placeholder: 'Any other details (was child tired, hungry, etc.)...',
+                        placeholder: t('behavior_lens.ph.any_other_details_was_child_tired_hungry_etc') || 'Any other details (was child tired, hungry, etc.)...',
                         className: 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none'
                     })
                 ),
@@ -5773,7 +5773,7 @@ Provide a brief analysis (3-5 bullet points) covering:
                 )
             ) : h('div', { className: 'text-center py-8 bg-slate-50 rounded-xl' },
                 h('div', { className: 'text-3xl mb-2' }, '🏠'),
-                h('p', { className: 'text-sm text-slate-500' }, 'No entries yet. Tap "Log a Behavior" to get started!')
+                h('p', { className: 'text-sm text-slate-500' }, t('behavior_lens.ui.no_entries_yet_tap_log_a_behavior_to_get_started') || 'No entries yet. Tap "Log a Behavior" to get started!')
             )
         );
     };
@@ -5817,10 +5817,10 @@ Create a concise pocket BIP. Return ONLY valid JSON:
                 try { parsed = JSON.parse(cleaned); }
                 catch { const m = result.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); else throw new Error('Parse failed'); }
                 setCard(parsed);
-                if (addToast) addToast('Pocket BIP generated ✨', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.pocket_bip_generated') || 'Pocket BIP generated ✨', 'success');
             } catch (err) {
                 warnLog('Pocket BIP failed:', err);
-                if (addToast) addToast('Generation failed', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.generation_failed') || 'Generation failed', 'error');
             } finally { setGenerating(false); }
         };
 
@@ -5905,7 +5905,7 @@ Create a concise pocket BIP. Return ONLY valid JSON:
             if (!scenario) return;
             const persona = getPersona();
             if (!persona.trim()) {
-                if (addToast) addToast('Please define a student persona', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.please_define_a_student_persona') || 'Please define a student persona', 'error');
                 return;
             }
             setMessages([{
@@ -5914,7 +5914,7 @@ Create a concise pocket BIP. Return ONLY valid JSON:
             }]);
             setSessionStarted(true);
             setSessionCount(prev => prev + 1);
-            if (addToast) addToast('Simulation started — you are now the counselor 🎭', 'success');
+            if (addToast) addToast(t('behavior_lens.toast.simulation_started_you_are_now_the_counselor') || 'Simulation started — you are now the counselor 🎭', 'success');
         };
 
         const handleSend = async () => {
@@ -5959,7 +5959,7 @@ Respond only with the student's words:`;
 
             } catch (err) {
                 warnLog('Counseling simulation failed:', err);
-                if (addToast) addToast('Response failed — try again', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.response_failed_try_again') || 'Response failed — try again', 'error');
             } finally {
                 setSending(false);
             }
@@ -6008,7 +6008,7 @@ Respond only with the student's words:`;
                     h('textarea', {
                         value: customPersona,
                         onChange: (e) => setCustomPersona(e.target.value),
-                        placeholder: 'Describe the student persona... e.g., "You are a 3rd grader who becomes anxious during math and tends to cry and shut down..."',
+                        placeholder: t('behavior_lens.ph.describe_the_student_persona_eg_you_are_a_3rd_grad') || 'Describe the student persona... e.g., "You are a 3rd grader who becomes anxious during math and tends to cry and shut down..."',
                         rows: 4,
                         className: 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-400 outline-none resize-none'
                     })
@@ -6019,7 +6019,7 @@ Respond only with the student's words:`;
                     h('textarea', {
                         value: additionalInstructions,
                         onChange: (e) => setAdditionalInstructions(e.target.value),
-                        placeholder: 'Add context, constraints, or specific challenges... e.g., "The student also has a speech delay" or "This is a middle school student"',
+                        placeholder: t('behavior_lens.ph.add_context_constraints_or_specific_challenges_eg') || 'Add context, constraints, or specific challenges... e.g., "The student also has a speech delay" or "This is a middle school student"',
                         rows: 2,
                         className: 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-400 outline-none resize-none'
                     })
@@ -6035,7 +6035,7 @@ Respond only with the student's words:`;
                         }),
                         h('div', null,
                             h('div', { className: 'text-sm font-bold text-slate-700' }, '🖼️ ' + (t('behavior_lens.counseling.enable_images') || 'Enable Image Generation')),
-                            h('div', { className: 'text-[10px] text-slate-400' }, 'AI will generate visual scenes during the conversation (requires Imagen)')
+                            h('div', { className: 'text-[10px] text-slate-400' }, t('behavior_lens.ui.ai_will_generate_visual_scenes_during_the_conversa') || 'AI will generate visual scenes during the conversation (requires Imagen)')
                         )
                     )
                 ),
@@ -6043,7 +6043,7 @@ Respond only with the student's words:`;
                 aiAnalysis && scenario && h('div', { className: 'bg-teal-50 rounded-xl border border-teal-200 p-3 flex items-center gap-2' },
                     h('span', { className: 'text-lg' }, '🧠'),
                     h('div', null,
-                        h('div', { className: 'text-xs font-bold text-teal-700' }, 'AI Context Available'),
+                        h('div', { className: 'text-xs font-bold text-teal-700' }, t('behavior_lens.ui.ai_context_available') || 'AI Context Available'),
                         h('div', { className: 'text-[10px] text-teal-600' }, `Hypothesized function: ${aiAnalysis.hypothesizedFunction} (${aiAnalysis.confidence}% confidence)`)
                     )
                 ),
@@ -6081,7 +6081,7 @@ Respond only with the student's words:`;
                             value: strategyNotes,
                             onChange: (e) => setStrategyNotes(e.target.value),
                             rows: 4,
-                            placeholder: 'Reflect on your approach...\n• What worked well?\n• What would you do differently?\n• What strategies do you want to practice next?',
+                            placeholder: t('behavior_lens.ph.reflect_on_your_approachn_what_worked_welln_what_w') || 'Reflect on your approach...\n• What worked well?\n• What would you do differently?\n• What strategies do you want to practice next?',
                             className: 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-400 outline-none resize-none'
                         })
                     )
@@ -6104,7 +6104,7 @@ Respond only with the student's words:`;
                         className: 'flex-1 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all'
                     }, '🔄 New Session'),
                     h('button', {
-                        onClick: () => { if (addToast) addToast('Reflection saved ✨', 'success'); handleReset(); },
+                        onClick: () => { if (addToast) addToast(t('behavior_lens.toast.reflection_saved') || 'Reflection saved ✨', 'success'); handleReset(); },
                         className: 'flex-1 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 text-white rounded-xl font-bold text-sm shadow-lg hover:shadow-xl transition-all'
                     }, '✅ Save & Close')
                 )
@@ -6157,7 +6157,7 @@ Respond only with the student's words:`;
                         value: input,
                         onChange: (e) => setInput(e.target.value),
                         onKeyDown: (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } },
-                        placeholder: 'Respond as the counselor...',
+                        placeholder: t('behavior_lens.ph.respond_as_the_counselor') || 'Respond as the counselor...',
                         disabled: sending,
                         className: 'flex-1 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-teal-400 outline-none disabled:opacity-50'
                     }),
@@ -6220,7 +6220,7 @@ Respond only with the student's words:`;
             setMood('');
             setAnswers({ happening: '', feeling: '', needed: '', nextTime: '' });
             setShowForm(false);
-            if (addToast) addToast('Reflection saved 🌟', 'success');
+            if (addToast) addToast(t('behavior_lens.toast.reflection_saved_2') || 'Reflection saved 🌟', 'success');
         };
 
         const deleteEntry = (id) => {
@@ -6255,7 +6255,7 @@ Respond only with the student's words:`;
                 ),
                 // Mood trend mini-bar (last 7)
                 entries.length > 0 && h('div', { className: 'mt-3 flex items-center gap-3' },
-                    h('span', { className: 'text-[10px] font-bold text-violet-500 uppercase' }, 'Recent moods:'),
+                    h('span', { className: 'text-[10px] font-bold text-violet-500 uppercase' }, t('behavior_lens.ui.recent_moods') || 'Recent moods:'),
                     h('div', { className: 'flex gap-1' },
                         MOODS.map(m =>
                             moodTrend[m.emoji] > 0 && h('div', {
@@ -6292,10 +6292,10 @@ Provide a brief, warm analysis (3-4 bullet points) that:
 Keep language warm and age-appropriate.`;
                             const result = await callGemini(prompt, true);
                             setAiReflectionResult(result);
-                            if (addToast) addToast('Reflection analysis ready 🌟', 'success');
+                            if (addToast) addToast(t('behavior_lens.toast.reflection_analysis_ready') || 'Reflection analysis ready 🌟', 'success');
                         } catch (err) {
                             warnLog('Self-check AI analysis failed:', err);
-                            if (addToast) addToast('AI analysis failed', 'error');
+                            if (addToast) addToast(t('behavior_lens.toast.ai_analysis_failed') || 'AI analysis failed', 'error');
                         } finally { setAiReflectionLoading(false); }
                     },
                     disabled: aiReflectionLoading,
@@ -6332,10 +6332,10 @@ Keep language warm and age-appropriate.`;
                 ),
                 // Structured prompts
                 [
-                    { key: 'happening', label: '📍 What was happening?', placeholder: 'What was going on before you felt this way?' },
-                    { key: 'feeling', label: '💭 How were you feeling inside?', placeholder: 'Nervous? Angry? Bored? Overwhelmed?' },
-                    { key: 'needed', label: '🤝 What did you need?', placeholder: 'A break? Help? Someone to listen? Space?' },
-                    { key: 'nextTime', label: '💡 What might help next time?', placeholder: 'What could you or a grown-up do differently?' }
+                    { key: 'happening', label: '📍 What was happening?', placeholder: t('behavior_lens.ph.what_was_going_on_before_you_felt_this_way') || 'What was going on before you felt this way?' },
+                    { key: 'feeling', label: '💭 How were you feeling inside?', placeholder: t('behavior_lens.ph.nervous_angry_bored_overwhelmed') || 'Nervous? Angry? Bored? Overwhelmed?' },
+                    { key: 'needed', label: '🤝 What did you need?', placeholder: t('behavior_lens.ph.a_break_help_someone_to_listen_space') || 'A break? Help? Someone to listen? Space?' },
+                    { key: 'nextTime', label: '💡 What might help next time?', placeholder: t('behavior_lens.ph.what_could_you_or_a_grownup_do_differently') || 'What could you or a grown-up do differently?' }
                 ].map(q =>
                     h('div', { key: q.key },
                         h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-1' }, q.label),
@@ -6396,7 +6396,7 @@ Keep language warm and age-appropriate.`;
                 )
                 : h('div', { className: 'text-center py-8 bg-slate-50 rounded-xl' },
                     h('div', { className: 'text-3xl mb-2' }, '🪞'),
-                    h('p', { className: 'text-sm text-slate-500' }, 'No reflections yet. Tap the button above to check in with yourself!')
+                    h('p', { className: 'text-sm text-slate-500' }, t('behavior_lens.ui.no_reflections_yet_tap_the_button_above_to_check_i') || 'No reflections yet. Tap the button above to check in with yourself!')
                 )
         );
     };
@@ -6472,7 +6472,7 @@ Keep language warm and age-appropriate.`;
             const a = document.createElement('a');
             a.href = url; a.download = filename; a.click();
             URL.revokeObjectURL(url);
-            addToast && addToast(`Snapshot exported as ${filename}`, 'success');
+            addToast && addToast(t('behavior_lens.toast.snapshot_exported_as_n') || `Snapshot exported as ${filename}`, 'success');
         };
 
         const parseFile = (file) => {
@@ -6481,7 +6481,7 @@ Keep language warm and age-appropriate.`;
                 try {
                     const data = JSON.parse(e.target.result);
                     if (!data.alloflowSnapshot) {
-                        addToast && addToast('Not a valid AlloFlow snapshot file', 'error');
+                        addToast && addToast(t('behavior_lens.toast.not_a_valid_alloflow_snapshot_file') || 'Not a valid AlloFlow snapshot file', 'error');
                         return;
                     }
                     // Count duplicates
@@ -6498,7 +6498,7 @@ Keep language warm and age-appropriate.`;
                         hasAi: !!data.behaviorLens?.aiAnalysis,
                     });
                 } catch (err) {
-                    addToast && addToast('Failed to parse snapshot file', 'error');
+                    addToast && addToast(t('behavior_lens.toast.failed_to_parse_snapshot_file') || 'Failed to parse snapshot file', 'error');
                 }
             };
             reader.readAsText(file);
@@ -6521,7 +6521,7 @@ Keep language warm and age-appropriate.`;
             const { newAbc, newObs, raw } = importPreview;
             if (newAbc.length > 0) setAbcEntries(prev => [...prev, ...newAbc].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)));
             if (newObs.length > 0) setObservationSessions(prev => [...prev, ...newObs].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)));
-            addToast && addToast(`Merged ${newAbc.length} ABC entries and ${newObs.length} observations`, 'success');
+            addToast && addToast(t('behavior_lens.toast.merged_n_abc_entries_and_n_observations') || `Merged ${newAbc.length} ABC entries and ${newObs.length} observations`, 'success');
             setImportPreview(null);
         };
 
@@ -6529,7 +6529,7 @@ Keep language warm and age-appropriate.`;
         const renderExport = () => h('div', { className: 'space-y-4' },
             // Role selector
             h('div', null,
-                h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-1' }, 'Your Role'),
+                h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-1' }, t('behavior_lens.ui.your_role') || 'Your Role'),
                 h('div', { className: 'flex gap-2' },
                     [['educator', '🏫 Educator'], ['family', '👨‍👩‍👧 Family']].map(([key, label]) =>
                         h('button', {
@@ -6542,7 +6542,7 @@ Keep language warm and age-appropriate.`;
             // Privacy controls
             h('div', null,
                 h('div', { className: 'flex items-center justify-between mb-2' },
-                    h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase' }, 'Data to Include'),
+                    h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase' }, t('behavior_lens.ui.data_to_include') || 'Data to Include'),
                     h('button', {
                         onClick: toggleAll,
                         className: 'text-[10px] font-bold text-cyan-600 hover:text-cyan-800 transition-colors'
@@ -6565,13 +6565,13 @@ Keep language warm and age-appropriate.`;
             h('div', { className: 'bg-cyan-50 rounded-lg p-3 border border-cyan-100 flex items-center gap-2' },
                 h('span', { className: 'text-lg' }, '🏷️'),
                 h('div', null,
-                    h('div', { className: 'text-[10px] font-bold text-cyan-600 uppercase' }, 'Student Codename'),
+                    h('div', { className: 'text-[10px] font-bold text-cyan-600 uppercase' }, t('behavior_lens.ui.student_codename') || 'Student Codename'),
                     h('div', { className: 'text-sm font-black text-cyan-900' }, studentName || 'Not assigned')
                 )
             ),
             // Optional message
             h('div', null,
-                h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-1' }, 'Optional Message'),
+                h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-1' }, t('behavior_lens.ui.optional_message') || 'Optional Message'),
                 h('textarea', {
                     value: message, onChange: e => setMessage(e.target.value),
                     placeholder: role === 'educator' ? 'Notes for the family... (e.g., strategies that worked well this week)' : 'Notes for the teacher... (e.g., what happened at home over the weekend)',
@@ -6603,10 +6603,10 @@ Data included: ${dataOverview.join(', ') || 'None selected'}
 Write 2-3 sentences that are professional, warm, and collaborative. Focus on partnership and shared success. Do NOT use the student's codename in the message.`;
                             const result = await callGemini(prompt, true);
                             setMessage(result.trim());
-                            if (addToast) addToast('Message drafted ✨', 'success');
+                            if (addToast) addToast(t('behavior_lens.toast.message_drafted') || 'Message drafted ✨', 'success');
                         } catch (err) {
                             warnLog('Snapshot AI message failed:', err);
-                            if (addToast) addToast('AI draft failed', 'error');
+                            if (addToast) addToast(t('behavior_lens.toast.ai_draft_failed') || 'AI draft failed', 'error');
                         } finally { setAiMessageLoading(false); }
                     },
                     disabled: aiMessageLoading,
@@ -6627,7 +6627,7 @@ Write 2-3 sentences that are professional, warm, and collaborative. Focus on par
                     className: `border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all ${dragActive ? 'border-cyan-500 bg-cyan-50' : 'border-slate-200 hover:border-cyan-300 hover:bg-slate-50'}`
                 },
                     h('div', { className: 'text-4xl mb-3' }, '📥'),
-                    h('p', { className: 'text-sm font-bold text-slate-700 mb-1' }, 'Drop a Snapshot File Here'),
+                    h('p', { className: 'text-sm font-bold text-slate-700 mb-1' }, t('behavior_lens.ui.drop_a_snapshot_file_here') || 'Drop a Snapshot File Here'),
                     h('p', { className: 'text-xs text-slate-400' }, 'or click to browse (.json)'),
                     h('input', { ref: fileRef, type: 'file', accept: '.json', onChange: handleFileInput, className: 'hidden' })
                 )
@@ -6647,10 +6647,10 @@ Write 2-3 sentences that are professional, warm, and collaborative. Focus on par
                     ),
                     // Data summary
                     h('div', { className: 'bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-2 text-xs' },
-                        h('div', { className: 'font-bold text-slate-700 mb-1' }, 'Incoming Data'),
+                        h('div', { className: 'font-bold text-slate-700 mb-1' }, t('behavior_lens.ui.incoming_data') || 'Incoming Data'),
                         h('div', { className: 'flex justify-between' }, h('span', null, '📋 New ABC Entries'), h('span', { className: 'font-bold text-emerald-600' }, `+${importPreview.newAbc.length}`)),
                         h('div', { className: 'flex justify-between' }, h('span', null, '🔍 New Observations'), h('span', { className: 'font-bold text-emerald-600' }, `+${importPreview.newObs.length}`)),
-                        importPreview.hasAi && h('div', { className: 'flex justify-between' }, h('span', null, '🧠 AI Analysis'), h('span', { className: 'font-bold text-blue-600' }, 'Included')),
+                        importPreview.hasAi && h('div', { className: 'flex justify-between' }, h('span', null, '🧠 AI Analysis'), h('span', { className: 'font-bold text-blue-600' }, t('behavior_lens.ui.included') || 'Included')),
                         importPreview.dupeCount > 0 && h('div', { className: 'text-amber-600 mt-1 flex items-center gap-1' }, `⚠️ ${importPreview.dupeCount} duplicate(s) will be skipped`)
                     ),
                     // Codename mismatch warning
@@ -6677,7 +6677,7 @@ Write 2-3 sentences that are professional, warm, and collaborative. Focus on par
             h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4' },
                 h('div', { className: 'flex items-center gap-2 mb-1' },
                     h('span', { className: 'text-lg' }, '📦'),
-                    h('h3', { className: 'text-sm font-black text-slate-800' }, 'Student Snapshot Exchange')
+                    h('h3', { className: 'text-sm font-black text-slate-800' }, t('behavior_lens.ui.student_snapshot_exchange') || 'Student Snapshot Exchange')
                 ),
                 h('p', { className: 'text-xs text-slate-500 leading-relaxed -mt-2' },
                     'Share behavioral data with families or colleagues via JSON files — no shared platform needed. Export your observations, send the file, and have the other party import it.'),
@@ -6765,12 +6765,12 @@ Write 2-3 sentences that are professional, warm, and collaborative. Focus on par
         const saveEdit = () => {
             setSections(prev => prev.map(s => s.id === editingId ? { ...s, content: editBuffer } : s));
             setEditingId(null);
-            addToast && addToast('Section updated', 'success');
+            addToast && addToast(t('behavior_lens.toast.section_updated') || 'Section updated', 'success');
         };
 
         const resetToDefault = () => {
             setSections(DEFAULT_SECTIONS);
-            addToast && addToast('Reset to default template', 'info');
+            addToast && addToast(t('behavior_lens.toast.reset_to_default_template') || 'Reset to default template', 'info');
         };
 
         const [aiCustomizeLoading, setAiCustomizeLoading] = useState(false);
@@ -6804,11 +6804,11 @@ Rewrite all section content to be warmer, more accessible, and family-friendly w
                         const updated = parsed.sections.find(u => u.id === s.id);
                         return updated ? { ...s, content: updated.content } : s;
                     }));
-                    if (addToast) addToast('Language customized \u2728', 'success');
+                    if (addToast) addToast(t('behavior_lens.toast.language_customized_u2728') || 'Language customized \u2728', 'success');
                 }
             } catch (err) {
                 warnLog('Consent AI customize failed:', err);
-                if (addToast) addToast('AI customization failed', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.ai_customization_failed') || 'AI customization failed', 'error');
             } finally { setAiCustomizeLoading(false); }
         };
 
@@ -6827,7 +6827,7 @@ Rewrite all section content to be warmer, more accessible, and family-friendly w
             const dateSuffix = new Date().toISOString().split('T')[0];
             a.href = url; a.download = `alloflow_consent_template_${dateSuffix}.json`; a.click();
             URL.revokeObjectURL(url);
-            addToast && addToast('Consent template exported', 'success');
+            addToast && addToast(t('behavior_lens.toast.consent_template_exported') || 'Consent template exported', 'success');
         };
 
         const handleImportTemplate = (e) => {
@@ -6838,14 +6838,14 @@ Rewrite all section content to be warmer, more accessible, and family-friendly w
                 try {
                     const data = JSON.parse(ev.target.result);
                     if (!data.alloflowConsentTemplate || !data.sections) {
-                        addToast && addToast('Not a valid consent template file', 'error');
+                        addToast && addToast(t('behavior_lens.toast.not_a_valid_consent_template_file') || 'Not a valid consent template file', 'error');
                         return;
                     }
                     setSections(data.sections);
                     if (data.schoolName) setSchoolName(data.schoolName);
                     if (data.teacherName) setTeacherName(data.teacherName);
-                    addToast && addToast('Consent template imported', 'success');
-                } catch { addToast && addToast('Failed to parse template', 'error'); }
+                    addToast && addToast(t('behavior_lens.toast.consent_template_imported') || 'Consent template imported', 'success');
+                } catch { addToast && addToast(t('behavior_lens.toast.failed_to_parse_template') || 'Failed to parse template', 'error'); }
             };
             reader.readAsText(file);
         };
@@ -6920,7 +6920,7 @@ Rewrite all section content to be warmer, more accessible, and family-friendly w
             h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4' },
                 h('div', { className: 'flex items-center gap-2 mb-1' },
                     h('span', { className: 'text-lg' }, '📋'),
-                    h('h3', { className: 'text-sm font-black text-slate-800' }, 'FERPA Consent Manager')
+                    h('h3', { className: 'text-sm font-black text-slate-800' }, t('behavior_lens.ui.ferpa_consent_manager') || 'FERPA Consent Manager')
                 ),
                 h('p', { className: 'text-xs text-slate-500 leading-relaxed -mt-2' },
                     'Customize and share a FERPA-compliant consent form for behavioral data exchange. Edit any section, then export as JSON to share with colleagues or print for parent signatures.'),
@@ -6928,12 +6928,12 @@ Rewrite all section content to be warmer, more accessible, and family-friendly w
                 h('div', { className: 'grid grid-cols-2 gap-2' },
                     h('input', {
                         value: schoolName, onChange: e => setSchoolName(e.target.value),
-                        placeholder: 'School/District Name',
+                        placeholder: t('behavior_lens.ph.schooldistrict_name') || 'School/District Name',
                         className: 'text-xs p-2.5 border border-slate-200 rounded-lg focus:border-cyan-500 outline-none'
                     }),
                     h('input', {
                         value: teacherName, onChange: e => setTeacherName(e.target.value),
-                        placeholder: 'Teacher/Specialist Name',
+                        placeholder: t('behavior_lens.ph.teacherspecialist_name') || 'Teacher/Specialist Name',
                         className: 'text-xs p-2.5 border border-slate-200 rounded-lg focus:border-cyan-500 outline-none'
                     })
                 ),
@@ -6942,7 +6942,7 @@ Rewrite all section content to be warmer, more accessible, and family-friendly w
                     h('div', { key: section.id, className: `rounded-xl border p-4 transition-all ${editingId === section.id ? 'border-cyan-400 bg-cyan-50/30 shadow-sm' : 'border-slate-100 bg-slate-50 hover:border-slate-200'}` },
                         h('div', { className: 'flex items-center justify-between mb-2' },
                             h('h4', { className: 'text-xs font-bold text-slate-700 flex items-center gap-1.5' },
-                                section.required && h('span', { className: 'text-[8px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-black uppercase' }, 'Required'),
+                                section.required && h('span', { className: 'text-[8px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-black uppercase' }, t('behavior_lens.ui.required') || 'Required'),
                                 section.title
                             ),
                             editingId !== section.id &&
@@ -6961,7 +6961,7 @@ Rewrite all section content to be warmer, more accessible, and family-friendly w
                                 }),
                                 h('div', { className: 'flex gap-2' },
                                     h('button', { onClick: saveEdit, className: 'px-3 py-1.5 bg-cyan-600 text-white rounded-lg text-[10px] font-bold hover:bg-cyan-700 transition-colors' }, '✅ Save'),
-                                    h('button', { onClick: () => setEditingId(null), className: 'px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-bold hover:bg-slate-200 transition-colors' }, 'Cancel')
+                                    h('button', { onClick: () => setEditingId(null), className: 'px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-bold hover:bg-slate-200 transition-colors' }, t('behavior_lens.ui.cancel') || 'Cancel')
                                 )
                             )
                         ) : (
@@ -7041,19 +7041,19 @@ Use plain text formatting. Be specific and actionable.`;
                 setPreAiPlan(plan);
                 const result = await callGemini(prompt, true);
                 setPlan(result);
-                if (addToast) addToast('Intervention plan generated ✨', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.intervention_plan_generated') || 'Intervention plan generated ✨', 'success');
             } catch (err) {
                 warnLog('Intervention plan failed:', err);
-                if (addToast) addToast('Generation failed', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.generation_failed') || 'Generation failed', 'error');
             } finally { setGenerating(false); }
         };
 
         return h('div', { className: 'max-w-3xl mx-auto space-y-4' },
             h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm' },
                 h('h3', { className: 'text-sm font-black text-slate-800 mb-3' }, '📋 ' + (t('behavior_lens.intervention.title') || 'AI Intervention Plan Generator')),
-                h('p', { className: 'text-xs text-slate-500 mb-4' }, 'Generate a multi-week intervention plan based on your collected ABC data and AI analysis.'),
+                h('p', { className: 'text-xs text-slate-500 mb-4' }, t('behavior_lens.ui.generate_a_multiweek_intervention_plan_based_on_yo') || 'Generate a multi-week intervention plan based on your collected ABC data and AI analysis.'),
                 h('div', { className: 'flex items-center gap-3 mb-4' },
-                    h('label', { className: 'text-xs font-bold text-slate-600' }, 'Weeks:'),
+                    h('label', { className: 'text-xs font-bold text-slate-600' }, t('behavior_lens.ui.weeks') || 'Weeks:'),
                     [2, 4, 6, 8].map(w =>
                         h('button', {
                             key: w,
@@ -7084,12 +7084,12 @@ Use plain text formatting. Be specific and actionable.`;
                 }),
                 h('div', { className: 'flex gap-2 mt-3' },
                     h('button', {
-                        onClick: () => { navigator.clipboard.writeText(plan); if (addToast) addToast('Copied!', 'success'); },
+                        onClick: () => { navigator.clipboard.writeText(plan); if (addToast) addToast(t('behavior_lens.toast.copied') || 'Copied!', 'success'); },
                         className: 'px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-bold hover:bg-slate-200'
                     }, '📋 Copy'),
                     h('button', { onClick: () => window.print(), className: 'px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-bold hover:bg-slate-200' }, '🖨️ Print'),
                     preAiPlan !== null && h('button', {
-                        onClick: () => { setPlan(preAiPlan); setPreAiPlan(null); if (addToast) addToast('Reverted to previous', 'info'); },
+                        onClick: () => { setPlan(preAiPlan); setPreAiPlan(null); if (addToast) addToast(t('behavior_lens.toast.reverted_to_previous') || 'Reverted to previous', 'info'); },
                         className: 'px-4 py-2 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg text-sm font-bold hover:bg-amber-100'
                     }, '↩️ Undo AI')
                 )
@@ -7137,19 +7137,19 @@ Use professional, objective language. Do NOT use the student codename — use "t
                 setPreAiNarrative(narrative);
                 const result = await callGemini(prompt, true);
                 setNarrative(result);
-                if (addToast) addToast('Progress narrative generated ✨', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.progress_narrative_generated') || 'Progress narrative generated ✨', 'success');
             } catch (err) {
                 warnLog('Progress narrative failed:', err);
-                if (addToast) addToast('Generation failed', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.generation_failed') || 'Generation failed', 'error');
             } finally { setGenerating(false); }
         };
 
         return h('div', { className: 'max-w-3xl mx-auto space-y-4' },
             h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm' },
                 h('h3', { className: 'text-sm font-black text-slate-800 mb-3' }, '📈 ' + (t('behavior_lens.progress.title') || 'Progress Narrative Generator')),
-                h('p', { className: 'text-xs text-slate-500 mb-4' }, 'Generate IEP-ready progress monitoring paragraphs from your accumulated behavioral data.'),
+                h('p', { className: 'text-xs text-slate-500 mb-4' }, t('behavior_lens.ui.generate_iepready_progress_monitoring_paragraphs_f') || 'Generate IEP-ready progress monitoring paragraphs from your accumulated behavioral data.'),
                 h('div', { className: 'flex items-center gap-3 mb-3' },
-                    h('label', { className: 'text-xs font-bold text-slate-600' }, 'Style:'),
+                    h('label', { className: 'text-xs font-bold text-slate-600' }, t('behavior_lens.ui.style') || 'Style:'),
                     ['brief', 'detailed'].map(s =>
                         h('button', {
                             key: s,
@@ -7180,12 +7180,12 @@ Use professional, objective language. Do NOT use the student codename — use "t
                 }),
                 h('div', { className: 'flex gap-2 mt-3' },
                     h('button', {
-                        onClick: () => { navigator.clipboard.writeText(narrative); if (addToast) addToast('Copied!', 'success'); },
+                        onClick: () => { navigator.clipboard.writeText(narrative); if (addToast) addToast(t('behavior_lens.toast.copied') || 'Copied!', 'success'); },
                         className: 'px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-bold hover:bg-slate-200'
                     }, '📋 Copy'),
                     h('button', { onClick: () => window.print(), className: 'px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-bold hover:bg-slate-200' }, '🖨️ Print'),
                     preAiNarrative !== null && h('button', {
-                        onClick: () => { setNarrative(preAiNarrative); setPreAiNarrative(null); if (addToast) addToast('Reverted to previous', 'info'); },
+                        onClick: () => { setNarrative(preAiNarrative); setPreAiNarrative(null); if (addToast) addToast(t('behavior_lens.toast.reverted_to_previous') || 'Reverted to previous', 'info'); },
                         className: 'px-4 py-2 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg text-sm font-bold hover:bg-amber-100'
                     }, '↩️ Undo AI')
                 )
@@ -7310,7 +7310,7 @@ Use professional, objective language. Do NOT use the student codename — use "t
                     observations: scenario.observations,
                     name: scenario.title
                 });
-                if (addToast) addToast(`Loaded: ${scenario.title}`, 'success');
+                if (addToast) addToast(t('behavior_lens.toast.loaded_n') || `Loaded: ${scenario.title}`, 'success');
             }
         };
 
@@ -7365,11 +7365,11 @@ Generate 10 entries and 2 observations. Include a mix of challenging behaviors A
                         observations: data.observations || [],
                         name: data.title || 'AI-Generated Scenario'
                     });
-                    if (addToast) addToast(`Generated: ${data.title || 'Custom Scenario'} ✨`, 'success');
+                    if (addToast) addToast(t('behavior_lens.toast.generated_n') || `Generated: ${data.title || 'Custom Scenario'} ✨`, 'success');
                 }
             } catch (err) {
                 warnLog('Custom scenario generation failed:', err);
-                if (addToast) addToast('Scenario generation failed — try again', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.scenario_generation_failed_try_again') || 'Scenario generation failed — try again', 'error');
             } finally { setGenerating(false); }
         };
 
@@ -7377,7 +7377,7 @@ Generate 10 entries and 2 observations. Include a mix of challenging behaviors A
             // Header
             h('div', { className: 'text-center py-4' },
                 h('div', { className: 'text-4xl mb-2' }, '🎓'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'Practice Sandbox'),
+                h('h2', { className: 'text-lg font-black text-slate-800' }, t('behavior_lens.ui.practice_sandbox') || 'Practice Sandbox'),
                 h('p', { className: 'text-xs text-slate-500 max-w-lg mx-auto mt-1' },
                     'Load realistic but FICTIONAL student data to practice ABA data collection and analysis. Perfect for professional development, pre-service training, or learning the tool before working with real students.'
                 ),
@@ -7387,7 +7387,7 @@ Generate 10 entries and 2 observations. Include a mix of challenging behaviors A
             // Pre-built scenarios
             h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm' },
                 h('h3', { className: 'text-sm font-black text-slate-800 mb-3' }, '📚 Classic ABA Scenarios'),
-                h('p', { className: 'text-xs text-slate-500 mb-4' }, 'Pre-built scenarios covering the 4 functions of behavior. Work offline — no AI needed.'),
+                h('p', { className: 'text-xs text-slate-500 mb-4' }, t('behavior_lens.ui.prebuilt_scenarios_covering_the_4_functions_of_beh') || 'Pre-built scenarios covering the 4 functions of behavior. Work offline — no AI needed.'),
                 h('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-3' },
                     prebuiltScenarios.map(sc =>
                         h('div', {
@@ -7417,10 +7417,10 @@ Generate 10 entries and 2 observations. Include a mix of challenging behaviors A
             // AI Custom Scenario Generator
             callGemini && h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm' },
                 h('h3', { className: 'text-sm font-black text-slate-800 mb-3' }, '🤖 AI Custom Scenario'),
-                h('p', { className: 'text-xs text-slate-500 mb-4' }, 'Generate a unique scenario tailored to your training needs.'),
+                h('p', { className: 'text-xs text-slate-500 mb-4' }, t('behavior_lens.ui.generate_a_unique_scenario_tailored_to_your_traini') || 'Generate a unique scenario tailored to your training needs.'),
                 h('div', { className: 'grid grid-cols-2 gap-3 mb-3' },
                     h('div', null,
-                        h('label', { className: 'text-[10px] font-bold text-slate-500 block mb-1' }, 'Behavioral Function'),
+                        h('label', { className: 'text-[10px] font-bold text-slate-500 block mb-1' }, t('behavior_lens.ui.behavioral_function') || 'Behavioral Function'),
                         h('select', {
                             value: customFunc,
                             onChange: e => setCustomFunc(e.target.value),
@@ -7428,7 +7428,7 @@ Generate 10 entries and 2 observations. Include a mix of challenging behaviors A
                         }, functions.map(f => h('option', { key: f.id, value: f.id }, f.label)))
                     ),
                     h('div', null,
-                        h('label', { className: 'text-[10px] font-bold text-slate-500 block mb-1' }, 'Grade Band'),
+                        h('label', { className: 'text-[10px] font-bold text-slate-500 block mb-1' }, t('behavior_lens.ui.grade_band') || 'Grade Band'),
                         h('select', {
                             value: customGrade,
                             onChange: e => setCustomGrade(e.target.value),
@@ -7437,12 +7437,12 @@ Generate 10 entries and 2 observations. Include a mix of challenging behaviors A
                     )
                 ),
                 h('div', { className: 'mb-3' },
-                    h('label', { className: 'text-[10px] font-bold text-slate-500 block mb-1' }, 'Additional Context (optional)'),
+                    h('label', { className: 'text-[10px] font-bold text-slate-500 block mb-1' }, t('behavior_lens.ui.additional_context_optional') || 'Additional Context (optional)'),
                     h('input', {
                         type: 'text',
                         value: customContext,
                         onChange: e => setCustomContext(e.target.value),
-                        placeholder: 'e.g. "student with autism", "co-occurring ADHD", "new to the school"',
+                        placeholder: t('behavior_lens.ph.eg_student_with_autism_cooccurring_adhd_new_to_the') || 'e.g. "student with autism", "co-occurring ADHD", "new to the school"',
                         className: 'w-full px-3 py-2 border border-slate-200 rounded-lg text-sm'
                     })
                 ),
@@ -7500,14 +7500,14 @@ Generate 10 entries and 2 observations. Include a mix of challenging behaviors A
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '📖'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'ABA Concept Glossary'),
+                h('h2', { className: 'text-lg font-black text-slate-800' }, t('behavior_lens.ui.aba_concept_glossary') || 'ABA Concept Glossary'),
                 h('p', { className: 'text-xs text-slate-500 mt-1' }, `${terms.length} essential terms for understanding Applied Behavior Analysis`)
             ),
             h('input', {
                 type: 'text',
                 value: search,
                 onChange: e => setSearch(e.target.value),
-                placeholder: '🔍 Search terms... (e.g. "reinforcement", "FBA", "data")',
+                placeholder: t('behavior_lens.ph.search_terms_eg_reinforcement_fba_data') || '🔍 Search terms... (e.g. "reinforcement", "FBA", "data")',
                 className: 'w-full px-4 py-3 border border-slate-200 rounded-xl text-sm shadow-sm focus:ring-2 focus:ring-blue-300 outline-none'
             }),
             // Category legend
@@ -7952,7 +7952,7 @@ Based on this progress, recommend the ONE most important next action. Be specifi
                 aiRec && h('div', { className: 'bg-white rounded-xl border-2 border-purple-200 p-4 shadow-sm' },
                     h('div', { className: 'flex items-center gap-2 mb-2' },
                         h('span', { className: 'text-sm' }, '🤖'),
-                        h('span', { className: 'text-xs font-black text-purple-700' }, 'AlloBot Recommendation')
+                        h('span', { className: 'text-xs font-black text-purple-700' }, t('behavior_lens.ui.allobot_recommendation') || 'AlloBot Recommendation')
                     ),
                     h('p', { className: 'text-xs text-slate-700 leading-relaxed whitespace-pre-wrap' }, aiRec)
                 )
@@ -8007,10 +8007,10 @@ Keep it concise and encouraging. Use plain language.`;
 
                 const result = await callGemini(prompt, true);
                 setReport(result);
-                if (addToast) addToast('Quality check complete ✅', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.quality_check_complete') || 'Quality check complete ✅', 'success');
             } catch (err) {
                 warnLog('Quality check failed:', err);
-                if (addToast) addToast('Quality check failed', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.quality_check_failed') || 'Quality check failed', 'error');
             } finally { setChecking(false); }
         };
 
@@ -8040,8 +8040,8 @@ Keep it concise and encouraging. Use plain language.`;
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '✅'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'Data Quality Checker'),
-                h('p', { className: 'text-xs text-slate-500 mt-1' }, 'Review your ABC data collection for completeness and quality')
+                h('h2', { className: 'text-lg font-black text-slate-800' }, t('behavior_lens.ui.data_quality_checker') || 'Data Quality Checker'),
+                h('p', { className: 'text-xs text-slate-500 mt-1' }, t('behavior_lens.ui.review_your_abc_data_collection_for_completeness_a') || 'Review your ABC data collection for completeness and quality')
             ),
             // Quick local checks
             quickChecks.length > 0 && h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm' },
@@ -8057,7 +8057,7 @@ Keep it concise and encouraging. Use plain language.`;
             ),
             abcEntries.length === 0 && h('div', { className: 'text-center py-8 bg-white rounded-xl border border-slate-200' },
                 h('div', { className: 'text-3xl mb-2' }, '📭'),
-                h('p', { className: 'text-sm text-slate-500' }, 'No ABC entries to check yet. Start collecting data first!')
+                h('p', { className: 'text-sm text-slate-500' }, t('behavior_lens.ui.no_abc_entries_to_check_yet_start_collecting_data') || 'No ABC entries to check yet. Start collecting data first!')
             ),
             // AI deep check
             callGemini && abcEntries.length > 0 && h('button', {
@@ -8069,7 +8069,7 @@ Keep it concise and encouraging. Use plain language.`;
                 h('div', { className: 'text-xs text-slate-700 whitespace-pre-wrap leading-relaxed' }, report),
                 h('div', { className: 'flex gap-2 mt-4' },
                     h('button', {
-                        onClick: () => { navigator.clipboard.writeText(report); if (addToast) addToast('Copied!', 'success'); },
+                        onClick: () => { navigator.clipboard.writeText(report); if (addToast) addToast(t('behavior_lens.toast.copied') || 'Copied!', 'success'); },
                         className: 'px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-[10px] font-bold hover:bg-green-200'
                     }, '📋 Copy Report')
                 )
@@ -8128,7 +8128,7 @@ Keep it concise and encouraging. Use plain language.`;
             return h('div', { className: 'max-w-2xl mx-auto text-center py-12' },
                 h('div', { className: 'text-4xl mb-3' }, '📊'),
                 h('h2', { className: 'text-lg font-black text-slate-800 mb-2' }, t('behavior_lens.trend_dashboard') || 'Behavior Trend Dashboard'),
-                h('p', { className: 'text-sm text-slate-500' }, 'Add ABC entries to see visual trend data.')
+                h('p', { className: 'text-sm text-slate-500' }, t('behavior_lens.ui.add_abc_entries_to_see_visual_trend_data') || 'Add ABC entries to see visual trend data.')
             );
         }
 
@@ -8234,9 +8234,9 @@ Keep it concise and encouraging. Use plain language.`;
                     )
                 ),
                 h('div', { className: 'flex items-center gap-4 mt-3 text-[9px] text-slate-400' },
-                    h('span', null, 'Low'), h('div', { className: 'w-4 h-3 bg-green-200 rounded' }),
+                    h('span', null, t('behavior_lens.ui.low') || 'Low'), h('div', { className: 'w-4 h-3 bg-green-200 rounded' }),
                     h('div', { className: 'w-4 h-3 bg-amber-300 rounded' }),
-                    h('div', { className: 'w-4 h-3 bg-red-400 rounded' }), h('span', null, 'High')
+                    h('div', { className: 'w-4 h-3 bg-red-400 rounded' }), h('span', null, t('behavior_lens.ui.high') || 'High')
                 )
             )
         );
@@ -8281,13 +8281,13 @@ Keep it concise and encouraging. Use plain language.`;
                 timestamp: new Date().toISOString(),
             }, ...prev]);
             setNewNote('');
-            if (addToast) addToast('Note added', 'success');
+            if (addToast) addToast(t('behavior_lens.toast.note_added') || 'Note added', 'success');
         };
 
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '🤝'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'Team Collaboration Notes'),
+                h('h2', { className: 'text-lg font-black text-slate-800' }, t('behavior_lens.ui.team_collaboration_notes') || 'Team Collaboration Notes'),
                 h('p', { className: 'text-xs text-slate-500 mt-1' }, `Shared notes for ${studentName || 'the student'} — all team members contribute`)
             ),
             // Add note
@@ -8304,7 +8304,7 @@ Keep it concise and encouraging. Use plain language.`;
                         value: newNote,
                         onChange: e => setNewNote(e.target.value),
                         onKeyDown: e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAdd(); } },
-                        placeholder: 'Add a team note... (Shift+Enter for new line)',
+                        placeholder: t('behavior_lens.ph.add_a_team_note_shiftenter_for_new_line') || 'Add a team note... (Shift+Enter for new line)',
                         rows: 2,
                         className: 'flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none outline-none focus:ring-2 focus:ring-indigo-300'
                     }),
@@ -8319,7 +8319,7 @@ Keep it concise and encouraging. Use plain language.`;
             notes.length === 0
                 ? h('div', { className: 'text-center py-8 bg-white rounded-xl border border-slate-200' },
                     h('div', { className: 'text-3xl mb-2' }, '💬'),
-                    h('p', { className: 'text-sm text-slate-500' }, 'No team notes yet. Start the conversation!')
+                    h('p', { className: 'text-sm text-slate-500' }, t('behavior_lens.ui.no_team_notes_yet_start_the_conversation') || 'No team notes yet. Start the conversation!')
                 )
                 : h('div', { className: 'space-y-3' },
                     notes.map(note => {
@@ -8437,40 +8437,40 @@ Keep the language strengths-based and restorative. Use "your child" not the code
                 setPreAiPacket(packet);
                 const result = await callGemini(prompt, true);
                 setPacket(result);
-                if (addToast) addToast('IEP prep packet generated ✨', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.iep_prep_packet_generated') || 'IEP prep packet generated ✨', 'success');
             } catch (err) {
                 warnLog('IEP prep generation failed:', err);
-                if (addToast) addToast('Generation failed', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.generation_failed') || 'Generation failed', 'error');
             } finally { setGenerating(false); }
         };
 
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '📄'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'IEP Meeting Prep'),
-                h('p', { className: 'text-xs text-slate-500 mt-1' }, 'AI-generated meeting preparation packet from your behavioral data')
+                h('h2', { className: 'text-lg font-black text-slate-800' }, t('behavior_lens.ui.iep_meeting_prep') || 'IEP Meeting Prep'),
+                h('p', { className: 'text-xs text-slate-500 mt-1' }, t('behavior_lens.ui.aigenerated_meeting_preparation_packet_from_your_b') || 'AI-generated meeting preparation packet from your behavioral data')
             ),
             // Stats overview - expanded grid
             h('div', { className: 'grid grid-cols-5 gap-2' },
                 h('div', { className: 'bg-white rounded-xl border border-slate-200 p-3 text-center shadow-sm' },
                     h('div', { className: 'text-xl font-black text-indigo-600' }, abcEntries.length),
-                    h('div', { className: 'text-[9px] text-slate-500 font-bold' }, 'ABC Entries')
+                    h('div', { className: 'text-[9px] text-slate-500 font-bold' }, t('behavior_lens.ui.abc_entries') || 'ABC Entries')
                 ),
                 h('div', { className: 'bg-white rounded-xl border border-slate-200 p-3 text-center shadow-sm' },
                     h('div', { className: 'text-xl font-black text-emerald-600' }, observationSessions.length),
-                    h('div', { className: 'text-[9px] text-slate-500 font-bold' }, 'Observations')
+                    h('div', { className: 'text-[9px] text-slate-500 font-bold' }, t('behavior_lens.ui.observations') || 'Observations')
                 ),
                 h('div', { className: 'bg-white rounded-xl border border-slate-200 p-3 text-center shadow-sm' },
                     h('div', { className: 'text-xl font-black text-purple-600' }, aiAnalysis ? '✅' : '—'),
-                    h('div', { className: 'text-[9px] text-slate-500 font-bold' }, 'AI Analysis')
+                    h('div', { className: 'text-[9px] text-slate-500 font-bold' }, t('behavior_lens.ui.ai_analysis') || 'AI Analysis')
                 ),
                 h('div', { className: `bg-white rounded-xl border p-3 text-center shadow-sm ${graphExport ? 'border-indigo-200' : 'border-slate-200'}` },
                     h('div', { className: `text-xl font-black ${graphExport ? 'text-indigo-600' : 'text-slate-300'}` }, graphExport ? (graphExport.phaseAnalysis?.length || 0) : '—'),
-                    h('div', { className: 'text-[9px] text-slate-500 font-bold' }, 'Graph Phases')
+                    h('div', { className: 'text-[9px] text-slate-500 font-bold' }, t('behavior_lens.ui.graph_phases') || 'Graph Phases')
                 ),
                 h('div', { className: `bg-white rounded-xl border p-3 text-center shadow-sm ${effectSizeResults ? 'border-purple-200' : 'border-slate-200'}` },
                     h('div', { className: `text-xl font-black ${effectSizeResults ? 'text-purple-600' : 'text-slate-300'}` }, effectSizeResults ? '✅' : '—'),
-                    h('div', { className: 'text-[9px] text-slate-500 font-bold' }, 'Effect Sizes')
+                    h('div', { className: 'text-[9px] text-slate-500 font-bold' }, t('behavior_lens.ui.effect_sizes') || 'Effect Sizes')
                 )
             ),
 
@@ -8492,18 +8492,18 @@ Keep the language strengths-based and restorative. Use "your child" not the code
                 disabled: generating || abcEntries.length === 0,
                 className: 'w-full py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl disabled:opacity-40 transition-all'
             }, generating ? '⏳ Preparing Packet...' : `🧠 Generate IEP Prep Packet${graphExport || effectSizeResults ? ' (with graph/effect data)' : ''}`),
-            abcEntries.length === 0 && h('p', { className: 'text-[10px] text-slate-400 text-center' }, 'Collect some ABC data first to generate a meaningful packet.'),
+            abcEntries.length === 0 && h('p', { className: 'text-[10px] text-slate-400 text-center' }, t('behavior_lens.ui.collect_some_abc_data_first_to_generate_a_meaningf') || 'Collect some ABC data first to generate a meaningful packet.'),
             // Packet display
             packet && h('div', { className: 'bg-white rounded-xl border border-blue-200 p-5 shadow-sm' },
                 h('div', { className: 'text-xs text-slate-700 whitespace-pre-wrap leading-relaxed' }, packet),
                 h('div', { className: 'flex gap-2 mt-4 flex-wrap' },
                     h('button', {
-                        onClick: () => { navigator.clipboard.writeText(packet); if (addToast) addToast('Copied!', 'success'); },
+                        onClick: () => { navigator.clipboard.writeText(packet); if (addToast) addToast(t('behavior_lens.toast.copied') || 'Copied!', 'success'); },
                         className: 'px-4 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm font-bold hover:bg-blue-200'
                     }, '📋 Copy'),
                     h('button', { onClick: () => window.print(), className: 'px-4 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm font-bold hover:bg-blue-200' }, '🖨️ Print'),
                     preAiPacket !== null && h('button', {
-                        onClick: () => { setPacket(preAiPacket); setPreAiPacket(null); if (addToast) addToast('Reverted', 'info'); },
+                        onClick: () => { setPacket(preAiPacket); setPreAiPacket(null); if (addToast) addToast(t('behavior_lens.toast.reverted') || 'Reverted', 'info'); },
                         className: 'px-4 py-2 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg text-sm font-bold hover:bg-amber-100'
                     }, '↩️ Undo AI')
                 )
@@ -8597,10 +8597,10 @@ Be specific with percentages where possible. Keep language strengths-based and a
 
                 const result = await callGemini(prompt, true);
                 setInsights(result);
-                if (addToast) addToast('Predictive analysis complete ✨', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.predictive_analysis_complete') || 'Predictive analysis complete ✨', 'success');
             } catch (err) {
                 warnLog('Predictive analysis failed:', err);
-                if (addToast) addToast('Analysis failed', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.analysis_failed') || 'Analysis failed', 'error');
             } finally { setAnalyzing(false); }
         };
 
@@ -8609,8 +8609,8 @@ Be specific with percentages where possible. Keep language strengths-based and a
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '🔮'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'Predictive Insights'),
-                h('p', { className: 'text-xs text-slate-500 mt-1' }, 'AI-powered pattern analysis with proactive prevention strategies')
+                h('h2', { className: 'text-lg font-black text-slate-800' }, t('behavior_lens.ui.predictive_insights') || 'Predictive Insights'),
+                h('p', { className: 'text-xs text-slate-500 mt-1' }, t('behavior_lens.ui.aipowered_pattern_analysis_with_proactive_preventi') || 'AI-powered pattern analysis with proactive prevention strategies')
             ),
             // Local patterns
             localPatterns.length > 0 && h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm' },
@@ -8626,7 +8626,7 @@ Be specific with percentages where possible. Keep language strengths-based and a
             ),
             abcEntries.length < 3 && h('div', { className: 'text-center py-8 bg-white rounded-xl border border-slate-200' },
                 h('div', { className: 'text-3xl mb-2' }, '📊'),
-                h('p', { className: 'text-sm text-slate-500' }, 'Need at least 3 ABC entries for pattern detection.')
+                h('p', { className: 'text-sm text-slate-500' }, t('behavior_lens.ui.need_at_least_3_abc_entries_for_pattern_detection') || 'Need at least 3 ABC entries for pattern detection.')
             ),
             // AI deep analysis
             callGemini && abcEntries.length >= 3 && h('button', {
@@ -8638,7 +8638,7 @@ Be specific with percentages where possible. Keep language strengths-based and a
                 h('div', { className: 'text-xs text-slate-700 whitespace-pre-wrap leading-relaxed' }, insights),
                 h('div', { className: 'flex gap-2 mt-4' },
                     h('button', {
-                        onClick: () => { navigator.clipboard.writeText(insights); if (addToast) addToast('Copied!', 'success'); },
+                        onClick: () => { navigator.clipboard.writeText(insights); if (addToast) addToast(t('behavior_lens.toast.copied') || 'Copied!', 'success'); },
                         className: 'px-3 py-1.5 bg-purple-100 text-purple-700 rounded-lg text-[10px] font-bold hover:bg-purple-200'
                     }, '📋 Copy')
                 )
@@ -8717,22 +8717,22 @@ Be specific with percentages where possible. Keep language strengths-based and a
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '🎮'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'My Progress Quest'),
-                h('p', { className: 'text-xs text-slate-500 mt-1' }, 'Track your feelings, earn badges, and build streaks!')
+                h('h2', { className: 'text-lg font-black text-slate-800' }, t('behavior_lens.ui.my_progress_quest') || 'My Progress Quest'),
+                h('p', { className: 'text-xs text-slate-500 mt-1' }, t('behavior_lens.ui.track_your_feelings_earn_badges_and_build_streaks') || 'Track your feelings, earn badges, and build streaks!')
             ),
             // Stats bar
             h('div', { className: 'grid grid-cols-3 gap-3' },
                 h('div', { className: 'bg-gradient-to-br from-orange-400 to-red-500 rounded-xl p-4 text-center text-white shadow-lg' },
                     h('div', { className: 'text-2xl font-black' }, `${streak}🔥`),
-                    h('div', { className: 'text-[10px] font-bold opacity-80' }, 'Day Streak')
+                    h('div', { className: 'text-[10px] font-bold opacity-80' }, t('behavior_lens.ui.day_streak') || 'Day Streak')
                 ),
                 h('div', { className: 'bg-gradient-to-br from-blue-400 to-indigo-500 rounded-xl p-4 text-center text-white shadow-lg' },
                     h('div', { className: 'text-2xl font-black' }, checkins.length),
-                    h('div', { className: 'text-[10px] font-bold opacity-80' }, 'Check-Ins')
+                    h('div', { className: 'text-[10px] font-bold opacity-80' }, t('behavior_lens.ui.checkins') || 'Check-Ins')
                 ),
                 h('div', { className: 'bg-gradient-to-br from-amber-400 to-yellow-500 rounded-xl p-4 text-center text-white shadow-lg' },
                     h('div', { className: 'text-2xl font-black' }, badges.length),
-                    h('div', { className: 'text-[10px] font-bold opacity-80' }, 'Badges')
+                    h('div', { className: 'text-[10px] font-bold opacity-80' }, t('behavior_lens.ui.badges') || 'Badges')
                 )
             ),
             // Mood check-in
@@ -8752,7 +8752,7 @@ Be specific with percentages where possible. Keep language strengths-based and a
                     h('textarea', {
                         value: reflection,
                         onChange: e => setReflection(e.target.value),
-                        placeholder: 'What made you feel this way? (optional)',
+                        placeholder: t('behavior_lens.ph.what_made_you_feel_this_way_optional') || 'What made you feel this way? (optional)',
                         rows: 2,
                         className: 'w-full px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none outline-none focus:ring-2 focus:ring-blue-300'
                     }),
@@ -8840,7 +8840,7 @@ Be specific with percentages where possible. Keep language strengths-based and a
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '🌍'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'Cultural Context Reflection'),
+                h('h2', { className: 'text-lg font-black text-slate-800' }, t('behavior_lens.ui.cultural_context_reflection') || 'Cultural Context Reflection'),
                 h('p', { className: 'text-xs text-slate-500 mt-1' }, `Pause and reflect before interpreting behavior for ${studentName || 'your student'}`)
             ),
             // Progress
@@ -8885,7 +8885,7 @@ Be specific with percentages where possible. Keep language strengths-based and a
                 yesCount >= 6 && h('p', { className: 'text-xs text-teal-700' }, '💚 Strong cultural awareness. You\'ve thoughtfully considered multiple perspectives before proceeding.'),
                 yesCount >= 3 && yesCount < 6 && h('p', { className: 'text-xs text-teal-700' }, '💛 Good start! Consider revisiting the "Not Yet" items before finalizing your analysis.'),
                 yesCount < 3 && h('p', { className: 'text-xs text-teal-700' }, '🧡 Important reflection needed. Consider connecting with the family and colleagues before interpreting behavior.'),
-                h('p', { className: 'text-[10px] text-teal-600 mt-2 italic' }, 'Remember: cultural humility is a lifelong practice. Every reflection makes you a more equitable practitioner.')
+                h('p', { className: 'text-[10px] text-teal-600 mt-2 italic' }, t('behavior_lens.ui.remember_cultural_humility_is_a_lifelong_practice') || 'Remember: cultural humility is a lifelong practice. Every reflection makes you a more equitable practitioner.')
             )
         );
     };
@@ -8934,18 +8934,18 @@ Provide:
 
                 const result = await callGemini(prompt, true);
                 setOutput(result);
-                if (addToast) addToast('Reframed through strengths lens ✨', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.reframed_through_strengths_lens') || 'Reframed through strengths lens ✨', 'success');
             } catch (err) {
                 warnLog('Reframe failed:', err);
-                if (addToast) addToast('Reframe failed', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.reframe_failed') || 'Reframe failed', 'error');
             } finally { setLoading(false); }
         };
 
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '✨'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'Strength-Based Reframe'),
-                h('p', { className: 'text-xs text-slate-500 mt-1' }, 'Transform deficit-based language into asset-focused descriptions')
+                h('h2', { className: 'text-lg font-black text-slate-800' }, t('behavior_lens.ui.strengthbased_reframe') || 'Strength-Based Reframe'),
+                h('p', { className: 'text-xs text-slate-500 mt-1' }, t('behavior_lens.ui.transform_deficitbased_language_into_assetfocused') || 'Transform deficit-based language into asset-focused descriptions')
             ),
             // Input
             h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm' },
@@ -8953,7 +8953,7 @@ Provide:
                 h('textarea', {
                     value: input,
                     onChange: e => setInput(e.target.value),
-                    placeholder: 'e.g., "Student is defiant and refuses to follow directions."',
+                    placeholder: t('behavior_lens.ph.eg_student_is_defiant_and_refuses_to_follow_direct') || 'e.g., "Student is defiant and refuses to follow directions."',
                     rows: 3,
                     className: 'w-full px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none outline-none focus:ring-2 focus:ring-teal-300'
                 }),
@@ -8968,7 +8968,7 @@ Provide:
                 h('div', { className: 'text-xs text-slate-700 whitespace-pre-wrap leading-relaxed' }, output),
                 h('div', { className: 'flex gap-2 mt-3' },
                     h('button', {
-                        onClick: () => { navigator.clipboard.writeText(output); if (addToast) addToast('Copied!', 'success'); },
+                        onClick: () => { navigator.clipboard.writeText(output); if (addToast) addToast(t('behavior_lens.toast.copied') || 'Copied!', 'success'); },
                         className: 'px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg text-[10px] font-bold hover:bg-emerald-200'
                     }, '📋 Copy Reframe'),
                     h('button', {
@@ -9076,10 +9076,10 @@ Remember: this is about growth, not guilt. Keep the tone supportive and empoweri
 
                 const result = await callGemini(prompt, true);
                 setAiReport(result);
-                if (addToast) addToast('Bias reflection complete', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.bias_reflection_complete') || 'Bias reflection complete', 'success');
             } catch (err) {
                 warnLog('Bias analysis failed:', err);
-                if (addToast) addToast('Analysis failed', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.analysis_failed') || 'Analysis failed', 'error');
             } finally { setAnalyzing(false); }
         };
 
@@ -9089,11 +9089,11 @@ Remember: this is about growth, not guilt. Keep the tone supportive and empoweri
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '🪞'),
                 h('h2', { className: 'text-lg font-black text-slate-800' }, DualLabel('Bias Reflection Monitor')),
-                h('p', { className: 'text-xs text-slate-500 mt-1' }, 'Gently surfaces patterns for reflection — growth, not guilt')
+                h('p', { className: 'text-xs text-slate-500 mt-1' }, t('behavior_lens.ui.gently_surfaces_patterns_for_reflection_growth_not') || 'Gently surfaces patterns for reflection — growth, not guilt')
             ),
             abcEntries.length < 5 && h('div', { className: 'text-center py-8 bg-white rounded-xl border border-slate-200' },
                 h('div', { className: 'text-3xl mb-2' }, '📊'),
-                h('p', { className: 'text-sm text-slate-500' }, 'Need at least 5 ABC entries for pattern analysis.')
+                h('p', { className: 'text-sm text-slate-500' }, t('behavior_lens.ui.need_at_least_5_abc_entries_for_pattern_analysis') || 'Need at least 5 ABC entries for pattern analysis.')
             ),
             localFlags.length > 0 && h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm' },
                 h('h3', { className: 'text-sm font-black text-slate-800 mb-3' }, '⚡ Auto-Detected Patterns'),
@@ -9114,7 +9114,7 @@ Remember: this is about growth, not guilt. Keep the tone supportive and empoweri
             aiReport && h('div', { className: 'bg-white rounded-xl border border-teal-200 p-5 shadow-sm' },
                 h('div', { className: 'text-xs text-slate-700 whitespace-pre-wrap leading-relaxed' }, aiReport),
                 h('button', {
-                    onClick: () => { navigator.clipboard.writeText(aiReport); if (addToast) addToast('Copied!', 'success'); },
+                    onClick: () => { navigator.clipboard.writeText(aiReport); if (addToast) addToast(t('behavior_lens.toast.copied') || 'Copied!', 'success'); },
                     className: 'mt-3 px-3 py-1.5 bg-teal-100 text-teal-700 rounded-lg text-[10px] font-bold hover:bg-teal-200'
                 }, '📋 Copy Report')
             )
@@ -9179,8 +9179,8 @@ Remember: this is about growth, not guilt. Keep the tone supportive and empoweri
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '🤝'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'Restorative Conversation Guide'),
-                h('p', { className: 'text-xs text-slate-500 mt-1' }, 'Step-by-step scripts for healing relationships and building community')
+                h('h2', { className: 'text-lg font-black text-slate-800' }, t('behavior_lens.ui.restorative_conversation_guide') || 'Restorative Conversation Guide'),
+                h('p', { className: 'text-xs text-slate-500 mt-1' }, t('behavior_lens.ui.stepbystep_scripts_for_healing_relationships_and_b') || 'Step-by-step scripts for healing relationships and building community')
             ),
             // Guide selector
             !activeGuide && h('div', { className: 'space-y-3' },
@@ -9259,7 +9259,7 @@ Remember: this is about growth, not guilt. Keep the tone supportive and empoweri
                 strength: newStrength,
             }]);
             setNewName('');
-            if (addToast) addToast('Connection added', 'success');
+            if (addToast) addToast(t('behavior_lens.toast.connection_added') || 'Connection added', 'success');
         };
 
         const roleColors = { amber: 'bg-amber-100 text-amber-700 border-amber-200', green: 'bg-green-100 text-green-700 border-green-200', purple: 'bg-purple-100 text-purple-700 border-purple-200', blue: 'bg-blue-100 text-blue-700 border-blue-200', orange: 'bg-orange-100 text-orange-700 border-orange-200' };
@@ -9273,7 +9273,7 @@ Remember: this is about growth, not guilt. Keep the tone supportive and empoweri
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '🗺️'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'Relationship Map'),
+                h('h2', { className: 'text-lg font-black text-slate-800' }, t('behavior_lens.ui.relationship_map') || 'Relationship Map'),
                 h('p', { className: 'text-xs text-slate-500 mt-1' }, `Connection ecosystem for ${studentName || 'your student'}`)
             ),
             // Add form
@@ -9284,7 +9284,7 @@ Remember: this is about growth, not guilt. Keep the tone supportive and empoweri
                         value: newName,
                         onChange: e => setNewName(e.target.value),
                         onKeyDown: e => { if (e.key === 'Enter') handleAdd(); },
-                        placeholder: 'Person\'s name or role',
+                        placeholder: t('behavior_lens.ph.person') || 'Person\'s name or role',
                         className: 'flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-purple-300'
                     }),
                     h('button', {
@@ -9312,7 +9312,7 @@ Remember: this is about growth, not guilt. Keep the tone supportive and empoweri
             connections.length === 0
                 ? h('div', { className: 'text-center py-8 bg-white rounded-xl border border-slate-200' },
                     h('div', { className: 'text-3xl mb-2' }, '🗺️'),
-                    h('p', { className: 'text-sm text-slate-500' }, 'Add connections to build the relationship map.')
+                    h('p', { className: 'text-sm text-slate-500' }, t('behavior_lens.ui.add_connections_to_build_the_relationship_map') || 'Add connections to build the relationship map.')
                 )
                 : h('div', { className: 'space-y-3' },
                     // Center student
@@ -9402,7 +9402,7 @@ Remember: this is about growth, not guilt. Keep the tone supportive and empoweri
                 translated: null,
             }, ...prev]);
             setObservation('');
-            if (addToast) addToast('Family voice entry added ✨', 'success');
+            if (addToast) addToast(t('behavior_lens.toast.family_voice_entry_added') || 'Family voice entry added ✨', 'success');
         };
 
         const handleTranslate = async (entryId) => {
@@ -9414,16 +9414,16 @@ Remember: this is about growth, not guilt. Keep the tone supportive and empoweri
                 const prompt = `Translate the following family observation into ${translateLang}. Maintain the tone and meaning. Only return the translated text.\n\n"${entry.text}"`;
                 const result = await callGemini(prompt, true);
                 setEntries(prev => prev.map(e => e.id === entryId ? { ...e, translated: result } : e));
-                if (addToast) addToast('Translated!', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.translated') || 'Translated!', 'success');
             } catch (err) {
-                if (addToast) addToast('Translation failed', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.translation_failed') || 'Translation failed', 'error');
             } finally { setTranslating(false); }
         };
 
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '👪'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'Family Voice'),
+                h('h2', { className: 'text-lg font-black text-slate-800' }, t('behavior_lens.ui.family_voice') || 'Family Voice'),
                 h('p', { className: 'text-xs text-slate-500 mt-1' }, `Family observations and insights for ${studentName || 'your student'} — centering family expertise`)
             ),
             // Input form
@@ -9438,7 +9438,7 @@ Remember: this is about growth, not guilt. Keep the tone supportive and empoweri
                 h('textarea', {
                     value: observation,
                     onChange: e => setObservation(e.target.value),
-                    placeholder: 'Share what you notice at home — strengths, concerns, cultural context, or suggestions for the school team...',
+                    placeholder: t('behavior_lens.ph.share_what_you_notice_at_home_strengths_concerns_c') || 'Share what you notice at home — strengths, concerns, cultural context, or suggestions for the school team...',
                     rows: 3,
                     className: 'w-full px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none outline-none focus:ring-2 focus:ring-purple-300 mb-2'
                 }),
@@ -9454,7 +9454,7 @@ Remember: this is about growth, not guilt. Keep the tone supportive and empoweri
                     h('input', {
                         value: translateLang,
                         onChange: e => setTranslateLang(e.target.value),
-                        placeholder: 'Type language (e.g., Spanish, Arabic, Somali)',
+                        placeholder: t('behavior_lens.ph.type_language_eg_spanish_arabic_somali') || 'Type language (e.g., Spanish, Arabic, Somali)',
                         className: 'flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-purple-300'
                     }),
                     h('span', { className: 'text-[9px] text-slate-400 self-center' }, 'then tap translate on any entry below')
@@ -9464,7 +9464,7 @@ Remember: this is about growth, not guilt. Keep the tone supportive and empoweri
             entries.length === 0
                 ? h('div', { className: 'text-center py-8 bg-white rounded-xl border border-slate-200' },
                     h('div', { className: 'text-3xl mb-2' }, '💬'),
-                    h('p', { className: 'text-sm text-slate-500' }, 'Family voices are powerful. Share your first observation!')
+                    h('p', { className: 'text-sm text-slate-500' }, t('behavior_lens.ui.family_voices_are_powerful_share_your_first_observ') || 'Family voices are powerful. Share your first observation!')
                 )
                 : h('div', { className: 'space-y-3' },
                     entries.map(entry => {
@@ -9525,7 +9525,7 @@ Remember: this is about growth, not guilt. Keep the tone supportive and empoweri
                 followUpDone: false,
             }, ...prev]);
             setForm({ who: '', method: 'phone', topic: '', outcome: '', followUp: '' });
-            if (addToast) addToast('Contact logged', 'success');
+            if (addToast) addToast(t('behavior_lens.toast.contact_logged') || 'Contact logged', 'success');
         };
 
         const toggleFollowUp = (id) => {
@@ -9537,7 +9537,7 @@ Remember: this is about growth, not guilt. Keep the tone supportive and empoweri
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '📞'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'Communication Log'),
+                h('h2', { className: 'text-lg font-black text-slate-800' }, t('behavior_lens.ui.communication_log') || 'Communication Log'),
                 h('p', { className: 'text-xs text-slate-500 mt-1' }, `Two-way family contact tracker for ${studentName || 'your student'}`)
             ),
             // Follow-up alerts
@@ -9562,7 +9562,7 @@ Remember: this is about growth, not guilt. Keep the tone supportive and empoweri
                     h('input', {
                         value: form.who,
                         onChange: e => setForm(prev => ({ ...prev, who: e.target.value })),
-                        placeholder: 'Who did you contact?',
+                        placeholder: t('behavior_lens.ph.who_did_you_contact') || 'Who did you contact?',
                         className: 'px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-300'
                     }),
                     h('select', {
@@ -9576,21 +9576,21 @@ Remember: this is about growth, not guilt. Keep the tone supportive and empoweri
                 h('textarea', {
                     value: form.topic,
                     onChange: e => setForm(prev => ({ ...prev, topic: e.target.value })),
-                    placeholder: 'Topic / purpose of contact',
+                    placeholder: t('behavior_lens.ph.topic_purpose_of_contact') || 'Topic / purpose of contact',
                     rows: 2,
                     className: 'w-full px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none outline-none focus:ring-2 focus:ring-blue-300 mb-2'
                 }),
                 h('textarea', {
                     value: form.outcome,
                     onChange: e => setForm(prev => ({ ...prev, outcome: e.target.value })),
-                    placeholder: 'Outcome / key takeaways (optional)',
+                    placeholder: t('behavior_lens.ph.outcome_key_takeaways_optional') || 'Outcome / key takeaways (optional)',
                     rows: 1,
                     className: 'w-full px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none outline-none focus:ring-2 focus:ring-blue-300 mb-2'
                 }),
                 h('input', {
                     value: form.followUp,
                     onChange: e => setForm(prev => ({ ...prev, followUp: e.target.value })),
-                    placeholder: 'Follow-up needed? (optional)',
+                    placeholder: t('behavior_lens.ph.followup_needed_optional') || 'Follow-up needed? (optional)',
                     className: 'w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-300 mb-2'
                 }),
                 h('button', {
@@ -9603,7 +9603,7 @@ Remember: this is about growth, not guilt. Keep the tone supportive and empoweri
             contacts.length === 0
                 ? h('div', { className: 'text-center py-8 bg-white rounded-xl border border-slate-200' },
                     h('div', { className: 'text-3xl mb-2' }, '📞'),
-                    h('p', { className: 'text-sm text-slate-500' }, 'No contacts logged yet. Consistent communication builds trust!')
+                    h('p', { className: 'text-sm text-slate-500' }, t('behavior_lens.ui.no_contacts_logged_yet_consistent_communication_bu') || 'No contacts logged yet. Consistent communication builds trust!')
                 )
                 : h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm' },
                     h('h3', { className: 'text-xs font-black text-slate-700 mb-3' }, `📋 Contact History (${contacts.length})`),
@@ -9639,15 +9639,15 @@ Remember: this is about growth, not guilt. Keep the tone supportive and empoweri
             contacts.length > 0 && h('div', { className: 'grid grid-cols-3 gap-3' },
                 h('div', { className: 'bg-white rounded-xl border border-slate-200 p-3 text-center' },
                     h('div', { className: 'text-xl font-black text-blue-600' }, contacts.length),
-                    h('div', { className: 'text-[9px] text-slate-500 font-bold' }, 'Total Contacts')
+                    h('div', { className: 'text-[9px] text-slate-500 font-bold' }, t('behavior_lens.ui.total_contacts') || 'Total Contacts')
                 ),
                 h('div', { className: 'bg-white rounded-xl border border-slate-200 p-3 text-center' },
                     h('div', { className: 'text-xl font-black text-green-600' }, contacts.filter(c => c.followUpDone).length),
-                    h('div', { className: 'text-[9px] text-slate-500 font-bold' }, 'Follow-Ups Done')
+                    h('div', { className: 'text-[9px] text-slate-500 font-bold' }, t('behavior_lens.ui.followups_done') || 'Follow-Ups Done')
                 ),
                 h('div', { className: 'bg-white rounded-xl border border-slate-200 p-3 text-center' },
                     h('div', { className: 'text-xl font-black text-purple-600' }, [...new Set(contacts.map(c => c.method))].length),
-                    h('div', { className: 'text-[9px] text-slate-500 font-bold' }, 'Methods Used')
+                    h('div', { className: 'text-[9px] text-slate-500 font-bold' }, t('behavior_lens.ui.methods_used') || 'Methods Used')
                 )
             )
         );
@@ -9714,7 +9714,7 @@ Remember: this is about growth, not guilt. Keep the tone supportive and empoweri
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '🧘'),
                 h('h2', { className: 'text-lg font-black text-slate-800' }, DualLabel('De-escalation Toolkit')),
-                h('p', { className: 'text-xs text-slate-500 mt-1' }, 'Real-time calming tools for in-the-moment support')
+                h('p', { className: 'text-xs text-slate-500 mt-1' }, t('behavior_lens.ui.realtime_calming_tools_for_inthemoment_support') || 'Real-time calming tools for in-the-moment support')
             ),
             // Tool selector or active tool
             !activeTool && h('div', { className: 'grid grid-cols-2 gap-3' },
@@ -9881,7 +9881,7 @@ Remember: this is about growth, not guilt. Keep the tone supportive and empoweri
                 createdAt: new Date().toISOString(),
             }]);
             setForm({ targetBehavior: '', function: 'escape', replacement: '', teachingStrategy: '', reinforcement: '' });
-            if (addToast) addToast('Replacement plan added', 'success');
+            if (addToast) addToast(t('behavior_lens.toast.replacement_plan_added') || 'Replacement plan added', 'success');
         };
 
         const progressOptions = [
@@ -9906,7 +9906,7 @@ Remember: this is about growth, not guilt. Keep the tone supportive and empoweri
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '🔄'),
                 h('h2', { className: 'text-lg font-black text-slate-800' }, DualLabel('Replacement Behavior Planner')),
-                h('p', { className: 'text-xs text-slate-500 mt-1' }, 'Map target behaviors to functionally equivalent replacements')
+                h('p', { className: 'text-xs text-slate-500 mt-1' }, t('behavior_lens.ui.map_target_behaviors_to_functionally_equivalent_re') || 'Map target behaviors to functionally equivalent replacements')
             ),
             // Auto-suggest from data
             topBehaviors.length > 0 && !form.targetBehavior && h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 shadow-sm' },
@@ -9927,7 +9927,7 @@ Remember: this is about growth, not guilt. Keep the tone supportive and empoweri
                 h('input', {
                     value: form.targetBehavior,
                     onChange: e => setForm(prev => ({ ...prev, targetBehavior: e.target.value })),
-                    placeholder: '🎯 Target behavior (what you want to reduce)',
+                    placeholder: t('behavior_lens.ph.target_behavior_what_you_want_to_reduce') || '🎯 Target behavior (what you want to reduce)',
                     className: 'w-full px-3 py-2 border border-red-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-red-300 mb-2 bg-red-50'
                 }),
                 h('div', { className: 'flex flex-wrap gap-1.5 mb-2' },
@@ -9940,19 +9940,19 @@ Remember: this is about growth, not guilt. Keep the tone supportive and empoweri
                 h('input', {
                     value: form.replacement,
                     onChange: e => setForm(prev => ({ ...prev, replacement: e.target.value })),
-                    placeholder: '✅ Replacement behavior (functionally equivalent)',
+                    placeholder: t('behavior_lens.ph.replacement_behavior_functionally_equivalent') || '✅ Replacement behavior (functionally equivalent)',
                     className: 'w-full px-3 py-2 border border-green-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-green-300 mb-2 bg-green-50'
                 }),
                 h('input', {
                     value: form.teachingStrategy,
                     onChange: e => setForm(prev => ({ ...prev, teachingStrategy: e.target.value })),
-                    placeholder: '📚 Teaching strategy (how you\'ll teach the replacement)',
+                    placeholder: t('behavior_lens.ph.teaching_strategy_how_you') || '📚 Teaching strategy (how you\'ll teach the replacement)',
                     className: 'w-full px-3 py-2 border border-blue-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-300 mb-2 bg-blue-50'
                 }),
                 h('input', {
                     value: form.reinforcement,
                     onChange: e => setForm(prev => ({ ...prev, reinforcement: e.target.value })),
-                    placeholder: '⭐ Reinforcement (how you\'ll reward the replacement)',
+                    placeholder: t('behavior_lens.ph.reinforcement_how_you') || '⭐ Reinforcement (how you\'ll reward the replacement)',
                     className: 'w-full px-3 py-2 border border-amber-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-amber-300 mb-2 bg-amber-50'
                 }),
                 h('button', {
@@ -9983,10 +9983,10 @@ JSON only, no markdown.`;
                             try { parsed = JSON.parse(result); }
                             catch { const m = result.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); else throw new Error('Parse failed'); }
                             if (parsed.replacement) setForm(prev => ({ ...prev, replacement: parsed.replacement, teachingStrategy: parsed.teachingStrategy || prev.teachingStrategy, reinforcement: parsed.reinforcement || prev.reinforcement }));
-                            if (addToast) addToast('AI suggestion applied ✨', 'success');
+                            if (addToast) addToast(t('behavior_lens.toast.ai_suggestion_applied') || 'AI suggestion applied ✨', 'success');
                         } catch (err) {
                             warnLog('AI suggest failed:', err);
-                            if (addToast) addToast('AI suggestion failed', 'error');
+                            if (addToast) addToast(t('behavior_lens.toast.ai_suggestion_failed') || 'AI suggestion failed', 'error');
                         } finally { setAiSuggestLoading(false); }
                     },
                     disabled: aiSuggestLoading,
@@ -9997,7 +9997,7 @@ JSON only, no markdown.`;
             plans.length === 0
                 ? h('div', { className: 'text-center py-8 bg-white rounded-xl border border-slate-200' },
                     h('div', { className: 'text-3xl mb-2' }, '🔄'),
-                    h('p', { className: 'text-sm text-slate-500' }, 'Create your first replacement behavior plan.')
+                    h('p', { className: 'text-sm text-slate-500' }, t('behavior_lens.ui.create_your_first_replacement_behavior_plan') || 'Create your first replacement behavior plan.')
                 )
                 : h('div', { className: 'space-y-3' },
                     plans.map(plan => {
@@ -10153,7 +10153,7 @@ JSON only, no markdown.`;
                         value: newCustom,
                         onChange: e => setNewCustom(e.target.value),
                         onKeyDown: e => { if (e.key === 'Enter' && newCustom.trim()) { setCustomItems(prev => [...prev, newCustom.trim()]); setNewCustom(''); } },
-                        placeholder: 'Add a custom reinforcer',
+                        placeholder: t('behavior_lens.ph.add_a_custom_reinforcer') || 'Add a custom reinforcer',
                         className: 'flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-amber-300'
                     }),
                     h('button', {
@@ -10245,10 +10245,10 @@ For each suggestion, rate the effort level (Low/Medium/High) and expected impact
 
                 const result = await callGemini(prompt, true);
                 setAiSuggestions(result);
-                if (addToast) addToast('Modification plan generated', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.modification_plan_generated') || 'Modification plan generated', 'success');
             } catch (err) {
                 warnLog('Antecedent analysis failed:', err);
-                if (addToast) addToast('Analysis failed', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.analysis_failed') || 'Analysis failed', 'error');
             } finally { setAnalyzing(false); }
         };
 
@@ -10264,7 +10264,7 @@ For each suggestion, rate the effort level (Low/Medium/High) and expected impact
                 createdAt: new Date().toISOString(),
             }]);
             setNewMod({ setting: '', change: '', rationale: '' });
-            if (addToast) addToast('Modification tracked', 'success');
+            if (addToast) addToast(t('behavior_lens.toast.modification_tracked') || 'Modification tracked', 'success');
         };
 
         const statusOptions = [
@@ -10279,7 +10279,7 @@ For each suggestion, rate the effort level (Low/Medium/High) and expected impact
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '🛠️'),
                 h('h2', { className: 'text-lg font-black text-slate-800' }, DualLabel('Antecedent Modification Planner')),
-                h('p', { className: 'text-xs text-slate-500 mt-1' }, 'Modify the environment to prevent behaviors before they start')
+                h('p', { className: 'text-xs text-slate-500 mt-1' }, t('behavior_lens.ui.modify_the_environment_to_prevent_behaviors_before') || 'Modify the environment to prevent behaviors before they start')
             ),
             // Antecedent patterns
             antecedentPatterns.length > 0 && h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm' },
@@ -10319,7 +10319,7 @@ For each suggestion, rate the effort level (Low/Medium/High) and expected impact
             aiSuggestions && h('div', { className: 'bg-white rounded-xl border border-amber-200 p-5 shadow-sm' },
                 h('div', { className: 'text-xs text-slate-700 whitespace-pre-wrap leading-relaxed' }, aiSuggestions),
                 h('button', {
-                    onClick: () => { navigator.clipboard.writeText(aiSuggestions); if (addToast) addToast('Copied!', 'success'); },
+                    onClick: () => { navigator.clipboard.writeText(aiSuggestions); if (addToast) addToast(t('behavior_lens.toast.copied') || 'Copied!', 'success'); },
                     className: 'mt-3 px-3 py-1.5 bg-amber-100 text-amber-700 rounded-lg text-[10px] font-bold hover:bg-amber-200'
                 }, '📋 Copy Plan')
             ),
@@ -10329,20 +10329,20 @@ For each suggestion, rate the effort level (Low/Medium/High) and expected impact
                 h('input', {
                     value: newMod.setting,
                     onChange: e => setNewMod(prev => ({ ...prev, setting: e.target.value })),
-                    placeholder: 'Setting (e.g., Math class, Cafeteria)',
+                    placeholder: t('behavior_lens.ph.setting_eg_math_class_cafeteria') || 'Setting (e.g., Math class, Cafeteria)',
                     className: 'w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-amber-300 mb-2'
                 }),
                 h('textarea', {
                     value: newMod.change,
                     onChange: e => setNewMod(prev => ({ ...prev, change: e.target.value })),
-                    placeholder: 'What environmental change will you make?',
+                    placeholder: t('behavior_lens.ph.what_environmental_change_will_you_make') || 'What environmental change will you make?',
                     rows: 2,
                     className: 'w-full px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none outline-none focus:ring-2 focus:ring-amber-300 mb-2'
                 }),
                 h('input', {
                     value: newMod.rationale,
                     onChange: e => setNewMod(prev => ({ ...prev, rationale: e.target.value })),
-                    placeholder: 'Rationale (which antecedent does this address?)',
+                    placeholder: t('behavior_lens.ph.rationale_which_antecedent_does_this_address') || 'Rationale (which antecedent does this address?)',
                     className: 'w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-amber-300 mb-2'
                 }),
                 h('button', {
@@ -10393,7 +10393,7 @@ For each suggestion, rate the effort level (Low/Medium/High) and expected impact
 
         const startMic = useCallback(() => {
             if (!SpeechRecognition) {
-                if (addToast) addToast('Speech recognition not supported in this browser', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.speech_recognition_not_supported_in_this_browser') || 'Speech recognition not supported in this browser', 'error');
                 return;
             }
             const rec = new SpeechRecognition();
@@ -10450,12 +10450,12 @@ For each suggestion, rate the effort level (Low/Medium/High) and expected impact
             };
             onUpdateNotes([newNote, ...(notes || [])]);
             setDraft('');
-            if (addToast) addToast('Note added ✏️', 'success');
+            if (addToast) addToast(t('behavior_lens.toast.note_added_2') || 'Note added ✏️', 'success');
         };
 
         const handleDelete = (id) => {
             onUpdateNotes((notes || []).filter(n => n.id !== id));
-            if (addToast) addToast('Note deleted', 'info');
+            if (addToast) addToast(t('behavior_lens.toast.note_deleted') || 'Note deleted', 'info');
         };
 
         const handleSaveEdit = (id) => {
@@ -10489,7 +10489,7 @@ For each suggestion, rate the effort level (Low/Medium/High) and expected impact
                     h('textarea', {
                         value: draft,
                         onChange: (e) => setDraft(e.target.value),
-                        placeholder: 'Type your observation, note, or click the mic to dictate...',
+                        placeholder: t('behavior_lens.ph.type_your_observation_note_or_click_the_mic_to_dic') || 'Type your observation, note, or click the mic to dictate...',
                         rows: 3,
                         className: 'flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400 resize-none'
                     }),
@@ -10614,7 +10614,7 @@ For each suggestion, rate the effort level (Low/Medium/High) and expected impact
 
         // Generate case narrative from template
         const generateCase = async () => {
-            if (!callGemini) { if (addToast) addToast('AI not available', 'error'); return; }
+            if (!callGemini) { if (addToast) addToast(t('behavior_lens.toast.ai_not_available') || 'AI not available', 'error'); return; }
             setLoading(true);
             try {
                 const template = selectedTemplate;
@@ -10674,10 +10674,10 @@ Respond ONLY with the three sections above. No preamble.`;
                 setEvaluations({});
                 setShowResults(false);
                 setOverallScore(null);
-                if (addToast) addToast('Case study generated! Begin Phase 1.', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.case_study_generated_begin_phase_1') || 'Case study generated! Begin Phase 1.', 'success');
             } catch (err) {
                 warnLog('CaseStudyEngine error:', err);
-                if (addToast) addToast('Failed to generate case study. Try again.', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.failed_to_generate_case_study_try_again') || 'Failed to generate case study. Try again.', 'error');
             }
             setLoading(false);
         };
@@ -10686,7 +10686,7 @@ Respond ONLY with the three sections above. No preamble.`;
         const evaluatePhase = async (phaseIdx) => {
             const phase = CASE_STUDY_PHASES[phaseIdx];
             const userResp = userResponses[phase.id] || '';
-            if (!userResp.trim()) { if (addToast) addToast('Please write your response before submitting.', 'warning'); return; }
+            if (!userResp.trim()) { if (addToast) addToast(t('behavior_lens.toast.please_write_your_response_before_submitting') || 'Please write your response before submitting.', 'warning'); return; }
             if (!callGemini) return;
             setLoading(true);
             try {
@@ -10736,10 +10736,10 @@ ${diffLabel === 'guided' ? '\nHINT FOR NEXT PHASE:\n[A helpful hint for what to 
                 const score = scoreMatch ? parseInt(scoreMatch[1]) : null;
 
                 setEvaluations(prev => ({ ...prev, [phase.id]: { text: result, score } }));
-                if (addToast) addToast(`Phase ${phaseIdx + 1} evaluated! ${score ? score + '/25' : ''}`, 'success');
+                if (addToast) addToast(t('behavior_lens.toast.phase_n_evaluated_n') || `Phase ${phaseIdx + 1} evaluated! ${score ? score + '/25' : ''}`, 'success');
             } catch (err) {
                 warnLog('CaseStudy evaluation error:', err);
-                if (addToast) addToast('Evaluation failed. Try again.', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.evaluation_failed_try_again') || 'Evaluation failed. Try again.', 'error');
             }
             setLoading(false);
         };
@@ -10770,7 +10770,7 @@ Keep it encouraging and professional. Under 300 words.`;
                 const result = await callGemini(prompt, true);
                 setOverallScore({ total: totalScore, debrief: result });
                 setShowResults(true);
-                if (addToast) addToast('Case study complete! Review your debrief.', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.case_study_complete_review_your_debrief') || 'Case study complete! Review your debrief.', 'success');
             } catch (err) {
                 warnLog('Debrief error:', err);
             }
@@ -10899,11 +10899,11 @@ Keep it encouraging and professional. Under 300 words.`;
 
                 // User response area
                 h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 shadow-sm' },
-                    h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase mb-2 block' }, 'Your Response'),
+                    h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase mb-2 block' }, t('behavior_lens.ui.your_response') || 'Your Response'),
                     h('textarea', {
                         value: userResponses[phase.id] || '',
                         onChange: (e) => setUserResponses(prev => ({ ...prev, [phase.id]: e.target.value })),
-                        placeholder: 'Type your response here. Be thorough and use professional language...',
+                        placeholder: t('behavior_lens.ph.type_your_response_here_be_thorough_and_use_profes') || 'Type your response here. Be thorough and use professional language...',
                         rows: 8,
                         className: 'w-full text-xs border border-slate-200 rounded-lg px-3 py-2 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-y leading-relaxed'
                     }),
@@ -10954,8 +10954,8 @@ Keep it encouraging and professional. Under 300 words.`;
             // Header
             h('div', { className: 'text-center py-4' },
                 h('div', { className: 'text-5xl mb-3' }, '🎓'),
-                h('h2', { className: 'text-xl font-black text-slate-800' }, 'ABA Case Study Training'),
-                h('p', { className: 'text-sm text-slate-500 mt-1' }, 'Practice clinical reasoning with AI-generated case studies. Get expert-level feedback on your responses.')
+                h('h2', { className: 'text-xl font-black text-slate-800' }, t('behavior_lens.ui.aba_case_study_training') || 'ABA Case Study Training'),
+                h('p', { className: 'text-sm text-slate-500 mt-1' }, t('behavior_lens.ui.practice_clinical_reasoning_with_aigenerated_case') || 'Practice clinical reasoning with AI-generated case studies. Get expert-level feedback on your responses.')
             ),
 
             // How it works
@@ -10969,7 +10969,7 @@ Keep it encouraging and professional. Under 300 words.`;
                         )
                     )
                 ),
-                h('p', { className: 'text-[10px] text-indigo-600 mt-2 text-center' }, 'At each phase you\'ll write your analysis, then receive AI evaluation with scoring and feedback.')
+                h('p', { className: 'text-[10px] text-indigo-600 mt-2 text-center' }, t('behavior_lens.ui.at_each_phase_you') || 'At each phase you\'ll write your analysis, then receive AI evaluation with scoring and feedback.')
             ),
 
             // Step 1: Difficulty
@@ -11015,7 +11015,7 @@ Keep it encouraging and professional. Under 300 words.`;
                 selectedTemplate?.id === 'custom' && h('textarea', {
                     value: customPrompt,
                     onChange: (e) => setCustomPrompt(e.target.value),
-                    placeholder: 'Describe the scenario you want to practice with...',
+                    placeholder: t('behavior_lens.ph.describe_the_scenario_you_want_to_practice_with') || 'Describe the scenario you want to practice with...',
                     rows: 3,
                     className: 'w-full text-xs border border-slate-200 rounded-lg px-3 py-2 mt-3 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-300'
                 })
@@ -11056,7 +11056,7 @@ Keep it encouraging and professional. Under 300 words.`;
             if (messages.length === 0) return;
             setMessages([]);
             try { localStorage.removeItem(chatLsKey); } catch { }
-            if (addToast) addToast('Chat cleared', 'info');
+            if (addToast) addToast(t('behavior_lens.toast.chat_cleared') || 'Chat cleared', 'info');
         };
 
         const handleSend = async () => {
@@ -11096,7 +11096,7 @@ Respond helpfully and concisely as AlloBot:`;
             } catch (err) {
                 warnLog('AlloBotChat error:', err);
                 setMessages(prev => [...prev, { role: 'bot', content: 'Sorry, I encountered an error. Please try again.', ts: new Date().toISOString() }]);
-                if (addToast) addToast('AlloBot response failed', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.allobot_response_failed') || 'AlloBot response failed', 'error');
             } finally {
                 setIsSending(false);
             }
@@ -11282,7 +11282,7 @@ Respond helpfully and concisely as AlloBot:`;
         const handleComplete = (modId) => {
             if (!completedModules.includes(modId)) {
                 setCompletedModules(prev => [...prev, modId]);
-                if (addToast) addToast('Module completed! 🎓', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.module_completed') || 'Module completed! 🎓', 'success');
             }
             setActiveModule(null);
         };
@@ -11292,10 +11292,10 @@ Respond helpfully and concisely as AlloBot:`;
             if (!mod?.quiz) return;
             setQuizAnswers(prev => ({ ...prev, [modId]: answerIdx }));
             if (answerIdx === mod.quiz.answer) {
-                if (addToast) addToast('Correct! ✅', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.correct') || 'Correct! ✅', 'success');
                 handleComplete(modId);
             } else {
-                if (addToast) addToast('Not quite — try again!', 'warning');
+                if (addToast) addToast(t('behavior_lens.toast.not_quite_try_again') || 'Not quite — try again!', 'warning');
             }
         };
 
@@ -11333,7 +11333,7 @@ Respond helpfully and concisely as AlloBot:`;
                             )
                         )
                     ) : h('div', { className: 'bg-slate-50 rounded-lg p-6 text-center' },
-                        h('p', { className: 'text-sm text-slate-500' }, 'Read through the module content above, then click Complete below.'),
+                        h('p', { className: 'text-sm text-slate-500' }, t('behavior_lens.ui.read_through_the_module_content_above_then_click_c') || 'Read through the module content above, then click Complete below.'),
                         h('button', { onClick: () => handleComplete(activeModule), className: 'mt-3 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700' }, '✅ Mark Complete')
                     ),
                     mod?.linkedTool && onOpenTool && h('button', {
@@ -11347,8 +11347,8 @@ Respond helpfully and concisely as AlloBot:`;
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '🎓'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'PD Learning Path'),
-                h('p', { className: 'text-xs text-slate-500 mt-1' }, 'Build your behavior analysis skills step by step')
+                h('h2', { className: 'text-lg font-black text-slate-800' }, t('behavior_lens.ui.pd_learning_path') || 'PD Learning Path'),
+                h('p', { className: 'text-xs text-slate-500 mt-1' }, t('behavior_lens.ui.build_your_behavior_analysis_skills_step_by_step') || 'Build your behavior analysis skills step by step')
             ),
             h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 shadow-sm' },
                 h('div', { className: 'flex items-center justify-between mb-2' },
@@ -11440,15 +11440,15 @@ Recent behavioral data: ${abcSummary || 'None collected'}
 
 Respond in 150 words or fewer. Use bullet points.`);
                 setAiInsight(result);
-            } catch (e) { if (addToast) addToast('AI analysis failed', 'error'); }
+            } catch (e) { if (addToast) addToast(t('behavior_lens.toast.ai_analysis_failed') || 'AI analysis failed', 'error'); }
             setLoading(false);
         };
 
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '🛡️'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'Risk Screening Checklist'),
-                h('p', { className: 'text-xs text-slate-500 mt-1' }, 'Aligned with Virginia Threat Assessment Guidelines')
+                h('h2', { className: 'text-lg font-black text-slate-800' }, t('behavior_lens.ui.risk_screening_checklist') || 'Risk Screening Checklist'),
+                h('p', { className: 'text-xs text-slate-500 mt-1' }, t('behavior_lens.ui.aligned_with_virginia_threat_assessment_guidelines') || 'Aligned with Virginia Threat Assessment Guidelines')
             ),
             h('div', { className: 'bg-amber-50 rounded-xl border-2 border-amber-200 p-4' },
                 h('p', { className: 'text-xs font-bold text-amber-800' }, '⚠️ IMPORTANT: This tool is a screening aid only. It does NOT replace professional threat assessment. Always follow your district\'s safety protocols. If a student is in immediate danger, contact administration and/or 911 immediately.'),
@@ -11544,7 +11544,7 @@ ${aiAnalysis ? `Previous AI analysis: ${aiAnalysis.substring(0, 500)}` : ''}
 
 Format as a professional report with clear sections. Keep under 300 words.`);
                 setPacket(result);
-            } catch (e) { if (addToast) addToast('Generation failed', 'error'); }
+            } catch (e) { if (addToast) addToast(t('behavior_lens.toast.generation_failed') || 'Generation failed', 'error'); }
             setLoading(false);
         };
 
@@ -11560,7 +11560,7 @@ Format as a professional report with clear sections. Keep under 300 words.`);
                 h('div', { className: 'flex items-center gap-2' },
                     h('span', { className: 'text-xl' }, '⚠️'),
                     h('div', null,
-                        h('p', { className: 'text-sm font-black text-amber-800' }, 'BCBA Consultation Recommended'),
+                        h('p', { className: 'text-sm font-black text-amber-800' }, t('behavior_lens.ui.bcba_consultation_recommended') || 'BCBA Consultation Recommended'),
                         h('p', { className: 'text-xs text-amber-700 mt-1' }, `Based on ${dataStats.totalABC} data points: patterns suggest this case may benefit from BCBA oversight. Consider generating a handoff packet and scheduling a consultation.`)
                     )
                 )
@@ -11616,7 +11616,7 @@ Format as a professional report with clear sections. Keep under 300 words.`);
                 packet && h('div', { className: 'bg-white rounded-xl border border-slate-200 p-5 shadow-sm' },
                     h('div', { className: 'text-xs text-slate-700 whitespace-pre-wrap leading-relaxed' }, packet),
                     h('div', { className: 'flex gap-2 mt-4' },
-                        h('button', { onClick: () => { navigator.clipboard.writeText(packet); if (addToast) addToast('Copied!', 'success'); }, className: 'px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg text-[10px] font-bold hover:bg-indigo-200' }, '📋 Copy'),
+                        h('button', { onClick: () => { navigator.clipboard.writeText(packet); if (addToast) addToast(t('behavior_lens.toast.copied') || 'Copied!', 'success'); }, className: 'px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg text-[10px] font-bold hover:bg-indigo-200' }, '📋 Copy'),
                         h('button', { onClick: () => window.print(), className: 'px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg text-[10px] font-bold hover:bg-indigo-200' }, '🖨️ Print')
                     )
                 )
@@ -11684,8 +11684,8 @@ Format as a professional report with clear sections. Keep under 300 words.`);
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '🧪'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'ABA Knowledge Quiz'),
-                h('p', { className: 'text-xs text-slate-500 mt-1' }, 'Test your behavioral analysis knowledge — 80% to earn your badge')
+                h('h2', { className: 'text-lg font-black text-slate-800' }, t('behavior_lens.ui.aba_knowledge_quiz') || 'ABA Knowledge Quiz'),
+                h('p', { className: 'text-xs text-slate-500 mt-1' }, t('behavior_lens.ui.test_your_behavioral_analysis_knowledge_80_to_earn') || 'Test your behavioral analysis knowledge — 80% to earn your badge')
             ),
             h('div', { className: 'bg-white rounded-xl border border-slate-200 p-2' },
                 h('div', { className: 'flex gap-1' },
@@ -11744,7 +11744,7 @@ Format as a professional report with clear sections. Keep under 300 words.`);
         }, [abcEntries]);
 
         const addTarget = () => {
-            if (targets.length >= 5) { if (addToast) addToast('Max 5 target behaviors', 'warning'); return; }
+            if (targets.length >= 5) { if (addToast) addToast(t('behavior_lens.toast.max_5_target_behaviors') || 'Max 5 target behaviors', 'warning'); return; }
             setTargets(prev => [...prev, { id: 'b' + (prev.length + 1), name: '', type: 'frequency', count: 0, durations: [], intervals: [] }]);
         };
 
@@ -11755,7 +11755,7 @@ Format as a professional report with clear sections. Keep under 300 words.`);
         };
 
         const startSession = () => {
-            if (targets.every(t => !t.name.trim())) { if (addToast) addToast('Name at least one target behavior', 'warning'); return; }
+            if (targets.every(t => !t.name.trim())) { if (addToast) addToast(t('behavior_lens.toast.name_at_least_one_target_behavior') || 'Name at least one target behavior', 'warning'); return; }
             setSessionActive(true);
             setSessionStart(Date.now());
             setElapsed(0);
@@ -11780,7 +11780,7 @@ Format as a professional report with clear sections. Keep under 300 words.`);
             setSessionHistory(prev => [sessionData, ...prev]);
             if (onSaveSession) onSaveSession(sessionData);
             setSessionActive(false);
-            if (addToast) addToast(`Session saved! ${duration}s, ${targets.reduce((a, t) => a + t.count, 0)} total responses`, 'success');
+            if (addToast) addToast(t('behavior_lens.toast.session_saved_ns_n_total_responses') || `Session saved! ${duration}s, ${targets.reduce((a, t) => a + t.count, 0)} total responses`, 'success');
         };
 
         const recordCount = (id) => updateTarget(id, 'count', targets.find(t => t.id === id).count + 1);
@@ -11807,7 +11807,7 @@ Format as a professional report with clear sections. Keep under 300 words.`);
                 h('div', { className: 'text-center py-3' },
                     h('h2', { className: 'text-lg font-black text-slate-800' }, `📋 Session History (${sessionHistory.length})`),
                 ),
-                sessionHistory.length === 0 && h('p', { className: 'text-center text-sm text-slate-400 py-8' }, 'No sessions recorded yet.'),
+                sessionHistory.length === 0 && h('p', { className: 'text-center text-sm text-slate-400 py-8' }, t('behavior_lens.ui.no_sessions_recorded_yet') || 'No sessions recorded yet.'),
                 sessionHistory.map(s =>
                     h('div', { key: s.id, className: 'bg-white rounded-xl border border-slate-200 p-4 shadow-sm' },
                         h('div', { className: 'flex justify-between items-center mb-2' },
@@ -11835,8 +11835,8 @@ Format as a professional report with clear sections. Keep under 300 words.`);
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '📋'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'Session Data Tracker'),
-                h('p', { className: 'text-xs text-slate-500 mt-1' }, 'Systematic behavioral measurement across sessions')
+                h('h2', { className: 'text-lg font-black text-slate-800' }, t('behavior_lens.ui.session_data_tracker') || 'Session Data Tracker'),
+                h('p', { className: 'text-xs text-slate-500 mt-1' }, t('behavior_lens.ui.systematic_behavioral_measurement_across_sessions') || 'Systematic behavioral measurement across sessions')
             ),
             // Session controls
             !sessionActive ? h('div', { className: 'space-y-3' },
@@ -11847,7 +11847,7 @@ Format as a professional report with clear sections. Keep under 300 words.`);
                         h('button', { onClick: addTarget, className: 'text-[10px] px-2 py-1 bg-indigo-100 text-indigo-700 rounded-lg font-bold hover:bg-indigo-200' }, '+ Add')
                     ),
                     suggestedBehaviors.length > 0 && h('div', { className: 'flex flex-wrap gap-1' },
-                        h('span', { className: 'text-[10px] text-slate-400 font-medium' }, 'From ABC data:'),
+                        h('span', { className: 'text-[10px] text-slate-400 font-medium' }, t('behavior_lens.ui.from_abc_data') || 'From ABC data:'),
                         suggestedBehaviors.map(b =>
                             h('button', {
                                 key: b,
@@ -11865,7 +11865,7 @@ Format as a professional report with clear sections. Keep under 300 words.`);
                             h('input', {
                                 value: tgt.name,
                                 onChange: e => updateTarget(tgt.id, 'name', e.target.value),
-                                placeholder: 'Behavior name...',
+                                placeholder: t('behavior_lens.ph.behavior_name') || 'Behavior name...',
                                 className: 'flex-1 text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300'
                             }),
                             h('select', {
@@ -11886,7 +11886,7 @@ Format as a professional report with clear sections. Keep under 300 words.`);
                 h('div', { className: 'space-y-3' },
                     h('div', { className: 'bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl p-4 text-white text-center shadow-lg' },
                         h('div', { className: 'text-3xl font-black tabular-nums' }, fmtTime(elapsed)),
-                        h('p', { className: 'text-[10px] opacity-80 mt-1' }, 'Session Active')
+                        h('p', { className: 'text-[10px] opacity-80 mt-1' }, t('behavior_lens.ui.session_active') || 'Session Active')
                     ),
                     targets.filter(t => t.name.trim()).map(tgt => {
                         const isDurationActive = !!durationTimers[tgt.id];
@@ -11910,7 +11910,7 @@ Format as a professional report with clear sections. Keep under 300 words.`);
                                     h('div', null,
                                         h('p', { className: 'text-xs text-slate-500' }, `Episodes: ${tgt.count}`),
                                         tgt.durations?.length > 0 && h('p', { className: 'text-xs text-emerald-600 font-bold' }, `Avg: ${Math.round(tgt.durations.reduce((a, b) => a + b, 0) / tgt.durations.length)}s`),
-                                        isDurationActive && h('p', { className: 'text-xs text-red-600 font-bold animate-pulse' }, 'Recording...')
+                                        isDurationActive && h('p', { className: 'text-xs text-red-600 font-bold animate-pulse' }, t('behavior_lens.ui.recording') || 'Recording...')
                                     )
                                 ) :
                                     tgt.type === 'interval' ? h('div', { className: 'space-y-2' },
@@ -11985,7 +11985,7 @@ Format as a professional report with clear sections. Keep under 300 words.`);
         // ── Manual Data Helpers ──
         const addManualPoint = () => {
             const val = parseFloat(newPointValue);
-            if (isNaN(val) || val < 0) { if (addToast) addToast('Enter a valid number', 'warning'); return; }
+            if (isNaN(val) || val < 0) { if (addToast) addToast(t('behavior_lens.toast.enter_a_valid_number') || 'Enter a valid number', 'warning'); return; }
             setManualData(prev => [...prev, { session: prev.length + 1, value: val, date: new Date().toISOString().slice(0, 10) }]);
             setNewPointValue('');
         };
@@ -12008,11 +12008,11 @@ Format as a professional report with clear sections. Keep under 300 words.`);
                 const match = line.match(/(?:session\s*\d*\s*[:=]\s*)?(\d+(?:\.\d+)?)/i);
                 if (match) parsed.push(parseFloat(match[1]));
             }
-            if (parsed.length === 0) { if (addToast) addToast('No valid data found in CSV', 'warning'); return; }
+            if (parsed.length === 0) { if (addToast) addToast(t('behavior_lens.toast.no_valid_data_found_in_csv') || 'No valid data found in CSV', 'warning'); return; }
             setManualData(parsed.map((v, i) => ({ session: i + 1, value: v, date: new Date().toISOString().slice(0, 10) })));
             setShowCsvImport(false);
             setCsvText('');
-            if (addToast) addToast(`Imported ${parsed.length} data points!`, 'success');
+            if (addToast) addToast(t('behavior_lens.toast.imported_n_data_points') || `Imported ${parsed.length} data points!`, 'success');
         };
 
         const handleSvgPointClick = (idx) => {
@@ -12116,8 +12116,8 @@ Format as a professional report with clear sections. Keep under 300 words.`);
         return h('div', { className: 'max-w-3xl mx-auto space-y-4' },
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '📈'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'ABA Graph Engine'),
-                h('p', { className: 'text-xs text-slate-500 mt-1' }, 'Publication-standard single-case design graphs')
+                h('h2', { className: 'text-lg font-black text-slate-800' }, t('behavior_lens.ui.aba_graph_engine') || 'ABA Graph Engine'),
+                h('p', { className: 'text-xs text-slate-500 mt-1' }, t('behavior_lens.ui.publicationstandard_singlecase_design_graphs') || 'Publication-standard single-case design graphs')
             ),
 
             // ── Data Source Toggle ──
@@ -12142,7 +12142,7 @@ Format as a professional report with clear sections. Keep under 300 words.`);
                             className: 'px-3 py-1 bg-white border border-fuchsia-200 rounded-lg text-[10px] font-bold text-fuchsia-600 hover:bg-fuchsia-50'
                         }, showCsvImport ? '← Back' : '📋 Paste CSV'),
                         manualData.length > 0 && h('button', {
-                            onClick: () => { setManualData([]); if (addToast) addToast('Data cleared', 'info'); },
+                            onClick: () => { setManualData([]); if (addToast) addToast(t('behavior_lens.toast.data_cleared') || 'Data cleared', 'info'); },
                             className: 'px-3 py-1 bg-white border border-red-200 rounded-lg text-[10px] font-bold text-red-500 hover:bg-red-50'
                         }, '🗑️ Clear')
                     )
@@ -12150,11 +12150,11 @@ Format as a professional report with clear sections. Keep under 300 words.`);
 
                 // CSV Import
                 showCsvImport && h('div', { className: 'bg-white rounded-lg border border-fuchsia-200 p-3 space-y-2' },
-                    h('p', { className: 'text-[10px] text-fuchsia-600' }, 'Paste one value per line. Supports formats: "5", "Session 1: 5", or "1,5"'),
+                    h('p', { className: 'text-[10px] text-fuchsia-600' }, t('behavior_lens.ui.paste_one_value_per_line_supports_formats_5_sessio') || 'Paste one value per line. Supports formats: "5", "Session 1: 5", or "1,5"'),
                     h('textarea', {
                         value: csvText,
                         onChange: (e) => setCsvText(e.target.value),
-                        placeholder: 'Session 1: 3\nSession 2: 7\nSession 3: 5\n...',
+                        placeholder: t('behavior_lens.ph.session_1_3nsession_2_7nsession_3_5n') || 'Session 1: 3\nSession 2: 7\nSession 3: 5\n...',
                         rows: 5,
                         className: 'w-full text-xs border border-slate-200 rounded-lg px-3 py-2 bg-slate-50 font-mono focus:outline-none focus:ring-2 focus:ring-fuchsia-300'
                     }),
@@ -12174,7 +12174,7 @@ Format as a professional report with clear sections. Keep under 300 words.`);
                             value: newPointValue,
                             onChange: (e) => setNewPointValue(e.target.value),
                             onKeyDown: (e) => { if (e.key === 'Enter') addManualPoint(); },
-                            placeholder: 'e.g. 5',
+                            placeholder: t('behavior_lens.ph.eg_5') || 'e.g. 5',
                             min: 0,
                             step: 'any',
                             className: 'w-full text-xs border border-fuchsia-200 rounded-lg px-3 py-1.5 mt-1 bg-white focus:outline-none focus:ring-2 focus:ring-fuchsia-300'
@@ -12222,13 +12222,13 @@ Format as a professional report with clear sections. Keep under 300 words.`);
                         )
                     )
                 ),
-                !showCsvImport && manualData.length === 0 && h('p', { className: 'text-xs text-fuchsia-400 text-center py-3' }, 'Add data points above or paste CSV data to get started.')
+                !showCsvImport && manualData.length === 0 && h('p', { className: 'text-xs text-fuchsia-400 text-center py-3' }, t('behavior_lens.ui.add_data_points_above_or_paste_csv_data_to_get_sta') || 'Add data points above or paste CSV data to get started.')
             ),
 
             // ── No data message (auto mode only) ──
             dataMode === 'auto' && dataSeries.length === 0 && h('div', { className: 'text-center py-8 bg-slate-50 rounded-xl border border-slate-200' },
-                h('p', { className: 'text-sm text-slate-500' }, 'No session data recorded yet.'),
-                h('p', { className: 'text-xs text-slate-400 mt-1' }, 'Record sessions with the Session Data Tracker, or switch to Manual Entry mode.'),
+                h('p', { className: 'text-sm text-slate-500' }, t('behavior_lens.ui.no_session_data_recorded_yet') || 'No session data recorded yet.'),
+                h('p', { className: 'text-xs text-slate-400 mt-1' }, t('behavior_lens.ui.record_sessions_with_the_session_data_tracker_or_s') || 'Record sessions with the Session Data Tracker, or switch to Manual Entry mode.'),
                 h('button', {
                     onClick: () => setDataMode('manual'),
                     className: 'mt-3 px-4 py-2 bg-fuchsia-600 text-white rounded-lg text-xs font-bold hover:bg-fuchsia-700'
@@ -12239,20 +12239,20 @@ Format as a professional report with clear sections. Keep under 300 words.`);
             dataSeries.length > 0 && h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 shadow-sm' },
                 h('div', { className: 'grid grid-cols-3 gap-3 mb-3' },
                     h('div', null,
-                        h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase' }, 'Graph Title'),
-                        h('input', { value: graphTitle, onChange: e => setGraphTitle(e.target.value), placeholder: 'e.g. Off-Task Behavior', className: 'w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5 mt-1' })
+                        h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase' }, t('behavior_lens.ui.graph_title') || 'Graph Title'),
+                        h('input', { value: graphTitle, onChange: e => setGraphTitle(e.target.value), placeholder: t('behavior_lens.ph.eg_offtask_behavior_2') || 'e.g. Off-Task Behavior', className: 'w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5 mt-1' })
                     ),
                     h('div', null,
-                        h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase' }, 'Y-Axis Label'),
+                        h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase' }, t('behavior_lens.ui.yaxis_label') || 'Y-Axis Label'),
                         h('input', { value: yAxisLabel, onChange: e => setYAxisLabel(e.target.value), className: 'w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5 mt-1' })
                     ),
                     h('div', null,
-                        h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase' }, 'X-Axis Label'),
+                        h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase' }, t('behavior_lens.ui.xaxis_label') || 'X-Axis Label'),
                         h('input', { value: xAxisLabel, onChange: e => setXAxisLabel(e.target.value), className: 'w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5 mt-1' })
                     ),
                 ),
                 dataMode === 'auto' && behaviorNames.length > 1 && h('div', { className: 'flex gap-2 mt-2' },
-                    h('span', { className: 'text-[10px] font-bold text-slate-500' }, 'Behavior:'),
+                    h('span', { className: 'text-[10px] font-bold text-slate-500' }, t('behavior_lens.ui.behavior') || 'Behavior:'),
                     behaviorNames.map((bn, i) =>
                         h('button', { key: bn, onClick: () => setSelectedBehavior(i), className: `px-2 py-1 rounded-lg text-[10px] font-bold border ${i === selectedBehavior ? 'bg-indigo-100 border-indigo-400 text-indigo-700' : 'bg-white border-slate-200 text-slate-400'}` }, bn)
                     )
@@ -12422,7 +12422,7 @@ Format as a professional report with clear sections. Keep under 300 words.`);
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a'); a.href = url; a.download = `${(graphTitle || 'aba_graph').replace(/\s+/g, '_')}.svg`;
                         document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-                        if (addToast) addToast('SVG exported!', 'success');
+                        if (addToast) addToast(t('behavior_lens.toast.svg_exported') || 'SVG exported!', 'success');
                     },
                     className: 'flex-1 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200'
                 }, '💾 Export SVG')
@@ -12430,11 +12430,11 @@ Format as a professional report with clear sections. Keep under 300 words.`);
             // ── Inter-tool Navigation ──
             dataSeries.length > 0 && phaseAnalysis.length >= 2 && setActivePanel && h('div', { className: 'flex gap-2' },
                 h('button', {
-                    onClick: () => { if (addToast) addToast('Graph data ready — auto-fill available in Effect Size!', 'success'); setActivePanel('effectsize'); },
+                    onClick: () => { if (addToast) addToast(t('behavior_lens.toast.graph_data_ready_autofill_available_in_effect_size') || 'Graph data ready — auto-fill available in Effect Size!', 'success'); setActivePanel('effectsize'); },
                     className: 'flex-1 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl text-xs font-bold hover:from-indigo-600 hover:to-purple-600 shadow-md transition-all'
                 }, '📐 Send to Effect Size →'),
                 h('button', {
-                    onClick: () => { if (addToast) addToast('Graph data attached to IEP Prep!', 'success'); setActivePanel('iepprep'); },
+                    onClick: () => { if (addToast) addToast(t('behavior_lens.toast.graph_data_attached_to_iep_prep') || 'Graph data attached to IEP Prep!', 'success'); setActivePanel('iepprep'); },
                     className: 'flex-1 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl text-xs font-bold hover:from-blue-600 hover:to-indigo-600 shadow-md transition-all'
                 }, '📄 Send to IEP Prep →')
             )
@@ -12494,7 +12494,7 @@ Format as a professional report with clear sections. Keep under 300 words.`);
                 setPhases(newPhases);
                 setCurrentPhase(nextPhase);
                 if (onPhasesChange) onPhasesChange(newPhases);
-                if (addToast) addToast(`Phase changed to: ${phases[nextPhase].label}`, 'success');
+                if (addToast) addToast(t('behavior_lens.toast.phase_changed_to_n') || `Phase changed to: ${phases[nextPhase].label}`, 'success');
             }
         };
 
@@ -12517,7 +12517,7 @@ For your recommendation, provide:
 
 Keep under 200 words. Use bullet points.`);
                 setWizardResult(result);
-            } catch (e) { if (addToast) addToast('Wizard failed', 'error'); }
+            } catch (e) { if (addToast) addToast(t('behavior_lens.toast.wizard_failed') || 'Wizard failed', 'error'); }
             setWizardLoading(false);
         };
 
@@ -12525,14 +12525,14 @@ Keep under 200 words. Use bullet points.`);
             return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
                 h('div', { className: 'text-center py-3' },
                     h('div', { className: 'text-4xl mb-2' }, '🔬'),
-                    h('h2', { className: 'text-lg font-black text-slate-800' }, 'Single-Case Design Manager'),
-                    h('p', { className: 'text-xs text-slate-500 mt-1' }, 'Select a research design to structure your data collection')
+                    h('h2', { className: 'text-lg font-black text-slate-800' }, t('behavior_lens.ui.singlecase_design_manager') || 'Single-Case Design Manager'),
+                    h('p', { className: 'text-xs text-slate-500 mt-1' }, t('behavior_lens.ui.select_a_research_design_to_structure_your_data_co') || 'Select a research design to structure your data collection')
                 ),
                 // AI Design Wizard
                 h('div', { className: 'bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl border border-purple-200 p-4' },
                     h('h3', { className: 'text-sm font-bold text-purple-800 mb-2' }, '🧠 AI Design Wizard'),
-                    h('p', { className: 'text-[10px] text-purple-600 mb-2' }, 'Describe your research question and let AI recommend the best design.'),
-                    h('textarea', { value: wizardQ, onChange: e => setWizardQ(e.target.value), placeholder: 'e.g. "Does a token economy reduce off-task behavior during math instruction?"', rows: 2, className: 'w-full text-xs border border-purple-200 rounded-lg px-3 py-2 mb-2 bg-white' }),
+                    h('p', { className: 'text-[10px] text-purple-600 mb-2' }, t('behavior_lens.ui.describe_your_research_question_and_let_ai_recomme') || 'Describe your research question and let AI recommend the best design.'),
+                    h('textarea', { value: wizardQ, onChange: e => setWizardQ(e.target.value), placeholder: t('behavior_lens.ph.eg_does_a_token_economy_reduce_offtask_behavior_du') || 'e.g. "Does a token economy reduce off-task behavior during math instruction?"', rows: 2, className: 'w-full text-xs border border-purple-200 rounded-lg px-3 py-2 mb-2 bg-white' }),
                     h('button', { onClick: handleWizard, disabled: wizardLoading || !wizardQ.trim(), className: 'px-4 py-2 bg-purple-600 text-white rounded-lg text-xs font-bold hover:bg-purple-700 disabled:opacity-50' }, wizardLoading ? '⏳ Analyzing...' : '🧠 Get Recommendation'),
                     wizardResult && h('div', { className: 'mt-3 bg-white rounded-lg p-3 border border-purple-200 text-xs text-purple-700 whitespace-pre-wrap' }, wizardResult)
                 ),
@@ -12594,7 +12594,7 @@ Keep under 200 words. Use bullet points.`);
                             h('span', { className: `text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center ${i === currentPhase ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-500'}` }, i + 1),
                             h('span', { className: 'text-xs font-medium text-slate-700 flex-1' }, p.label),
                             h('div', { className: 'flex items-center gap-1' },
-                                h('span', { className: 'text-[10px] text-slate-400' }, 'Starts at session:'),
+                                h('span', { className: 'text-[10px] text-slate-400' }, t('behavior_lens.ui.starts_at_session') || 'Starts at session:'),
                                 h('input', {
                                     type: 'number', min: 1, value: p.startSession,
                                     onChange: e => updatePhaseStart(i, e.target.value),
@@ -12609,12 +12609,12 @@ Keep under 200 words. Use bullet points.`);
             // Multiple Baseline tiers (only for MB design)
             selectedDesign.id === 'MB' && h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 shadow-sm' },
                 h('h3', { className: 'text-sm font-bold text-slate-700 mb-3' }, '📐 Multiple Baseline Tiers'),
-                h('p', { className: 'text-[10px] text-slate-500 mb-3' }, 'Define the behaviors, settings, or students for staggered intervention.'),
+                h('p', { className: 'text-[10px] text-slate-500 mb-3' }, t('behavior_lens.ui.define_the_behaviors_settings_or_students_for_stag') || 'Define the behaviors, settings, or students for staggered intervention.'),
                 h('div', { className: 'space-y-2' },
                     mbTiers.map((tier, i) =>
                         h('div', { key: i, className: 'flex gap-2 items-center' },
                             h('span', { className: 'text-xs font-bold text-slate-500 w-14' }, tier.name),
-                            h('input', { value: tier.behavior, onChange: e => setMbTiers(prev => prev.map((t, j) => j === i ? { ...t, behavior: e.target.value } : t)), placeholder: 'e.g. Off-task behavior in math', className: 'flex-1 text-xs border border-slate-200 rounded-lg px-2 py-1.5' })
+                            h('input', { value: tier.behavior, onChange: e => setMbTiers(prev => prev.map((t, j) => j === i ? { ...t, behavior: e.target.value } : t)), placeholder: t('behavior_lens.ph.eg_offtask_behavior_in_math') || 'e.g. Off-task behavior in math', className: 'flex-1 text-xs border border-slate-200 rounded-lg px-2 py-1.5' })
                         )
                     ),
                     mbTiers.length < 5 && h('button', { onClick: () => setMbTiers(prev => [...prev, { name: `Tier ${prev.length + 1}`, behavior: '' }]), className: 'text-[10px] text-indigo-600 font-bold hover:underline' }, '+ Add Tier')
@@ -12623,7 +12623,7 @@ Keep under 200 words. Use bullet points.`);
             // Visual analysis checklist
             h('div', { className: 'bg-emerald-50 rounded-xl border border-emerald-200 p-4' },
                 h('h3', { className: 'text-sm font-bold text-emerald-800 mb-2' }, '📋 Visual Analysis Checklist'),
-                h('p', { className: 'text-[10px] text-emerald-600 mb-3' }, 'Use these criteria when examining your graph:'),
+                h('p', { className: 'text-[10px] text-emerald-600 mb-3' }, t('behavior_lens.ui.use_these_criteria_when_examining_your_graph') || 'Use these criteria when examining your graph:'),
                 h('div', { className: 'grid grid-cols-2 gap-2' },
                     [
                         { label: 'Level', desc: 'Mean performance within a phase', icon: '━' },
@@ -12661,7 +12661,7 @@ Keep under 200 words. Use bullet points.`);
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '🎯'),
                 h('h2', { className: 'text-lg font-black text-slate-800' }, DualLabel('DR Strategy Selector')),
-                h('p', { className: 'text-xs text-slate-500 mt-1' }, 'Choose the right differential reinforcement strategy')
+                h('p', { className: 'text-xs text-slate-500 mt-1' }, t('behavior_lens.ui.choose_the_right_differential_reinforcement_strate') || 'Choose the right differential reinforcement strategy')
             ),
             h('div', { className: 'space-y-3' },
                 STRATEGIES.map(s =>
@@ -12750,7 +12750,7 @@ Provide a structured plan with:
 
 Keep under 250 words. Use clear sections.`);
                 setPlan(result);
-            } catch (e) { if (addToast) addToast('Generation failed', 'error'); }
+            } catch (e) { if (addToast) addToast(t('behavior_lens.toast.generation_failed') || 'Generation failed', 'error'); }
             setLoading(false);
         };
 
@@ -12758,12 +12758,12 @@ Keep under 250 words. Use clear sections.`);
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '💬'),
                 h('h2', { className: 'text-lg font-black text-slate-800' }, DualLabel('FCT Template')),
-                h('p', { className: 'text-xs text-slate-500 mt-1' }, 'Functional Communication Training planning tool')
+                h('p', { className: 'text-xs text-slate-500 mt-1' }, t('behavior_lens.ui.functional_communication_training_planning_tool') || 'Functional Communication Training planning tool')
             ),
             // Current behavior
             h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 shadow-sm' },
                 h('label', { className: 'text-xs font-bold text-slate-600' }, '🎯 Current Challenging Behavior'),
-                h('input', { value: currentBehavior, onChange: e => setCurrentBehavior(e.target.value), placeholder: 'e.g. Hitting peers when frustrated', className: 'w-full text-xs border border-slate-200 rounded-lg px-3 py-2 mt-1' })
+                h('input', { value: currentBehavior, onChange: e => setCurrentBehavior(e.target.value), placeholder: t('behavior_lens.ph.eg_hitting_peers_when_frustrated') || 'e.g. Hitting peers when frustrated', className: 'w-full text-xs border border-slate-200 rounded-lg px-3 py-2 mt-1' })
             ),
             // Function selection
             h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 shadow-sm' },
@@ -12805,7 +12805,7 @@ Keep under 250 words. Use clear sections.`);
             // Target phrase
             h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 shadow-sm' },
                 h('label', { className: 'text-xs font-bold text-slate-600' }, '💬 Target Communication Response'),
-                h('input', { value: targetPhrase, onChange: e => setTargetPhrase(e.target.value), placeholder: 'e.g. "I need a break"', className: 'w-full text-xs border border-slate-200 rounded-lg px-3 py-2 mt-1' })
+                h('input', { value: targetPhrase, onChange: e => setTargetPhrase(e.target.value), placeholder: t('behavior_lens.ph.eg_i_need_a_break') || 'e.g. "I need a break"', className: 'w-full text-xs border border-slate-200 rounded-lg px-3 py-2 mt-1' })
             ),
             // Generate button
             h('button', {
@@ -12818,7 +12818,7 @@ Keep under 250 words. Use clear sections.`);
                 h('h3', { className: 'text-sm font-bold text-slate-800 mb-3' }, '📋 FCT Implementation Plan'),
                 h('div', { className: 'text-xs text-slate-700 whitespace-pre-wrap leading-relaxed' }, plan),
                 h('div', { className: 'flex gap-2 mt-4' },
-                    h('button', { onClick: () => { navigator.clipboard.writeText(plan); if (addToast) addToast('Copied!', 'success'); }, className: 'px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg text-[10px] font-bold' }, '📋 Copy'),
+                    h('button', { onClick: () => { navigator.clipboard.writeText(plan); if (addToast) addToast(t('behavior_lens.toast.copied') || 'Copied!', 'success'); }, className: 'px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg text-[10px] font-bold' }, '📋 Copy'),
                     h('button', { onClick: () => window.print(), className: 'px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg text-[10px] font-bold' }, '🖨️ Print')
                 )
             )
@@ -12917,8 +12917,8 @@ Keep under 250 words. Use clear sections.`);
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '🤝'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'IOA Calculator'),
-                h('p', { className: 'text-xs text-slate-500 mt-1' }, 'Inter-Observer Agreement — validate data reliability across observers')
+                h('h2', { className: 'text-lg font-black text-slate-800' }, t('behavior_lens.ui.ioa_calculator') || 'IOA Calculator'),
+                h('p', { className: 'text-xs text-slate-500 mt-1' }, t('behavior_lens.ui.interobserver_agreement_validate_data_reliability') || 'Inter-Observer Agreement — validate data reliability across observers')
             ),
             // Method selector
             h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 shadow-sm' },
@@ -12937,7 +12937,7 @@ Keep under 250 words. Use clear sections.`);
                 h('h3', { className: 'text-xs font-bold text-slate-600 mb-3' }, '📊 Observer Data'),
                 isIntervalMethod ? h('div', { className: 'space-y-3' },
                     h('div', { className: 'flex items-center gap-2' },
-                        h('span', { className: 'text-xs font-medium text-slate-600' }, 'Intervals:'),
+                        h('span', { className: 'text-xs font-medium text-slate-600' }, t('behavior_lens.ui.intervals') || 'Intervals:'),
                         [6, 10, 15, 20, 30].map(n => h('button', { key: n, onClick: () => initIntervals(n), className: `px-2 py-1 rounded text-[10px] font-bold ${numIntervals === n ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'}` }, n))
                     ),
                     h('div', { className: 'space-y-2' },
@@ -13033,7 +13033,7 @@ Keep under 250 words. Use clear sections.`);
                 independentPct: Math.round((steps.filter(s => s.promptLevel === 'I').length / steps.length) * 100),
             };
             setSessions(prev => [session, ...prev]);
-            if (addToast) addToast(`Session saved! ${session.independentPct}% independent`, 'success');
+            if (addToast) addToast(t('behavior_lens.toast.session_saved_n_independent') || `Session saved! ${session.independentPct}% independent`, 'success');
         };
 
         const isMastered = (stepIdx) => {
@@ -13045,7 +13045,7 @@ Keep under 250 words. Use clear sections.`);
             return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
                 h('button', { onClick: () => setShowHistory(false), className: 'text-xs text-indigo-600 font-bold hover:underline' }, '← Back'),
                 h('h2', { className: 'text-lg font-black text-slate-800 text-center' }, `📋 Session History (${sessions.length})`),
-                sessions.length === 0 ? h('p', { className: 'text-center text-sm text-slate-400 py-8' }, 'No sessions yet.') :
+                sessions.length === 0 ? h('p', { className: 'text-center text-sm text-slate-400 py-8' }, t('behavior_lens.ui.no_sessions_yet') || 'No sessions yet.') :
                     sessions.map(s => h('div', { key: s.id, className: 'bg-white rounded-xl border border-slate-200 p-4 shadow-sm' },
                         h('div', { className: 'flex justify-between items-center mb-2' },
                             h('span', { className: 'text-xs font-bold text-slate-600' }, new Date(s.date).toLocaleString()),
@@ -13064,17 +13064,17 @@ Keep under 250 words. Use clear sections.`);
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '📝'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'Task Analysis'),
-                h('p', { className: 'text-xs text-slate-500 mt-1' }, 'Break skills into teachable steps with chaining and prompt tracking')
+                h('h2', { className: 'text-lg font-black text-slate-800' }, t('behavior_lens.ui.task_analysis') || 'Task Analysis'),
+                h('p', { className: 'text-xs text-slate-500 mt-1' }, t('behavior_lens.ui.break_skills_into_teachable_steps_with_chaining_an') || 'Break skills into teachable steps with chaining and prompt tracking')
             ),
             // Task setup
             h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 shadow-sm space-y-3' },
                 h('div', null,
-                    h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase' }, 'Task/Skill Name'),
-                    h('input', { value: taskName, onChange: e => setTaskName(e.target.value), placeholder: 'e.g. Handwashing, Tying Shoes, Morning Routine', className: 'w-full text-xs border border-slate-200 rounded-lg px-3 py-2 mt-1' })
+                    h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase' }, t('behavior_lens.ui.taskskill_name') || 'Task/Skill Name'),
+                    h('input', { value: taskName, onChange: e => setTaskName(e.target.value), placeholder: t('behavior_lens.ph.eg_handwashing_tying_shoes_morning_routine') || 'e.g. Handwashing, Tying Shoes, Morning Routine', className: 'w-full text-xs border border-slate-200 rounded-lg px-3 py-2 mt-1' })
                 ),
                 h('div', null,
-                    h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase mb-2 block' }, 'Chaining Method'),
+                    h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase mb-2 block' }, t('behavior_lens.ui.chaining_method') || 'Chaining Method'),
                     h('div', { className: 'flex gap-2' },
                         CHAINING.map(c => h('button', { key: c.id, onClick: () => setChainingMethod(c.id), className: `flex-1 p-2 rounded-lg border-2 text-left ${chainingMethod === c.id ? 'border-indigo-400 bg-indigo-50' : 'border-slate-200'}` },
                             h('span', { className: 'text-[10px] font-bold text-slate-700 block' }, c.name),
@@ -13083,7 +13083,7 @@ Keep under 250 words. Use clear sections.`);
                     )
                 ),
                 h('div', { className: 'flex items-center gap-2' },
-                    h('label', { className: 'text-[10px] font-bold text-slate-500' }, 'Mastery: Independent for'),
+                    h('label', { className: 'text-[10px] font-bold text-slate-500' }, t('behavior_lens.ui.mastery_independent_for') || 'Mastery: Independent for'),
                     h('input', { type: 'number', min: 1, max: 10, value: masteryCriteria, onChange: e => setMasteryCriteria(parseInt(e.target.value) || 3), className: 'w-12 text-xs border border-slate-200 rounded px-2 py-1 text-center' }),
                     h('span', { className: 'text-[10px] text-slate-500' }, 'consecutive sessions')
                 )
@@ -13099,7 +13099,7 @@ Keep under 250 words. Use clear sections.`);
                         const mastered = isMastered(idx);
                         return h('div', { key: step.id, className: `flex items-center gap-2 p-2 rounded-lg ${mastered ? 'bg-green-50 border border-green-200' : 'bg-slate-50'}` },
                             h('span', { className: 'text-xs font-bold text-slate-400 w-6 text-center' }, idx + 1),
-                            h('input', { value: step.desc, onChange: e => updateStep(step.id, 'desc', e.target.value), placeholder: 'Step description...', className: 'flex-1 text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white' }),
+                            h('input', { value: step.desc, onChange: e => updateStep(step.id, 'desc', e.target.value), placeholder: t('behavior_lens.ph.step_description') || 'Step description...', className: 'flex-1 text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white' }),
                             h('select', { value: step.promptLevel, onChange: e => updateStep(step.id, 'promptLevel', e.target.value), className: 'text-[10px] border border-slate-200 rounded-lg px-1 py-1.5 bg-white font-medium' },
                                 PROMPT_LEVELS.map(p => h('option', { key: p.id, value: p.id }, `${p.icon} ${p.label}`))
                             ),
@@ -13186,19 +13186,19 @@ Keep under 250 words. Use clear sections.`);
                 return { ...p, trials: newTrials, consecutiveMastered: newConsec, status: mastered ? 'mastered' : 'active' };
             }));
             setSessionActive(false);
-            if (addToast) addToast(`Session: ${pct}% correct (${correct}/${sessionTrials.length})`, pct >= (program?.masteryCriteria.pct || 80) ? 'success' : 'warning');
+            if (addToast) addToast(t('behavior_lens.toast.session_n_correct_nn') || `Session: ${pct}% correct (${correct}/${sessionTrials.length})`, pct >= (program?.masteryCriteria.pct || 80) ? 'success' : 'warning');
             // Check mastery
             const updatedConsec = pct >= (program?.masteryCriteria.pct || 80) ? (program?.consecutiveMastered || 0) + 1 : 0;
             if (updatedConsec >= (program?.masteryCriteria.sessions || 3)) {
-                if (addToast) addToast(`🎉 MASTERED! ${program?.name || 'Target'} — ${program?.masteryCriteria.sessions} consecutive sessions at criterion!`, 'success');
+                if (addToast) addToast(t('behavior_lens.toast.mastered_n_n_consecutive_sessions_at_criterion') || `🎉 MASTERED! ${program?.name || 'Target'} — ${program?.masteryCriteria.sessions} consecutive sessions at criterion!`, 'success');
             }
         };
 
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '🎯'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'DTT Data Sheet'),
-                h('p', { className: 'text-xs text-slate-500 mt-1' }, 'Discrete Trial Training with mastery tracking and auto-advance')
+                h('h2', { className: 'text-lg font-black text-slate-800' }, t('behavior_lens.ui.dtt_data_sheet') || 'DTT Data Sheet'),
+                h('p', { className: 'text-xs text-slate-500 mt-1' }, t('behavior_lens.ui.discrete_trial_training_with_mastery_tracking_and') || 'Discrete Trial Training with mastery tracking and auto-advance')
             ),
             // Program tabs
             h('div', { className: 'flex gap-1 overflow-x-auto pb-1' },
@@ -13211,16 +13211,16 @@ Keep under 250 words. Use clear sections.`);
             program && !sessionActive && h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 shadow-sm space-y-3' },
                 h('div', { className: 'grid grid-cols-2 gap-3' },
                     h('div', null,
-                        h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase' }, 'Program Name'),
-                        h('input', { value: program.name, onChange: e => updateProgram(program.id, 'name', e.target.value), placeholder: 'e.g. Receptive ID Colors', className: 'w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5 mt-1' })
+                        h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase' }, t('behavior_lens.ui.program_name') || 'Program Name'),
+                        h('input', { value: program.name, onChange: e => updateProgram(program.id, 'name', e.target.value), placeholder: t('behavior_lens.ph.eg_receptive_id_colors') || 'e.g. Receptive ID Colors', className: 'w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5 mt-1' })
                     ),
                     h('div', null,
-                        h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase' }, 'Current Target'),
-                        h('input', { value: program.target, onChange: e => updateProgram(program.id, 'target', e.target.value), placeholder: 'e.g. Touch "red"', className: 'w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5 mt-1' })
+                        h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase' }, t('behavior_lens.ui.current_target') || 'Current Target'),
+                        h('input', { value: program.target, onChange: e => updateProgram(program.id, 'target', e.target.value), placeholder: t('behavior_lens.ph.eg_touch_red') || 'e.g. Touch "red"', className: 'w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5 mt-1' })
                     ),
                 ),
                 h('div', { className: 'flex items-center gap-3' },
-                    h('span', { className: 'text-[10px] font-bold text-slate-500' }, 'Mastery:'),
+                    h('span', { className: 'text-[10px] font-bold text-slate-500' }, t('behavior_lens.ui.mastery') || 'Mastery:'),
                     h('input', { type: 'number', min: 50, max: 100, value: program.masteryCriteria.pct, onChange: e => updateProgram(program.id, 'masteryCriteria', { ...program.masteryCriteria, pct: parseInt(e.target.value) || 80 }), className: 'w-14 text-xs border border-slate-200 rounded px-2 py-1 text-center' }),
                     h('span', { className: 'text-[10px] text-slate-500' }, '% across'),
                     h('input', { type: 'number', min: 1, max: 10, value: program.masteryCriteria.sessions, onChange: e => updateProgram(program.id, 'masteryCriteria', { ...program.masteryCriteria, sessions: parseInt(e.target.value) || 3 }), className: 'w-12 text-xs border border-slate-200 rounded px-2 py-1 text-center' }),
@@ -13228,7 +13228,7 @@ Keep under 250 words. Use clear sections.`);
                 ),
                 program.status === 'mastered' && h('div', { className: 'bg-green-50 rounded-lg p-3 border border-green-200 text-center' },
                     h('span', { className: 'text-2xl' }, '🏆'),
-                    h('p', { className: 'text-xs font-bold text-green-700 mt-1' }, 'MASTERED!'),
+                    h('p', { className: 'text-xs font-bold text-green-700 mt-1' }, t('behavior_lens.ui.mastered') || 'MASTERED!'),
                     h('p', { className: 'text-[10px] text-green-600' }, `Met criterion across ${program.masteryCriteria.sessions} sessions`)
                 ),
                 h('div', { className: 'flex items-center justify-between bg-indigo-50 rounded-lg p-2' },
@@ -13315,7 +13315,7 @@ Keep under 250 words. Use clear sections.`);
         }, [freeOpActive]);
 
         const startMSWO = () => {
-            if (validItems.length < 3) { if (addToast) addToast('Need at least 3 items', 'warning'); return; }
+            if (validItems.length < 3) { if (addToast) addToast(t('behavior_lens.toast.need_at_least_3_items') || 'Need at least 3 items', 'warning'); return; }
             setMswoRemaining([...validItems]);
             setTrialActive(true);
             setTrials([]);
@@ -13333,7 +13333,7 @@ Keep under 250 words. Use clear sections.`);
         };
 
         const startPaired = () => {
-            if (validItems.length < 3) { if (addToast) addToast('Need at least 3 items', 'warning'); return; }
+            if (validItems.length < 3) { if (addToast) addToast(t('behavior_lens.toast.need_at_least_3_items') || 'Need at least 3 items', 'warning'); return; }
             setTrialActive(true);
             setTrials([]);
             nextPair(0, 1, []);
@@ -13361,7 +13361,7 @@ Keep under 250 words. Use clear sections.`);
         };
 
         const startFreeOp = () => {
-            if (validItems.length < 2) { if (addToast) addToast('Need at least 2 items', 'warning'); return; }
+            if (validItems.length < 2) { if (addToast) addToast(t('behavior_lens.toast.need_at_least_2_items') || 'Need at least 2 items', 'warning'); return; }
             setFreeOpData(Object.fromEntries(validItems.map(i => [i, 0])));
             setFreeOpTimer(0);
             setFreeOpActive(true);
@@ -13397,7 +13397,7 @@ Keep under 250 words. Use clear sections.`);
                 h('button', { onClick: () => { setResults(null); setTrials([]); }, className: 'text-xs text-indigo-600 font-bold hover:underline' }, '← New Assessment'),
                 h('div', { className: 'text-center py-3' },
                     h('div', { className: 'text-4xl mb-2' }, '📊'),
-                    h('h2', { className: 'text-lg font-black text-slate-800' }, 'Preference Hierarchy'),
+                    h('h2', { className: 'text-lg font-black text-slate-800' }, t('behavior_lens.ui.preference_hierarchy') || 'Preference Hierarchy'),
                 ),
                 h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 shadow-sm' },
                     h('div', { className: 'space-y-2' },
@@ -13429,8 +13429,8 @@ Keep under 250 words. Use clear sections.`);
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '⭐'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'Preference Assessment'),
-                h('p', { className: 'text-xs text-slate-500 mt-1' }, 'Systematic reinforcer identification using evidence-based protocols')
+                h('h2', { className: 'text-lg font-black text-slate-800' }, t('behavior_lens.ui.preference_assessment') || 'Preference Assessment'),
+                h('p', { className: 'text-xs text-slate-500 mt-1' }, t('behavior_lens.ui.systematic_reinforcer_identification_using_evidenc') || 'Systematic reinforcer identification using evidence-based protocols')
             ),
             !trialActive && h('div', { className: 'space-y-4' },
                 // Method
@@ -13478,7 +13478,7 @@ Keep under 250 words. Use clear sections.`);
             trialActive && method === 'freeop' && h('div', { className: 'space-y-3' },
                 h('div', { className: 'bg-gradient-to-r from-amber-500 to-orange-600 rounded-xl p-4 text-white text-center' },
                     h('div', { className: 'text-3xl font-black tabular-nums' }, `${Math.floor(freeOpTimer / 60)}:${(freeOpTimer % 60).toString().padStart(2, '0')}`),
-                    h('p', { className: 'text-[10px] opacity-80' }, 'Tap each item when student engages with it')
+                    h('p', { className: 'text-[10px] opacity-80' }, t('behavior_lens.ui.tap_each_item_when_student_engages_with_it') || 'Tap each item when student engages with it')
                 ),
                 h('div', { className: 'grid grid-cols-2 gap-2' },
                     validItems.map(item => h('button', { key: item, onClick: () => recordFreeOp(item), className: 'py-4 bg-white rounded-xl border-2 border-slate-200 hover:border-amber-400 text-sm font-bold text-slate-800 relative' },
@@ -13538,7 +13538,7 @@ Keep under 250 words. Use clear sections.`);
                 newGrid[k] = newGrid[k] >= maxVal * 0.6 ? 2 : newGrid[k] >= 1 ? 1 : 0;
             });
             setGrid(newGrid);
-            if (addToast) addToast(`Populated from ${abcEntries.length} ABC entries`, 'success');
+            if (addToast) addToast(t('behavior_lens.toast.populated_from_n_abc_entries') || `Populated from ${abcEntries.length} ABC entries`, 'success');
         };
 
         // Pattern detection
@@ -13559,12 +13559,12 @@ Keep under 250 words. Use clear sections.`);
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '📅'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'Scatterplot Analysis'),
-                h('p', { className: 'text-xs text-slate-500 mt-1' }, 'Identify temporal patterns in behavior occurrence')
+                h('h2', { className: 'text-lg font-black text-slate-800' }, t('behavior_lens.ui.scatterplot_analysis') || 'Scatterplot Analysis'),
+                h('p', { className: 'text-xs text-slate-500 mt-1' }, t('behavior_lens.ui.identify_temporal_patterns_in_behavior_occurrence') || 'Identify temporal patterns in behavior occurrence')
             ),
             h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 shadow-sm' },
                 h('div', { className: 'flex items-center gap-2 mb-3' },
-                    h('input', { value: behaviorName, onChange: e => setBehaviorName(e.target.value), placeholder: 'Behavior name...', className: 'flex-1 text-xs border border-slate-200 rounded-lg px-2 py-1.5' }),
+                    h('input', { value: behaviorName, onChange: e => setBehaviorName(e.target.value), placeholder: t('behavior_lens.ph.behavior_name') || 'Behavior name...', className: 'flex-1 text-xs border border-slate-200 rounded-lg px-2 py-1.5' }),
                     abcEntries.length > 0 && h('button', { onClick: autoPopulate, className: 'px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg text-[10px] font-bold' }, '🔄 Auto-fill from ABC')
                 ),
                 // Grid
@@ -13592,9 +13592,9 @@ Keep under 250 words. Use clear sections.`);
                     )
                 ),
                 h('div', { className: 'flex gap-3 mt-2 text-[9px] text-slate-500' },
-                    h('span', { className: 'flex items-center gap-1' }, h('span', { className: 'w-3 h-3 bg-white border border-slate-200 rounded' }), 'No occurrence'),
-                    h('span', { className: 'flex items-center gap-1' }, h('span', { className: 'w-3 h-3 bg-amber-200 rounded' }), 'Some'),
-                    h('span', { className: 'flex items-center gap-1' }, h('span', { className: 'w-3 h-3 bg-red-400 rounded' }), 'High')
+                    h('span', { className: 'flex items-center gap-1' }, h('span', { className: 'w-3 h-3 bg-white border border-slate-200 rounded' }), t('behavior_lens.ui.no_occurrence') || 'No occurrence'),
+                    h('span', { className: 'flex items-center gap-1' }, h('span', { className: 'w-3 h-3 bg-amber-200 rounded' }), t('behavior_lens.ui.some') || 'Some'),
+                    h('span', { className: 'flex items-center gap-1' }, h('span', { className: 'w-3 h-3 bg-red-400 rounded' }), t('behavior_lens.ui.high') || 'High')
                 )
             ),
             patterns.totalOccurrences > 0 && h('div', { className: 'bg-amber-50 rounded-xl border border-amber-200 p-4' },
@@ -13629,7 +13629,7 @@ Keep under 250 words. Use clear sections.`);
                 duration: `${trials.length} trials`,
                 source: 'latency-recorder'
             });
-            if (addToast) addToast('Saved to session history!', 'success');
+            if (addToast) addToast(t('behavior_lens.toast.saved_to_session_history') || 'Saved to session history!', 'success');
         };
 
         const presentStimulus = () => {
@@ -13659,12 +13659,12 @@ Keep under 250 words. Use clear sections.`);
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '⏱️'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'Latency Recorder'),
-                h('p', { className: 'text-xs text-slate-500 mt-1' }, 'Measure time between stimulus presentation and behavioral response')
+                h('h2', { className: 'text-lg font-black text-slate-800' }, t('behavior_lens.ui.latency_recorder') || 'Latency Recorder'),
+                h('p', { className: 'text-xs text-slate-500 mt-1' }, t('behavior_lens.ui.measure_time_between_stimulus_presentation_and_beh') || 'Measure time between stimulus presentation and behavioral response')
             ),
             h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 shadow-sm' },
-                h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase' }, 'Behavior'),
-                h('input', { value: behaviorName, onChange: e => setBehaviorName(e.target.value), placeholder: 'e.g. Responding to name', className: 'w-full text-xs border border-slate-200 rounded-lg px-3 py-2 mt-1' })
+                h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase' }, t('behavior_lens.ui.behavior_2') || 'Behavior'),
+                h('input', { value: behaviorName, onChange: e => setBehaviorName(e.target.value), placeholder: t('behavior_lens.ph.eg_responding_to_name') || 'e.g. Responding to name', className: 'w-full text-xs border border-slate-200 rounded-lg px-3 py-2 mt-1' })
             ),
             !waitingForResponse ?
                 h('button', { onClick: presentStimulus, className: 'w-full py-6 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl font-black text-lg hover:from-blue-600 hover:to-indigo-700 shadow-lg transition-all hover:scale-[1.02] active:scale-95' }, '📢 Present Stimulus') :
@@ -13680,9 +13680,9 @@ Keep under 250 words. Use clear sections.`);
             trials.length > 0 && h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 shadow-sm' },
                 h('h3', { className: 'text-xs font-bold text-slate-600 mb-3' }, `📊 Results (${trials.length} trials)`),
                 h('div', { className: 'grid grid-cols-3 gap-3 mb-3' },
-                    h('div', { className: 'bg-indigo-50 rounded-lg p-3 text-center' }, h('p', { className: 'text-[10px] text-indigo-600' }, 'Mean'), h('p', { className: 'text-lg font-black text-indigo-800' }, `${mean}s`)),
-                    h('div', { className: 'bg-purple-50 rounded-lg p-3 text-center' }, h('p', { className: 'text-[10px] text-purple-600' }, 'Median'), h('p', { className: 'text-lg font-black text-purple-800' }, `${median}s`)),
-                    h('div', { className: 'bg-emerald-50 rounded-lg p-3 text-center' }, h('p', { className: 'text-[10px] text-emerald-600' }, 'Range'), h('p', { className: 'text-lg font-black text-emerald-800' }, range))
+                    h('div', { className: 'bg-indigo-50 rounded-lg p-3 text-center' }, h('p', { className: 'text-[10px] text-indigo-600' }, t('behavior_lens.ui.mean') || 'Mean'), h('p', { className: 'text-lg font-black text-indigo-800' }, `${mean}s`)),
+                    h('div', { className: 'bg-purple-50 rounded-lg p-3 text-center' }, h('p', { className: 'text-[10px] text-purple-600' }, t('behavior_lens.ui.median') || 'Median'), h('p', { className: 'text-lg font-black text-purple-800' }, `${median}s`)),
+                    h('div', { className: 'bg-emerald-50 rounded-lg p-3 text-center' }, h('p', { className: 'text-[10px] text-emerald-600' }, t('behavior_lens.ui.range') || 'Range'), h('p', { className: 'text-lg font-black text-emerald-800' }, range))
                 ),
                 h('div', { className: 'flex flex-wrap gap-1' },
                     trials.map((t, i) => h('span', { key: i, className: `px-2 py-1 rounded-lg text-[10px] font-bold ${t.noResponse ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'}` }, t.noResponse ? 'NR' : `${t.latency}s`))
@@ -13769,8 +13769,8 @@ Keep under 250 words. Use clear sections.`);
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '📋'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'Social Validity'),
-                h('p', { className: 'text-xs text-slate-500 mt-1' }, 'Treatment acceptability measurement for research and practice')
+                h('h2', { className: 'text-lg font-black text-slate-800' }, t('behavior_lens.ui.social_validity') || 'Social Validity'),
+                h('p', { className: 'text-xs text-slate-500 mt-1' }, t('behavior_lens.ui.treatment_acceptability_measurement_for_research_a') || 'Treatment acceptability measurement for research and practice')
             ),
             h('div', { className: 'flex gap-2' },
                 Object.entries(MEASURES).map(([id, m]) => h('button', { key: id, onClick: () => { setMeasure(id); setResponses({}); setResult(null); }, className: `flex-1 p-3 rounded-xl border-2 text-left ${measure === id ? 'border-indigo-400 bg-indigo-50' : 'border-slate-200'}` },
@@ -13906,17 +13906,17 @@ Keep under 250 words. Use clear sections.`);
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '🔄'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'Maintenance & Generalization'),
-                h('p', { className: 'text-xs text-slate-500 mt-1' }, 'Track skill retention and generalization across settings, people, and materials')
+                h('h2', { className: 'text-lg font-black text-slate-800' }, t('behavior_lens.ui.maintenance_generalization') || 'Maintenance & Generalization'),
+                h('p', { className: 'text-xs text-slate-500 mt-1' }, t('behavior_lens.ui.track_skill_retention_and_generalization_across_se') || 'Track skill retention and generalization across settings, people, and materials')
             ),
             h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 shadow-sm' },
                 h('div', { className: 'flex gap-2 mb-3' },
-                    h('input', { value: newSkill, onChange: e => setNewSkill(e.target.value), placeholder: 'Mastered skill name...', className: 'flex-1 text-xs border border-slate-200 rounded-lg px-2 py-1.5' }),
+                    h('input', { value: newSkill, onChange: e => setNewSkill(e.target.value), placeholder: t('behavior_lens.ph.mastered_skill_name') || 'Mastered skill name...', className: 'flex-1 text-xs border border-slate-200 rounded-lg px-2 py-1.5' }),
                     h('input', { type: 'date', value: newMasteryDate, onChange: e => setNewMasteryDate(e.target.value), className: 'text-xs border border-slate-200 rounded-lg px-2 py-1.5' }),
                     h('button', { onClick: addSkill, className: 'px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-[10px] font-bold' }, '+ Add')
                 )
             ),
-            skills.length === 0 ? h('p', { className: 'text-center text-sm text-slate-400 py-8' }, 'Add mastered skills to begin maintenance tracking.') :
+            skills.length === 0 ? h('p', { className: 'text-center text-sm text-slate-400 py-8' }, t('behavior_lens.ui.add_mastered_skills_to_begin_maintenance_tracking') || 'Add mastered skills to begin maintenance tracking.') :
                 h('div', { className: 'space-y-2' },
                     skills.map(s => {
                         const lastProbe = s.probes[s.probes.length - 1];
@@ -13977,7 +13977,7 @@ Keep under 250 words. Use clear sections.`);
         return h('div', { className: 'max-w-3xl mx-auto space-y-4' },
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '📈'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'Cumulative Record'),
+                h('h2', { className: 'text-lg font-black text-slate-800' }, t('behavior_lens.ui.cumulative_record') || 'Cumulative Record'),
                 h('p', { className: 'text-xs text-slate-500 mt-1' }, 'Classic Skinner-style cumulative frequency display')
             ),
             h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 shadow-sm' },
@@ -13985,8 +13985,8 @@ Keep under 250 words. Use clear sections.`);
                     h('label', { className: 'flex items-center gap-1 text-[10px] font-medium text-slate-600 cursor-pointer' },
                         h('input', { type: 'checkbox', checked: showManual, onChange: () => setShowManual(!showManual), className: 'accent-indigo-600' }), 'Manual data entry'
                     ),
-                    !showManual && h('input', { value: behaviorName, onChange: e => setBehaviorName(e.target.value), placeholder: 'Behavior name (from sessions)...', className: 'flex-1 text-xs border border-slate-200 rounded-lg px-2 py-1.5' }),
-                    showManual && h('input', { value: manualData, onChange: e => setManualData(e.target.value), placeholder: 'Counts per session: 3, 5, 2, 8, 4...', className: 'flex-1 text-xs border border-slate-200 rounded-lg px-2 py-1.5' })
+                    !showManual && h('input', { value: behaviorName, onChange: e => setBehaviorName(e.target.value), placeholder: t('behavior_lens.ph.behavior_name_from_sessions') || 'Behavior name (from sessions)...', className: 'flex-1 text-xs border border-slate-200 rounded-lg px-2 py-1.5' }),
+                    showManual && h('input', { value: manualData, onChange: e => setManualData(e.target.value), placeholder: t('behavior_lens.ph.counts_per_session_3_5_2_8_4') || 'Counts per session: 3, 5, 2, 8, 4...', className: 'flex-1 text-xs border border-slate-200 rounded-lg px-2 py-1.5' })
                 ),
                 dataPoints.length > 0 ? h('svg', { viewBox: `0 0 ${W} ${H}`, className: 'w-full', style: { maxHeight: '280px', fontFamily: 'Arial, sans-serif' } },
                     h('rect', { x: 0, y: 0, width: W, height: H, fill: 'white' }),
@@ -13999,7 +13999,7 @@ Keep under 250 words. Use clear sections.`);
                     h('path', { d: pathD + ` L ${toX(dataPoints[dataPoints.length - 1].session)} ${padT + plotH} L ${toX(1)} ${padT + plotH} Z`, fill: 'rgba(99, 102, 241, 0.1)' }),
                     h('path', { d: pathD, fill: 'none', stroke: '#6366f1', strokeWidth: 2.5, strokeLinejoin: 'round' }),
                     ...dataPoints.map(d => h('circle', { key: d.session, cx: toX(d.session), cy: toY(d.cumulative), r: 3, fill: 'white', stroke: '#6366f1', strokeWidth: 2 }))
-                ) : h('p', { className: 'text-center text-sm text-slate-400 py-8' }, 'Enter data or record sessions to generate a cumulative record.')
+                ) : h('p', { className: 'text-center text-sm text-slate-400 py-8' }, t('behavior_lens.ui.enter_data_or_record_sessions_to_generate_a_cumula') || 'Enter data or record sessions to generate a cumulative record.')
             ),
             dataPoints.length > 0 && h('div', { className: 'bg-indigo-50 rounded-xl p-3 border border-indigo-200' },
                 h('div', { className: 'flex justify-between text-xs' },
@@ -14046,8 +14046,8 @@ Keep under 250 words. Use clear sections.`);
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '📐'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'Conditional Probability'),
-                h('p', { className: 'text-xs text-slate-500 mt-1' }, 'Validate ABC hypotheses with foreground/background probability analysis')
+                h('h2', { className: 'text-lg font-black text-slate-800' }, t('behavior_lens.ui.conditional_probability') || 'Conditional Probability'),
+                h('p', { className: 'text-xs text-slate-500 mt-1' }, t('behavior_lens.ui.validate_abc_hypotheses_with_foregroundbackground') || 'Validate ABC hypotheses with foreground/background probability analysis')
             ),
             abcEntries.length < 5 ? h('div', { className: 'bg-amber-50 rounded-xl p-6 text-center border border-amber-200' },
                 h('p', { className: 'text-sm text-amber-700' }, `Need at least 5 ABC entries (have ${abcEntries.length}). Collect more data first.`)
@@ -14055,13 +14055,13 @@ Keep under 250 words. Use clear sections.`);
                 h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 shadow-sm' },
                     h('div', { className: 'grid grid-cols-2 gap-3' },
                         h('div', null,
-                            h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-1' }, 'Target Behavior'),
+                            h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-1' }, t('behavior_lens.ui.target_behavior') || 'Target Behavior'),
                             h('div', { className: 'flex flex-wrap gap-1' },
                                 behaviors.slice(0, 6).map(b => h('button', { key: b, onClick: () => setSelectedBehavior(b), className: `px-2 py-1 rounded-lg text-[10px] font-medium border ${selectedBehavior === b ? 'bg-indigo-100 border-indigo-400 text-indigo-700' : 'bg-white border-slate-200 text-slate-500'}` }, b))
                             )
                         ),
                         h('div', null,
-                            h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-1' }, 'Antecedent'),
+                            h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-1' }, t('behavior_lens.ui.antecedent') || 'Antecedent'),
                             h('div', { className: 'flex flex-wrap gap-1' },
                                 antecedents.slice(0, 6).map(a => h('button', { key: a, onClick: () => setSelectedAntecedent(a), className: `px-2 py-1 rounded-lg text-[10px] font-medium border ${selectedAntecedent === a ? 'bg-purple-100 border-purple-400 text-purple-700' : 'bg-white border-slate-200 text-slate-500'}` }, a))
                             )
@@ -14071,20 +14071,20 @@ Keep under 250 words. Use clear sections.`);
                 analysis && h('div', { className: 'space-y-3' },
                     h('div', { className: 'grid grid-cols-3 gap-3' },
                         h('div', { className: 'bg-purple-50 rounded-xl p-4 text-center border border-purple-200' },
-                            h('p', { className: 'text-[10px] text-purple-600 font-medium' }, 'P(B|A)'),
-                            h('p', { className: 'text-[9px] text-purple-400 mb-1' }, 'Foreground'),
+                            h('p', { className: 'text-[10px] text-purple-600 font-medium' }, t('behavior_lens.ui.pba') || 'P(B|A)'),
+                            h('p', { className: 'text-[9px] text-purple-400 mb-1' }, t('behavior_lens.ui.foreground') || 'Foreground'),
                             h('p', { className: 'text-2xl font-black text-purple-700' }, `${(analysis.pBgivA * 100).toFixed(0)}%`),
                             h('p', { className: 'text-[9px] text-purple-500' }, `${analysis.behavGivenAnt}/${analysis.withAntN}`)
                         ),
                         h('div', { className: 'bg-slate-50 rounded-xl p-4 text-center border border-slate-200' },
-                            h('p', { className: 'text-[10px] text-slate-600 font-medium' }, 'P(B|¬A)'),
-                            h('p', { className: 'text-[9px] text-slate-400 mb-1' }, 'Background'),
+                            h('p', { className: 'text-[10px] text-slate-600 font-medium' }, t('behavior_lens.ui.pba_2') || 'P(B|¬A)'),
+                            h('p', { className: 'text-[9px] text-slate-400 mb-1' }, t('behavior_lens.ui.background') || 'Background'),
                             h('p', { className: 'text-2xl font-black text-slate-700' }, `${(analysis.pBgivNoA * 100).toFixed(0)}%`),
                             h('p', { className: 'text-[9px] text-slate-500' }, `${analysis.behavGivenNoAnt}/${analysis.withoutAntN}`)
                         ),
                         h('div', { className: `rounded-xl p-4 text-center border ${analysis.riskRatio > 1.5 ? 'bg-red-50 border-red-200' : analysis.riskRatio > 1 ? 'bg-amber-50 border-amber-200' : 'bg-green-50 border-green-200'}` },
-                            h('p', { className: 'text-[10px] text-slate-600 font-medium' }, 'Risk Ratio'),
-                            h('p', { className: 'text-[9px] text-slate-400 mb-1' }, 'P(B|A)/P(B|¬A)'),
+                            h('p', { className: 'text-[10px] text-slate-600 font-medium' }, t('behavior_lens.ui.risk_ratio') || 'Risk Ratio'),
+                            h('p', { className: 'text-[9px] text-slate-400 mb-1' }, t('behavior_lens.ui.pbapba') || 'P(B|A)/P(B|¬A)'),
                             h('p', { className: `text-2xl font-black ${analysis.riskRatio > 1.5 ? 'text-red-700' : 'text-slate-700'}` }, analysis.riskRatio === Infinity ? '∞' : `${analysis.riskRatio.toFixed(2)}x`),
                         )
                     ),
@@ -14121,7 +14121,7 @@ Keep under 250 words. Use clear sections.`);
             const session = { date: new Date().toISOString(), components: components.map(c => ({ desc: c.desc, implemented: c.implemented })), integrity };
             setSessions(prev => [session, ...prev]);
             setComponents(prev => prev.map(c => ({ ...c, implemented: false })));
-            if (addToast) addToast(`Integrity: ${integrity}% (${implemented}/${total})`, integrity >= 80 ? 'success' : 'warning');
+            if (addToast) addToast(t('behavior_lens.toast.integrity_n_nn') || `Integrity: ${integrity}% (${implemented}/${total})`, integrity >= 80 ? 'success' : 'warning');
         };
 
         const avgIntegrity = sessions.length > 0 ? Math.round(sessions.reduce((a, s) => a + s.integrity, 0) / sessions.length) : 0;
@@ -14129,12 +14129,12 @@ Keep under 250 words. Use clear sections.`);
         return h('div', { className: 'max-w-2xl mx-auto space-y-4' },
             h('div', { className: 'text-center py-3' },
                 h('div', { className: 'text-4xl mb-2' }, '✅'),
-                h('h2', { className: 'text-lg font-black text-slate-800' }, 'Treatment Integrity'),
-                h('p', { className: 'text-xs text-slate-500 mt-1' }, 'Document whether interventions are implemented as designed')
+                h('h2', { className: 'text-lg font-black text-slate-800' }, t('behavior_lens.ui.treatment_integrity') || 'Treatment Integrity'),
+                h('p', { className: 'text-xs text-slate-500 mt-1' }, t('behavior_lens.ui.document_whether_interventions_are_implemented_as') || 'Document whether interventions are implemented as designed')
             ),
             h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 shadow-sm' },
-                h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase' }, 'Intervention/BIP Name'),
-                h('input', { value: interventionName, onChange: e => setInterventionName(e.target.value), placeholder: 'e.g. Token Economy + FCT Protocol', className: 'w-full text-xs border border-slate-200 rounded-lg px-3 py-2 mt-1' })
+                h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase' }, t('behavior_lens.ui.interventionbip_name') || 'Intervention/BIP Name'),
+                h('input', { value: interventionName, onChange: e => setInterventionName(e.target.value), placeholder: t('behavior_lens.ph.eg_token_economy_fct_protocol') || 'e.g. Token Economy + FCT Protocol', className: 'w-full text-xs border border-slate-200 rounded-lg px-3 py-2 mt-1' })
             ),
             h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 shadow-sm' },
                 h('div', { className: 'flex items-center justify-between mb-3' },
@@ -14228,7 +14228,7 @@ Keep under 250 words. Use clear sections.`);
 
                 }
 
-            } catch (err) { if (addToast) addToast('Failed to parse notes.', 'error'); }
+            } catch (err) { if (addToast) addToast(t('behavior_lens.toast.failed_to_parse_notes') || 'Failed to parse notes.', 'error'); }
 
             setParsing(false);
 
@@ -14244,7 +14244,7 @@ Keep under 250 words. Use clear sections.`);
 
             setParsedEntries(prev => prev.filter(e => e !== entry));
 
-            if (addToast) addToast('Entry added!', 'success');
+            if (addToast) addToast(t('behavior_lens.toast.entry_added') || 'Entry added!', 'success');
 
         };
 
@@ -14280,9 +14280,9 @@ Keep under 250 words. Use clear sections.`);
 
             h('div', { className: 'bg-gradient-to-r from-violet-50 to-fuchsia-50 rounded-xl p-4 border border-violet-200' },
 
-                h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '✏️'), h('h3', { className: 'text-lg font-black text-violet-800' }, 'Natural Language ABC Entry')),
+                h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '✏️'), h('h3', { className: 'text-lg font-black text-violet-800' }, t('behavior_lens.ui.natural_language_abc_entry') || 'Natural Language ABC Entry')),
 
-                h('p', { className: 'text-xs text-violet-600' }, 'Type or paste your observation notes in everyday English. AI will structure them into proper ABC entries.')
+                h('p', { className: 'text-xs text-violet-600' }, t('behavior_lens.ui.type_or_paste_your_observation_notes_in_everyday_e') || 'Type or paste your observation notes in everyday English. AI will structure them into proper ABC entries.')
 
             ),
 
@@ -14438,9 +14438,9 @@ Keep under 250 words. Use clear sections.`);
 
                 const jsonMatch = aiResult.match(/\{[\s\S]*\}/);
 
-                if (jsonMatch) { setResult(JSON.parse(jsonMatch[0])); if (addToast) addToast('IEP goals generated!', 'success'); }
+                if (jsonMatch) { setResult(JSON.parse(jsonMatch[0])); if (addToast) addToast(t('behavior_lens.toast.iep_goals_generated') || 'IEP goals generated!', 'success'); }
 
-            } catch (err) { if (addToast) addToast('Generation failed.', 'error'); }
+            } catch (err) { if (addToast) addToast(t('behavior_lens.toast.generation_failed_2') || 'Generation failed.', 'error'); }
 
             setGenerating(false);
 
@@ -14462,7 +14462,7 @@ Keep under 250 words. Use clear sections.`);
 
             navigator.clipboard.writeText(text);
 
-            if (addToast) addToast('Copied!', 'success');
+            if (addToast) addToast(t('behavior_lens.toast.copied') || 'Copied!', 'success');
 
         };
 
@@ -14470,9 +14470,9 @@ Keep under 250 words. Use clear sections.`);
 
             h('div', { className: 'bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200' },
 
-                h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '📄'), h('h3', { className: 'text-lg font-black text-blue-800' }, 'IEP Behavior Goal Generator')),
+                h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '📄'), h('h3', { className: 'text-lg font-black text-blue-800' }, t('behavior_lens.ui.iep_behavior_goal_generator') || 'IEP Behavior Goal Generator')),
 
-                h('p', { className: 'text-xs text-blue-600' }, 'Generate compliant IEP behavioral goals from observation data with present levels, SMART goals, and progress monitoring.')
+                h('p', { className: 'text-xs text-blue-600' }, t('behavior_lens.ui.generate_compliant_iep_behavioral_goals_from_obser') || 'Generate compliant IEP behavioral goals from observation data with present levels, SMART goals, and progress monitoring.')
 
             ),
 
@@ -14512,7 +14512,7 @@ Keep under 250 words. Use clear sections.`);
 
                     (result.annualGoals || []).map((g, i) => h('div', { key: i, className: 'mb-4 p-3 bg-emerald-50 rounded-lg border border-emerald-100' },
 
-                        h('p', { className: 'text-xs font-bold text-emerald-800 mb-2' }, 'Goal ' + g.goalNumber + ': ' + g.goal),
+                        h('p', { className: 'text-xs font-bold text-emerald-800 mb-2' }, t('behavior_lens.ui.goal') || 'Goal ' + g.goalNumber + ': ' + g.goal),
 
                         h('div', { className: 'grid grid-cols-2 gap-2' }, [['Baseline', g.baseline], ['Target', g.targetCriteria], ['Measurement', g.measurementMethod], ['Schedule', g.schedule]].map(([label, val]) => h('div', { key: label, className: 'text-[10px]' }, h('span', { className: 'font-bold text-slate-500' }, label + ': '), h('span', { className: 'text-slate-700' }, val))))
 
@@ -14524,7 +14524,7 @@ Keep under 250 words. Use clear sections.`);
 
                     h('h4', { className: 'text-sm font-bold text-amber-700 mb-3' }, '📋 Short-Term Objectives'),
 
-                    (result.shortTermObjectives || []).map((o, i) => h('div', { key: i, className: 'mb-2 p-2 bg-amber-50 rounded-lg text-xs' }, h('p', { className: 'font-bold text-amber-800' }, 'Objective ' + o.objectiveNumber), h('p', { className: 'text-slate-700' }, o.objective)))
+                    (result.shortTermObjectives || []).map((o, i) => h('div', { key: i, className: 'mb-2 p-2 bg-amber-50 rounded-lg text-xs' }, h('p', { className: 'font-bold text-amber-800' }, t('behavior_lens.ui.objective') || 'Objective ' + o.objectiveNumber), h('p', { className: 'text-slate-700' }, o.objective)))
 
                 ),
 
@@ -14534,9 +14534,9 @@ Keep under 250 words. Use clear sections.`);
 
                     h('div', { className: 'grid grid-cols-1 sm:grid-cols-2 gap-3' },
 
-                        h('div', null, h('p', { className: 'text-[10px] font-bold text-slate-500 uppercase mb-1' }, 'Accommodations'), (result.accommodations || []).map((a, i) => h('div', { key: i, className: 'text-xs text-slate-700 mb-1' }, '• ' + a))),
+                        h('div', null, h('p', { className: 'text-[10px] font-bold text-slate-500 uppercase mb-1' }, t('behavior_lens.ui.accommodations') || 'Accommodations'), (result.accommodations || []).map((a, i) => h('div', { key: i, className: 'text-xs text-slate-700 mb-1' }, '• ' + a))),
 
-                        h('div', null, h('p', { className: 'text-[10px] font-bold text-slate-500 uppercase mb-1' }, 'Interventions'), (result.suggestedInterventions || []).map((s, i) => h('div', { key: i, className: 'text-xs text-slate-700 mb-1' }, '• ' + s)))
+                        h('div', null, h('p', { className: 'text-[10px] font-bold text-slate-500 uppercase mb-1' }, t('behavior_lens.ui.interventions') || 'Interventions'), (result.suggestedInterventions || []).map((s, i) => h('div', { key: i, className: 'text-xs text-slate-700 mb-1' }, '• ' + s)))
 
                     )
 
@@ -14634,9 +14634,9 @@ Keep under 250 words. Use clear sections.`);
 
                 setCaseloadSummary(result);
 
-                if (addToast) addToast('Summary generated!', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.summary_generated') || 'Summary generated!', 'success');
 
-            } catch (e) { if (addToast) addToast('Failed to generate summary', 'error'); }
+            } catch (e) { if (addToast) addToast(t('behavior_lens.toast.failed_to_generate_summary') || 'Failed to generate summary', 'error'); }
 
             setSummaryLoading(false);
 
@@ -14652,7 +14652,7 @@ Keep under 250 words. Use clear sections.`);
 
             h('div', { className: 'bg-gradient-to-r from-teal-50 to-cyan-50 rounded-xl p-4 border border-teal-200' },
 
-                h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '👥'), h('h3', { className: 'text-lg font-black text-teal-800' }, 'Caseload Dashboard')),
+                h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '👥'), h('h3', { className: 'text-lg font-black text-teal-800' }, t('behavior_lens.ui.caseload_dashboard') || 'Caseload Dashboard')),
 
                 h('p', { className: 'text-xs text-teal-600' }, "Bird's-eye view of your caseload with status indicators, trends, and AI summary.")
 
@@ -14680,7 +14680,7 @@ Keep under 250 words. Use clear sections.`);
 
             h('div', { className: 'bg-white rounded-xl border border-slate-200 overflow-hidden' },
 
-                sorted.length === 0 ? h('div', { className: 'p-8 text-center text-sm text-slate-400 italic' }, 'No students in caseload.') :
+                sorted.length === 0 ? h('div', { className: 'p-8 text-center text-sm text-slate-400 italic' }, t('behavior_lens.ui.no_students_in_caseload') || 'No students in caseload.') :
 
                     sorted.map((s, idx) => {
 
@@ -14750,9 +14750,9 @@ Keep under 250 words. Use clear sections.`);
 
                 const jsonMatch = result.match(/\{[\s\S]*\}/);
 
-                if (jsonMatch) { setAiRecs(JSON.parse(jsonMatch[0])); if (addToast) addToast('Recommendations generated!', 'success'); }
+                if (jsonMatch) { setAiRecs(JSON.parse(jsonMatch[0])); if (addToast) addToast(t('behavior_lens.toast.recommendations_generated') || 'Recommendations generated!', 'success'); }
 
-            } catch (e) { if (addToast) addToast('Failed', 'error'); }
+            } catch (e) { if (addToast) addToast(t('behavior_lens.toast.failed') || 'Failed', 'error'); }
 
             setRecsLoading(false);
 
@@ -14776,7 +14776,7 @@ Keep under 250 words. Use clear sections.`);
 
                 ),
 
-                tierStudents.length === 0 ? h('p', { className: 'text-xs text-' + tc.color + '-400 italic text-center py-2' }, 'No students') :
+                tierStudents.length === 0 ? h('p', { className: 'text-xs text-' + tc.color + '-400 italic text-center py-2' }, t('behavior_lens.ui.no_students') || 'No students') :
 
                     h('div', { className: 'flex flex-wrap gap-2' }, tierStudents.map(name => h('div', { key: name, className: 'flex items-center gap-1 bg-white rounded-lg px-3 py-1.5 border border-' + tc.color + '-200' },
 
@@ -14794,9 +14794,9 @@ Keep under 250 words. Use clear sections.`);
 
             h('div', { className: 'bg-gradient-to-r from-orange-50 to-rose-50 rounded-xl p-4 border border-orange-200' },
 
-                h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '🏗️'), h('h3', { className: 'text-lg font-black text-orange-800' }, 'MTSS/RTI Tier Manager')),
+                h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '🏗️'), h('h3', { className: 'text-lg font-black text-orange-800' }, t('behavior_lens.ui.mtssrti_tier_manager') || 'MTSS/RTI Tier Manager')),
 
-                h('p', { className: 'text-xs text-orange-600' }, 'Visual multi-tiered system of supports. Assign students to tiers, get AI-powered placement recommendations.')
+                h('p', { className: 'text-xs text-orange-600' }, t('behavior_lens.ui.visual_multitiered_system_of_supports_assign_stude') || 'Visual multi-tiered system of supports. Assign students to tiers, get AI-powered placement recommendations.')
 
             ),
 
@@ -14844,7 +14844,7 @@ Keep under 250 words. Use clear sections.`);
         // Auto-fill from graph phase data
         const handleAutoFill = () => {
             if (!graphExport?.phaseAnalysis || graphExport.phaseAnalysis.length < 2) {
-                if (addToast) addToast('Need at least 2 phases in the Graph (baseline + intervention)', 'warning');
+                if (addToast) addToast(t('behavior_lens.toast.need_at_least_2_phases_in_the_graph_baseline_inter') || 'Need at least 2 phases in the Graph (baseline + intervention)', 'warning');
                 return;
             }
             const baseline = graphExport.phaseAnalysis[0];
@@ -14852,12 +14852,12 @@ Keep under 250 words. Use clear sections.`);
             const baseVals = baseline.data.map(d => d.value);
             const intVals = intervention.data.map(d => d.value);
             if (baseVals.length < 2 || intVals.length < 2) {
-                if (addToast) addToast('Each phase needs at least 2 data points', 'warning');
+                if (addToast) addToast(t('behavior_lens.toast.each_phase_needs_at_least_2_data_points') || 'Each phase needs at least 2 data points', 'warning');
                 return;
             }
             setBaselineData(baseVals.join(', '));
             setInterventionData(intVals.join(', '));
-            if (addToast) addToast(`Auto-filled: ${baseVals.length} baseline + ${intVals.length} intervention points from "${graphExport.behaviorName}"`, 'success');
+            if (addToast) addToast(t('behavior_lens.toast.autofilled_n_baseline_n_intervention_points_from_n') || `Auto-filled: ${baseVals.length} baseline + ${intVals.length} intervention points from "${graphExport.behaviorName}"`, 'success');
         };
 
         const calculate = () => {
@@ -14866,7 +14866,7 @@ Keep under 250 words. Use clear sections.`);
 
             const intervention = parseData(interventionData);
 
-            if (baseline.length < 2 || intervention.length < 2) { if (addToast) addToast('Need at least 2 data points per phase', 'error'); return; }
+            if (baseline.length < 2 || intervention.length < 2) { if (addToast) addToast(t('behavior_lens.toast.need_at_least_2_data_points_per_phase') || 'Need at least 2 data points per phase', 'error'); return; }
 
             const baseMax = Math.max(...baseline);
 
@@ -14917,7 +14917,7 @@ Keep under 250 words. Use clear sections.`);
                 tauInterp: Math.abs(tauU) >= 0.8 ? 'Large' : Math.abs(tauU) >= 0.5 ? 'Medium' : Math.abs(tauU) >= 0.2 ? 'Small' : 'Negligible',
             });
 
-            if (addToast) addToast('Effect sizes calculated!', 'success');
+            if (addToast) addToast(t('behavior_lens.toast.effect_sizes_calculated') || 'Effect sizes calculated!', 'success');
 
         };
 
@@ -14925,9 +14925,9 @@ Keep under 250 words. Use clear sections.`);
 
             h('div', { className: 'bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-4 border border-indigo-200' },
 
-                h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '📐'), h('h3', { className: 'text-lg font-black text-indigo-800' }, 'Effect Size Calculator')),
+                h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '📐'), h('h3', { className: 'text-lg font-black text-indigo-800' }, t('behavior_lens.ui.effect_size_calculator') || 'Effect Size Calculator')),
 
-                h('p', { className: 'text-xs text-indigo-600' }, 'Calculate Tau-U, NAP, and PND to quantify intervention effectiveness.')
+                h('p', { className: 'text-xs text-indigo-600' }, t('behavior_lens.ui.calculate_tauu_nap_and_pnd_to_quantify_interventio') || 'Calculate Tau-U, NAP, and PND to quantify intervention effectiveness.')
 
             ),
 
@@ -14944,9 +14944,9 @@ Keep under 250 words. Use clear sections.`);
                     className: 'w-full py-2 bg-slate-50 border border-dashed border-slate-300 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-all mb-2'
                 }, '📈 Open ABA Graph to enable auto-fill'),
 
-                h('div', null, h('label', { className: 'text-xs font-bold text-slate-500 uppercase tracking-wider' }, '📊 Baseline Phase (A)'), h('input', { value: baselineData, onChange: e => setBaselineData(e.target.value), placeholder: 'e.g. 12, 15, 14, 13, 16', className: 'w-full mt-1 p-2 border border-slate-200 rounded-lg text-xs' })),
+                h('div', null, h('label', { className: 'text-xs font-bold text-slate-500 uppercase tracking-wider' }, '📊 Baseline Phase (A)'), h('input', { value: baselineData, onChange: e => setBaselineData(e.target.value), placeholder: t('behavior_lens.ph.eg_12_15_14_13_16') || 'e.g. 12, 15, 14, 13, 16', className: 'w-full mt-1 p-2 border border-slate-200 rounded-lg text-xs' })),
 
-                h('div', null, h('label', { className: 'text-xs font-bold text-slate-500 uppercase tracking-wider' }, '📈 Intervention Phase (B)'), h('input', { value: interventionData, onChange: e => setInterventionData(e.target.value), placeholder: 'e.g. 8, 6, 5, 4, 3', className: 'w-full mt-1 p-2 border border-slate-200 rounded-lg text-xs' })),
+                h('div', null, h('label', { className: 'text-xs font-bold text-slate-500 uppercase tracking-wider' }, '📈 Intervention Phase (B)'), h('input', { value: interventionData, onChange: e => setInterventionData(e.target.value), placeholder: t('behavior_lens.ph.eg_8_6_5_4_3') || 'e.g. 8, 6, 5, 4, 3', className: 'w-full mt-1 p-2 border border-slate-200 rounded-lg text-xs' })),
 
                 h('button', { onClick: calculate, className: 'px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-lg text-sm hover:from-indigo-700 hover:to-purple-700 transition-all' }, '📐 Calculate Effect Sizes')
 
@@ -14978,7 +14978,7 @@ Keep under 250 words. Use clear sections.`);
 
                 // Inter-tool: Send to IEP
                 setActivePanel && h('button', {
-                    onClick: () => { if (addToast) addToast('Effect sizes attached to IEP Prep!', 'success'); setActivePanel('iepprep'); },
+                    onClick: () => { if (addToast) addToast(t('behavior_lens.toast.effect_sizes_attached_to_iep_prep') || 'Effect sizes attached to IEP Prep!', 'success'); setActivePanel('iepprep'); },
                     className: 'w-full py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl text-xs font-bold hover:from-blue-600 hover:to-indigo-600 shadow-md transition-all'
                 }, '📄 Send Effect Sizes to IEP Prep →')
 
@@ -15022,9 +15022,9 @@ Keep under 250 words. Use clear sections.`);
 
                 const jsonMatch = result.match(/\{[\s\S]*\}/);
 
-                if (jsonMatch) { setCoaching(JSON.parse(jsonMatch[0])); setDismissed(new Set()); if (addToast) addToast('Coaching tips generated!', 'success'); }
+                if (jsonMatch) { setCoaching(JSON.parse(jsonMatch[0])); setDismissed(new Set()); if (addToast) addToast(t('behavior_lens.toast.coaching_tips_generated') || 'Coaching tips generated!', 'success'); }
 
-            } catch (e) { if (addToast) addToast('Coaching failed.', 'error'); }
+            } catch (e) { if (addToast) addToast(t('behavior_lens.toast.coaching_failed') || 'Coaching failed.', 'error'); }
 
             setLoading(false);
 
@@ -15038,9 +15038,9 @@ Keep under 250 words. Use clear sections.`);
 
             h('div', { className: 'bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl p-4 border border-amber-200' },
 
-                h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '🎓'), h('h3', { className: 'text-lg font-black text-amber-800' }, 'AI Observation Coach')),
+                h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '🎓'), h('h3', { className: 'text-lg font-black text-amber-800' }, t('behavior_lens.ui.ai_observation_coach') || 'AI Observation Coach')),
 
-                h('p', { className: 'text-xs text-amber-600' }, 'Get AI coaching on data collection quality. Identifies gaps, suggests improvements, rates your data.')
+                h('p', { className: 'text-xs text-amber-600' }, t('behavior_lens.ui.get_ai_coaching_on_data_collection_quality_identif') || 'Get AI coaching on data collection quality. Identifies gaps, suggests improvements, rates your data.')
 
             ),
 
@@ -15062,7 +15062,7 @@ Keep under 250 words. Use clear sections.`);
 
                     h('div', { className: 'w-16 h-16 rounded-full flex items-center justify-center text-2xl font-black border-4 ' + (coaching.overallScore >= 7 ? 'border-emerald-400 text-emerald-700 bg-emerald-50' : coaching.overallScore >= 4 ? 'border-amber-400 text-amber-700 bg-amber-50' : 'border-red-400 text-red-700 bg-red-50') }, coaching.overallScore + '/10'),
 
-                    h('div', null, h('h4', { className: 'text-sm font-bold text-slate-800' }, 'Data Quality Score'), h('p', { className: 'text-xs text-slate-600' }, coaching.overallFeedback))
+                    h('div', null, h('h4', { className: 'text-sm font-bold text-slate-800' }, t('behavior_lens.ui.data_quality_score') || 'Data Quality Score'), h('p', { className: 'text-xs text-slate-600' }, coaching.overallFeedback))
 
                 ),
 
@@ -15177,7 +15177,7 @@ Keep under 250 words. Use clear sections.`);
                 const prompt = `You are a school BCBA comparing multiple students in your caseload. Analyze the following student data and provide insights:\n\n${data}\n\nProvide: 1) Which students need most urgent attention and why, 2) Common patterns across students, 3) Students who might benefit from group interventions, 4) Data collection recommendations. Keep response concise (150-200 words).`;
                 const result = await callGemini(prompt);
                 setCompareAnalysis(result);
-            } catch (e) { if (addToast) addToast('Failed to generate comparison', 'error'); }
+            } catch (e) { if (addToast) addToast(t('behavior_lens.toast.failed_to_generate_comparison') || 'Failed to generate comparison', 'error'); }
             setCompareLoading(false);
         };
 
@@ -15195,8 +15195,8 @@ Keep under 250 words. Use clear sections.`);
         return h('div', { className: 'space-y-4' },
             // Header
             h('div', { className: 'bg-gradient-to-r from-violet-50 to-fuchsia-50 rounded-xl p-4 border border-violet-200' },
-                h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '📊'), h('h3', { className: 'text-lg font-black text-violet-800' }, 'Cross-Student Comparison')),
-                h('p', { className: 'text-xs text-violet-600' }, 'Load multiple student workspace files to compare behavior patterns, intensity levels, and trends side-by-side.')
+                h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '📊'), h('h3', { className: 'text-lg font-black text-violet-800' }, t('behavior_lens.ui.crossstudent_comparison') || 'Cross-Student Comparison')),
+                h('p', { className: 'text-xs text-violet-600' }, t('behavior_lens.ui.load_multiple_student_workspace_files_to_compare_b') || 'Load multiple student workspace files to compare behavior patterns, intensity levels, and trends side-by-side.')
             ),
 
             // File loader
@@ -15213,8 +15213,8 @@ Keep under 250 words. Use clear sections.`);
             // Empty state
             comparisonWorkspaces.length === 0 && h('div', { className: 'bg-slate-50 rounded-xl border border-dashed border-slate-300 p-10 text-center' },
                 h('div', { className: 'text-3xl mb-2' }, '📁'),
-                h('p', { className: 'text-sm text-slate-500 font-bold' }, 'No workspaces loaded yet'),
-                h('p', { className: 'text-xs text-slate-400 mt-1' }, 'Click "Load Student Workspaces" and select multiple .json files saved from BehaviorLens')
+                h('p', { className: 'text-sm text-slate-500 font-bold' }, t('behavior_lens.ui.no_workspaces_loaded_yet') || 'No workspaces loaded yet'),
+                h('p', { className: 'text-xs text-slate-400 mt-1' }, t('behavior_lens.ui.click_load_student_workspaces_and_select_multiple') || 'Click "Load Student Workspaces" and select multiple .json files saved from BehaviorLens')
             ),
 
             // Summary table
@@ -15224,9 +15224,9 @@ Keep under 250 words. Use clear sections.`);
                     h('div', { className: 'w-16 text-center cursor-pointer hover:text-slate-700', onClick: () => toggleSort('abcCount') }, 'ABCs', sortKey === 'abcCount' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''),
                     h('div', { className: 'w-16 text-center cursor-pointer hover:text-slate-700', onClick: () => toggleSort('sessionCount') }, 'Sessions', sortKey === 'sessionCount' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''),
                     h('div', { className: 'w-20 text-center cursor-pointer hover:text-slate-700', onClick: () => toggleSort('avgIntensity') }, 'Avg Intensity', sortKey === 'avgIntensity' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''),
-                    h('div', { className: 'w-16 text-center' }, 'Trend'),
-                    h('div', { className: 'w-32 text-center' }, 'Top Behavior'),
-                    h('div', { className: 'w-24 text-center' }, 'Last Entry'),
+                    h('div', { className: 'w-16 text-center' }, t('behavior_lens.ui.trend') || 'Trend'),
+                    h('div', { className: 'w-32 text-center' }, t('behavior_lens.ui.top_behavior') || 'Top Behavior'),
+                    h('div', { className: 'w-24 text-center' }, t('behavior_lens.ui.last_entry') || 'Last Entry'),
                     h('div', { className: 'w-8' })
                 ),
                 sorted.map((w, i) => h('div', { key: i, className: 'flex items-center px-4 py-3 border-b border-slate-100 hover:bg-violet-50/30 transition-all gap-4 text-xs' },
@@ -15378,7 +15378,7 @@ Keep under 250 words. Use clear sections.`);
                 if (validRows[0]) setSelectedStudent(validRows[0].name);
             }
             setImported(true);
-            if (addToast) addToast(`Imported ${validRows.length} ${importMode === 'abc' ? 'ABC entries' : 'students'}!`, 'success');
+            if (addToast) addToast(t('behavior_lens.toast.imported_n_n') || `Imported ${validRows.length} ${importMode === 'abc' ? 'ABC entries' : 'students'}!`, 'success');
         };
 
         const downloadTemplate = () => {
@@ -15396,8 +15396,8 @@ Keep under 250 words. Use clear sections.`);
 
         return h('div', { className: 'space-y-4' },
             h('div', { className: 'bg-gradient-to-r from-cyan-50 to-sky-50 rounded-xl p-4 border border-cyan-200' },
-                h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '📂'), h('h3', { className: 'text-lg font-black text-cyan-800' }, 'Batch Import')),
-                h('p', { className: 'text-xs text-cyan-600' }, 'Import student profiles or historical ABC data from CSV files. Onboard 10-15 students at once.')
+                h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '📂'), h('h3', { className: 'text-lg font-black text-cyan-800' }, t('behavior_lens.ui.batch_import') || 'Batch Import')),
+                h('p', { className: 'text-xs text-cyan-600' }, t('behavior_lens.ui.import_student_profiles_or_historical_abc_data_fro') || 'Import student profiles or historical ABC data from CSV files. Onboard 10-15 students at once.')
             ),
             // Mode toggle
             h('div', { className: 'flex gap-2' },
@@ -15444,7 +15444,7 @@ Keep under 250 words. Use clear sections.`);
             // Success message
             imported && h('div', { className: 'bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center' },
                 h('span', { className: 'text-2xl' }, '✅'),
-                h('p', { className: 'text-sm font-bold text-emerald-800 mt-1' }, 'Import Complete!'),
+                h('p', { className: 'text-sm font-bold text-emerald-800 mt-1' }, t('behavior_lens.ui.import_complete') || 'Import Complete!'),
                 h('p', { className: 'text-xs text-emerald-600' }, `${parsedRows.filter(r => !r._error).length} ${importMode === 'abc' ? 'ABC entries added to current dataset' : 'students added to roster'}.`)
             )
         );
@@ -15498,8 +15498,8 @@ Keep under 250 words. Use clear sections.`);
         const renderChart = () => {
             if (dailyData.length === 0) return h('div', { className: 'bg-slate-50 rounded-xl border border-dashed border-slate-300 p-10 text-center' },
                 h('div', { className: 'text-3xl mb-2' }, '📊'),
-                h('p', { className: 'text-sm text-slate-500 font-bold' }, 'No data yet'),
-                h('p', { className: 'text-xs text-slate-400' }, 'Add ABC entries to see progress over time')
+                h('p', { className: 'text-sm text-slate-500 font-bold' }, t('behavior_lens.ui.no_data_yet') || 'No data yet'),
+                h('p', { className: 'text-xs text-slate-400' }, t('behavior_lens.ui.add_abc_entries_to_see_progress_over_time') || 'Add ABC entries to see progress over time')
             );
             const maxCount = Math.max(...dailyData.map(d => d.count), goalCount || 1, 1);
             const chartW = W - PAD * 2, chartH = H - PAD * 2;
@@ -15545,14 +15545,14 @@ Keep under 250 words. Use clear sections.`);
 
         return h('div', { className: 'space-y-4' },
             h('div', { className: 'bg-gradient-to-r from-indigo-50 to-violet-50 rounded-xl p-4 border border-indigo-200' },
-                h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '📈'), h('h3', { className: 'text-lg font-black text-indigo-800' }, 'Progress Monitoring Dashboard')),
-                h('p', { className: 'text-xs text-indigo-600' }, 'Track behavior frequency over time with aim lines, phase changes, and trend analysis.')
+                h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '📈'), h('h3', { className: 'text-lg font-black text-indigo-800' }, t('behavior_lens.ui.progress_monitoring_dashboard') || 'Progress Monitoring Dashboard')),
+                h('p', { className: 'text-xs text-indigo-600' }, t('behavior_lens.ui.track_behavior_frequency_over_time_with_aim_lines') || 'Track behavior frequency over time with aim lines, phase changes, and trend analysis.')
             ),
             // Controls
             h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 space-y-3' },
                 h('div', { className: 'grid grid-cols-3 gap-3' },
                     h('div', null,
-                        h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-1' }, 'Target Behavior'),
+                        h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-1' }, t('behavior_lens.ui.target_behavior') || 'Target Behavior'),
                         h('select', { value: targetBehavior, onChange: e => setTargetBehavior(e.target.value), className: 'w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white' },
                             h('option', { value: '' }, 'All Behaviors'),
                             allBehaviors.map(b => h('option', { key: b, value: b }, b))
@@ -15574,7 +15574,7 @@ Keep under 250 words. Use clear sections.`);
                 ),
                 showPhaseEditor && h('div', { className: 'space-y-2 bg-slate-50 rounded-lg p-3' },
                     phases.map((p, i) => h('div', { key: i, className: 'flex items-center gap-2' },
-                        h('input', { type: 'text', value: p.label, placeholder: 'Phase label', onChange: e => setPhases(prev => prev.map((pp, j) => j === i ? { ...pp, label: e.target.value } : pp)), className: 'px-2 py-1.5 border border-slate-200 rounded text-xs flex-1' }),
+                        h('input', { type: 'text', value: p.label, placeholder: t('behavior_lens.ph.phase_label') || 'Phase label', onChange: e => setPhases(prev => prev.map((pp, j) => j === i ? { ...pp, label: e.target.value } : pp)), className: 'px-2 py-1.5 border border-slate-200 rounded text-xs flex-1' }),
                         h('input', { type: 'date', value: p.startDate, onChange: e => setPhases(prev => prev.map((pp, j) => j === i ? { ...pp, startDate: e.target.value } : pp)), className: 'px-2 py-1.5 border border-slate-200 rounded text-xs' }),
                         h('input', { type: 'color', value: p.color, onChange: e => setPhases(prev => prev.map((pp, j) => j === i ? { ...pp, color: e.target.value } : pp)), className: 'w-8 h-8 border-0 rounded cursor-pointer' }),
                         h('button', { onClick: () => setPhases(prev => prev.filter((_, j) => j !== i)), className: 'text-red-400 hover:text-red-600 text-sm' }, '✕')
@@ -15654,9 +15654,9 @@ Keep under 250 words. Use clear sections.`);
                 if (match) {
                     const entries = JSON.parse(match[0]);
                     setParsedEntries(entries.map((e, i) => ({ ...e, id: 'voice_' + Date.now() + '_' + i, timestamp: new Date().toISOString(), _selected: true })));
-                    if (addToast) addToast(`Parsed ${entries.length} ABC entries from transcript!`, 'success');
+                    if (addToast) addToast(t('behavior_lens.toast.parsed_n_abc_entries_from_transcript') || `Parsed ${entries.length} ABC entries from transcript!`, 'success');
                 }
-            } catch (e) { if (addToast) addToast('Failed to parse transcript', 'error'); }
+            } catch (e) { if (addToast) addToast(t('behavior_lens.toast.failed_to_parse_transcript') || 'Failed to parse transcript', 'error'); }
             setParsing(false);
         };
 
@@ -15665,19 +15665,19 @@ Keep under 250 words. Use clear sections.`);
             if (selected.length === 0) return;
             const clean = selected.map(e => ({ id: e.id, timestamp: e.timestamp, antecedent: e.antecedent, behavior: e.behavior, consequence: e.consequence, intensity: e.intensity || 3, notes: e.notes || '' }));
             setAbcEntries(prev => [...prev, ...clean]);
-            if (addToast) addToast(`Added ${clean.length} entries to ABC data!`, 'success');
+            if (addToast) addToast(t('behavior_lens.toast.added_n_entries_to_abc_data') || `Added ${clean.length} entries to ABC data!`, 'success');
             setParsedEntries([]);
         };
 
         return h('div', { className: 'space-y-4' },
             h('div', { className: 'bg-gradient-to-r from-rose-50 to-pink-50 rounded-xl p-4 border border-rose-200' },
-                h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '🎙️'), h('h3', { className: 'text-lg font-black text-rose-800' }, 'Voice-to-ABC')),
-                h('p', { className: 'text-xs text-rose-600' }, 'Speak your observations naturally. AI will extract structured ABC entries from your transcript.')
+                h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '🎙️'), h('h3', { className: 'text-lg font-black text-rose-800' }, t('behavior_lens.ui.voicetoabc') || 'Voice-to-ABC')),
+                h('p', { className: 'text-xs text-rose-600' }, t('behavior_lens.ui.speak_your_observations_naturally_ai_will_extract') || 'Speak your observations naturally. AI will extract structured ABC entries from your transcript.')
             ),
             // Not supported fallback
             !supported && h('div', { className: 'bg-amber-50 border border-amber-200 rounded-xl p-4 text-center' },
                 h('p', { className: 'text-sm font-bold text-amber-800' }, '⚠️ Speech Recognition Not Supported'),
-                h('p', { className: 'text-xs text-amber-600 mt-1' }, 'Please use Chrome, Edge, or Safari for voice input.')
+                h('p', { className: 'text-xs text-amber-600 mt-1' }, t('behavior_lens.ui.please_use_chrome_edge_or_safari_for_voice_input') || 'Please use Chrome, Edge, or Safari for voice input.')
             ),
             // Record controls
             supported && h('div', { className: 'flex items-center gap-3' },
@@ -15687,7 +15687,7 @@ Keep under 250 words. Use clear sections.`);
                 }, isRecording ? '⏹️ Stop Recording' : '🎙️ Start Recording'),
                 isRecording && h('div', { className: 'flex items-center gap-2' },
                     h('div', { className: 'w-3 h-3 bg-red-500 rounded-full animate-pulse' }),
-                    h('span', { className: 'text-xs text-red-600 font-bold' }, 'Recording...')
+                    h('span', { className: 'text-xs text-red-600 font-bold' }, t('behavior_lens.ui.recording') || 'Recording...')
                 )
             ),
             // Transcript
@@ -15708,7 +15708,7 @@ Keep under 250 words. Use clear sections.`);
             }, '🤖 Parse ABC Entries from Transcript'),
             parsing && h('div', { className: 'text-center py-4' },
                 h('div', { className: 'text-lg animate-spin inline-block' }, '⏳'),
-                h('p', { className: 'text-xs text-slate-500 mt-1' }, 'AI is analyzing your transcript...')
+                h('p', { className: 'text-xs text-slate-500 mt-1' }, t('behavior_lens.ui.ai_is_analyzing_your_transcript') || 'AI is analyzing your transcript...')
             ),
             // Parsed entries for review
             parsedEntries.length > 0 && h('div', { className: 'bg-white rounded-xl border border-slate-200 overflow-hidden' },
@@ -15775,8 +15775,8 @@ Keep under 250 words. Use clear sections.`);
                 const code = encoded.length > 5000 ? encoded.substring(0, 5000) : encoded;
                 setShareCode(code);
                 navigator.clipboard.writeText(code);
-                if (addToast) addToast('Share code copied to clipboard!', 'success');
-            } catch (e) { if (addToast) addToast('Failed to generate share code', 'error'); }
+                if (addToast) addToast(t('behavior_lens.toast.share_code_copied_to_clipboard') || 'Share code copied to clipboard!', 'success');
+            } catch (e) { if (addToast) addToast(t('behavior_lens.toast.failed_to_generate_share_code') || 'Failed to generate share code', 'error'); }
         };
 
         const handleDownloadShare = () => {
@@ -15787,7 +15787,7 @@ Keep under 250 words. Use clear sections.`);
             a.download = `behaviorlens_share_${selectedStudent || 'student'}_${shareRole}_${new Date().toISOString().split('T')[0]}.json`;
             a.click();
             URL.revokeObjectURL(a.href);
-            if (addToast) addToast('Share file downloaded!', 'success');
+            if (addToast) addToast(t('behavior_lens.toast.share_file_downloaded') || 'Share file downloaded!', 'success');
         };
 
         const handleImportCode = () => {
@@ -15795,7 +15795,7 @@ Keep under 250 words. Use clear sections.`);
                 const decoded = JSON.parse(decodeURIComponent(escape(atob(importCode.trim()))));
                 setImportedData(decoded);
             } catch {
-                if (addToast) addToast('Invalid share code', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.invalid_share_code') || 'Invalid share code', 'error');
             }
         };
 
@@ -15806,7 +15806,7 @@ Keep under 250 words. Use clear sections.`);
             reader.onload = (ev) => {
                 try {
                     setImportedData(JSON.parse(ev.target.result));
-                } catch { if (addToast) addToast('Invalid share file', 'error'); }
+                } catch { if (addToast) addToast(t('behavior_lens.toast.invalid_share_file') || 'Invalid share file', 'error'); }
             };
             reader.readAsText(file);
             e.target.value = '';
@@ -15816,8 +15816,8 @@ Keep under 250 words. Use clear sections.`);
 
         return h('div', { className: 'space-y-4' },
             h('div', { className: 'bg-gradient-to-r from-blue-50 to-sky-50 rounded-xl p-4 border border-blue-200' },
-                h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '🤝'), h('h3', { className: 'text-lg font-black text-blue-800' }, 'Workspace Sharing')),
-                h('p', { className: 'text-xs text-blue-600' }, 'Share workspace data with team members. Role-based views filter data appropriately for BCBAs, teachers, and parents.')
+                h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '🤝'), h('h3', { className: 'text-lg font-black text-blue-800' }, t('behavior_lens.ui.workspace_sharing') || 'Workspace Sharing')),
+                h('p', { className: 'text-xs text-blue-600' }, t('behavior_lens.ui.share_workspace_data_with_team_members_rolebased_v') || 'Share workspace data with team members. Role-based views filter data appropriately for BCBAs, teachers, and parents.')
             ),
             // Share section
             h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 space-y-3' },
@@ -15845,7 +15845,7 @@ Keep under 250 words. Use clear sections.`);
             h('div', { className: 'bg-white rounded-xl border border-slate-200 p-4 space-y-3' },
                 h('h4', { className: 'text-xs font-bold text-slate-700 uppercase tracking-wider' }, '📥 Import Shared Workspace'),
                 h('div', { className: 'flex gap-2' },
-                    h('input', { type: 'text', value: importCode, onChange: e => setImportCode(e.target.value), placeholder: 'Paste share code here...', className: 'flex-1 px-3 py-2 border border-slate-200 rounded-lg text-xs' }),
+                    h('input', { type: 'text', value: importCode, onChange: e => setImportCode(e.target.value), placeholder: t('behavior_lens.ph.paste_share_code_here') || 'Paste share code here...', className: 'flex-1 px-3 py-2 border border-slate-200 rounded-lg text-xs' }),
                     h('button', { onClick: handleImportCode, disabled: !importCode.trim(), className: 'px-3 py-2 bg-emerald-600 text-white font-bold rounded-lg text-xs hover:bg-emerald-700 disabled:opacity-40 transition-all' }, '📋 Load'),
                     h('button', { onClick: () => importFileRef.current?.click(), className: 'px-3 py-2 bg-white border border-slate-200 text-slate-600 font-bold rounded-lg text-xs hover:bg-slate-50 transition-all' }, '📁 File'),
                     h('input', { ref: importFileRef, type: 'file', accept: '.json', onChange: handleImportFile, className: 'hidden' })
@@ -15855,12 +15855,12 @@ Keep under 250 words. Use clear sections.`);
             importedData && h('div', { className: 'bg-emerald-50 rounded-xl border border-emerald-200 p-4 space-y-2' },
                 h('h4', { className: 'text-xs font-bold text-emerald-800 uppercase' }, '✅ Imported Workspace Preview'),
                 h('div', { className: 'grid grid-cols-2 gap-2 text-xs' },
-                    h('div', null, h('span', { className: 'text-slate-500' }, 'Student: '), h('span', { className: 'font-bold text-slate-800' }, importedData.student || 'Unknown')),
-                    h('div', null, h('span', { className: 'text-slate-500' }, 'Role: '), h('span', { className: 'font-bold text-slate-800' }, importedData.role || 'N/A')),
-                    h('div', null, h('span', { className: 'text-slate-500' }, 'Generated: '), h('span', { className: 'font-bold text-slate-800' }, importedData.generatedAt ? new Date(importedData.generatedAt).toLocaleDateString() : 'N/A')),
-                    importedData.abcEntries && h('div', null, h('span', { className: 'text-slate-500' }, 'ABC Entries: '), h('span', { className: 'font-bold text-slate-800' }, importedData.abcEntries.length)),
-                    importedData.totalEntries && h('div', null, h('span', { className: 'text-slate-500' }, 'Total entries: '), h('span', { className: 'font-bold text-slate-800' }, importedData.totalEntries)),
-                    importedData.summary && h('div', { className: 'col-span-2' }, h('span', { className: 'text-slate-500' }, 'Summary: '), h('span', { className: 'font-bold text-slate-800' }, `${importedData.summary.totalEntries} entries, ${importedData.summary.sessions} sessions`))
+                    h('div', null, h('span', { className: 'text-slate-500' }, t('behavior_lens.ui.student') || 'Student: '), h('span', { className: 'font-bold text-slate-800' }, importedData.student || 'Unknown')),
+                    h('div', null, h('span', { className: 'text-slate-500' }, t('behavior_lens.ui.role') || 'Role: '), h('span', { className: 'font-bold text-slate-800' }, importedData.role || 'N/A')),
+                    h('div', null, h('span', { className: 'text-slate-500' }, t('behavior_lens.ui.generated') || 'Generated: '), h('span', { className: 'font-bold text-slate-800' }, importedData.generatedAt ? new Date(importedData.generatedAt).toLocaleDateString() : 'N/A')),
+                    importedData.abcEntries && h('div', null, h('span', { className: 'text-slate-500' }, t('behavior_lens.ui.abc_entries_2') || 'ABC Entries: '), h('span', { className: 'font-bold text-slate-800' }, importedData.abcEntries.length)),
+                    importedData.totalEntries && h('div', null, h('span', { className: 'text-slate-500' }, t('behavior_lens.ui.total_entries') || 'Total entries: '), h('span', { className: 'font-bold text-slate-800' }, importedData.totalEntries)),
+                    importedData.summary && h('div', { className: 'col-span-2' }, h('span', { className: 'text-slate-500' }, t('behavior_lens.ui.summary') || 'Summary: '), h('span', { className: 'font-bold text-slate-800' }, `${importedData.summary.totalEntries} entries, ${importedData.summary.sessions} sessions`))
                 ),
                 importedData.aiAnalysis && h('div', { className: 'bg-white rounded-lg p-3 mt-2' },
                     h('p', { className: 'text-[10px] font-bold text-slate-500 uppercase mb-1' }, '🧠 Analysis'),
@@ -16254,7 +16254,7 @@ p { font-size: 12px; color: #475569; margin-bottom: 6px; }
             if (win) {
                 win.document.write(html);
                 win.document.close();
-                if (addToast) addToast('Report generated — use Print/Save as PDF in the new tab!', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.report_generated_use_printsave_as_pdf_in_the_new_t') || 'Report generated — use Print/Save as PDF in the new tab!', 'success');
             } else {
                 // Fallback: download as HTML
                 const blob = new Blob([html], { type: 'text/html' });
@@ -16263,7 +16263,7 @@ p { font-size: 12px; color: #475569; margin-bottom: 6px; }
                 a.download = `progress_report_${(student || 'student').replace(/\s/g, '_')}.html`;
                 a.click();
                 URL.revokeObjectURL(a.href);
-                if (addToast) addToast('Pop-ups blocked — downloaded as HTML file instead.', 'info');
+                if (addToast) addToast(t('behavior_lens.toast.popups_blocked_downloaded_as_html_file_instead') || 'Pop-ups blocked — downloaded as HTML file instead.', 'info');
             }
             setGenerating(false);
         };
@@ -16280,8 +16280,8 @@ p { font-size: 12px; color: #475569; margin-bottom: 6px; }
         return h('div', { className: 'space-y-4' },
             // Header
             h('div', { className: 'bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl p-4 border border-emerald-200' },
-                h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '📄'), h('h3', { className: 'text-lg font-black text-emerald-800' }, 'Progress Report Generator')),
-                h('p', { className: 'text-xs text-emerald-600' }, 'Generate a professional, print-ready progress report with inline charts, data summaries, and AI recommendations. One-click PDF export via browser print.')
+                h('div', { className: 'flex items-center gap-2 mb-1' }, h('span', { className: 'text-2xl' }, '📄'), h('h3', { className: 'text-lg font-black text-emerald-800' }, t('behavior_lens.ui.progress_report_generator') || 'Progress Report Generator')),
+                h('p', { className: 'text-xs text-emerald-600' }, t('behavior_lens.ui.generate_a_professional_printready_progress_report') || 'Generate a professional, print-ready progress report with inline charts, data summaries, and AI recommendations. One-click PDF export via browser print.')
             ),
 
             // Audience selector
@@ -16314,12 +16314,12 @@ p { font-size: 12px; color: #475569; margin-bottom: 6px; }
                     ),
                     h('div', null,
                         h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-1' }, '🎓 BCBA / Preparer Name'),
-                        h('input', { type: 'text', value: bcbaName, onChange: e => setBcbaName(e.target.value), placeholder: 'Optional', className: 'w-full px-3 py-2 border border-slate-200 rounded-lg text-xs' })
+                        h('input', { type: 'text', value: bcbaName, onChange: e => setBcbaName(e.target.value), placeholder: t('behavior_lens.ph.optional') || 'Optional', className: 'w-full px-3 py-2 border border-slate-200 rounded-lg text-xs' })
                     )
                 ),
                 dateRange === 'custom' && h('div', { className: 'grid grid-cols-2 gap-4 mt-2' },
                     h('div', null,
-                        h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-1' }, 'From'),
+                        h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block mb-1' }, t('behavior_lens.ui.from') || 'From'),
                         h('input', { type: 'date', value: customFrom, onChange: e => setCustomFrom(e.target.value), className: 'w-full px-3 py-2 border border-slate-200 rounded-lg text-xs' })
                     ),
                     h('div', null,
@@ -16348,7 +16348,7 @@ p { font-size: 12px; color: #475569; margin-bottom: 6px; }
                 h('div', { className: 'flex items-center justify-between' },
                     h('div', null,
                         h('label', { className: 'text-[10px] font-bold text-slate-500 uppercase block' }, '🤖 AI-Generated Recommendations'),
-                        h('p', { className: 'text-[10px] text-slate-400 mt-0.5' }, 'Generate tailored recommendations based on the behavioral data and selected audience.')
+                        h('p', { className: 'text-[10px] text-slate-400 mt-0.5' }, t('behavior_lens.ui.generate_tailored_recommendations_based_on_the_beh') || 'Generate tailored recommendations based on the behavioral data and selected audience.')
                     ),
                     h('button', {
                         onClick: generateRecs, disabled: recsLoading || !callGemini || analytics.totalEntries === 0,
@@ -16393,8 +16393,8 @@ p { font-size: 12px; color: #475569; margin-bottom: 6px; }
             // No data warning
             analytics.totalEntries === 0 && h('div', { className: 'bg-amber-50 border border-amber-200 rounded-xl p-4 text-center' },
                 h('span', { className: 'text-2xl' }, '⚠️'),
-                h('p', { className: 'text-sm font-bold text-amber-800 mt-1' }, 'No behavioral data recorded'),
-                h('p', { className: 'text-xs text-amber-600' }, 'Add ABC entries before generating a report.')
+                h('p', { className: 'text-sm font-bold text-amber-800 mt-1' }, t('behavior_lens.ui.no_behavioral_data_recorded') || 'No behavioral data recorded'),
+                h('p', { className: 'text-xs text-amber-600' }, t('behavior_lens.ui.add_abc_entries_before_generating_a_report') || 'Add ABC entries before generating a report.')
             )
         );
     };
@@ -16649,7 +16649,7 @@ p { font-size: 12px; color: #475569; margin-bottom: 6px; }
                 setStudentProfile({ interests: '', strengths: '', triggers: '', goals: '', accommodations: '', notes: '' });
                 setSessionHistory([]);
                 setAiAnalysis(null);
-                if (addToast) addToast(`Switched to ${studentName} (no data loaded)`, 'info');
+                if (addToast) addToast(t('behavior_lens.toast.switched_to_n_no_data_loaded') || `Switched to ${studentName} (no data loaded)`, 'info');
                 return;
             }
             // 3. Load data from _fullData if available, otherwise use summary
@@ -16680,7 +16680,7 @@ p { font-size: 12px; color: #475569; margin-bottom: 6px; }
             setLastSavedAt(data.savedAt || null);
             setDataChangedSinceSave(false);
             setShowRosterDropdown(false);
-            if (addToast) addToast(`Switched to ${studentName} ✅`, 'success');
+            if (addToast) addToast(t('behavior_lens.toast.switched_to_n') || `Switched to ${studentName} ✅`, 'success');
         }, [saveCurrentToRoster, comparisonWorkspaces, addToast]);
 
         // ─── useBotCoach — context-aware Allobot tips ─────────────────────
@@ -16779,7 +16779,7 @@ p { font-size: 12px; color: #475569; margin-bottom: 6px; }
             setAiAnalysis(null);
             setIsPracticeMode(false);
             setPracticeScenarioName('');
-            if (addToast) addToast('Practice data cleared', 'info');
+            if (addToast) addToast(t('behavior_lens.toast.practice_data_cleared') || 'Practice data cleared', 'info');
         };
 
         // ── JSON Workspace Save/Load ──
@@ -16822,7 +16822,7 @@ p { font-size: 12px; color: #475569; margin-bottom: 6px; }
             // Cloud write-through on manual save
             if (cloudSync.userId && !isCanvasEnv && selectedStudent) {
                 cloudSync.saveToCloud(selectedStudent, workspace).then(ok => {
-                    if (ok && addToast) addToast('☁️ Also synced to cloud!', 'success');
+                    if (ok && addToast) addToast(t('behavior_lens.toast.also_synced_to_cloud') || '☁️ Also synced to cloud!', 'success');
                 }).catch(() => {});
             }
             if (addToast) addToast(t('behavior_lens.toast_workspace_saved') || 'Workspace saved to file 💾', 'success');
@@ -16855,7 +16855,7 @@ p { font-size: 12px; color: #475569; margin-bottom: 6px; }
                     if (data.visitedPanels) setVisitedPanels(new Set(data.visitedPanels));
                     setLastSavedAt(data.savedAt || null);
                     setDataChangedSinceSave(false);
-                    if (addToast) addToast(`Workspace loaded (${(data.abcEntries || []).length} entries, ${(data.sessionNotes || []).length} notes) 📂`, 'success');
+                    if (addToast) addToast(t('behavior_lens.toast.workspace_loaded_n_entries_n_notes') || `Workspace loaded (${(data.abcEntries || []).length} entries, ${(data.sessionNotes || []).length} notes) 📂`, 'success');
                 } catch (err) {
                     warnLog('Failed to parse workspace file:', err);
                     if (addToast) addToast(t('behavior_lens.toast_invalid_file') || 'Invalid workspace file — must be BehaviorLens JSON', 'error');
@@ -16910,7 +16910,7 @@ p { font-size: 12px; color: #475569; margin-bottom: 6px; }
                             const newOnes = loaded.filter(w => !existing.has(w.student));
                             return [...prev, ...newOnes];
                         });
-                        if (addToast) addToast(`Loaded ${loaded.length} workspace(s) for comparison`, 'success');
+                        if (addToast) addToast(t('behavior_lens.toast.loaded_n_workspaces_for_comparison') || `Loaded ${loaded.length} workspace(s) for comparison`, 'success');
                     }
                 };
                 reader.readAsText(file);
@@ -17044,10 +17044,10 @@ Write a unified student behavioral profile that synthesizes all available data. 
 Use professional language. Refer to "the student" (not the codename).`;
                 const result = await callGemini(prompt, true);
                 setFullSummary(result);
-                if (addToast) addToast('Student summary generated ✨', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.student_summary_generated') || 'Student summary generated ✨', 'success');
             } catch (err) {
                 warnLog('Full summary failed:', err);
-                if (addToast) addToast('Summary generation failed', 'error');
+                if (addToast) addToast(t('behavior_lens.toast.summary_generation_failed') || 'Summary generation failed', 'error');
             } finally { setSummaryLoading(false); }
         };
 
@@ -17108,7 +17108,7 @@ Use professional language. Refer to "the student" (not the codename).`;
                             if (cloudData.designPhases) setDesignPhases(cloudData.designPhases);
                             if (cloudData.favorites) setFavorites(cloudData.favorites);
                             debugLog('BehaviorLens: loaded data from cloud for', selectedStudent);
-                            if (addToast) addToast('☁️ Data loaded from cloud', 'success');
+                            if (addToast) addToast(t('behavior_lens.toast.data_loaded_from_cloud') || '☁️ Data loaded from cloud', 'success');
                             return; // Cloud data loaded, skip localStorage
                         }
                     } catch (e) {
@@ -17200,7 +17200,7 @@ Use professional language. Refer to "the student" (not the codename).`;
             if (!dataChangedSinceSave) return;
             const timer = setTimeout(() => {
                 if (dataChangedSinceSave && addToast) {
-                    addToast('💡 You have unsaved changes — consider saving your workspace.', 'info');
+                    addToast(t('behavior_lens.toast.you_have_unsaved_changes_consider_saving_your_work') || '💡 You have unsaved changes — consider saving your workspace.', 'info');
                 }
             }, 10 * 60 * 1000);
             return () => clearTimeout(timer);
@@ -17325,7 +17325,7 @@ Analyze this data and return ONLY valid JSON:
 
         const exportSvgAsPng = (filename) => {
             const svgEl = document.querySelector('.flex-1.overflow-y-auto svg');
-            if (!svgEl) { if (addToast) addToast('No graph found to export', 'error'); return; }
+            if (!svgEl) { if (addToast) addToast(t('behavior_lens.toast.no_graph_found_to_export') || 'No graph found to export', 'error'); return; }
             const svgData = new XMLSerializer().serializeToString(svgEl);
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
@@ -17343,10 +17343,10 @@ Analyze this data and return ONLY valid JSON:
                     a.download = filename || 'behaviorlens-graph.png';
                     a.click();
                     URL.revokeObjectURL(a.href);
-                    if (addToast) addToast('PNG exported!', 'success');
+                    if (addToast) addToast(t('behavior_lens.toast.png_exported') || 'PNG exported!', 'success');
                 }, 'image/png');
             };
-            img.onerror = () => { if (addToast) addToast('PNG export failed', 'error'); };
+            img.onerror = () => { if (addToast) addToast(t('behavior_lens.toast.png_export_failed') || 'PNG export failed', 'error'); };
             img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
         };
 
@@ -17381,7 +17381,7 @@ Analyze this data and return ONLY valid JSON:
         const handleCopyToolText = () => {
             const text = getToolExportData(activePanel);
             navigator.clipboard.writeText(text).then(() => {
-                if (addToast) addToast('Copied to clipboard!', 'success');
+                if (addToast) addToast(t('behavior_lens.toast.copied_to_clipboard') || 'Copied to clipboard!', 'success');
             });
             setShowExportMenu(false);
         };
@@ -17408,7 +17408,7 @@ Analyze this data and return ONLY valid JSON:
             a.download = `behaviorlens-${activePanel}-${studentLabel.replace(/\s+/g, '_')}.csv`;
             a.click();
             URL.revokeObjectURL(a.href);
-            if (addToast) addToast('CSV downloaded!', 'success');
+            if (addToast) addToast(t('behavior_lens.toast.csv_downloaded') || 'CSV downloaded!', 'success');
             setShowExportMenu(false);
         };
 
@@ -18131,7 +18131,7 @@ Analyze this data and return ONLY valid JSON:
                     ),
                     // Role Selector
                     h('div', { className: 'flex items-center gap-2 mt-2 mb-1' },
-                        h('span', { className: 'text-[10px] font-bold text-slate-400 uppercase tracking-wide' }, 'Your Role:'),
+                        h('span', { className: 'text-[10px] font-bold text-slate-400 uppercase tracking-wide' }, t('behavior_lens.ui.your_role_2') || 'Your Role:'),
                         ['teacher', 'parent', 'bcba'].map(role =>
                             h('button', {
                                 key: role,
@@ -18199,10 +18199,10 @@ Analyze this data and return ONLY valid JSON:
                     h('div', { className: 'flex items-center justify-between mb-2' },
                         h('div', { className: 'flex items-center gap-1.5' },
                             h('span', { className: 'text-sm' }, '⇄'),
-                            h('span', { className: 'text-[10px] font-black text-slate-500 uppercase tracking-wider' }, 'Quick Switch')
+                            h('span', { className: 'text-[10px] font-black text-slate-500 uppercase tracking-wider' }, t('behavior_lens.ui.quick_switch') || 'Quick Switch')
                         ),
                         h('button', {
-                            onClick: () => { setStudentRoster([]); if (addToast) addToast('Roster cleared', 'info'); },
+                            onClick: () => { setStudentRoster([]); if (addToast) addToast(t('behavior_lens.toast.roster_cleared') || 'Roster cleared', 'info'); },
                             className: 'text-[9px] text-slate-300 hover:text-red-400 transition-colors'
                         }, 'Clear')
                     ),
@@ -18272,8 +18272,8 @@ Analyze this data and return ONLY valid JSON:
                         h('div', { className: 'flex items-center gap-3' },
                             h('div', { className: 'w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white text-lg' }, '🧠'),
                             h('div', null,
-                                h('h4', { className: 'text-sm font-black text-purple-800' }, 'Full Student Summary'),
-                                h('p', { className: 'text-[10px] text-purple-500' }, 'AI-synthesized behavioral profile from all data sources')
+                                h('h4', { className: 'text-sm font-black text-purple-800' }, t('behavior_lens.ui.full_student_summary') || 'Full Student Summary'),
+                                h('p', { className: 'text-[10px] text-purple-500' }, t('behavior_lens.ui.aisynthesized_behavioral_profile_from_all_data_sou') || 'AI-synthesized behavioral profile from all data sources')
                             )
                         ),
                         h('span', { className: 'text-purple-400 text-xs font-bold' }, summaryLoading ? '⏳ Generating...' : fullSummary ? '▴ Collapse' : '▾ Generate')
@@ -18282,7 +18282,7 @@ Analyze this data and return ONLY valid JSON:
                         h('div', { className: 'bg-white rounded-xl border border-purple-200 p-4 text-xs text-slate-700 whitespace-pre-wrap leading-relaxed max-h-96 overflow-y-auto' }, fullSummary),
                         h('div', { className: 'flex gap-2 mt-3' },
                             h('button', {
-                                onClick: () => { navigator.clipboard.writeText(fullSummary); if (addToast) addToast('Copied!', 'success'); },
+                                onClick: () => { navigator.clipboard.writeText(fullSummary); if (addToast) addToast(t('behavior_lens.toast.copied') || 'Copied!', 'success'); },
                                 className: 'px-3 py-1.5 bg-purple-100 text-purple-700 rounded-lg text-[10px] font-bold hover:bg-purple-200'
                             }, '📋 Copy'),
                             h('button', {
@@ -18397,7 +18397,7 @@ Analyze this data and return ONLY valid JSON:
                             h('div', { className: 'relative' },
                                 h('div', { className: 'flex items-center gap-2 mb-2' },
                                     h('span', { className: 'text-2xl' }, '👋'),
-                                    h('h2', { className: 'text-lg font-black' }, 'Welcome to BehaviorLens')
+                                    h('h2', { className: 'text-lg font-black' }, t('behavior_lens.ui.welcome_to_behaviorlens') || 'Welcome to BehaviorLens')
                                 ),
                                 h('p', { className: 'text-sm text-indigo-100 mb-4 max-w-lg' },
                                     '81 clinical tools for behavior analysis, data collection, and intervention planning. Choose your role to get started:'
@@ -18406,20 +18406,20 @@ Analyze this data and return ONLY valid JSON:
                                     h('button', {
                                         onClick: () => { dismissWelcome(); handleToolOpen('abc'); },
                                         className: 'flex items-center gap-2 px-4 py-2.5 bg-white/20 backdrop-blur-sm rounded-xl border border-white/30 text-sm font-bold hover:bg-white/30 transition-all hover:scale-105 active:scale-95'
-                                    }, h('span', { className: 'text-lg' }, '👩‍🏫'), h('div', { className: 'text-left' }, h('div', { className: 'text-xs font-black' }, 'Teacher'), h('div', { className: 'text-[10px] text-indigo-200 font-medium' }, 'Start with ABC Data'))),
+                                    }, h('span', { className: 'text-lg' }, '👩‍🏫'), h('div', { className: 'text-left' }, h('div', { className: 'text-xs font-black' }, t('behavior_lens.ui.teacher') || 'Teacher'), h('div', { className: 'text-[10px] text-indigo-200 font-medium' }, t('behavior_lens.ui.start_with_abc_data') || 'Start with ABC Data'))),
                                     h('button', {
                                         onClick: () => { dismissWelcome(); handleToolOpen('homelog'); },
                                         className: 'flex items-center gap-2 px-4 py-2.5 bg-white/20 backdrop-blur-sm rounded-xl border border-white/30 text-sm font-bold hover:bg-white/30 transition-all hover:scale-105 active:scale-95'
-                                    }, h('span', { className: 'text-lg' }, '👪'), h('div', { className: 'text-left' }, h('div', { className: 'text-xs font-black' }, 'Parent'), h('div', { className: 'text-[10px] text-indigo-200 font-medium' }, 'Home Behavior Log'))),
+                                    }, h('span', { className: 'text-lg' }, '👪'), h('div', { className: 'text-left' }, h('div', { className: 'text-xs font-black' }, t('behavior_lens.ui.parent') || 'Parent'), h('div', { className: 'text-[10px] text-indigo-200 font-medium' }, t('behavior_lens.ui.home_behavior_log') || 'Home Behavior Log'))),
                                     h('button', {
                                         onClick: () => { dismissWelcome(); handleToolOpen('abagraph'); },
                                         className: 'flex items-center gap-2 px-4 py-2.5 bg-white/20 backdrop-blur-sm rounded-xl border border-white/30 text-sm font-bold hover:bg-white/30 transition-all hover:scale-105 active:scale-95'
-                                    }, h('span', { className: 'text-lg' }, '📊'), h('div', { className: 'text-left' }, h('div', { className: 'text-xs font-black' }, 'BCBA / Specialist'), h('div', { className: 'text-[10px] text-indigo-200 font-medium' }, 'ABA Graph Engine')))
+                                    }, h('span', { className: 'text-lg' }, '📊'), h('div', { className: 'text-left' }, h('div', { className: 'text-xs font-black' }, t('behavior_lens.ui.bcba_specialist') || 'BCBA / Specialist'), h('div', { className: 'text-[10px] text-indigo-200 font-medium' }, t('behavior_lens.ui.aba_graph_engine') || 'ABA Graph Engine')))
                                 ),
                                 h('button', {
                                     onClick: () => { dismissWelcome(); handleToolOpen('pdpath'); },
                                     className: 'flex items-center gap-1.5 text-[11px] text-indigo-200 hover:text-white transition-colors font-medium'
-                                }, h('span', null, '🎓'), 'Or explore the PD Learning Path →')
+                                }, h('span', null, '🎓'), t('behavior_lens.ui.or_explore_the_pd_learning_path') || 'Or explore the PD Learning Path →')
                             )
                         ),
                         // ── Search Bar ──
@@ -18428,7 +18428,7 @@ Analyze this data and return ONLY valid JSON:
                                 type: 'text',
                                 value: searchQuery,
                                 onChange: (e) => setSearchQuery(e.target.value),
-                                placeholder: '🔍  Search 81+ tools…',
+                                placeholder: t('behavior_lens.ph.search_81_tools') || '🔍  Search 81+ tools…',
                                 className: 'w-full px-4 py-3 pl-10 bg-white rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 shadow-sm'
                             }),
                             searchQuery && h('button', {
