@@ -16549,6 +16549,8 @@ p { font-size: 12px; color: #475569; margin-bottom: 6px; }
         useEffect(() => { setIsParentMode(userRole === 'parent'); }, [userRole]);
         const [collapsedCategories, setCollapsedCategories] = useState({});
         const [visitedPanels, setVisitedPanels] = useState(new Set());
+        const [showWelcome, setShowWelcome] = useState(() => { try { return !localStorage.getItem('bl_onboarded'); } catch { return true; } });
+        const [activeCat, setActiveCat] = useState(null);
         const fileInputRef = useRef(null);
         const compareFileInputRef = useRef(null);
         const [comparisonWorkspaces, setComparisonWorkspaces] = useState([]);
@@ -18329,7 +18331,11 @@ Analyze this data and return ONLY valid JSON:
 
                     const toolsWithCat = tools.map(t => ({ ...t, cat: t.cat || catMap[t.id] || 'utilities' }));
                     const lowerQ = searchQuery.toLowerCase();
-                    const filtered = searchQuery ? toolsWithCat.filter(t => t.title.toLowerCase().includes(lowerQ) || t.desc.toLowerCase().includes(lowerQ)) : toolsWithCat;
+                    const filtered = toolsWithCat.filter(t => {
+                        const matchesSearch = !searchQuery || t.title.toLowerCase().includes(lowerQ) || t.desc.toLowerCase().includes(lowerQ);
+                        const matchesCat = !activeCat || t.cat === activeCat;
+                        return matchesSearch && matchesCat;
+                    });
                     const favTools = toolsWithCat.filter(t => favorites.includes(t.id));
 
                     // Smart recommendations
@@ -18373,20 +18379,74 @@ Analyze this data and return ONLY valid JSON:
                         );
                     };
 
+                    const dismissWelcome = () => { setShowWelcome(false); try { localStorage.setItem('bl_onboarded', 'true'); } catch {} };
+
                     return h('div', { className: 'space-y-4' },
+                        // ── First-Visit Welcome Banner ──
+                        showWelcome && h('div', { className: 'relative bg-gradient-to-br from-indigo-600 via-purple-600 to-violet-700 rounded-2xl p-6 shadow-xl text-white overflow-hidden' },
+                            // Decorative background circles
+                            h('div', { className: 'absolute -top-6 -right-6 w-32 h-32 bg-white/10 rounded-full' }),
+                            h('div', { className: 'absolute -bottom-4 -left-4 w-24 h-24 bg-white/5 rounded-full' }),
+                            // Dismiss button
+                            h('button', {
+                                onClick: dismissWelcome,
+                                className: 'absolute top-3 right-3 text-white/60 hover:text-white transition-colors text-lg',
+                                title: 'Dismiss'
+                            }, '✕'),
+                            // Content
+                            h('div', { className: 'relative' },
+                                h('div', { className: 'flex items-center gap-2 mb-2' },
+                                    h('span', { className: 'text-2xl' }, '👋'),
+                                    h('h2', { className: 'text-lg font-black' }, 'Welcome to BehaviorLens')
+                                ),
+                                h('p', { className: 'text-sm text-indigo-100 mb-4 max-w-lg' },
+                                    '81 clinical tools for behavior analysis, data collection, and intervention planning. Choose your role to get started:'
+                                ),
+                                h('div', { className: 'flex flex-wrap gap-3 mb-4' },
+                                    h('button', {
+                                        onClick: () => { dismissWelcome(); handleToolOpen('abc'); },
+                                        className: 'flex items-center gap-2 px-4 py-2.5 bg-white/20 backdrop-blur-sm rounded-xl border border-white/30 text-sm font-bold hover:bg-white/30 transition-all hover:scale-105 active:scale-95'
+                                    }, h('span', { className: 'text-lg' }, '👩‍🏫'), h('div', { className: 'text-left' }, h('div', { className: 'text-xs font-black' }, 'Teacher'), h('div', { className: 'text-[10px] text-indigo-200 font-medium' }, 'Start with ABC Data'))),
+                                    h('button', {
+                                        onClick: () => { dismissWelcome(); handleToolOpen('homelog'); },
+                                        className: 'flex items-center gap-2 px-4 py-2.5 bg-white/20 backdrop-blur-sm rounded-xl border border-white/30 text-sm font-bold hover:bg-white/30 transition-all hover:scale-105 active:scale-95'
+                                    }, h('span', { className: 'text-lg' }, '👪'), h('div', { className: 'text-left' }, h('div', { className: 'text-xs font-black' }, 'Parent'), h('div', { className: 'text-[10px] text-indigo-200 font-medium' }, 'Home Behavior Log'))),
+                                    h('button', {
+                                        onClick: () => { dismissWelcome(); handleToolOpen('abagraph'); },
+                                        className: 'flex items-center gap-2 px-4 py-2.5 bg-white/20 backdrop-blur-sm rounded-xl border border-white/30 text-sm font-bold hover:bg-white/30 transition-all hover:scale-105 active:scale-95'
+                                    }, h('span', { className: 'text-lg' }, '📊'), h('div', { className: 'text-left' }, h('div', { className: 'text-xs font-black' }, 'BCBA / Specialist'), h('div', { className: 'text-[10px] text-indigo-200 font-medium' }, 'ABA Graph Engine')))
+                                ),
+                                h('button', {
+                                    onClick: () => { dismissWelcome(); handleToolOpen('pdpath'); },
+                                    className: 'flex items-center gap-1.5 text-[11px] text-indigo-200 hover:text-white transition-colors font-medium'
+                                }, h('span', null, '🎓'), 'Or explore the PD Learning Path →')
+                            )
+                        ),
                         // ── Search Bar ──
                         h('div', { className: 'relative' },
                             h('input', {
                                 type: 'text',
                                 value: searchQuery,
                                 onChange: (e) => setSearchQuery(e.target.value),
-                                placeholder: '🔍  Search 62+ tools…',
+                                placeholder: '🔍  Search 81+ tools…',
                                 className: 'w-full px-4 py-3 pl-10 bg-white rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 shadow-sm'
                             }),
                             searchQuery && h('button', {
                                 onClick: () => setSearchQuery(''),
                                 className: 'absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600'
                             }, '✕')
+                        ),
+                        // ── Category Filter Chips ──
+                        h('div', { className: 'flex flex-wrap gap-2' },
+                            h('button', {
+                                onClick: () => setActiveCat(null),
+                                className: `px-3 py-1.5 rounded-full text-xs font-bold border-2 transition-all ${!activeCat ? 'bg-indigo-100 border-indigo-400 text-indigo-700 shadow-sm' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`
+                            }, 'All'),
+                            categories.map(cat => h('button', {
+                                key: 'chip-' + cat.key,
+                                onClick: () => setActiveCat(activeCat === cat.key ? null : cat.key),
+                                className: `flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border-2 transition-all ${activeCat === cat.key ? 'bg-indigo-100 border-indigo-400 text-indigo-700 shadow-sm' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`
+                            }, h('span', { className: 'text-sm' }, cat.icon), cat.label.split(' ').slice(1).join(' ')))
                         ),
 
                         // ── Quick Launch Bar (BCBA-priority tools) ──
@@ -18487,10 +18547,14 @@ Analyze this data and return ONLY valid JSON:
                             )
                         ),
 
-                        // ── Categorized Tool Grid (or search results) ──
-                        searchQuery
+                        // ── Categorized Tool Grid (or search/filter results) ──
+                        (searchQuery || activeCat)
                             ? h('div', null,
-                                h('div', { className: 'text-xs font-bold text-slate-400 mb-2' }, `${filtered.length} result${filtered.length !== 1 ? 's' : ''} for "${searchQuery}"`),
+                                h('div', { className: 'text-xs font-bold text-slate-400 mb-2' },
+                                    searchQuery
+                                        ? `${filtered.length} result${filtered.length !== 1 ? 's' : ''} for "${searchQuery}"${activeCat ? ' in ' + categories.find(c => c.key === activeCat)?.label : ''}`
+                                        : `${filtered.length} tool${filtered.length !== 1 ? 's' : ''} in ${categories.find(c => c.key === activeCat)?.label || activeCat}`
+                                ),
                                 h('div', { className: 'grid grid-cols-1 md:grid-cols-3 gap-4' }, filtered.map(renderCard))
                             )
                             : h('div', { className: 'space-y-3' },
