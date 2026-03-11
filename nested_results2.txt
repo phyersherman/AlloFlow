@@ -1,5 +1,0 @@
-Total button tags found: 1859
-  Opening: 928, Closing: 928, Self-closing: 3
-  Balance check: 928 opens vs 928 closes (should match)
-
-No nested buttons found in native <button> elements!

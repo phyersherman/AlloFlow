@@ -33,6 +33,8 @@ COPY report_writer_module.js ./public/report_writer_module.js
 COPY ui_strings.js ./public/ui_strings.js
 COPY help_strings.js ./public/help_strings.js
 COPY shared.css ./public/shared.css
+COPY src/dataProvider.js ./public/dataProvider.js
+COPY src/dataLayer.js ./public/dataLayer.js
 
 # Run the build script in dev mode (local paths for modules)
 RUN node build.js --mode=dev
@@ -57,6 +59,8 @@ COPY --from=builder /app/public/report_writer_module.js /usr/share/nginx/html/
 COPY --from=builder /app/public/ui_strings.js /usr/share/nginx/html/
 COPY --from=builder /app/public/help_strings.js /usr/share/nginx/html/
 COPY --from=builder /app/public/shared.css /usr/share/nginx/html/
+COPY --from=builder /app/public/dataProvider.js /usr/share/nginx/html/
+COPY --from=builder /app/public/dataLayer.js /usr/share/nginx/html/
 
 EXPOSE 80
 

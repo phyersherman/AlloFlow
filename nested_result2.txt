@@ -1,9 +1,0 @@
-Open: 929
-SelfClose: 3
-Close: 929
-Total: 1861
-
-NESTED BUTTONS: 1
-
-CHILD L61874: <button
-PARENT L61854: <button

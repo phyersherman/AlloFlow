@@ -1,1 +1,0 @@
-L0: '<StudentAnalyticsPanel \n              isOpen={showClassAnalytics} \n              onClose={handleCloseClassAnalytics} \n              t={t} \n          />\n      </ErrorBoundary>\n      )}\n      {showAdven'

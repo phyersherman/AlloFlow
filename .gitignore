@@ -2,6 +2,9 @@ node_modules
 
 .git-token*
 
+# Archive: temp/debug/backup files moved here during cleanup
+_archive/
+
 # Security: Never commit build artifacts (they contain baked-in API keys)
 prismflow-deploy/build/
 prismflow-deploy/.firebase/
@@ -17,3 +20,11 @@ api key.txt
 *api*key*
 *.key
 *.secret
+
+# Large media files (too large for GitHub)
+*.m4a
+*.mp4
+word_audio_bank_part*.json
+audio_bank.json
+Sample audiobank.txt
+profile-image.jpg

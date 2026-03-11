@@ -1,4 +1,0 @@
-LINE 1445: const OrthographyView = ({ data, onPlayAudio, onCheckAnswer, isEditing, onUpdateOption }) => {
-LINE 1681: const SoundMappingView = ({ data, onPlayAudio, onCheckAnswer, isEditing, onUpdateOption }) => {
-LINE 1909: const getDifficultyFilteredPool = React.useCallback(() => {
-LINE 33606: const handleSpeak = async (text, contentId, startIndex = 0) => {

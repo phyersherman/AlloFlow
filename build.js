@@ -56,6 +56,16 @@ const MODULES = [
         name: 'WordSoundsModal',
         filename: 'word_sounds_module.js',
         cdnBase: 'https://cdn.jsdelivr.net/gh/Apomera/AlloFlow'
+    },
+    {
+        name: 'BehaviorLens',
+        filename: 'behavior_lens_module.js',
+        cdnBase: 'https://cdn.jsdelivr.net/gh/Apomera/AlloFlow'
+    },
+    {
+        name: 'ReportWriter',
+        filename: 'report_writer_module.js',
+        cdnBase: 'https://cdn.jsdelivr.net/gh/Apomera/AlloFlow'
     }
 ];
 

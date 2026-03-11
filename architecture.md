@@ -1,6 +1,6 @@
 # AlloFlow Architecture Guide
 
-*Last Updated: 2026-03-04*
+*Last Updated: 2026-03-07*
 
 ## Product Architecture: The 8 Core Pillars
 
@@ -110,11 +110,11 @@ Coarser section boundaries remain from the original structure:
 
 ## Encoding & Tooling Notes
 
-### File Characteristics (as of 2026-03-04)
+### File Characteristics (as of 2026-03-07)
 
 | Property | AlloFlowANTI.txt | stem_lab_module.js |
 |---|---|---|
-| Size | ~4.3 MB / ~67.7K lines | ~1.8 MB / ~23.6K lines |
+| Size | ~4.3 MB / ~67.9K lines | ~1.8 MB / ~23.6K lines |
 | Line endings | CRLF (pure) | CRLF (pure) |
 | BOM | None | None |
 | Non-ASCII | ~6,282 bytes (emoji) | ~13,935 bytes (emoji) |
@@ -170,6 +170,32 @@ const _isCanvasEnv = (() => {
 })();
 ```
 
+### ⚠️ CRITICAL: CRA `process.env` vs `process` Global
+
+> **NEVER use `typeof process !== 'undefined'` as a guard in this codebase.**
+> CRA's webpack replaces `process.env.REACT_APP_*` with literal strings at build time,
+> but does **NOT** polyfill the `process` global itself. In the browser at runtime,
+> `typeof process === 'undefined'` → any `typeof process` guard will fail and skip
+> the guarded code.
+>
+> **Use `typeof __firebase_config !== 'undefined'` to detect Canvas vs Firebase deploy.**
+>
+> This bug caused a production outage on 2026-03-07 (`auth/invalid-api-key`) when
+> `typeof process` guards were added around `firebaseConfig`, `appId`, and `apiKey`.
+
+### Firebase Config (lines ~67–80)
+
+```js
+// CORRECT — no typeof process guard:
+const firebaseConfig = typeof __firebase_config !== 'undefined'
+  ? JSON.parse(__firebase_config)
+  : {
+      apiKey: process.env.REACT_APP_API_KEY || '',
+      authDomain: process.env.REACT_APP_AUTH_DOMAIN || '',
+      // ... other fields from .env
+    };
+```
+
 ### API Key Injection Flow
 
 | Context | `__firebase_config` defined? | `apiKey` value | Who provides the real key? |
@@ -177,12 +203,21 @@ const _isCanvasEnv = (() => {
 | **Canvas mode** | ✅ Yes (injected by Canvas) | `""` (empty) | Canvas proxy intercepts `key=` in the URL and injects it |
 | **Firebase deploy** | ❌ No | `process.env.REACT_APP_GEMINI_API_KEY` | `.env` file at build time |
 
-The key assignment is at **~line 90**:
+The Gemini key assignment is at **~line 92**:
 ```js
 const apiKey = typeof __firebase_config !== 'undefined'
   ? ""
   : (process.env.REACT_APP_GEMINI_API_KEY || '');
 ```
+
+### TDZ Warning: `let`-Declared Cache Variables
+
+> **Do NOT use `typeof` guards for `let`/`const` variables in the same bundled scope.**
+> In CRA's bundled output, all module-level `let`/`const` declarations share one scope.
+> `typeof myLetVar` will throw `ReferenceError` (TDZ) if `myLetVar` hasn't been
+> initialized yet — unlike `var` or true globals. Use `try/catch` instead.
+>
+> Fixed 2026-03-07: `audio_bank_loaded` handler's cache invalidation.
 
 ### Model Selection
 
