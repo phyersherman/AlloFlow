@@ -8,6 +8,71 @@
         return;
     }
 
+    // ─── Mobile Responsiveness CSS ──────────────────────────────────────
+    // Inject once — provides @media overrides for iPad & phone layouts
+    if (!document.getElementById('bl-mobile-css')) {
+        const styleEl = document.createElement('style');
+        styleEl.id = 'bl-mobile-css';
+        styleEl.textContent = `
+            /* BehaviorLens Mobile Responsive Overrides */
+            @media (max-width: 768px) {
+                /* Touch target minimum for all BehaviorLens buttons */
+                [class*="behavior-lens"] button,
+                .fixed.inset-0 button {
+                    min-height: 44px;
+                    min-width: 44px;
+                }
+                /* FrequencyCounter: shrink giant single-counter number */
+                .bl-freq-count-solo {
+                    font-size: 5rem !important;
+                }
+                /* FrequencyCounter: larger tap button on phones */
+                .bl-freq-tap-solo {
+                    width: 10rem !important;
+                    height: 10rem !important;
+                    font-size: 1.5rem !important;
+                }
+                /* IntervalGrid cells: ensure fingertip-sized */
+                .bl-interval-cell {
+                    min-width: 44px;
+                    min-height: 44px;
+                }
+                /* Stat card grids: collapse on narrow screens */
+                .bl-stat-grid-4 {
+                    grid-template-columns: repeat(2, 1fr) !important;
+                }
+                .bl-stat-grid-3 {
+                    grid-template-columns: repeat(2, 1fr) !important;
+                }
+                /* IntervalGrid "Occurred" button: full width on phone */
+                .bl-occurred-btn {
+                    width: 100%;
+                    padding: 1rem !important;
+                    font-size: 1.125rem !important;
+                }
+                /* Select dropdowns: larger tap area */
+                .fixed.inset-0 select {
+                    min-height: 48px;
+                    font-size: 16px !important; /* prevents iOS zoom */
+                }
+            }
+            @media (max-width: 480px) {
+                /* Very small screens: single column for 3-col grids */
+                .bl-stat-grid-3 {
+                    grid-template-columns: 1fr !important;
+                }
+                /* Tighter padding */
+                .fixed.inset-0 .p-6 {
+                    padding: 1rem !important;
+                }
+                .fixed.inset-0 .p-4 {
+                    padding: 0.75rem !important;
+                }
+            }
+        `;
+        document.head.appendChild(styleEl);
+    }
+
     const h = React.createElement;
     const { useState, useEffect, useRef, useMemo, useCallback, useReducer } = React;
     const warnLog = (...args) => console.warn("[BL-WARN]", ...args);
@@ -1653,14 +1718,14 @@ Return ONLY valid JSON with the modified fields (include ALL fields, even unchan
                         ),
                         // Count display
                         h('div', {
-                            className: `text-${counters.length === 1 ? '[120px] md:text-[180px]' : '5xl'} font-black tabular-nums leading-none`,
+                            className: `${counters.length === 1 ? 'bl-freq-count-solo text-[120px] md:text-[180px]' : 'text-5xl'} font-black tabular-nums leading-none`,
                             style: { color }
                         }, counter.count),
                         h('div', { className: 'text-xs text-slate-500' }, `${counterRate} / min`),
                         // Tap button
                         h('button', {
                             onClick: () => incrementCounter(counter.id),
-                            className: `${counters.length === 1 ? 'w-32 h-32' : 'w-20 h-20'} rounded-full active:scale-95 transition-all shadow-xl flex items-center justify-center text-xl font-black`,
+                            className: `${counters.length === 1 ? 'bl-freq-tap-solo w-32 h-32' : 'w-20 h-20'} rounded-full active:scale-95 transition-all shadow-xl flex items-center justify-center text-xl font-black`,
                             style: { background: color, boxShadow: `0 8px 24px ${color}40` }
                         }, '+1'),
                         // Decrement
@@ -1839,7 +1904,7 @@ Return ONLY valid JSON with the modified fields (include ALL fields, even unchan
                         return h('button', {
                             key: i,
                             onClick: () => { if (isComplete || isCurrent) mark(i); },
-                            className: `aspect-square rounded-lg flex items-center justify-center text-xs font-bold text-white transition-all ${bg} ${isComplete || isCurrent ? 'cursor-pointer hover:opacity-80' : 'opacity-40 cursor-default'}`
+                            className: `bl-interval-cell aspect-square rounded-lg flex items-center justify-center text-xs font-bold text-white transition-all ${bg} ${isComplete || isCurrent ? 'cursor-pointer hover:opacity-80' : 'opacity-40 cursor-default'}`
                         }, i + 1);
                     })
                 ),
@@ -1847,7 +1912,7 @@ Return ONLY valid JSON with the modified fields (include ALL fields, even unchan
                 running && h('div', { className: 'mt-4 flex gap-3 justify-center' },
                     h('button', {
                         onClick: () => mark(currentInterval),
-                        className: 'px-8 py-3 bg-red-500 text-white rounded-xl font-bold text-lg hover:bg-red-400 active:scale-95 transition-all'
+                        className: 'bl-occurred-btn px-8 py-3 bg-red-500 text-white rounded-xl font-bold text-lg hover:bg-red-400 active:scale-95 transition-all'
                     }, '✓ ' + (t('behavior_lens.obs_occurred') || 'Occurred')),
                     h('button', {
                         onClick: () => setRunning(false),
@@ -17196,20 +17261,58 @@ Analyze this data and return ONLY valid JSON:
 
         const handleSaveObsSession = (sessionData) => {
             setObservationSessions(prev => [sessionData, ...prev]);
-            // Enhancement #1: Auto-bridge observation sessions → sessionHistory
-            // This enables ABA Graph Engine, Cumulative Record, Effect Size Calculator
+            // Auto-bridge observation sessions → sessionHistory
+            // Enables ABA Graph Engine, Cumulative Record, Effect Size Calculator
             // to automatically include data from frequency, interval, and duration recordings
             const d = sessionData.data || sessionData;
+            const dateStr = sessionData.timestamp ? new Date(sessionData.timestamp).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+            const durStr = sessionData.duration ? `${sessionData.duration}s` : '';
+
+            // Frequency counter: create per-counter entries with actual behavior labels
+            if (sessionData.method === 'frequency' && Array.isArray(d.counters) && d.counters.length > 0) {
+                const entries = d.counters
+                    .filter(c => c.count > 0)
+                    .map(c => ({
+                        date: dateStr,
+                        behavior: c.label && c.label !== 'Unlabeled' ? c.label : 'Frequency Count',
+                        count: c.count,
+                        rate: c.rate ?? 0,
+                        phase: 'Observation',
+                        duration: durStr,
+                        source: 'observation-frequency'
+                    }));
+                if (entries.length > 0) {
+                    setSessionHistory(prev => [...entries, ...prev]);
+                    return;
+                }
+            }
+
+            // Interval recording: include mode (partial/whole/momentary) in behavior name
+            if (sessionData.method === 'interval') {
+                const modeLabel = d.mode ? `${d.mode.charAt(0).toUpperCase() + d.mode.slice(1)} Interval` : 'Interval';
+                setSessionHistory(prev => [{
+                    date: dateStr,
+                    behavior: modeLabel,
+                    count: d.occurredCount ?? 0,
+                    rate: d.percentage != null ? parseFloat(Number(d.percentage).toFixed(2)) : 0,
+                    phase: 'Observation',
+                    duration: durStr,
+                    source: 'observation-interval'
+                }, ...prev]);
+                return;
+            }
+
+            // Generic fallback for other observation types (live obs, duration, etc.)
             const count = d.count ?? d.occurredCount ?? d.totalCount ?? null;
             const rate = d.rate ?? d.percentage ?? null;
             if (count !== null || rate !== null) {
                 setSessionHistory(prev => [{
-                    date: sessionData.timestamp ? new Date(sessionData.timestamp).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+                    date: dateStr,
                     behavior: sessionData.behavior || sessionData.method || 'Observation',
                     count: count ?? 0,
                     rate: rate !== null ? parseFloat(Number(rate).toFixed(2)) : 0,
                     phase: 'Observation',
-                    duration: sessionData.duration ? `${sessionData.duration}s` : '',
+                    duration: durStr,
                     source: `observation-${sessionData.method || 'live'}`
                 }, ...prev]);
             }
