@@ -16,11 +16,18 @@ description: Sync AlloFlowANTI.txt to App.jsx, build, and deploy to Firebase
 > those users. The `sw.js` source in `public/` contains a `__BUILD_TS__` placeholder that
 > gets stamped with a unique timestamp on each deploy.
 
-1. Push the module files to GitHub:
+> **⚠️ OneDrive TIMEOUT — Git operations are slow:**
+> The repo is on OneDrive. `git commit` on the 2.5MB module files frequently exceeds
+> command timeouts. Git commit/push is **NOT required for deployment** — the build
+> pipeline uses local files. Batch git operations to the end and run them separately.
+
+1. Copy updated module files to `prismflow-deploy/public/`:
 ```
-git add ui_strings.js stem_lab_module.js word_sounds_module.js behavior_lens_module.js report_writer_module.js AlloFlowANTI.txt; git commit -m "Deploy: sync files"; git push origin main
+Copy-Item -Path stem_lab_module.js -Destination prismflow-deploy\public\stem_lab_module.js -Force
 ```
 Working directory: `C:\Users\cabba\OneDrive\Desktop\UDL-Tool-Updated`
+
+> Also copy other modules if changed: `word_sounds_module.js`, `behavior_lens_module.js`, `report_writer_module.js`, `ui_strings.js`.
 
 2. Run the build script in **prod** mode (auto-detects the git hash and writes App.jsx):
 ```
@@ -55,13 +62,17 @@ Working directory: `C:\Users\cabba\OneDrive\Desktop\UDL-Tool-Updated\prismflow-d
 
 6. Confirm deploy succeeded — check that the output shows `Deploy complete!` and the hosting URL.
 
-7. Commit and push the updated `AlloFlowANTI.txt` (with new hash) so the repo stays in sync:
+7. **(Optional — batch at end of session)** Commit and push all changes to GitHub for CDN and version control:
 ```
-git add AlloFlowANTI.txt; git commit -m "Deploy: update CDN hash"; git push origin main
+git add -A; git commit -m "Deploy: sync files"; git push origin main
 ```
 Working directory: `C:\Users\cabba\OneDrive\Desktop\UDL-Tool-Updated`
 
-8. **Verify the push succeeded** — confirm local HEAD matches origin/main:
+> **Note:** This step can be deferred when making multiple rapid changes. Run it once at the
+> end of a work session to keep the repo in sync. If git commit times out due to OneDrive,
+> the commit usually still succeeds — check with `git status --short`.
+
+8. **Verify the push succeeded** (if step 7 was run) — confirm local HEAD matches origin/main:
 ```
 git log --oneline -1 HEAD; git log --oneline -1 origin/main
 ```
@@ -71,7 +82,7 @@ Working directory: `C:\Users\cabba\OneDrive\Desktop\UDL-Tool-Updated`
 
 > **⚠️ CDN STALENESS WARNING:** If modules are NOT pushed to GitHub, jsDelivr will serve stale files.
 > This caused a real incident on 2026-03-09 where BehaviorLens was outdated on the CDN.
-> **Always verify step 8** — matching hashes = CDN will serve fresh content.
+> **Always push before ending a session** — matching hashes = CDN will serve fresh content.
 
 > **Note:** No CDN cache purge is needed with hash-based URLs. Each new commit hash is a unique, never-cached URL.
 > The fallback mechanism in `loadModule` will try `raw.githubusercontent.com` if the jsDelivr CDN fails.
@@ -81,6 +92,6 @@ Working directory: `C:\Users\cabba\OneDrive\Desktop\UDL-Tool-Updated`
 To run locally with hot-reload of module files:
 ```
 node build.js --mode=dev
-cd prismflow-deploy && npm start
+cd prismflow-deploy; npm start
 ```
 This replaces CDN URLs with `./stem_lab_module.js`, `./word_sounds_module.js`, and `./behavior_lens_module.js` so the dev server loads local copies.

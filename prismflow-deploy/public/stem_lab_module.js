@@ -20811,7 +20811,14 @@
             function drawDissectionFrame() {
               dissTick++;
               ctx.clearRect(0, 0, W, H);
+              // Apply zoom transform
+              var zoom = d.canvasZoom || 1;
+              ctx.save();
+              ctx.translate(W/2, H/2);
+              ctx.scale(zoom, zoom);
+              ctx.translate(-W/2, -H/2);
               // Dark dissection tray background
+              var isHC = d.highContrast;
               var trayGrad = ctx.createLinearGradient(0, 0, 0, H);
               trayGrad.addColorStop(0, '#1e293b'); trayGrad.addColorStop(1, '#0f172a');
               ctx.fillStyle = trayGrad; ctx.fillRect(0, 0, W, H);
@@ -20821,6 +20828,36 @@
               for (var gx = 0; gx < W; gx += 30) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke(); }
               for (var gy = 0; gy < H; gy += 30) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke(); }
               ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+              // Tissue texture overlay (stipple for organic feel)
+              if (spec.bodyShape !== 'eye' && spec.bodyShape !== 'heart') {
+                ctx.globalAlpha = 0.03;
+                for (var stip = 0; stip < 80; stip++) {
+                  var sx = cx + (Math.sin(stip * 137.5) * W * 0.25);
+                  var sy_t = cy + (Math.cos(stip * 47.3) * H * 0.30);
+                  ctx.beginPath(); ctx.arc(sx, sy_t, Math.random() * 2 + 0.5, 0, Math.PI*2);
+                  ctx.fillStyle = stip % 2 === 0 ? '#000' : '#fff'; ctx.fill();
+                }
+                ctx.globalAlpha = 1;
+              }
+              // Dissection tools illustration (bottom-right corner)
+              ctx.globalAlpha = 0.15;
+              // Scalpel
+              ctx.beginPath(); ctx.moveTo(W-60, H-60); ctx.lineTo(W-35, H-35);
+              ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2; ctx.stroke();
+              ctx.beginPath(); ctx.moveTo(W-35, H-35); ctx.lineTo(W-30, H-32);
+              ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 3; ctx.stroke();
+              // Forceps
+              ctx.beginPath(); ctx.moveTo(W-80, H-55); ctx.lineTo(W-55, H-40);
+              ctx.moveTo(W-80, H-48); ctx.lineTo(W-55, H-40);
+              ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5; ctx.stroke();
+              // Pins
+              for (var pi_tool = 0; pi_tool < 3; pi_tool++) {
+                ctx.beginPath(); ctx.arc(W-90+pi_tool*8, H-70, 1.5, 0, Math.PI*2);
+                ctx.fillStyle = '#94a3b8'; ctx.fill();
+                ctx.beginPath(); ctx.moveTo(W-90+pi_tool*8, H-70); ctx.lineTo(W-90+pi_tool*8, H-62);
+                ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 0.5; ctx.stroke();
+              }
+              ctx.globalAlpha = 1;
 
               // Get current layer styling
               var curLayer = spec.layers[currentLayerIdx] || spec.layers[0];
@@ -20856,7 +20893,13 @@
                 // Nostrils
                 ctx.beginPath(); ctx.arc(cx - W*0.03, cy-H*0.30, 1.5, 0, Math.PI*2); ctx.fillStyle = layerStroke; ctx.fill();
                 ctx.beginPath(); ctx.arc(cx + W*0.03, cy-H*0.30, 1.5, 0, Math.PI*2); ctx.fillStyle = layerStroke; ctx.fill();
-                // Eyes
+                // Eyes (tympanic membrane markers)
+                [-1, 1].forEach(function(s) {
+                  ctx.beginPath(); ctx.arc(cx + s*W*0.10, cy-H*0.22, 4, 0, Math.PI*2);
+                  ctx.fillStyle = 'rgba(139,92,246,0.3)'; ctx.fill();
+                  ctx.strokeStyle = 'rgba(139,92,246,0.5)'; ctx.lineWidth = 0.5; ctx.stroke();
+                });
+                // Eyes (prominent amphibian eyes)
                 [cx-W*0.08, cx+W*0.08].forEach(function(ex) {
                   ctx.beginPath(); ctx.arc(ex, cy-H*0.28, 6, 0, Math.PI*2);
                   ctx.fillStyle = '#fef9c3'; ctx.fill(); ctx.strokeStyle = '#854d0e'; ctx.lineWidth = 1.2; ctx.stroke();
@@ -20909,19 +20952,28 @@
                 }
               
                 // ── Frog layer-specific internal anatomy ──
-                // Muscle layer: draw fiber striations
+                // Muscle layer: animated fiber contraction
                 if (activeLayer === 'muscle') {
                   ctx.globalAlpha = 0.25;
                   ctx.strokeStyle = '#991b1b';
                   ctx.lineWidth = 0.6;
-                  // Abdominal muscle fibers
+                  // Abdominal muscle fibers with contraction wave
+                  var contractionWave = Math.sin(dissTick * 0.04);
                   for (var mf = 0; mf < 12; mf++) {
                     var mfy = cy - H*0.15 + mf * H*0.035;
+                    var mfContract = Math.sin(dissTick * 0.04 + mf * 0.5) * 2;
                     ctx.beginPath();
                     ctx.moveTo(cx - W*0.10, mfy);
-                    ctx.quadraticCurveTo(cx, mfy + (mf%2?2:-2), cx + W*0.10, mfy);
+                    ctx.quadraticCurveTo(cx, mfy + mfContract, cx + W*0.10, mfy);
+                    ctx.lineWidth = 0.6 + Math.abs(mfContract) * 0.15;
                     ctx.stroke();
                   }
+                  // Muscle tension indicator
+                  ctx.globalAlpha = 0.15;
+                  var tensionColor = 'rgba(220,38,38,' + (0.1 + Math.abs(contractionWave) * 0.12) + ')';
+                  ctx.fillStyle = tensionColor;
+                  ctx.beginPath(); ctx.ellipse(cx, cy, W*0.12, H*0.20, 0, 0, Math.PI*2);
+                  ctx.fill();
                   // Leg muscle detail
                   [-1, 1].forEach(function(side) {
                     for (var lm = 0; lm < 5; lm++) {
@@ -20973,6 +21025,30 @@
                     ctx.beginPath(); ctx.ellipse(cx + s*W*0.05, cy - H*0.10, W*0.008, H*0.03, s*0.3, 0, Math.PI*2);
                     ctx.fillStyle = '#fbbf24'; ctx.fill();
                   });
+                  // Animated blood flow paths
+                  var bloodT = (dissTick * 0.03) % 1;
+                  // Arterial flow (red, from heart outward)
+                  ctx.setLineDash([4, 8]);
+                  ctx.lineDashOffset = -dissTick * 0.5;
+                  ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 1; ctx.globalAlpha = 0.4;
+                  // Aorta → body
+                  ctx.beginPath(); ctx.moveTo(cx, cy-H*0.11);
+                  ctx.quadraticCurveTo(cx+W*0.03, cy-H*0.15, cx+W*0.05, cy-H*0.18);
+                  ctx.stroke();
+                  // To legs
+                  [-1, 1].forEach(function(s) {
+                    ctx.beginPath(); ctx.moveTo(cx+s*W*0.02, cy+H*0.10);
+                    ctx.lineTo(cx+s*W*0.10, cy+H*0.30);
+                    ctx.stroke();
+                  });
+                  // Venous return (blue)
+                  ctx.strokeStyle = '#3b82f6';
+                  [-1, 1].forEach(function(s) {
+                    ctx.beginPath(); ctx.moveTo(cx+s*W*0.12, cy+H*0.32);
+                    ctx.quadraticCurveTo(cx+s*W*0.04, cy+H*0.15, cx+s*W*0.01, cy-H*0.05);
+                    ctx.stroke();
+                  });
+                  ctx.setLineDash([]); ctx.lineDashOffset = 0;
                   ctx.globalAlpha = 1;
                 }
                 // Skeleton layer: draw bone outlines
@@ -21078,7 +21154,7 @@
                   ctx.lineWidth = 0.5; ctx.stroke();
                 }
                 ctx.globalAlpha = 1;
-                // Clitellum band with gradient
+                // Clitellum band (segments 32-37) with gradient
                 if (activeLayer === 'skin') {
                   var clitGrad = ctx.createLinearGradient(cx-W*0.05, H*0.22, cx+W*0.05, H*0.22);
                   clitGrad.addColorStop(0, 'rgba(200,150,100,0.2)');
@@ -21086,9 +21162,39 @@
                   clitGrad.addColorStop(1, 'rgba(200,150,100,0.2)');
                   ctx.fillStyle = clitGrad;
                   ctx.fillRect(cx-W*0.05, H*0.22, W*0.10, H*0.06);
-                  // Prostomium detail
+                  // Clitellum label
+                  ctx.font = '7px Inter, system-ui'; ctx.fillStyle = 'rgba(200,150,100,0.6)';
+                  ctx.fillText('clitellum (32-37)', cx+W*0.055, H*0.26);
+                  // Genital pore openings
+                  ctx.beginPath(); ctx.arc(cx, H*0.21, 1, 0, Math.PI*2);
+                  ctx.fillStyle = 'rgba(200,150,100,0.4)'; ctx.fill();
+                  ctx.beginPath(); ctx.arc(cx, H*0.225, 1, 0, Math.PI*2);
+                  ctx.fill();
+                  // Mouth and anus
+                  ctx.beginPath(); ctx.arc(cx, H*0.06, 2, 0, Math.PI*2);
+                  ctx.fillStyle = 'rgba(180,120,80,0.6)'; ctx.fill();
+                  ctx.fillStyle = 'rgba(180,120,80,0.3)'; ctx.fillText('mouth', cx+W*0.04, H*0.065);
+                  ctx.beginPath(); ctx.arc(cx, H*0.94, 1.5, 0, Math.PI*2);
+                  ctx.fillStyle = 'rgba(180,120,80,0.5)'; ctx.fill();
+                  ctx.fillStyle = 'rgba(180,120,80,0.3)'; ctx.fillText('anus', cx+W*0.04, H*0.945);
+                  // Prostomium detail (fleshy lip)
                   ctx.beginPath(); ctx.ellipse(cx, H*0.06, W*0.035, H*0.015, 0, 0, Math.PI*2);
                   ctx.fillStyle = 'rgba(180,120,80,0.4)'; ctx.fill();
+                  // Setae (tiny bristles on each segment)
+                  ctx.globalAlpha = 0.2; ctx.strokeStyle = '#a16207';
+                  for (var seta = 0; seta < 25; seta++) {
+                    var setaY = H*0.10 + seta*H*0.031;
+                    [-1, 1].forEach(function(s) {
+                      ctx.beginPath();
+                      ctx.moveTo(cx + s*W*0.046, setaY);
+                      ctx.lineTo(cx + s*W*0.055, setaY+1);
+                      ctx.lineWidth = 0.3; ctx.stroke();
+                      ctx.moveTo(cx + s*W*0.046, setaY+H*0.01);
+                      ctx.lineTo(cx + s*W*0.055, setaY+H*0.01+1);
+                      ctx.stroke();
+                    });
+                  }
+                  ctx.globalAlpha = 1;
                 }
                 // Body gradient for 3D tube effect
                 var tubeGrad = ctx.createLinearGradient(cx-W*0.05, 0, cx+W*0.05, 0);
@@ -21153,12 +21259,17 @@
                   ctx.globalAlpha = 1;
                 }
                 if (activeLayer === 'muscle') {
-                  // Circular muscle rings
+                  // Circular muscle rings with peristalsis animation
                   ctx.globalAlpha = 0.2; ctx.strokeStyle = '#dc2626';
                   for (var cm = 0; cm < 28; cm++) {
                     var cmy = H*0.09 + cm*H*0.029;
-                    ctx.beginPath(); ctx.ellipse(cx, cmy, W*0.044, H*0.005, 0, 0, Math.PI*2);
-                    ctx.lineWidth = 0.8; ctx.stroke();
+                    // Peristaltic wave: rings expand and contract in sequence
+                    var peristalsis = Math.sin(dissTick * 0.03 - cm * 0.4);
+                    var ringW = W*0.044 + peristalsis * W*0.006;
+                    var ringH = H*0.005 + Math.abs(peristalsis) * H*0.002;
+                    ctx.beginPath(); ctx.ellipse(cx, cmy, ringW, ringH, 0, 0, Math.PI*2);
+                    ctx.lineWidth = 0.8 + Math.abs(peristalsis) * 0.4;
+                    ctx.stroke();
                   }
                   // Longitudinal muscle lines
                   ctx.strokeStyle = '#b91c1c'; ctx.lineWidth = 0.4;
@@ -21186,6 +21297,28 @@
                 // Snout nostrils
                 ctx.beginPath(); ctx.arc(cx-W*0.34, cy-H*0.015, 1.5, 0, Math.PI*2); ctx.fillStyle = layerStroke; ctx.fill();
                 ctx.beginPath(); ctx.arc(cx-W*0.34, cy+H*0.015, 1.5, 0, Math.PI*2); ctx.fillStyle = layerStroke; ctx.fill();
+                // Curly tail
+                ctx.beginPath();
+                ctx.moveTo(cx+W*0.26, cy);
+                var tailR = W*0.02;
+                for (var tt = 0; tt < 8; tt++) {
+                  var ta = tt * 0.9;
+                  ctx.lineTo(cx+W*0.26 + tailR*Math.cos(ta) + tt*W*0.005, cy + tailR*Math.sin(ta));
+                }
+                ctx.strokeStyle = layerStroke; ctx.lineWidth = 1.5; ctx.stroke();
+                // Hooves
+                [-1, 1].forEach(function(s) {
+                  // Front hooves
+                  ctx.beginPath(); ctx.ellipse(cx-W*0.15, cy+s*H*0.18, W*0.015, H*0.01, 0, 0, Math.PI*2);
+                  ctx.fillStyle = '#292524'; ctx.fill();
+                  // Rear hooves
+                  ctx.beginPath(); ctx.ellipse(cx+W*0.18, cy+s*H*0.18, W*0.015, H*0.01, 0, 0, Math.PI*2);
+                  ctx.fillStyle = '#292524'; ctx.fill();
+                });
+                // Ear (one visible)
+                ctx.beginPath(); ctx.moveTo(cx-W*0.22, cy-H*0.10);
+                ctx.quadraticCurveTo(cx-W*0.25, cy-H*0.16, cx-W*0.20, cy-H*0.14);
+                ctx.fillStyle = layerColor; ctx.fill(); ctx.strokeStyle = layerStroke; ctx.lineWidth = 0.8; ctx.stroke();
                 // Ear
                 ctx.beginPath(); ctx.ellipse(cx-W*0.18, cy-H*0.12, W*0.04, H*0.05, -0.5, 0, Math.PI*2);
                 ctx.fillStyle = layerColor; ctx.fill(); ctx.strokeStyle = layerStroke; ctx.stroke();
@@ -21491,8 +21624,67 @@
                 // Tapetum reflection
                 ctx.beginPath(); ctx.arc(cx+W*0.10, cy, W*0.08, -0.5, 0.5);
                 ctx.strokeStyle = 'rgba(34,211,238,0.3)'; ctx.lineWidth = 8; ctx.stroke();
+                // Animated light refraction ray
+                var rayPhase = (dissTick * 0.02) % (Math.PI * 2);
+                var rayAlpha = 0.3 + Math.sin(rayPhase) * 0.15;
+                ctx.globalAlpha = rayAlpha;
+                // Incoming ray
+                ctx.beginPath(); ctx.moveTo(cx-W*0.45, cy-H*0.08);
+                ctx.lineTo(cx-W*0.28, cy); // hits cornea
+                ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 1.5; ctx.stroke();
+                // Ray through cornea → aqueous humor → lens (bends)
+                ctx.beginPath(); ctx.moveTo(cx-W*0.28, cy);
+                ctx.quadraticCurveTo(cx-W*0.20, cy+H*0.01, cx-W*0.12, cy); // through pupil/lens
+                ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 1.5; ctx.stroke();
+                // Ray through vitreous → hits retina (converges)
+                ctx.beginPath(); ctx.moveTo(cx-W*0.12, cy);
+                ctx.lineTo(cx+W*0.10, cy+H*0.02); // focal point on retina
+                ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 1.5; ctx.stroke();
+                // Focal point glow
+                ctx.beginPath(); ctx.arc(cx+W*0.10, cy+H*0.02, 4, 0, Math.PI*2);
+                var focalGrad = ctx.createRadialGradient(cx+W*0.10, cy+H*0.02, 0, cx+W*0.10, cy+H*0.02, 4);
+                focalGrad.addColorStop(0, 'rgba(251,191,36,0.8)');
+                focalGrad.addColorStop(1, 'rgba(251,191,36,0)');
+                ctx.fillStyle = focalGrad; ctx.fill();
+                // Ray label
+                ctx.font = '8px Inter, system-ui'; ctx.fillStyle = '#fbbf24';
+                ctx.fillText('light ray', cx-W*0.44, cy-H*0.10);
+                ctx.globalAlpha = 1;
+                // Aqueous humor label
+                ctx.font = '7px Inter, system-ui'; ctx.fillStyle = 'rgba(255,255,255,0.25)';
+                ctx.fillText('aqueous humor', cx-W*0.24, cy+H*0.06);
+                ctx.fillText('vitreous humor', cx-W*0.05, cy+H*0.10);
+                // Ciliary body
+                ctx.beginPath(); ctx.arc(cx-W*0.14, cy-H*0.08, W*0.015, 0, Math.PI);
+                ctx.strokeStyle = '#a78bfa'; ctx.lineWidth = 1; ctx.stroke();
+                ctx.beginPath(); ctx.arc(cx-W*0.14, cy+H*0.08, W*0.015, Math.PI, Math.PI*2);
+                ctx.strokeStyle = '#a78bfa'; ctx.stroke();
+                ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillText('ciliary body', cx-W*0.18, cy-H*0.11);
+                // Suspensory ligaments (zonules)
+                ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 0.4;
+                for (var zl = 0; zl < 6; zl++) {
+                  var za = -0.5 + zl * 0.2;
+                  ctx.beginPath(); ctx.moveTo(cx-W*0.14+Math.cos(za)*W*0.015, cy+Math.sin(za)*H*0.08);
+                  ctx.lineTo(cx-W*0.12+Math.cos(za)*W*0.04, cy+Math.sin(za)*H*0.06);
+                  ctx.stroke();
+                }
+                // Fovea centralis (center of macula)
+                ctx.beginPath(); ctx.arc(cx+W*0.10, cy, 2.5, 0, Math.PI*2);
+                ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 1; ctx.stroke();
+                ctx.fillStyle = 'rgba(251,191,36,0.3)'; ctx.fillText('fovea', cx+W*0.12, cy-H*0.02);
+                // Blind spot (optic disc)
+                ctx.beginPath(); ctx.arc(cx+W*0.18, cy+H*0.03, 3, 0, Math.PI*2);
+                ctx.fillStyle = 'rgba(251,191,36,0.4)'; ctx.fill();
+                ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillText('optic disc', cx+W*0.20, cy+H*0.02);
               } else if (spec.bodyShape === 'heart') {
-                // Sheep heart — anatomical shape
+                // Sheep heart — anatomical shape with beating animation
+                var heartPhase = (dissTick * 0.04) % (Math.PI * 2);
+                var systole = Math.max(0, Math.sin(heartPhase));
+                var heartScale = 1 + systole * 0.03;
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.scale(heartScale, heartScale);
+                ctx.translate(-cx, -cy);
                 ctx.beginPath();
                 ctx.moveTo(cx, cy-H*0.25);
                 ctx.quadraticCurveTo(cx-W*0.22, cy-H*0.30, cx-W*0.25, cy-H*0.10);
@@ -21532,12 +21724,105 @@
                 ctx.moveTo(cx+W*0.04, cy-H*0.15);
                 ctx.quadraticCurveTo(cx+W*0.18, cy, cx+W*0.10, cy+H*0.18);
                 ctx.strokeStyle = 'rgba(59,130,246,0.12)'; ctx.lineWidth = 8; ctx.stroke();
+                ctx.restore(); // End heartbeat scale
+                // Conduction system animation
+                if (activeLayer === 'nervous' || activeLayer === 'conduction') {
+                  ctx.globalAlpha = 0.7;
+                  var condPhase = (dissTick * 0.03) % 1;
+                  // SA Node (pacemaker)
+                  var saGlow = Math.max(0, Math.sin(condPhase * Math.PI * 2));
+                  ctx.beginPath(); ctx.arc(cx+W*0.12, cy-H*0.14, 5 + saGlow * 3, 0, Math.PI*2);
+                  var saGrad = ctx.createRadialGradient(cx+W*0.12, cy-H*0.14, 0, cx+W*0.12, cy-H*0.14, 5+saGlow*3);
+                  saGrad.addColorStop(0, 'rgba(251,191,36,' + (0.5+saGlow*0.5) + ')');
+                  saGrad.addColorStop(1, 'rgba(251,191,36,0)');
+                  ctx.fillStyle = saGrad; ctx.fill();
+                  ctx.font = '7px Inter, system-ui'; ctx.fillStyle = '#fbbf24'; ctx.fillText('SA', cx+W*0.13, cy-H*0.18);
+                  // AV Node
+                  var avDelay = Math.max(0, Math.sin((condPhase - 0.15) * Math.PI * 2));
+                  ctx.beginPath(); ctx.arc(cx, cy-H*0.04, 4 + avDelay * 2, 0, Math.PI*2);
+                  var avGrad = ctx.createRadialGradient(cx, cy-H*0.04, 0, cx, cy-H*0.04, 4+avDelay*2);
+                  avGrad.addColorStop(0, 'rgba(34,197,94,' + (0.4+avDelay*0.5) + ')');
+                  avGrad.addColorStop(1, 'rgba(34,197,94,0)');
+                  ctx.fillStyle = avGrad; ctx.fill();
+                  ctx.fillStyle = '#22c55e'; ctx.fillText('AV', cx+W*0.02, cy-H*0.06);
+                  // Bundle of His
+                  var hisPhase = Math.max(0, Math.sin((condPhase - 0.3) * Math.PI * 2));
+                  ctx.beginPath(); ctx.moveTo(cx, cy-H*0.02); ctx.lineTo(cx, cy+H*0.06);
+                  ctx.strokeStyle = 'rgba(59,130,246,' + (0.3+hisPhase*0.5) + ')'; ctx.lineWidth = 2; ctx.stroke();
+                  ctx.fillStyle = '#3b82f6'; ctx.fillText('Bundle of His', cx+W*0.02, cy+H*0.02);
+                  // Left and right bundle branches
+                  ctx.beginPath(); ctx.moveTo(cx, cy+H*0.06);
+                  ctx.lineTo(cx-W*0.08, cy+H*0.18);
+                  ctx.strokeStyle = 'rgba(59,130,246,' + (0.2+hisPhase*0.4) + ')'; ctx.lineWidth = 1.5; ctx.stroke();
+                  ctx.beginPath(); ctx.moveTo(cx, cy+H*0.06);
+                  ctx.lineTo(cx+W*0.06, cy+H*0.16);
+                  ctx.stroke();
+                  // Purkinje fibers (fan out in ventricles)
+                  var purkPhase = Math.max(0, Math.sin((condPhase - 0.5) * Math.PI * 2));
+                  ctx.strokeStyle = 'rgba(168,85,247,' + (0.2+purkPhase*0.4) + ')'; ctx.lineWidth = 0.8;
+                  for (var pk = 0; pk < 5; pk++) {
+                    ctx.beginPath(); ctx.moveTo(cx-W*0.08, cy+H*0.18);
+                    ctx.lineTo(cx-W*0.12+pk*W*0.02, cy+H*0.22+pk*H*0.01);
+                    ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(cx+W*0.06, cy+H*0.16);
+                    ctx.lineTo(cx+W*0.02+pk*W*0.02, cy+H*0.20+pk*H*0.01);
+                    ctx.stroke();
+                  }
+                  ctx.fillStyle = '#a855f7'; ctx.fillText('Purkinje', cx-W*0.14, cy+H*0.24);
+                  // Signal propagation indicator
+                  var sigY = cy-H*0.14 + condPhase * H*0.38;
+                  ctx.beginPath(); ctx.arc(cx, sigY, 3, 0, Math.PI*2);
+                  ctx.fillStyle = 'rgba(251,191,36,0.8)'; ctx.fill();
+                  ctx.globalAlpha = 1;
+                }
+                // Internal chambers when on interior/chambers layer
+                if (activeLayer === 'chambers' || activeLayer === 'interior') {
+                  ctx.globalAlpha = 0.4;
+                  // Left atrium
+                  ctx.beginPath(); ctx.ellipse(cx-W*0.10, cy-H*0.10, W*0.08, H*0.06, 0, 0, Math.PI*2);
+                  ctx.fillStyle = '#dc2626'; ctx.fill();
+                  ctx.font = '8px Inter'; ctx.fillStyle = '#ffffff'; ctx.fillText('LA', cx-W*0.11, cy-H*0.09);
+                  // Right atrium
+                  ctx.beginPath(); ctx.ellipse(cx+W*0.10, cy-H*0.10, W*0.08, H*0.06, 0, 0, Math.PI*2);
+                  ctx.fillStyle = '#3b82f6'; ctx.fill();
+                  ctx.fillStyle = '#ffffff'; ctx.fillText('RA', cx+W*0.09, cy-H*0.09);
+                  // Left ventricle (thicker wall)
+                  ctx.beginPath(); ctx.ellipse(cx-W*0.08, cy+H*0.08, W*0.10, H*0.10, 0, 0, Math.PI*2);
+                  ctx.fillStyle = '#b91c1c'; ctx.fill();
+                  ctx.fillStyle = '#ffffff'; ctx.fillText('LV', cx-W*0.09, cy+H*0.09);
+                  // Right ventricle (thinner wall)
+                  ctx.beginPath(); ctx.ellipse(cx+W*0.08, cy+H*0.08, W*0.08, H*0.08, 0, 0, Math.PI*2);
+                  ctx.fillStyle = '#2563eb'; ctx.fill();
+                  ctx.fillStyle = '#ffffff'; ctx.fillText('RV', cx+W*0.07, cy+H*0.09);
+                  // Valve lines
+                  ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.5;
+                  // Mitral valve
+                  ctx.beginPath(); ctx.moveTo(cx-W*0.15, cy-H*0.02); ctx.lineTo(cx-W*0.04, cy-H*0.02); ctx.stroke();
+                  // Tricuspid valve
+                  ctx.beginPath(); ctx.moveTo(cx+W*0.04, cy-H*0.02); ctx.lineTo(cx+W*0.15, cy-H*0.02); ctx.stroke();
+                  ctx.globalAlpha = 1;
+                  // Animated blood flow through chambers
+                  ctx.setLineDash([3, 5]); ctx.lineDashOffset = -dissTick * 0.4;
+                  ctx.globalAlpha = 0.6;
+                  // Deoxygenated flow: RA → RV → lungs
+                  ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 1.2;
+                  ctx.beginPath(); ctx.moveTo(cx+W*0.10, cy-H*0.16);
+                  ctx.lineTo(cx+W*0.10, cy-H*0.03);
+                  ctx.lineTo(cx+W*0.08, cy+H*0.05); ctx.stroke();
+                  // Oxygenated flow: LA → LV → body
+                  ctx.strokeStyle = '#ef4444';
+                  ctx.beginPath(); ctx.moveTo(cx-W*0.10, cy-H*0.16);
+                  ctx.lineTo(cx-W*0.10, cy-H*0.03);
+                  ctx.lineTo(cx-W*0.08, cy+H*0.05); ctx.stroke();
+                  ctx.setLineDash([]); ctx.lineDashOffset = 0;
+                  ctx.globalAlpha = 1;
+                }
               }
 
               ctx.restore();
 
               // ── Draw organ pins ──
-              organs.forEach(function (org) {
+              organs.forEach(function (org, oi) {
                 var px = org.x * W, py = org.y * H;
                 var isSel = d.selectedOrgan === org.id;
                 var isHov = !isSel && d.hoveredOrgan === org.id;
@@ -21550,11 +21835,13 @@
                   glowGrad.addColorStop(1, 'rgba(251,191,36,0)');
                   ctx.fillStyle = glowGrad; ctx.fill();
                 }
-                // Pin dot with gradient
+                // Pin dot with system color
+                var orgSys = getOrganSystem(org.name);
+                var sysCol = orgSys ? sysColors[orgSys] : '#94a3b8';
                 ctx.beginPath(); ctx.arc(px, py, 5 * pulse, 0, Math.PI * 2);
                 var pinGrad = ctx.createRadialGradient(px-1, py-1, 1, px, py, 5 * pulse);
                 pinGrad.addColorStop(0, isSel ? '#fef08a' : isHov ? '#bfdbfe' : '#ffffff');
-                pinGrad.addColorStop(1, isSel ? '#f59e0b' : isHov ? '#3b82f6' : '#94a3b8');
+                pinGrad.addColorStop(1, isSel ? '#f59e0b' : isHov ? '#3b82f6' : sysCol);
                 ctx.fillStyle = pinGrad; ctx.fill();
                 ctx.strokeStyle = isSel ? '#f59e0b' : 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1.5; ctx.stroke();
                 // Selection/hover ring
@@ -21566,16 +21853,65 @@
                 if (lx + tw > W - 10) lx = px - tw - 12;
                 ctx.beginPath(); ctx.moveTo(px + 6, py); ctx.lineTo(lx, ly + 6);
                 ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.setLineDash([2, 2]); ctx.lineWidth = 0.8; ctx.stroke(); ctx.setLineDash([]);
-                ctx.fillStyle = isSel ? 'rgba(251,191,36,0.9)' : 'rgba(30,41,59,0.85)';
-                if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(lx, ly, tw, 16, 4); ctx.fill(); } else { ctx.fillRect(lx, ly, tw, 16); }
-                ctx.strokeStyle = isSel ? '#f59e0b' : 'rgba(148,163,184,0.4)'; ctx.lineWidth = 0.6; ctx.stroke();
-                ctx.fillStyle = isSel ? '#1e293b' : '#e2e8f0'; ctx.fillText(org.name, lx + 5, ly + 11.5);
+                if (d.labelMode !== 'hidden' || isSel) {
+                  ctx.fillStyle = isSel ? 'rgba(251,191,36,0.9)' : 'rgba(30,41,59,0.85)';
+                  if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(lx, ly, tw, 16, 4); ctx.fill(); } else { ctx.fillRect(lx, ly, tw, 16); }
+                  ctx.strokeStyle = isSel ? '#f59e0b' : 'rgba(148,163,184,0.4)'; ctx.lineWidth = 0.6; ctx.stroke();
+                  ctx.fillStyle = isSel ? '#1e293b' : '#e2e8f0'; ctx.fillText(org.name, lx + 5, ly + 11.5);
+                } else {
+                  // Hidden mode: show numbered markers instead of names
+                  var markerNum = String(oi + 1);
+                  ctx.fillStyle = 'rgba(30,41,59,0.7)';
+                  ctx.beginPath(); ctx.arc(lx + 8, ly + 8, 8, 0, Math.PI*2); ctx.fill();
+                  ctx.fillStyle = '#ffffff'; ctx.font = 'bold 8px Inter, system-ui';
+                  ctx.fillText(markerNum, lx + 8 - ctx.measureText(markerNum).width/2, ly + 11);
+                  ctx.font = '10px Inter, system-ui, sans-serif';
+                }
               });
               // Layer label
               var activeLayerDef = spec.layers[currentLayerIdx];
               if (activeLayerDef) { ctx.font = 'bold 13px Inter, system-ui, sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fillText(activeLayerDef.icon + ' ' + activeLayerDef.name + ' Layer', 14, H - 14); }
+              // Scale bar
+              ctx.fillStyle = 'rgba(255,255,255,0.25)';
+              ctx.fillRect(W - 80, H - 18, 60, 2);
+              ctx.font = '8px Inter, system-ui'; ctx.fillText('~5 cm', W - 72, H - 7);
+              // Cross-section indicators
+              if (activeLayer === 'organs' && (spec.bodyShape === 'frog' || spec.bodyShape === 'pig' || spec.bodyShape === 'fish')) {
+                ctx.globalAlpha = 0.15; ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 0.5; ctx.setLineDash([4, 6]);
+                // Transverse section lines
+                var sectionYs = spec.bodyShape === 'frog' ? [cy - H*0.12, cy, cy + H*0.10] :
+                                spec.bodyShape === 'pig' ? [cy - H*0.06, cy + H*0.04] :
+                                [cy - H*0.04, cy + H*0.04];
+                sectionYs.forEach(function (sy, si) {
+                  ctx.beginPath(); ctx.moveTo(10, sy); ctx.lineTo(W - 10, sy); ctx.stroke();
+                  ctx.font = '7px Inter, system-ui'; ctx.fillStyle = 'rgba(148,163,184,0.3)';
+                  ctx.fillText('Section ' + String.fromCharCode(65 + si), 12, sy - 3);
+                });
+                ctx.setLineDash([]); ctx.globalAlpha = 1;
+              }
+              // Dissection tray corner labels
+              ctx.font = '7px Inter, system-ui';
+              ctx.fillStyle = 'rgba(100,116,139,0.3)';
+              ctx.fillText('ANTERIOR', W/2 - 20, 14);
+              ctx.fillText('POSTERIOR', W/2 - 20, H - 4);
+              ctx.save(); ctx.translate(8, H/2 + 10); ctx.rotate(-Math.PI/2);
+              ctx.fillText('LEFT', 0, 0); ctx.restore();
+              ctx.save(); ctx.translate(W - 4, H/2 - 10); ctx.rotate(Math.PI/2);
+              ctx.fillText('RIGHT', 0, 0); ctx.restore();
               // Specimen label
-              ctx.font = '11px Inter, system-ui, sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillText(spec.icon + ' ' + spec.name, 14, 20);
+              ctx.font = '11px Inter, system-ui, sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.4)';
+              ctx.fillText(spec.icon + ' ' + spec.name + (d.viewAngle === 'dorsal' ? '  (Dorsal View)' : '  (Ventral View)'), 14, 20);
+              // System color legend (top-right)
+              var legendSys = ['circulatory', 'digestive', 'respiratory', 'nervous', 'skeletal', 'muscular', 'excretory', 'reproductive'];
+              var legendLabels = ['\u2764 Circ', '\uD83C\uDF7D Dig', '\uD83C\uDF2C Resp', '\u26A1 Nerv', '\uD83E\uDDB4 Skel', '\uD83D\uDCAA Musc', '\uD83D\uDCA7 Excr', '\u2665 Repr'];
+              ctx.font = '7px Inter, system-ui';
+              for (var li = 0; li < legendSys.length; li++) {
+                var lx = W - 58, ly = 50 + li * 12;
+                ctx.beginPath(); ctx.arc(lx, ly, 3, 0, Math.PI * 2);
+                ctx.fillStyle = sysColors[legendSys[li]]; ctx.fill();
+                ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                ctx.fillText(legendLabels[li], lx + 6, ly + 3);
+              }
               // Progress bar at top
               if (totalOrgansInSpecimen > 0) {
                 var barW = W - 28;
@@ -21632,10 +21968,26 @@
                 }
               }
 
+              ctx.restore(); // End zoom transform
               canvas._dissAnim = requestAnimationFrame(drawDissectionFrame);
             }
             drawDissectionFrame();
           };
+
+          // Simple sound effects via Web Audio API
+          var audioCtx = null;
+          function playDissectSound(type) {
+            try {
+              if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+              var osc = audioCtx.createOscillator();
+              var gain = audioCtx.createGain();
+              osc.connect(gain); gain.connect(audioCtx.destination);
+              gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+              if (type === 'pin') { osc.frequency.setValueAtTime(880, audioCtx.currentTime); osc.type = 'sine'; gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1); osc.start(); osc.stop(audioCtx.currentTime + 0.1); }
+              else if (type === 'peel') { osc.frequency.setValueAtTime(220, audioCtx.currentTime); osc.frequency.linearRampToValueAtTime(440, audioCtx.currentTime + 0.2); osc.type = 'sawtooth'; gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.25); osc.start(); osc.stop(audioCtx.currentTime + 0.25); }
+              else if (type === 'success') { osc.frequency.setValueAtTime(523, audioCtx.currentTime); osc.type = 'sine'; gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15); osc.start(); osc.stop(audioCtx.currentTime + 0.15); var osc2 = audioCtx.createOscillator(); var g2 = audioCtx.createGain(); osc2.connect(g2); g2.connect(audioCtx.destination); g2.gain.setValueAtTime(0.05, audioCtx.currentTime + 0.12); osc2.frequency.setValueAtTime(659, audioCtx.currentTime + 0.12); osc2.type = 'sine'; g2.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3); osc2.start(audioCtx.currentTime + 0.12); osc2.stop(audioCtx.currentTime + 0.3); }
+            } catch(e) {}
+          }
 
           var canvasClick = function (e) {
             var canvas = e.target; var rect = canvas.getBoundingClientRect();
@@ -21643,6 +21995,7 @@
             var hit = null;
             organs.forEach(function (org) { var dx = mx - org.x, dy = my - org.y; if (Math.sqrt(dx * dx + dy * dy) < 0.04) hit = org; });
             upd('selectedOrgan', hit ? (hit.id === d.selectedOrgan ? null : hit.id) : null);
+            if (hit) playDissectSound('pin');
             // Track explored organs for progress
             if (hit) {
               var explored = Object.assign({}, d.exploredOrgans || {});
@@ -21701,7 +22054,8 @@
               React.createElement("button", { onClick: function () { setStemLabTool(null); }, className: "text-lg hover:scale-110 transition-transform", 'aria-label': 'Back' }, "\u2B05"),
               React.createElement("div", null,
                 React.createElement("h3", { className: "text-lg font-bold text-slate-800" }, "\uD83D\uDD2C Virtual Dissection Lab"),
-                React.createElement("p", { className: "text-xs text-slate-500" }, spec.icon + ' ' + spec.name)
+                React.createElement("p", { className: "text-xs text-slate-500" }, spec.icon + ' ' + spec.name),
+                React.createElement("p", { className: "text-[9px] text-slate-400 mt-0.5" }, '\uD83D\uDD0E Scroll to zoom \u2022 Click organs to explore')
               ),
               React.createElement("div", { className: "ml-auto flex gap-2" },
                 React.createElement("button", {
@@ -21709,13 +22063,71 @@
                   className: "px-3 py-1.5 rounded-lg text-xs font-bold " + (guidedMode ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-700')
                 }, guidedMode ? '\u23F9 End Tour' : '\uD83D\uDCCD Tour'),
                 React.createElement("button", {
+                  onClick: function () { upd('compareMode', !d.compareMode); },
+                  className: "px-3 py-1.5 rounded-lg text-xs font-bold " + (d.compareMode ? 'bg-cyan-600 text-white' : 'bg-cyan-100 text-cyan-700')
+                }, d.compareMode ? '\u23F9 End Compare' : '\uD83D\uDD0D Compare'),
+                React.createElement("button", {
+                  onClick: function () { upd('labelMode', d.labelMode === 'hidden' ? 'show' : 'hidden'); },
+                  className: "px-3 py-1.5 rounded-lg text-xs font-bold " + (d.labelMode === 'hidden' ? 'bg-rose-600 text-white' : 'bg-rose-100 text-rose-700')
+                }, d.labelMode === 'hidden' ? '\uD83D\uDC41 Show Labels' : '\uD83C\uDFF7 Hide Labels'),
+                spec.bodyShape !== 'eye' && spec.bodyShape !== 'heart' && React.createElement("button", {
+                  onClick: function () { upd('viewAngle', d.viewAngle === 'dorsal' ? 'ventral' : 'dorsal'); },
+                  className: "px-3 py-1.5 rounded-lg text-xs font-bold " + (d.viewAngle === 'dorsal' ? 'bg-teal-600 text-white' : 'bg-teal-100 text-teal-700')
+                }, d.viewAngle === 'dorsal' ? '\uD83D\uDD04 Dorsal' : '\uD83D\uDD04 Ventral'),
+                React.createElement("button", {
                   onClick: function () { upd('quizMode', !d.quizMode); if (!d.quizMode) { upd('quizIdx', 0); upd('quizScore', 0); upd('quizTotal', 0); upd('quizFeedback', null); } },
                   className: "px-3 py-1.5 rounded-lg text-xs font-bold " + (d.quizMode ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-700')
                 }, d.quizMode ? '\u23F9 End Quiz' : '\uD83E\uDDE0 Quiz'),
                 React.createElement("button", {
+                  onClick: function () {
+                    var canvas = canvasRef.current;
+                    if (canvas) {
+                      var link = document.createElement('a');
+                      link.download = spec.name.replace(/[^a-zA-Z0-9]/g, '_') + '_dissection.png';
+                      link.href = canvas.toDataURL('image/png');
+                      link.click();
+                      if (addToast) addToast('\uD83D\uDCF7 Screenshot saved!', 'success');
+                    }
+                  },
+                  className: "px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-100 text-blue-700"
+                }, '\uD83D\uDCF7 Save'),
+                React.createElement("button", {
+                  onClick: function () {
+                    // Generate lab report
+                    var report = '\uD83D\uDD2C DISSECTION LAB REPORT\n';
+                    report += '========================\n';
+                    report += 'Specimen: ' + spec.icon + ' ' + spec.name + '\n';
+                    report += 'Date: ' + new Date().toLocaleDateString() + '\n\n';
+                    var explored = d.exploredOrgans || {};
+                    spec.layers.forEach(function (layer) {
+                      var layerOrgans = spec.organs[layer.id] || [];
+                      var examined = layerOrgans.filter(function(o) { return explored[specimen + '|' + o.id]; });
+                      if (examined.length > 0) {
+                        report += layer.icon + ' ' + layer.name.toUpperCase() + ' (' + examined.length + '/' + layerOrgans.length + ')\n';
+                        report += '---\n';
+                        examined.forEach(function(o) {
+                          report += '\u2022 ' + o.name + ': ' + o.fn.split('.')[0] + '.\n';
+                        });
+                        report += '\n';
+                      }
+                    });
+                    report += '\nProgress: ' + exploredCount + '/' + totalOrgansInSpecimen + ' structures (' + progressPct + '%)\n';
+                    report += 'Quiz Score: ' + (d.quizScore || 0) + '/' + (d.quizTotal || 0) + '\n';
+                    // Copy to clipboard
+                    if (navigator.clipboard) { navigator.clipboard.writeText(report); }
+                    if (addToast) addToast('\uD83D\uDCCB Lab report copied to clipboard!', 'success');
+                  },
+                  className: "px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-700"
+                }, '\uD83D\uDCCB Report'),
+                React.createElement("button", {
                   onClick: function () { upd('revealedLayers', {}); upd('activeLayer', (spec.layers[0]||{}).id||'skin'); upd('selectedOrgan', null); },
                   className: "px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700"
-                }, '\uD83D\uDD04 Reset')
+                }, '\uD83D\uDD04 Reset'),
+                React.createElement("button", {
+                  onClick: function () { upd('highContrast', !d.highContrast); },
+                  className: "px-3 py-1.5 rounded-lg text-xs font-bold " + (d.highContrast ? 'bg-yellow-500 text-black' : 'bg-slate-100 text-slate-700'),
+                  'aria-label': 'Toggle high contrast mode'
+                }, d.highContrast ? '\u2600 HC' : '\u2600 HC')
               )
             ),
 
@@ -21751,38 +22163,156 @@
               // Canvas + peel button
               React.createElement("div", { className: "flex-1" },
                 React.createElement("canvas", {
-                  ref: canvasRef, onClick: canvasClick, onMouseMove: canvasHover, width: 500, height: 600,
+                  ref: canvasRef, onClick: canvasClick, onMouseMove: canvasHover,
+                  onWheel: function(e) {
+                    e.preventDefault();
+                    var z = d.canvasZoom || 1;
+                    z = Math.max(0.5, Math.min(3, z + (e.deltaY > 0 ? -0.1 : 0.1)));
+                    upd('canvasZoom', z);
+                  },
+                  width: 500, height: 600,
                   className: "w-full rounded-xl border border-slate-200 cursor-crosshair",
                   style: { aspectRatio: '5/6', background: '#0f172a' }
                 }),
+                // Zoom indicator
+                (d.canvasZoom && d.canvasZoom !== 1) && React.createElement("div", { className: "flex items-center justify-between mt-1" },
+                  React.createElement("span", { className: "text-[10px] text-slate-400" }, '\uD83D\uDD0D ' + Math.round((d.canvasZoom || 1) * 100) + '%'),
+                  React.createElement("button", {
+                    onClick: function () { upd('canvasZoom', 1); },
+                    className: "text-[10px] text-slate-400 hover:text-slate-600 px-1"
+                  }, 'Reset zoom')
+                ),
                 currentLayerIdx < spec.layers.length - 1 && React.createElement("button", {
                   onClick: peelCurrentLayer,
                   className: "w-full mt-2 py-3 rounded-xl text-sm font-bold bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600 shadow-md hover:shadow-lg transition-all"
                 }, '\u2702\uFE0F Peel ' + spec.layers[currentLayerIdx].name + ' \u2192 ' + spec.layers[Math.min(currentLayerIdx + 1, spec.layers.length - 1)].name)
               ),
 
+                // Comparison panel
+                d.compareMode && sel && React.createElement("div", { className: "mt-2 bg-gradient-to-r from-cyan-50 to-blue-50 rounded-xl border border-cyan-200 p-3" },
+                  React.createElement("div", { className: "text-xs font-bold text-cyan-800 mb-2" }, '\uD83D\uDD0D Comparing: ' + sel.name + ' across specimens'),
+                  React.createElement("div", { className: "space-y-1.5 max-h-48 overflow-y-auto" },
+                    SPEC_KEYS.map(function (sk) {
+                      var sp = SPECIMENS[sk];
+                      // Search for matching organ name in all layers
+                      var match = null;
+                      sp.layers.forEach(function (layer) {
+                        if (match) return;
+                        var layerOrgans = sp.organs[layer.id] || [];
+                        layerOrgans.forEach(function (org) {
+                          if (!match && org.name.toLowerCase() === sel.name.toLowerCase()) match = { organ: org, layer: layer };
+                        });
+                      });
+                      // Also try partial match (e.g. "Heart" matches "3-Chamber Heart")
+                      if (!match) {
+                        var searchWord = sel.name.split(' ').pop().toLowerCase();
+                        sp.layers.forEach(function (layer) {
+                          if (match) return;
+                          var layerOrgans = sp.organs[layer.id] || [];
+                          layerOrgans.forEach(function (org) {
+                            if (!match && org.name.toLowerCase().indexOf(searchWord) >= 0) match = { organ: org, layer: layer };
+                          });
+                        });
+                      }
+                      if (!match) return null;
+                      var isCurrent = sk === specimen;
+                      return React.createElement("div", {
+                        key: sk,
+                        className: "p-2 rounded-lg text-xs " + (isCurrent ? 'bg-cyan-100 border border-cyan-300' : 'bg-white border border-slate-200')
+                      },
+                        React.createElement("div", { className: "font-bold " + (isCurrent ? 'text-cyan-800' : 'text-slate-700') }, sp.icon + ' ' + sp.name.split('(')[0].trim() + ': ' + match.organ.name),
+                        React.createElement("p", { className: "text-[10px] text-slate-500 mt-0.5 leading-relaxed" }, match.organ.fn.substring(0, 120) + (match.organ.fn.length > 120 ? '...' : '')),
+                        match.organ.clinical && React.createElement("p", { className: "text-[10px] text-amber-600 mt-0.5 italic" }, '\uD83C\uDFEB ' + match.organ.clinical.substring(0, 80) + '...')
+                      );
+                    })
+                  ),
+                  !sel && React.createElement("p", { className: "text-xs text-cyan-600 italic" }, 'Click an organ to compare it across all specimens')
+                ),
+
               // Sidebar
               React.createElement("div", { className: "w-72 space-y-3" },
                 // Selected organ detail
                 sel && React.createElement("div", { className: "bg-white rounded-xl border p-4" },
-                  React.createElement("h4", { className: "text-sm font-bold text-slate-800 mb-1" }, sel.name),
+                  React.createElement("div", { className: "flex items-center justify-between mb-1" },
+                    React.createElement("h4", { className: "text-sm font-bold text-slate-800" }, sel.name),
+                    React.createElement("div", { className: "flex gap-1" },
+                      React.createElement("button", {
+                        onClick: function () {
+                          var idx = organs.findIndex(function(o) { return o.id === sel.id; });
+                          if (idx > 0) upd('selectedOrgan', organs[idx - 1].id);
+                        },
+                        className: "w-6 h-6 rounded bg-slate-100 text-slate-500 text-xs hover:bg-slate-200 flex items-center justify-center"
+                      }, '\u25C0'),
+                      React.createElement("button", {
+                        onClick: function () {
+                          var idx = organs.findIndex(function(o) { return o.id === sel.id; });
+                          if (idx < organs.length - 1) upd('selectedOrgan', organs[idx + 1].id);
+                        },
+                        className: "w-6 h-6 rounded bg-slate-100 text-slate-500 text-xs hover:bg-slate-200 flex items-center justify-center"
+                      }, '\u25B6')
+                    )
+                  ),
+                  // System badge
+                  (function() {
+                    var sn = sel.name.toLowerCase();
+                    var sysN = null;
+                    var sysBadges = {circulatory:'\u2764\uFE0F Circulatory',digestive:'\uD83C\uDF7D\uFE0F Digestive',respiratory:'\uD83C\uDF2C\uFE0F Respiratory',nervous:'\u26A1 Nervous',skeletal:'\uD83E\uDDB4 Skeletal',muscular:'\uD83D\uDCAA Muscular',excretory:'\uD83D\uDCA7 Excretory',reproductive:'\u2665\uFE0F Reproductive'};
+                    var sysCols = {circulatory:'bg-red-50 text-red-700 border-red-200',digestive:'bg-amber-50 text-amber-700 border-amber-200',respiratory:'bg-blue-50 text-blue-700 border-blue-200',nervous:'bg-purple-50 text-purple-700 border-purple-200',skeletal:'bg-slate-50 text-slate-700 border-slate-200',muscular:'bg-red-50 text-red-700 border-red-200',excretory:'bg-lime-50 text-lime-700 border-lime-200',reproductive:'bg-pink-50 text-pink-700 border-pink-200'};
+                    var sysKW = {circulatory:['heart','aorta','artery','vein','atrium','ventricle','blood','aortic'],digestive:['stomach','liver','intestin','gizzard','crop','pancreas','gallbladder'],respiratory:['lung','gill','trachea','swim bladder'],nervous:['brain','nerve','spinal','eye','optic'],skeletal:['bone','skull','vertebr','femur'],muscular:['muscle','rectus'],excretory:['kidney','nephri'],reproductive:['gonad','ovary','testi']};
+                    Object.keys(sysKW).forEach(function(sk) { sysKW[sk].forEach(function(kw) { if (!sysN && sn.indexOf(kw) >= 0) sysN = sk; }); });
+                    return sysN ? React.createElement("span", { className: "inline-block px-2 py-0.5 rounded-full text-[9px] font-bold border mb-1 " + sysCols[sysN] }, sysBadges[sysN]) : null;
+                  })(),
                   React.createElement("p", { className: "text-xs text-slate-600 leading-relaxed mb-2" }, sel.fn),
                   sel.clinical && React.createElement("div", { className: "bg-amber-50 rounded-lg p-2 border border-amber-200" },
                     React.createElement("span", { className: "text-[10px] font-bold text-amber-700" }, '\uD83C\uDFEB Fun Fact'),
                     React.createElement("p", { className: "text-[10px] text-amber-600 leading-relaxed mt-0.5" }, sel.clinical)
+                  ),
+                  // Position info
+                  React.createElement("div", { className: "mt-2 flex gap-2 text-[9px] text-slate-400" },
+                    React.createElement("span", null, '\uD83D\uDCCD x:' + Math.round(sel.x * 100) + '% y:' + Math.round(sel.y * 100) + '%'),
+                    React.createElement("span", null, '\uD83C\uDFF7 ' + (sel.layer || activeLayer))
                   )
                 ),
 
-                // Organ list
+                // Organ list with search
                 !sel && React.createElement("div", { className: "bg-white rounded-xl border p-3" },
                   React.createElement("div", { className: "text-xs font-bold text-slate-700 mb-2" }, (spec.layers[currentLayerIdx]||{}).icon + ' ' + (spec.layers[currentLayerIdx]||{}).name + ' Structures (' + organs.length + ')'),
-                  React.createElement("div", { className: "space-y-1 max-h-80 overflow-y-auto" },
-                    organs.map(function (org) {
+                  React.createElement("input", {
+                    type: "text",
+                    placeholder: "\uD83D\uDD0D Search organs...",
+                    value: d.organSearch || '',
+                    onChange: function (e) { upd('organSearch', e.target.value); },
+                    className: "w-full px-2 py-1.5 rounded-lg border border-slate-200 text-xs mb-2 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                  }),
+                  React.createElement("div", { className: "space-y-1 max-h-72 overflow-y-auto" },
+                    organs.filter(function (org) {
+                      var search = (d.organSearch || '').toLowerCase();
+                      if (!search) return true;
+                      return org.name.toLowerCase().indexOf(search) >= 0 || org.fn.toLowerCase().indexOf(search) >= 0;
+                    }).map(function (org) {
+                      var orgSys = null;
+                      var orgName = org.name.toLowerCase();
+                      var sysKeys = ['circulatory','digestive','respiratory','nervous','skeletal','muscular','excretory','reproductive'];
+                      var sysKws = {circulatory:['heart','aorta','artery','vein','atrium','ventricle','blood','aortic'],digestive:['stomach','liver','intestin','gizzard','crop','pancreas','gallbladder'],respiratory:['lung','gill','trachea','swim bladder'],nervous:['brain','nerve','spinal','eye','optic'],skeletal:['bone','skull','vertebr','femur'],muscular:['muscle','rectus'],excretory:['kidney','nephri'],reproductive:['gonad','ovary','testi','oviduct']};
+                      for (var si = 0; si < sysKeys.length; si++) {
+                        var kws = sysKws[sysKeys[si]];
+                        for (var ki = 0; kws && ki < kws.length; ki++) {
+                          if (orgName.indexOf(kws[ki]) >= 0) { orgSys = sysKeys[si]; break; }
+                        }
+                        if (orgSys) break;
+                      }
+                      var sysColorsMap = {circulatory:'#ef4444',digestive:'#f59e0b',respiratory:'#3b82f6',nervous:'#8b5cf6',skeletal:'#94a3b8',muscular:'#dc2626',excretory:'#84cc16',reproductive:'#ec4899'};
+                      var dotColor = orgSys ? sysColorsMap[orgSys] : '#94a3b8';
+                      var isExplored = (d.exploredOrgans || {})[specimen + '|' + org.id];
                       return React.createElement("button", {
                         key: org.id,
                         onClick: function () { upd('selectedOrgan', org.id); },
-                        className: "w-full text-left px-2 py-1.5 rounded-lg text-xs hover:bg-slate-50 transition-all " + (d.selectedOrgan === org.id ? 'bg-amber-50 border border-amber-200 font-bold text-amber-800' : 'text-slate-600')
-                      }, org.name);
+                        className: "w-full text-left px-2 py-1.5 rounded-lg text-xs hover:bg-slate-50 transition-all flex items-center gap-1.5 " + (d.selectedOrgan === org.id ? 'bg-amber-50 border border-amber-200 font-bold text-amber-800' : 'text-slate-600')
+                      },
+                        React.createElement("span", { style: { width: 6, height: 6, borderRadius: '50%', backgroundColor: dotColor, display: 'inline-block', flexShrink: 0 } }),
+                        React.createElement("span", { className: "flex-1" }, org.name),
+                        isExplored && React.createElement("span", { className: "text-[9px] text-green-500" }, '\u2713')
+                      );
                     })
                   )
                 ),
@@ -21831,7 +22361,25 @@
                     );
                   }),
                   React.createElement("div", { className: "mt-2 pt-2 border-t border-slate-200" },
-                    React.createElement("p", { className: "text-[10px] text-slate-500 leading-relaxed" }, spec.desc)
+                    React.createElement("p", { className: "text-[10px] text-slate-500 leading-relaxed mb-1" }, spec.desc),
+                    React.createElement("div", { className: "grid grid-cols-2 gap-1 mt-1" },
+                      spec.kingdom && React.createElement("div", null,
+                        React.createElement("span", { className: "text-[8px] font-bold text-slate-400 uppercase" }, 'Kingdom'),
+                        React.createElement("p", { className: "text-[9px] text-slate-500" }, spec.kingdom)
+                      ),
+                      spec.phylum && React.createElement("div", null,
+                        React.createElement("span", { className: "text-[8px] font-bold text-slate-400 uppercase" }, 'Phylum'),
+                        React.createElement("p", { className: "text-[9px] text-slate-500" }, spec.phylum)
+                      ),
+                      spec.habitat && React.createElement("div", null,
+                        React.createElement("span", { className: "text-[8px] font-bold text-slate-400 uppercase" }, 'Habitat'),
+                        React.createElement("p", { className: "text-[9px] text-slate-500" }, spec.habitat)
+                      ),
+                      spec.lifespan && React.createElement("div", null,
+                        React.createElement("span", { className: "text-[8px] font-bold text-slate-400 uppercase" }, 'Lifespan'),
+                        React.createElement("p", { className: "text-[9px] text-slate-500" }, spec.lifespan)
+                      )
+                    )
                   )
                 ),
 
@@ -21846,6 +22394,50 @@
                   ),
                   React.createElement("div", { className: "mt-1 text-[9px] text-blue-500" }, exploredCount + ' of ' + totalOrgansInSpecimen + ' structures examined'),
                   progressPct >= 100 && React.createElement("div", { className: "mt-1 text-[10px] font-bold text-green-600" }, '\u2B50 Specimen Complete!')
+                ),
+
+                // Specimen stats card
+                React.createElement("div", { className: "bg-gradient-to-br from-slate-50 to-gray-50 rounded-xl border border-slate-200 p-3 mb-2" },
+                  React.createElement("div", { className: "text-[10px] font-bold text-slate-700 mb-1" }, '\uD83D\uDCC8 Specimen Stats'),
+                  React.createElement("div", { className: "grid grid-cols-3 gap-2 text-center" },
+                    React.createElement("div", null,
+                      React.createElement("div", { className: "text-lg font-bold text-blue-600" }, String(totalOrgansInSpecimen)),
+                      React.createElement("div", { className: "text-[8px] text-slate-400" }, 'Structures')
+                    ),
+                    React.createElement("div", null,
+                      React.createElement("div", { className: "text-lg font-bold text-emerald-600" }, String(spec.layers.length)),
+                      React.createElement("div", { className: "text-[8px] text-slate-400" }, 'Layers')
+                    ),
+                    React.createElement("div", null,
+                      React.createElement("div", { className: "text-lg font-bold text-amber-600" }, String(d.quizScore || 0)),
+                      React.createElement("div", { className: "text-[8px] text-slate-400" }, 'Quiz Score')
+                    )
+                  )
+                ),
+                // Glossary panel
+                React.createElement("div", { className: "bg-gradient-to-br from-violet-50 to-purple-50 rounded-xl border border-violet-200 p-3" },
+                  React.createElement("div", { className: "text-[10px] font-bold text-violet-700 mb-1" }, '\uD83D\uDCDA Key Terms'),
+                  React.createElement("div", { className: "space-y-1 max-h-40 overflow-y-auto" },
+                    [
+                      { term: 'Dorsal', def: 'Back/upper surface of the organism' },
+                      { term: 'Ventral', def: 'Belly/lower surface of the organism' },
+                      { term: 'Anterior', def: 'Front/head end of the organism' },
+                      { term: 'Posterior', def: 'Rear/tail end of the organism' },
+                      { term: 'Lateral', def: 'Side of the organism' },
+                      { term: 'Medial', def: 'Toward the midline of the organism' },
+                      { term: 'Proximal', def: 'Closer to the point of attachment' },
+                      { term: 'Distal', def: 'Further from the point of attachment' },
+                      { term: 'Sagittal', def: 'Plane dividing body into left/right' },
+                      { term: 'Transverse', def: 'Plane dividing body into top/bottom' },
+                      { term: 'Homologous', def: 'Structures with shared evolutionary origin' },
+                      { term: 'Analogous', def: 'Similar function but different origin' }
+                    ].map(function (g) {
+                      return React.createElement("div", { key: g.term, className: "text-[10px]" },
+                        React.createElement("span", { className: "font-bold text-violet-700" }, g.term + ': '),
+                        React.createElement("span", { className: "text-slate-500" }, g.def)
+                      );
+                    })
+                  )
                 )
               )
             )
