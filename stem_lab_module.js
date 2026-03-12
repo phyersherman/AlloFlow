@@ -20469,6 +20469,768 @@
             )
           );
         })(),
+        // ═══════════════════════════════════════════════════════
+        // VIRTUAL DISSECTION LAB
+        stemLabTab === 'explore' && stemLabTool === 'dissection' && (() => {
+          var d = labToolData.dissection || {};
+          var upd = function (k, v) { setLabToolData(function (p) { return Object.assign({}, p, { dissection: Object.assign({}, p.dissection, (function () { var o = {}; o[k] = v; return o; })()) }); }); };
+
+          // ════════ SPECIMEN DATABASE ════════
+          var SPECIMENS = {
+            frog: {
+              name: 'Frog (Rana)', icon: '\uD83D\uDC38',
+              desc: 'Classic vertebrate — 3-chambered heart, cutaneous respiration, metamorphosis.',
+              bodyShape: 'frog',
+              layers: [
+                { id: 'skin', name: 'Skin', icon: '\uD83D\uDFE2', color: '#4ade80', accent: '#16a34a', desc: 'Moist permeable integument with chromatophores.' },
+                { id: 'muscle', name: 'Muscle', icon: '\uD83D\uDCAA', color: '#f87171', accent: '#dc2626', desc: 'Skeletal muscles for jumping and swimming.' },
+                { id: 'organs', name: 'Organs', icon: '\uD83E\uDEC1', color: '#fbbf24', accent: '#d97706', desc: 'Digestive, respiratory, circulatory, and urogenital organs.' },
+                { id: 'skeleton', name: 'Skeleton', icon: '\uD83E\uDDB4', color: '#e2e8f0', accent: '#64748b', desc: 'Endoskeleton adapted for jumping.' },
+                { id: 'nervous', name: 'Nervous', icon: '\u26A1', color: '#c084fc', accent: '#7c3aed', desc: 'CNS and peripheral nerves.' }
+              ],
+              organs: {
+                skin: [
+                  { id: 'dorsal_skin', name: 'Dorsal Skin', x: 0.50, y: 0.35, fn: 'Green-brown pigmented surface with chromatophores. Mucous glands keep skin moist for cutaneous respiration (up to 50% of gas exchange).', clinical: 'Chytrid fungus attacks frog skin keratin, causing global amphibian declines.' },
+                  { id: 'ventral_skin', name: 'Ventral Skin', x: 0.50, y: 0.65, fn: 'Lighter, thinner ventral surface. Highly vascularized \u2014 frogs absorb water through skin, not by drinking.', clinical: 'Permeable skin makes frogs sensitive bioindicators of environmental pollution.' },
+                  { id: 'tympanum', name: 'Tympanic Membrane', x: 0.62, y: 0.18, fn: 'External eardrum behind eye. Transmits sound to columella and inner ear. Size indicates sex (larger = male).', clinical: 'Used for species and sex identification in field studies.' },
+                  { id: 'nictitating', name: 'Nictitating Membrane', x: 0.58, y: 0.15, fn: 'Transparent third eyelid protecting eye underwater. Homologous to human plica semilunaris (vestigial).', clinical: 'Present in many vertebrates \u2014 vestigial in humans as plica semilunaris.' }
+                ],
+                muscle: [
+                  { id: 'pectoralis', name: 'Pectoralis', x: 0.50, y: 0.42, fn: 'Chest muscle adducting forelimb. Assists landing absorption after jumps. Homologous to human pectoralis major.', clinical: 'Comparative anatomy: same muscle, different function \u2014 landing in frogs vs pushing in humans.' },
+                  { id: 'rectus_abd', name: 'Rectus Abdominis', x: 0.50, y: 0.55, fn: 'Ventral abdominal muscle from sternum to pelvis. Flexes trunk and compresses cavity for buccal pump breathing.', clinical: 'Frogs use buccal pumping (throat) rather than diaphragmatic breathing like mammals.' },
+                  { id: 'gastrocnemius', name: 'Gastrocnemius', x: 0.35, y: 0.78, fn: 'Large calf muscle powering jumps. Can generate 2\u00D7 body weight force. Galvani used frog legs to discover bioelectricity (1780s).', clinical: 'Classic muscle for physiology experiments \u2014 Galvani\'s frog leg experiments founded bioelectricity.' },
+                  { id: 'triceps_fem', name: 'Triceps Femoris', x: 0.38, y: 0.68, fn: 'Three-headed thigh muscle (homolog of quadriceps). Primary knee extensor during jumping.', clinical: 'Frogs can jump 20\u00D7 body length due to elastic energy storage in tendons.' },
+                  { id: 'sartorius', name: 'Sartorius', x: 0.42, y: 0.65, fn: 'Thin strap on medial thigh. Flexes and rotates hip. Assists drawing legs into swimming position.', clinical: 'Longest muscle in both frogs and humans \u2014 a homologous structure across vertebrates.' },
+                  { id: 'deltoid', name: 'Deltoideus', x: 0.38, y: 0.38, fn: 'Shoulder muscle elevating/rotating forelimb. Smaller than hindlimb muscles \u2014 frogs are hindlimb-dominant.' }
+                ],
+                organs: [
+                  { id: 'heart', name: 'Heart (3-chamber)', x: 0.50, y: 0.38, fn: '2 atria + 1 ventricle. Spiral valve in conus arteriosus separates blood with ~90% efficiency despite single ventricle.', clinical: 'Frog hearts beat without neural input (myogenic) and can beat in saline for hours \u2014 used in cardiac physiology research.' },
+                  { id: 'lungs', name: 'Lungs', x: 0.45, y: 0.40, fn: 'Simple thin-walled sacs (no alveoli). Supplemented by cutaneous respiration. Inflated by buccal pumping \u2014 not diaphragm.', clinical: 'The Bornean flat-headed frog is completely lungless \u2014 breathes entirely through skin.' },
+                  { id: 'liver', name: 'Liver (3 lobes)', x: 0.50, y: 0.45, fn: 'Large three-lobed organ. Produces bile, detoxifies blood, stores glycogen. Largest internal organ.', clinical: 'Liver color/size indicates environmental contamination in ecotoxicology studies.' },
+                  { id: 'gallbladder', name: 'Gallbladder', x: 0.52, y: 0.47, fn: 'Small green sac between liver lobes. Stores/concentrates bile. Bright green color \u2014 key dissection landmark.', clinical: 'Bright green color makes it one of the easiest organs to identify in dissection.' },
+                  { id: 'stomach', name: 'Stomach', x: 0.48, y: 0.50, fn: 'J-shaped muscular organ. Frogs swallow prey whole and use eye retraction to push food down.', clinical: 'Frogs push food into stomach by retracting eyes into mouth roof \u2014 unique swallowing mechanism.' },
+                  { id: 'sm_intestine', name: 'Small Intestine', x: 0.50, y: 0.58, fn: 'Coiled tube (duodenum + ileum). Primary nutrient absorption site. Shorter than in herbivorous tadpoles.', clinical: 'Tadpoles (herbivores) have much longer intestines than adult frogs (carnivores) \u2014 diet drives gut length.' },
+                  { id: 'lg_intestine', name: 'Large Intestine', x: 0.50, y: 0.65, fn: 'Short wide tube to cloaca. Absorbs water. Opens into cloaca (shared digestive/urinary/reproductive exit).', clinical: 'The cloaca \u2014 shared exit for 3 systems \u2014 is the ancestral vertebrate condition; separate openings evolved later.' },
+                  { id: 'spleen', name: 'Spleen', x: 0.46, y: 0.53, fn: 'Small reddish organ near stomach. Filters blood, removes old RBCs, immune function.', clinical: 'Spleen plus antimicrobial skin peptides form a dual immune defense system.' },
+                  { id: 'kidneys', name: 'Kidneys', x: 0.50, y: 0.70, fn: 'Elongated, dorsal organs. Mesonephric kidneys \u2014 intermediate between fish and mammal kidney types. Drains to cloaca.', clinical: 'Frog kidneys (mesonephric) are ancestral \u2014 mammals evolved more advanced metanephric kidneys.' },
+                  { id: 'fat_bodies', name: 'Fat Bodies', x: 0.48, y: 0.35, fn: 'Yellow finger-like structures on kidneys/gonads. Energy reserves for hibernation and reproduction.', clinical: 'Fat body size indicates nutritional status \u2014 shrunken = environmental stress.' },
+                  { id: 'pancreas', name: 'Pancreas', x: 0.53, y: 0.52, fn: 'Thin pale organ between stomach and duodenum. Produces digestive enzymes and insulin/glucagon.', clinical: 'Frog pancreatic islets used in early insulin research.' },
+                  { id: 'cloaca', name: 'Cloaca', x: 0.50, y: 0.75, fn: 'Common chamber for digestive, urinary, and reproductive output. Present in amphibians, reptiles, birds.', clinical: 'Represents ancestral vertebrate design \u2014 separate openings evolved independently in mammals.' }
+                ],
+                skeleton: [
+                  { id: 'skull', name: 'Skull', x: 0.50, y: 0.15, fn: 'Broad flat skull with large orbits. Frontoparietal bone fused (unique to frogs). Maxillary + vomerine teeth.', clinical: 'Frogs have teeth on upper jaw only \u2014 toads have no teeth at all.' },
+                  { id: 'vertebral_col', name: 'Vertebral Column', x: 0.50, y: 0.40, fn: 'Only 9 presacral vertebrae (mammals have 24+). Short rigid spine for jumping.', clinical: 'Fewest vertebrae of any tetrapod \u2014 extreme spinal reduction for jumping.' },
+                  { id: 'urostyle', name: 'Urostyle', x: 0.50, y: 0.55, fn: 'Fused caudal vertebrae forming rod-like tailbone. Absorbs landing shock. Unique to frogs/toads.', clinical: 'The urostyle is found only in anurans \u2014 a defining skeletal feature of frogs and toads.' },
+                  { id: 'pelvic_girdle', name: 'Pelvic Girdle', x: 0.50, y: 0.60, fn: 'Elongated ilium creates lever for powerful jumps. Highly modified compared to other vertebrates.', clinical: 'Elongated pelvic girdle is the key anatomical adaptation enabling the frog jump.' },
+                  { id: 'pectoral_gird', name: 'Pectoral Girdle', x: 0.50, y: 0.32, fn: 'Supports forelimbs. Acts as shock absorber during landing. Clavicle, coracoid, scapula, suprascapula.', clinical: 'The pectoral girdle absorbs impact forces that would fracture bones in most other animals.' },
+                  { id: 'femur', name: 'Femur', x: 0.40, y: 0.65, fn: 'Long thigh bone. Proportionally longer than most vertebrates for jumping leverage.', clinical: 'Frog femur is proportionally longer than human femur relative to body size.' },
+                  { id: 'tibiofibula', name: 'Tibio-fibula', x: 0.38, y: 0.75, fn: 'Fused tibia + fibula (single bone). Reduces weight while maintaining strength. 5 digits with webbing.', clinical: 'Bone fusion reduces weight \u2014 an adaptation for efficient jumping.' },
+                  { id: 'radioulna', name: 'Radio-ulna', x: 0.30, y: 0.42, fn: 'Fused radius + ulna. 4 digits on forelimb (digit I lost). Simplified limb for landing.', clinical: 'Loss of digit I and bone fusion are weight reduction adaptations.' },
+                  { id: 'astragalus', name: 'Elongated Ankle Bones', x: 0.36, y: 0.82, fn: 'Astragalus and calcaneus elongated to add extra leg segment \u2014 increases jump distance. Unique to frogs.', clinical: 'Elongated ankles function as an extra leg segment \u2014 key innovation for saltatory locomotion.' }
+                ],
+                nervous: [
+                  { id: 'brain', name: 'Brain', x: 0.50, y: 0.12, fn: 'Small brain with prominent optic lobes (largest region). Olfactory lobes, cerebrum, cerebellum (small), medulla.', clinical: 'Vision dominates \u2014 classic Lettvin 1959 study: "What the Frog\'s Eye Tells the Frog\'s Brain."' },
+                  { id: 'spinal_cord', name: 'Spinal Cord', x: 0.50, y: 0.40, fn: '10 spinal nerve pairs. Ends with filum terminale. Classic spinal frog preparation demonstrates reflexes.', clinical: 'A "spinal frog" (brain destroyed) still shows coordinated reflex responses \u2014 foundational neuroscience.' },
+                  { id: 'sciatic_n', name: 'Sciatic Nerve', x: 0.42, y: 0.68, fn: 'Largest nerve. Runs along posterior thigh. Branches from sacral plexus (spinal nerves 8-9).', clinical: 'Frog sciatic nerve was the model system for early electrophysiology experiments.' },
+                  { id: 'brachial_n', name: 'Brachial Nerves', x: 0.38, y: 0.35, fn: 'Spinal nerves 2-3 forming brachial plexus for forelimb. Smaller than sciatic due to smaller forelimb.', clinical: 'Smaller brachial vs larger sciatic reflects hindlimb dominance in frogs.' },
+                  { id: 'cranial_n', name: 'Cranial Nerves', x: 0.55, y: 0.14, fn: '10 pairs (mammals have 12). Key: optic (II, large), trigeminal (V), vagus (X, viscera).', clinical: 'Frogs have 10 cranial nerve pairs vs 12 in mammals \u2014 lacking spinal accessory (XI) and hypoglossal (XII).' },
+                  { id: 'optic_lobe', name: 'Optic Lobes (Tectum)', x: 0.52, y: 0.10, fn: 'Largest brain region processing visual "bug detector" neurons \u2014 respond to small moving dark objects.', clinical: 'Optic tectum "bug detectors" inspired early computer vision and AI motion detection algorithms.' }
+                ]
+              }
+            },
+
+            earthworm: {
+              name: 'Earthworm (Lumbricus)', icon: '\uD83E\uDEB1',
+              desc: 'Annelid \u2014 segmented body, closed circulation, 5 aortic arches, ventral nerve cord.',
+              bodyShape: 'worm',
+              layers: [
+                { id: 'skin', name: 'Integument', icon: '\uD83D\uDFE4', color: '#a78bfa', accent: '#7c3aed', desc: 'Moist cuticle with setae for locomotion.' },
+                { id: 'muscle', name: 'Body Wall', icon: '\uD83D\uDCAA', color: '#f87171', accent: '#dc2626', desc: 'Circular and longitudinal muscles for peristalsis.' },
+                { id: 'organs', name: 'Internal Organs', icon: '\uD83E\uDEC1', color: '#fbbf24', accent: '#d97706', desc: 'Digestive tube, aortic arches, nephridia.' },
+                { id: 'nervous', name: 'Nervous System', icon: '\u26A1', color: '#c084fc', accent: '#7c3aed', desc: 'Ventral nerve cord with cerebral ganglia.' }
+              ],
+              organs: {
+                skin: [
+                  { id: 'cuticle', name: 'Cuticle', x: 0.50, y: 0.30, fn: 'Transparent outer covering. Keeps skin moist for gas exchange \u2014 earthworms breathe through skin.', clinical: 'Earthworms die if skin dries out \u2014 cutaneous respiration requires moisture.' },
+                  { id: 'setae', name: 'Setae', x: 0.35, y: 0.55, fn: 'Tiny chitinous bristles (4 pairs/segment). Grip soil during peristaltic locomotion.', clinical: 'Setae are homologous to marine polychaete parapodia.' },
+                  { id: 'clitellum', name: 'Clitellum', x: 0.50, y: 0.25, fn: 'Glandular band (segments 32-37). Secretes cocoon for eggs. Indicates sexual maturity.', clinical: 'Clitellum position varies by species \u2014 used for identification.' },
+                  { id: 'prostomium', name: 'Prostomium', x: 0.50, y: 0.08, fn: 'Fleshy lip over mouth. Sensory: detects light, chemicals, vibrations. Not a true segment.', clinical: '"Worm grunting" exploits vibration sensitivity to harvest bait worms.' }
+                ],
+                muscle: [
+                  { id: 'circular_m', name: 'Circular Muscles', x: 0.55, y: 0.40, fn: 'Outer layer running around each segment. Contraction = longer/thinner (elongation phase).', clinical: 'Same peristaltic mechanism humans use for intestinal movement.' },
+                  { id: 'longitudinal_m', name: 'Longitudinal Muscles', x: 0.45, y: 0.50, fn: 'Inner layer along body length. Contraction = shorter/fatter (anchoring phase). Antagonistic to circular.', clinical: 'Hydrostatic skeleton (fluid-filled coelom) transmits force between the two layers.' },
+                  { id: 'septa', name: 'Septa', x: 0.50, y: 0.45, fn: 'Muscular partitions between segments. Each segment = independent hydraulic unit.', clinical: 'Segmentation allows independent control \u2014 damage to one segment doesn\'t disable others.' }
+                ],
+                organs: [
+                  { id: 'pharynx', name: 'Pharynx', x: 0.50, y: 0.12, fn: 'Muscular pump (segments 1-5). Sucks in soil and organic matter.', clinical: 'Earthworms eat their own weight in soil daily, aerating tons of soil per acre.' },
+                  { id: 'crop', name: 'Crop', x: 0.50, y: 0.28, fn: 'Thin-walled storage chamber (segments 15-16). Temporary food storage.', clinical: 'Similar function to a bird\'s crop \u2014 convergent evolution of food storage.' },
+                  { id: 'gizzard', name: 'Gizzard', x: 0.50, y: 0.33, fn: 'Thick muscular grinder (segments 17-18). Uses sand grains to crush food. No teeth.', clinical: 'Like a bird\'s gizzard \u2014 independent evolution of grit-grinding organs.' },
+                  { id: 'intestine', name: 'Intestine', x: 0.50, y: 0.55, fn: 'Straight tube with typhlosole (dorsal fold increasing surface area). Digestion and absorption.', clinical: 'Typhlosole is a simple version of intestinal villi \u2014 same principle, different solution.' },
+                  { id: 'aortic_arches', name: 'Aortic Arches (5 Hearts)', x: 0.48, y: 0.22, fn: '5 pairs of contractile vessels (segments 7-11). Pump blood in closed circulatory system.', clinical: 'Often called "5 hearts" \u2014 actually muscular blood vessels. Among first studied for closed circulation.' },
+                  { id: 'nephridia', name: 'Nephridia', x: 0.55, y: 0.48, fn: 'Paired excretory organs per segment. Filter coelomic fluid. Equivalent of kidneys.', clinical: 'Segmentally repeated kidneys \u2014 unique annelid design with one pair per segment.' },
+                  { id: 'seminal_v', name: 'Seminal Vesicles', x: 0.45, y: 0.20, fn: 'White organs (segments 9-12). Store sperm. Earthworms are hermaphrodites but cross-fertilize.', clinical: 'Despite being hermaphrodites, self-fertilization is rare \u2014 they mate with partners.' }
+                ],
+                nervous: [
+                  { id: 'cerebral_g', name: 'Cerebral Ganglia', x: 0.50, y: 0.08, fn: 'Paired ganglia above pharynx (segment 3). Process sensory input. "Brain."', clinical: 'Very simple \u2014 a headless earthworm can still burrow, eat, and mate.' },
+                  { id: 'ventral_cord', name: 'Ventral Nerve Cord', x: 0.50, y: 0.50, fn: 'Runs entire ventral length. Giant fibers enable rapid escape contraction (20-45 m/s).', clinical: 'Giant axons transmit signals fast \u2014 enabling rapid withdrawal when disturbed.' },
+                  { id: 'segmental_g', name: 'Segmental Ganglia', x: 0.48, y: 0.40, fn: 'Paired ganglia per segment. Control local reflexes independently.', clinical: 'Each ganglion controls its segment \u2014 why cut segments still move.' }
+                ]
+              }
+            },
+            pig: {
+              name: 'Fetal Pig (Sus scrofa)', icon: '\uD83D\uDC37',
+              desc: 'Mammal \u2014 4-chambered heart, diaphragm, organ systems nearly identical to human.',
+              bodyShape: 'pig',
+              layers: [
+                { id: 'skin', name: 'Skin', icon: '\uD83E\uDDB4', color: '#fda4af', accent: '#e11d48', desc: 'Thin skin with hair follicles and umbilical cord.' },
+                { id: 'muscle', name: 'Musculature', icon: '\uD83D\uDCAA', color: '#f87171', accent: '#dc2626', desc: 'Mammalian muscles nearly identical to human.' },
+                { id: 'organs', name: 'Visceral Organs', icon: '\uD83E\uDEC1', color: '#fbbf24', accent: '#d97706', desc: 'Complete mammalian organs \u2014 closest lab animal to human.' },
+                { id: 'skeleton', name: 'Skeleton', icon: '\uD83E\uDDB4', color: '#e2e8f0', accent: '#64748b', desc: 'Largely cartilaginous fetal skeleton.' },
+                { id: 'nervous', name: 'Nervous', icon: '\u26A1', color: '#c084fc', accent: '#7c3aed', desc: 'Complex mammalian CNS with cerebral cortex.' }
+              ],
+              organs: {
+                skin: [
+                  { id: 'epidermis_p', name: 'Epidermis', x: 0.50, y: 0.35, fn: 'Stratified squamous epithelium. Pig skin is closest animal model to human skin.', clinical: 'Pig skin used in burn treatment research and skin graft studies.' },
+                  { id: 'umbilical', name: 'Umbilical Cord', x: 0.50, y: 0.55, fn: '2 umbilical arteries + 1 umbilical vein in Wharton\'s jelly. Same structure as human.', clinical: 'Single umbilical artery may indicate congenital abnormalities in both pigs and humans.' },
+                  { id: 'mammary', name: 'Mammary Papillae', x: 0.42, y: 0.60, fn: '6-7 pairs along ventral surface (vs 1 pair in humans). Along embryonic "milk line."', clinical: 'Supernumerary nipples occur in 1-5% of humans along the vestigial milk line.' }
+                ],
+                muscle: [
+                  { id: 'diaphragm_p', name: 'Diaphragm', x: 0.50, y: 0.42, fn: 'Dome separating thorax/abdomen. Primary respiratory muscle. Phrenic nerve (C3-C5). Identical to human.', clinical: 'Diaphragm is a key mammalian innovation \u2014 enables negative-pressure breathing.' },
+                  { id: 'masseter_p', name: 'Masseter', x: 0.55, y: 0.12, fn: 'Powerful jaw muscle. Larger than human \u2014 pigs process tough plant material.', clinical: 'Homologous to human masseter \u2014 strongest muscle by weight in both species.' },
+                  { id: 'ext_oblique_p', name: 'External Oblique', x: 0.55, y: 0.45, fn: 'Largest abdominal wall muscle. Same function as human external oblique.', clinical: 'Identical innervation pattern to humans \u2014 used in surgical training.' }
+                ],
+                organs: [
+                  { id: 'heart_p', name: 'Heart (4-chamber)', x: 0.50, y: 0.32, fn: '4 chambers identical to human. Complete separation of oxygenated/deoxygenated blood. Coronary arteries present.', clinical: 'Pig heart valves replace human valves in cardiac surgery. Pig-to-human heart xenotransplantation research ongoing.' },
+                  { id: 'lungs_p', name: 'Lungs', x: 0.45, y: 0.34, fn: 'Lobed with alveolar structure identical to human. Right: 4 lobes. Left: 2-3 lobes. Pleural membranes.', clinical: 'Pig lungs used for surgical technique practice. Lobation differs slightly from human.' },
+                  { id: 'liver_p', name: 'Liver', x: 0.52, y: 0.40, fn: '5 lobes (more lobed than human). Bile production, detoxification, protein synthesis, glycogen storage.', clinical: 'Pig liver studied for xenotransplantation. Functionally identical to human liver.' },
+                  { id: 'stomach_p', name: 'Stomach', x: 0.48, y: 0.45, fn: 'Monogastric (simple stomach like human). Cardiac, fundic, pyloric regions. Produces HCl and pepsin.', clinical: 'Unlike ruminants (cows), pigs have simple stomachs like humans \u2014 ideal gastric research model.' },
+                  { id: 'sm_int_p', name: 'Small Intestine', x: 0.50, y: 0.55, fn: 'Long (~15m adult). Duodenum, jejunum, ileum. Villi for nutrient absorption.', clinical: 'Proportionally longer than human \u2014 used for surgical anastomosis training.' },
+                  { id: 'lg_int_p', name: 'Spiral Colon', x: 0.50, y: 0.62, fn: 'Distinctive spiral colon (coiled). Cecum present. Absorbs water.', clinical: 'Spiral colon is uniquely porcine \u2014 coiled like a watch spring.' },
+                  { id: 'kidneys_p', name: 'Kidneys', x: 0.55, y: 0.48, fn: 'Bean-shaped, retroperitoneal. Multipyramidal like human. Filter blood, regulate electrolytes.', clinical: 'Leading xenotransplantation candidates \u2014 closest to human in structure/function.' },
+                  { id: 'thymus_p', name: 'Thymus', x: 0.50, y: 0.25, fn: 'Enormous in fetus (much larger than adult). T-cell maturation. Extends from mediastinum into neck.', clinical: 'Fetal thymus demonstrates critical early immune development role.' },
+                  { id: 'pancreas_p', name: 'Pancreas', x: 0.52, y: 0.50, fn: 'Exocrine enzymes + endocrine insulin/glucagon. Nearly identical to human.', clinical: 'Porcine insulin treated human diabetes for decades before synthetic insulin.' },
+                  { id: 'bladder_p', name: 'Urinary Bladder', x: 0.50, y: 0.68, fn: 'Large distensible organ. Allantoic bladder with urachus in fetus.', clinical: 'Patent urachus is a congenital anomaly in both pigs and humans.' }
+                ],
+                skeleton: [
+                  { id: 'skull_p', name: 'Skull', x: 0.50, y: 0.10, fn: 'Elongated snout. Largely cartilaginous in fetus. Internal anatomy similar to human.', clinical: 'Elongated pig skull vs rounded human skull, but cranial contents are similar.' },
+                  { id: 'vert_col_p', name: 'Vertebral Column', x: 0.50, y: 0.38, fn: '7C, 14-15T, 6-7L, 4S, 20-23 caudal. More vertebrae than human. 7 cervical constant across mammals.', clinical: 'Cervical count (7) is constant across nearly all mammals \u2014 giraffe to mouse.' },
+                  { id: 'ribs_p', name: 'Ribs', x: 0.55, y: 0.35, fn: '14-15 pairs (vs 12 human). Cartilaginous in fetus. Protect thoracic organs.', clinical: '"Spare ribs" in cooking come from this ventral rib region.' }
+                ],
+                nervous: [
+                  { id: 'brain_p', name: 'Brain', x: 0.50, y: 0.08, fn: 'Mammalian brain with sulci/gyri. Large olfactory bulbs. Structure very similar to human.', clinical: 'Pig brains used in neurosurgery training \u2014 closer to human than any common lab animal except primates.' },
+                  { id: 'spinal_p', name: 'Spinal Cord', x: 0.50, y: 0.40, fn: 'Full vertebral length in fetus. Cervical/lumbar enlargements. Gray/white matter identical to human.', clinical: 'Spinal cord organization (dorsal sensory, ventral motor) identical to human.' },
+                  { id: 'vagus_p', name: 'Vagus Nerve (CN X)', x: 0.48, y: 0.22, fn: 'Longest cranial nerve. Heart, lungs, GI innervation. Runs with carotid/jugular.', clinical: 'Pig vagus nerve studies led to human vagus nerve stimulator implants for epilepsy.' }
+                ]
+              }
+            },
+
+            perch: {
+              name: 'Perch (Perca)', icon: '\uD83D\uDC1F',
+              desc: 'Bony fish \u2014 gills, swim bladder, lateral line, 2-chambered heart.',
+              bodyShape: 'fish',
+              layers: [
+                { id: 'skin', name: 'Scales & Skin', icon: '\uD83D\uDFE1', color: '#fde68a', accent: '#d97706', desc: 'Ctenoid scales with mucus coating and lateral line.' },
+                { id: 'muscle', name: 'Musculature', icon: '\uD83D\uDCAA', color: '#f87171', accent: '#dc2626', desc: 'W-shaped myomeres for undulatory swimming.' },
+                { id: 'organs', name: 'Internal Organs', icon: '\uD83E\uDEC1', color: '#fbbf24', accent: '#d97706', desc: 'Swim bladder, gills, 2-chambered heart, pyloric ceca.' },
+                { id: 'skeleton', name: 'Skeleton', icon: '\uD83E\uDDB4', color: '#e2e8f0', accent: '#64748b', desc: 'Ossified skeleton with fin rays and operculum.' }
+              ],
+              organs: {
+                skin: [
+                  { id: 'scales', name: 'Ctenoid Scales', x: 0.50, y: 0.40, fn: 'Overlapping bony scales with growth rings \u2014 used to determine fish age like tree rings.', clinical: 'Scale annuli counting is the standard method for aging fish in fisheries biology.' },
+                  { id: 'lat_line', name: 'Lateral Line', x: 0.50, y: 0.45, fn: 'Sensory system detecting water pressure changes. Enables schooling, predator detection, murky-water navigation.', clinical: 'A "sixth sense" unique to fish/aquatic amphibians \u2014 no equivalent in terrestrial vertebrates.' },
+                  { id: 'operculum', name: 'Operculum', x: 0.25, y: 0.35, fn: 'Bony gill cover. Protects gills and pumps water for respiration.', clinical: 'Only bony fish have opercula \u2014 sharks have exposed gill slits.' },
+                  { id: 'fins_ext', name: 'Fins (7 types)', x: 0.60, y: 0.25, fn: 'Dorsal (spiny + soft), caudal, anal, pelvic, pectoral. Pectoral/pelvic are homologous to tetrapod limbs.', clinical: 'Fish fins are evolutionary precursors of tetrapod limbs \u2014 pectoral=arms, pelvic=legs.' }
+                ],
+                muscle: [
+                  { id: 'myomeres', name: 'Myomeres', x: 0.50, y: 0.42, fn: 'W-shaped muscle blocks separated by myosepta. Contract in waves for swimming. White (fast) + red (slow) fibers.', clinical: 'Visible as "flakes" in cooked fish \u2014 each flake is one myomere.' },
+                  { id: 'epaxial', name: 'Epaxial Muscles', x: 0.50, y: 0.32, fn: 'Dorsal muscle mass above lateral septum. Main swimming power. Bulk of body musculature.', clinical: 'This is the "fillet" \u2014 mostly epaxial muscle, the main edible portion.' }
+                ],
+                organs: [
+                  { id: 'gills', name: 'Gills', x: 0.25, y: 0.38, fn: '4 gill arches with filaments/lamellae. Countercurrent flow extracts 80% of dissolved O\u2082.', clinical: 'Fish gills extract proportionally more oxygen from water than lungs from air.' },
+                  { id: 'heart_f', name: 'Heart (2-chamber)', x: 0.22, y: 0.45, fn: '1 atrium + 1 ventricle. Single-circuit circulation: heart\u2192gills\u2192body\u2192heart.', clinical: 'Simplest vertebrate heart. Evolution: 2 (fish) \u2192 3 (amphibian) \u2192 4 (mammal/bird).' },
+                  { id: 'swim_bladder', name: 'Swim Bladder', x: 0.50, y: 0.35, fn: 'Gas-filled sac for buoyancy. Closed type \u2014 gas secreted/absorbed via rete mirabile. Neutral buoyancy without effort.', clinical: 'Homologous to the tetrapod lung \u2014 both evolved from pharyngeal outpocketing in ancestral fish.' },
+                  { id: 'liver_f', name: 'Liver', x: 0.35, y: 0.42, fn: 'Large lobed organ. Bile production, glycogen/lipid storage.', clinical: 'Fish liver oil is a concentrated energy reserve \u2014 cod liver oil rich in vitamins A and D.' },
+                  { id: 'stomach_f', name: 'Stomach', x: 0.40, y: 0.48, fn: 'J-shaped. HCl + pepsin. Expandable for large prey.', clinical: 'Not all fish have stomachs \u2014 carp and minnows lack them entirely.' },
+                  { id: 'pyloric_ceca', name: 'Pyloric Ceca', x: 0.42, y: 0.52, fn: 'Finger-like pouches at stomach-intestine junction (3-5 in perch). Increase absorption area.', clinical: 'Unique to fish \u2014 no mammalian homolog. Number used in species identification.' },
+                  { id: 'kidneys_f', name: 'Kidneys', x: 0.50, y: 0.30, fn: 'Dark elongated organs along dorsal wall. Head kidney (immune) + trunk kidney (excretion).', clinical: 'Freshwater fish excrete dilute urine \u2014 constantly fighting water influx through gills.' },
+                  { id: 'gonads_f', name: 'Gonads', x: 0.50, y: 0.50, fn: 'Paired dorsal organs. External fertilization. Ovaries can be 20-30% of body weight when full.', clinical: 'Enormous reproductive investment \u2014 some fish produce millions of eggs per spawning.' }
+                ],
+                skeleton: [
+                  { id: 'skull_f', name: 'Skull', x: 0.18, y: 0.35, fn: 'Complex with 60+ separate bones \u2014 more than any other vertebrate class.', clinical: 'Fish skulls have the most individual bones of any vertebrate group.' },
+                  { id: 'vert_col_f', name: 'Vertebral Column', x: 0.50, y: 0.38, fn: 'Neural arches (spinal cord) + hemal arches (caudal vessels). Trunk + caudal regions only.', clinical: 'No distinct cervical/thoracic/lumbar regions \u2014 the "neck" is a tetrapod innovation.' },
+                  { id: 'fin_rays', name: 'Fin Rays', x: 0.55, y: 0.22, fn: 'Spiny (hard, sharp, defense) and soft (segmented, flexible) rays support fin membranes.', clinical: 'Perch spiny rays are sharp enough to puncture skin \u2014 defensive adaptation.' }
+                ]
+              }
+            },
+            crayfish: {
+              name: 'Crayfish (Cambarus)', icon: '\uD83E\uDD9E',
+              desc: 'Crustacean \u2014 exoskeleton, compound eyes, gills, open circulatory system, gastric mill.',
+              bodyShape: 'crayfish',
+              layers: [
+                { id: 'skin', name: 'Exoskeleton', icon: '\uD83D\uDEE1\uFE0F', color: '#ef4444', accent: '#b91c1c', desc: 'Chitinous shell hardened with calcium carbonate.' },
+                { id: 'muscle', name: 'Musculature', icon: '\uD83D\uDCAA', color: '#f87171', accent: '#dc2626', desc: 'Muscles attached inside exoskeleton.' },
+                { id: 'organs', name: 'Internal Organs', icon: '\uD83E\uDEC1', color: '#fbbf24', accent: '#d97706', desc: 'Open circulatory system, gastric mill, green glands.' },
+                { id: 'nervous', name: 'Nervous System', icon: '\u26A1', color: '#c084fc', accent: '#7c3aed', desc: 'Ventral nerve cord, compound eyes, antennae.' }
+              ],
+              organs: {
+                skin: [
+                  { id: 'carapace', name: 'Carapace', x: 0.40, y: 0.32, fn: 'Fused dorsal shell covering cephalothorax. Chitin + CaCO\u2083. Must molt (ecdysis) to grow.', clinical: 'Soft-shell stage after molting makes them vulnerable \u2014 many crustaceans hide while hardening.' },
+                  { id: 'telson', name: 'Telson & Uropods', x: 0.80, y: 0.40, fn: 'Tail fan for escape response ("tail flip"). Swims backward at 2 m/s in milliseconds.', clinical: 'Tail flip is one of the fastest animal movements \u2014 mediated by giant nerve fibers.' },
+                  { id: 'chelipeds', name: 'Chelipeds (Claws)', x: 0.18, y: 0.42, fn: 'First walking legs modified into pincers. Defense, feeding, territorial displays. Can regenerate if lost.', clinical: 'Lost claws regenerate over several molts \u2014 remarkable crustacean regenerative ability.' },
+                  { id: 'compound_eye', name: 'Compound Eyes', x: 0.22, y: 0.30, fn: '~3,000 ommatidia per eye on moveable stalks. Motion detection specialist.', clinical: 'Compound eyes excel at motion detection but have lower resolution than vertebrate eyes.' }
+                ],
+                muscle: [
+                  { id: 'flexor_m', name: 'Abdominal Flexors', x: 0.65, y: 0.42, fn: 'Powerful ventral muscles for escape tail-flip. Among fastest muscle contractions in animal kingdom.', clinical: 'This is the edible "crawfish tail" \u2014 these flexor muscles are the commercial meat.' },
+                  { id: 'extensor_m', name: 'Abdominal Extensors', x: 0.65, y: 0.35, fn: 'Dorsal muscles returning abdomen to rest position. Slower than flexors.', clinical: 'Antagonistic flexor/extensor system works same as in vertebrate limbs.' },
+                  { id: 'cheliped_m', name: 'Cheliped Muscles', x: 0.22, y: 0.38, fn: 'Closer (adductor) much larger than opener. Crushing force >50N in large specimens.', clinical: 'Claw joint leverages amplify muscle force \u2014 a biological lever system.' }
+                ],
+                organs: [
+                  { id: 'heart_c', name: 'Heart', x: 0.45, y: 0.30, fn: 'Single-chambered dorsal heart. Open circulatory system \u2014 hemolymph flows through sinuses, not vessels.', clinical: 'Low-pressure open circulation limits crustacean maximum body size.' },
+                  { id: 'gills_c', name: 'Gills', x: 0.35, y: 0.30, fn: 'Feather-like gills in branchial chamber. Gill bailer creates water current. Attached to leg bases.', clinical: 'Walking legs ventilate gills \u2014 movement and breathing are linked.' },
+                  { id: 'gastric_mill', name: 'Gastric Mill', x: 0.32, y: 0.35, fn: '3 calcified teeth (ossicles) inside stomach. Grind food after swallowing. Gastroliths store calcium for molting.', clinical: '"Teeth in the stomach" \u2014 crustaceans chew food after eating it.' },
+                  { id: 'green_gland', name: 'Green Glands', x: 0.25, y: 0.32, fn: 'Excretory organs at antenna base. Filter hemolymph, produce urine. Equivalent of kidneys.', clinical: 'Excrete ammonia directly \u2014 possible because aquatic environments flush waste.' },
+                  { id: 'hepato', name: 'Hepatopancreas', x: 0.42, y: 0.38, fn: 'Combined liver + pancreas. Digestive enzymes, nutrient absorption, energy storage. Largest internal organ.', clinical: 'Called "tomalley" in lobster cuisine. Accumulates toxins in polluted waters.' },
+                  { id: 'gonads_c', name: 'Gonads', x: 0.50, y: 0.35, fn: 'Dorsal to hepatopancreas. Females carry eggs on swimmerets ("berried" females).', clinical: 'Males identified by modified first swimmerets (gonopods) for sperm transfer.' }
+                ],
+                nervous: [
+                  { id: 'brain_c', name: 'Supraesophageal Ganglion', x: 0.25, y: 0.30, fn: 'Fused ganglia above esophagus. Processes eyes, antennae input. Supports learning and social hierarchies.', clinical: 'Simple brain but complex behavior \u2014 crayfish establish dominance hierarchies.' },
+                  { id: 'ventral_c', name: 'Ventral Nerve Cord', x: 0.50, y: 0.42, fn: 'Double cord with giant fibers mediating escape. Segmental ganglia control appendages.', clinical: 'Crayfish giant axons were foundational to neuroscience \u2014 among first where action potentials recorded.' },
+                  { id: 'antennae_n', name: 'Antennae & Antennules', x: 0.18, y: 0.32, fn: 'Long pair: touch/taste. Short pair: chemoreception + balance (statocyst).', clinical: 'Classic experiment: iron filings in statocyst + magnet = inverted orientation.' }
+                ]
+              }
+            },
+            sheepEye: {
+              name: 'Sheep Eye', icon: '\uD83D\uDC41\uFE0F',
+              desc: 'Organ dissection \u2014 camera-type eye with lens, retina, vitreous humor. Nearly identical to human.',
+              bodyShape: 'eye',
+              layers: [
+                { id: 'skin', name: 'External', icon: '\uD83D\uDC41\uFE0F', color: '#93c5fd', accent: '#2563eb', desc: 'Outer structures: cornea, sclera, muscles, optic nerve.' },
+                { id: 'organs', name: 'Internal', icon: '\uD83E\uDEC1', color: '#fbbf24', accent: '#d97706', desc: 'Internal structures: lens, iris, retina, humors.' }
+              ],
+              organs: {
+                skin: [
+                  { id: 'cornea', name: 'Cornea', x: 0.30, y: 0.45, fn: 'Transparent anterior surface. Provides 2/3 of refractive power. Avascular \u2014 nourished by aqueous humor and tears. 5 layers.', clinical: 'LASIK reshapes the cornea with laser. Corneal transplants are the most common transplant surgery worldwide.' },
+                  { id: 'sclera', name: 'Sclera', x: 0.70, y: 0.45, fn: 'Tough white outer coat. Dense connective tissue protecting eye contents. Attachment for extraocular muscles. "White of the eye."', clinical: 'Yellow sclera (scleral icterus) = jaundice from liver disease. Blue sclera = osteogenesis imperfecta.' },
+                  { id: 'optic_nerve', name: 'Optic Nerve', x: 0.82, y: 0.50, fn: '~1.2 million retinal ganglion cell axons. Exits at optic disc (blind spot). Surrounded by meninges extension.', clinical: 'Optic disc has no photoreceptors = blind spot. Papilledema (optic disc swelling) = increased intracranial pressure.' },
+                  { id: 'ext_muscles', name: 'Extraocular Muscles', x: 0.75, y: 0.30, fn: '6 muscles control eye movement: 4 rectus (sup/inf/med/lat) + 2 oblique (sup/inf). Cranial nerves III, IV, VI.', clinical: 'CN III palsy: eye "down and out," ptosis. CN IV: difficulty looking down stairs. CN VI: medial deviation.' },
+                  { id: 'conjunctiva', name: 'Conjunctiva', x: 0.35, y: 0.30, fn: 'Thin mucous membrane lining eyelids (palpebral) and covering sclera (bulbar). Produces mucin for tear film.', clinical: 'Conjunctivitis ("pink eye") = inflamed conjunctiva. Subconjunctival hemorrhage looks alarming but is usually benign.' },
+                  { id: 'fat_pad', name: 'Orbital Fat', x: 0.70, y: 0.65, fn: 'Cushions and insulates the eye within the orbit. Acts as shock absorber.', clinical: 'Orbital fat atrophy causes sunken eyes (enophthalmos). Graves disease causes fat expansion \u2192 proptosis.' }
+                ],
+                organs: [
+                  { id: 'iris', name: 'Iris & Pupil', x: 0.35, y: 0.45, fn: 'Pigmented muscular diaphragm. Dilator (sympathetic) and sphincter (parasympathetic) muscles control pupil size. Regulates light entry.', clinical: 'Anisocoria (unequal pupils): may indicate CN III palsy, Horner syndrome, or elevated ICP. Iris color from melanin amount.' },
+                  { id: 'lens', name: 'Crystalline Lens', x: 0.42, y: 0.45, fn: 'Biconvex, transparent, avascular. Changes shape for focusing (accommodation). Held by zonular fibers attached to ciliary body. Contains crystallin proteins.', clinical: 'Cataracts = lens clouding (most common surgery worldwide). Presbyopia = lens stiffening with age.' },
+                  { id: 'ciliary_body', name: 'Ciliary Body', x: 0.38, y: 0.35, fn: 'Ring of muscle + epithelium. Ciliary muscle changes lens shape for focusing. Epithelium produces aqueous humor.', clinical: 'Glaucoma: excess aqueous humor \u2192 increased IOP \u2192 optic nerve damage. Treated with drugs reducing production.' },
+                  { id: 'retina', name: 'Retina', x: 0.65, y: 0.45, fn: '10 neural layers. Rods (~120M, light sensitivity) and cones (~6M, color/acuity). Fovea: cone-dense center for sharp vision. Macula: surrounding high-acuity region.', clinical: 'Retinal detachment = surgical emergency. Diabetic retinopathy. Macular degeneration = leading cause of blindness in elderly.' },
+                  { id: 'tapetum', name: 'Tapetum Lucidum', x: 0.65, y: 0.55, fn: 'Reflective layer behind retina in sheep (absent in humans). Reflects light back through retina for enhanced night vision. Causes "eyeshine."', clinical: 'Present in many animals (cats, dogs, sheep) but not humans or pigs. This is why animal eyes glow in headlights.' },
+                  { id: 'vitreous', name: 'Vitreous Humor', x: 0.55, y: 0.45, fn: 'Clear gel filling posterior 80% of eye. Maintains eye shape. 99% water + collagen + hyaluronic acid. Does not regenerate.', clinical: 'Floaters = collagen clumps in vitreous. Posterior vitreous detachment common with aging.' },
+                  { id: 'aqueous', name: 'Aqueous Humor', x: 0.33, y: 0.50, fn: 'Clear fluid in anterior/posterior chambers (in front of lens). Produced by ciliary body, drains via trabecular meshwork at angle.', clinical: 'Blocked drainage \u2192 increased IOP \u2192 glaucoma. Acute angle-closure = emergency.' },
+                  { id: 'choroid', name: 'Choroid', x: 0.60, y: 0.35, fn: 'Vascular layer between sclera and retina. Blood supply for outer retina. Heavily pigmented to absorb stray light.', clinical: 'Choroidal melanoma is the most common primary intraocular malignancy in adults.' }
+                ]
+              }
+            },
+            sheepHeart: {
+              name: 'Sheep Heart', icon: '\u2764\uFE0F',
+              desc: 'Organ dissection \u2014 4-chambered mammalian heart. Functionally identical to human heart.',
+              bodyShape: 'heart',
+              layers: [
+                { id: 'skin', name: 'External', icon: '\u2764\uFE0F', color: '#fca5a5', accent: '#dc2626', desc: 'Pericardium, great vessels, coronary arteries, surface anatomy.' },
+                { id: 'organs', name: 'Internal', icon: '\uD83E\uDEC1', color: '#fbbf24', accent: '#d97706', desc: 'Chambers, valves, septum, chordae tendineae.' }
+              ],
+              organs: {
+                skin: [
+                  { id: 'pericardium', name: 'Pericardium', x: 0.50, y: 0.30, fn: 'Double-walled sac enclosing heart. Fibrous (outer, tough) and serous (inner, 2 layers with fluid). Anchors heart. 15-50mL pericardial fluid reduces friction.', clinical: 'Pericarditis: inflammation causing chest pain. Cardiac tamponade: fluid compresses heart = emergency. Beck triad: hypotension, JVD, muffled sounds.' },
+                  { id: 'aorta_h', name: 'Aorta', x: 0.45, y: 0.15, fn: 'Largest artery. Ascending aorta exits LV, curves as aortic arch (brachiocephalic, L carotid, L subclavian), descends as thoracic/abdominal aorta.', clinical: 'Aortic aneurysm: >5.5cm \u2192 surgical repair risk. Aortic dissection: tearing pain, emergency surgery.' },
+                  { id: 'pulm_trunk', name: 'Pulmonary Trunk', x: 0.55, y: 0.18, fn: 'Exits RV, bifurcates into R and L pulmonary arteries carrying deoxygenated blood to lungs. Only arteries carrying deoxy blood.', clinical: 'Pulmonary embolism: clot lodges here. Saddle PE across bifurcation is life-threatening.' },
+                  { id: 'coronary_aa', name: 'Coronary Arteries', x: 0.40, y: 0.40, fn: 'Left main \u2192 LAD + circumflex. Right coronary artery (RCA). Supply myocardium with oxygenated blood. First aortic branches.', clinical: 'LAD = "widow maker." Coronary artery disease is #1 cause of death. CABG bypasses blockages using vein/artery grafts.' },
+                  { id: 'sup_vena_h', name: 'Superior Vena Cava', x: 0.55, y: 0.12, fn: 'Returns deoxygenated blood from upper body to RA. Formed by brachiocephalic veins.', clinical: 'SVC syndrome from lung cancer: facial swelling and dyspnea.' },
+                  { id: 'inf_vena_h', name: 'Inferior Vena Cava', x: 0.55, y: 0.70, fn: 'Returns blood from lower body to RA. Largest vein.', clinical: 'IVC filter prevents PE from DVT. Compression in pregnancy causes supine hypotension.' },
+                  { id: 'apex', name: 'Apex', x: 0.45, y: 0.75, fn: 'Inferior tip of heart formed by LV. Points left and anterior. PMI (point of maximum impulse) at 5th intercostal space, midclavicular line.', clinical: 'Displaced PMI = ventricular enlargement. PMI palpation is key clinical exam finding.' }
+                ],
+                organs: [
+                  { id: 'ra', name: 'Right Atrium', x: 0.60, y: 0.38, fn: 'Receives deoxygenated blood from SVC (upper body), IVC (lower body), and coronary sinus (heart). Thin-walled. SA node here sets heart rhythm.', clinical: 'SA node = "pacemaker of the heart" \u2014 sets sinus rhythm at 60-100 bpm. Atrial fibrillation: chaotic atrial activity.' },
+                  { id: 'rv', name: 'Right Ventricle', x: 0.55, y: 0.55, fn: 'Pumps blood to lungs via pulmonary trunk. Thinner wall than LV (lower pressure: 25/5 mmHg vs 120/80). Crescent shape wraps around LV.', clinical: 'RV failure from pulmonary hypertension or massive PE. RV infarction from RCA occlusion.' },
+                  { id: 'la', name: 'Left Atrium', x: 0.45, y: 0.35, fn: 'Receives oxygenated blood from 4 pulmonary veins. Smooth walled. Left atrial appendage is common site of thrombus formation in AFib.', clinical: 'Atrial appendage clots in AFib = stroke risk. Anticoagulation or appendage occlusion devices prevent this.' },
+                  { id: 'lv', name: 'Left Ventricle', x: 0.42, y: 0.55, fn: 'Thickest wall (3x RV). Pumps oxygenated blood to entire body via aorta at 120/80 mmHg. Conical shape. Apex formed by LV.', clinical: 'LV hypertrophy from chronic hypertension or aortic stenosis. LV ejection fraction (normal 55-70%) = key cardiac metric.' },
+                  { id: 'tricuspid', name: 'Tricuspid Valve', x: 0.58, y: 0.45, fn: 'AV valve with 3 cusps between RA and RV. Chordae tendineae attach to papillary muscles preventing prolapse during systole.', clinical: 'Tricuspid regurgitation: blood leaks backward. Endocarditis in IV drug users often affects tricuspid.' },
+                  { id: 'mitral', name: 'Mitral (Bicuspid) Valve', x: 0.43, y: 0.42, fn: 'AV valve with 2 cusps between LA and LV. Most commonly affected valve in rheumatic heart disease. "Bicuspid" = 2 leaflets.', clinical: 'Mitral stenosis from rheumatic fever. Mitral valve prolapse (MVP) in 2-3% of population. "Lub" = AV valves closing.' },
+                  { id: 'aortic_v', name: 'Aortic Valve', x: 0.45, y: 0.25, fn: '3 semilunar cusps at LV-aorta junction. Opens during systole for ejection. Coronary ostia just above valve.', clinical: 'Aortic stenosis: calcified valve \u2192 syncope, angina, HF. "Dub" = semilunar valves closing. Bicuspid aortic valve (1-2% prevalence).' },
+                  { id: 'pulm_v', name: 'Pulmonary Valve', x: 0.55, y: 0.28, fn: '3 semilunar cusps at RV-pulmonary trunk junction. Prevents backflow into RV during diastole.', clinical: 'Pulmonary stenosis: congenital narrowing (part of Tetralogy of Fallot). Least commonly affected valve.' },
+                  { id: 'septum', name: 'Interventricular Septum', x: 0.48, y: 0.52, fn: 'Muscular wall separating L and R ventricles. Thick muscular portion + thin membranous portion. LAD supplies anterior septum.', clinical: 'VSD (ventricular septal defect): most common congenital heart defect. Septal MI from LAD occlusion.' },
+                  { id: 'chordae', name: 'Chordae Tendineae', x: 0.50, y: 0.48, fn: '"Heart strings" \u2014 fibrous cords connecting AV valve leaflets to papillary muscles. Prevent valve prolapse during ventricular contraction.', clinical: 'Ruptured chordae = sudden severe valve regurgitation = acute heart failure. Can occur in endocarditis or MI.' },
+                  { id: 'conduction', name: 'Conduction System', x: 0.52, y: 0.42, fn: 'SA node (pacemaker, 60-100) \u2192 AV node (delay, 40-60) \u2192 Bundle of His \u2192 R/L bundle branches \u2192 Purkinje fibers. Coordinates cardiac contraction.', clinical: 'Heart blocks: 1st degree (delayed), 2nd degree (dropped beats), 3rd degree (complete dissociation). Pacemaker implantation.' }
+                ]
+              }
+            }
+          };
+
+
+          // ════════ ACTIVE STATE ════════
+          var specimen = d.specimen || 'frog';
+          var spec = SPECIMENS[specimen];
+          if (!spec) { specimen = 'frog'; spec = SPECIMENS['frog']; }
+          var activeLayer = d.activeLayer || (spec.layers[0] || {}).id || 'skin';
+          var revealedLayers = d.revealedLayers || {};
+          var currentLayerIdx = spec.layers.findIndex(function (l) { return l.id === activeLayer; });
+          if (currentLayerIdx < 0) currentLayerIdx = 0;
+          var organs = (spec.organs[activeLayer] || []);
+          var sel = d.selectedOrgan ? organs.find(function (o) { return o.id === d.selectedOrgan; }) : null;
+          var guidedStep = d.guidedStep || 0;
+          var guidedMode = d.guidedMode || false;
+
+          // Quiz
+          var quizPool = organs.filter(function (o) { return o.fn; });
+          var quizQ = d.quizMode && quizPool.length > 0 ? quizPool[(d.quizIdx || 0) % quizPool.length] : null;
+          var quizOptions = d._dissQuizOpts || [];
+          if (quizQ && d._dissQuizFor !== (specimen + '|' + activeLayer + '|' + d.quizIdx)) {
+            var wrong = quizPool.filter(function (o) { return o.id !== quizQ.id; });
+            var shuffled = wrong.sort(function () { return Math.random() - 0.5; }).slice(0, 3);
+            quizOptions = shuffled.concat([quizQ]).sort(function () { return Math.random() - 0.5; });
+            upd('_dissQuizOpts', quizOptions);
+            upd('_dissQuizFor', specimen + '|' + activeLayer + '|' + d.quizIdx);
+          }
+
+          function peelCurrentLayer() {
+            var newRevealed = Object.assign({}, revealedLayers);
+            newRevealed[activeLayer] = true;
+            upd('revealedLayers', newRevealed);
+            if (currentLayerIdx < spec.layers.length - 1) {
+              upd('activeLayer', spec.layers[currentLayerIdx + 1].id);
+              upd('selectedOrgan', null);
+            }
+            awardStemXP('dissection', 3, 'Peeled ' + activeLayer + ' layer');
+            if (addToast) addToast('\uD83D\uDD2C +3 XP Layer revealed!', 'success');
+          }
+
+          // Canvas renderer
+          var canvasRef = function (canvas) {
+            if (!canvas) return;
+            if (canvas._dissAnim) { cancelAnimationFrame(canvas._dissAnim); canvas._dissAnim = null; }
+            var ctx = canvas.getContext('2d');
+            var W = canvas.width, H = canvas.height;
+            var dissTick = 0;
+            function drawDissectionFrame() {
+              dissTick++;
+              ctx.clearRect(0, 0, W, H);
+              // Dark dissection tray background
+              var trayGrad = ctx.createLinearGradient(0, 0, 0, H);
+              trayGrad.addColorStop(0, '#1e293b'); trayGrad.addColorStop(1, '#0f172a');
+              ctx.fillStyle = trayGrad; ctx.fillRect(0, 0, W, H);
+              ctx.strokeStyle = '#334155'; ctx.lineWidth = 3; ctx.strokeRect(4, 4, W - 8, H - 8);
+              // Faint grid
+              ctx.strokeStyle = 'rgba(100,116,139,0.12)'; ctx.lineWidth = 0.5;
+              for (var gx = 0; gx < W; gx += 30) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke(); }
+              for (var gy = 0; gy < H; gy += 30) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke(); }
+              ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+
+              // Get current layer styling
+              var curLayer = spec.layers[currentLayerIdx] || spec.layers[0];
+              var layerColor = curLayer.color || '#94a3b8';
+              var layerStroke = curLayer.accent || '#64748b';
+              var cx = W * 0.5, cy = H * 0.45;
+
+              ctx.save();
+              ctx.shadowColor = 'rgba(0,0,0,0.3)'; ctx.shadowBlur = 12;
+
+              // ── Draw specimen body based on bodyShape ──
+              if (spec.bodyShape === 'frog') {
+                // Frog body
+                ctx.beginPath(); ctx.ellipse(cx, cy, W*0.18, H*0.28, 0, 0, Math.PI*2);
+                ctx.fillStyle = layerColor; ctx.fill(); ctx.strokeStyle = layerStroke; ctx.lineWidth = 1.5; ctx.stroke();
+                ctx.shadowBlur = 0;
+                // Head
+                ctx.beginPath(); ctx.ellipse(cx, cy-H*0.25, W*0.12, H*0.08, 0, 0, Math.PI*2);
+                ctx.fillStyle = layerColor; ctx.fill(); ctx.strokeStyle = layerStroke; ctx.stroke();
+                // Eyes
+                [cx-W*0.08, cx+W*0.08].forEach(function(ex) {
+                  ctx.beginPath(); ctx.arc(ex, cy-H*0.28, 6, 0, Math.PI*2);
+                  ctx.fillStyle = '#fef9c3'; ctx.fill(); ctx.strokeStyle = '#854d0e'; ctx.lineWidth = 1.2; ctx.stroke();
+                  ctx.beginPath(); ctx.arc(ex, cy-H*0.28, 2.5, 0, Math.PI*2); ctx.fillStyle = '#1a1a1a'; ctx.fill();
+                });
+                // Hindlimbs
+                ['L','R'].forEach(function(s) { var sx = s === 'L' ? -1 : 1;
+                  ctx.beginPath();
+                  ctx.moveTo(cx+sx*W*0.12,cy+H*0.22); ctx.quadraticCurveTo(cx+sx*W*0.25,cy+H*0.28,cx+sx*W*0.22,cy+H*0.40);
+                  ctx.quadraticCurveTo(cx+sx*W*0.18,cy+H*0.44,cx+sx*W*0.20,cy+H*0.38);
+                  ctx.quadraticCurveTo(cx+sx*W*0.16,cy+H*0.28,cx+sx*W*0.10,cy+H*0.22); ctx.closePath();
+                  ctx.fillStyle = layerColor; ctx.fill(); ctx.strokeStyle = layerStroke; ctx.lineWidth = 1.2; ctx.stroke();
+                });
+                // Forelimbs
+                ['L','R'].forEach(function(s) { var sx = s === 'L' ? -1 : 1;
+                  ctx.beginPath();
+                  ctx.moveTo(cx+sx*W*0.14,cy-H*0.15); ctx.quadraticCurveTo(cx+sx*W*0.22,cy-H*0.10,cx+sx*W*0.24,cy-H*0.02);
+                  ctx.quadraticCurveTo(cx+sx*W*0.20,cy-H*0.05,cx+sx*W*0.12,cy-H*0.12); ctx.closePath();
+                  ctx.fillStyle = layerColor; ctx.fill(); ctx.strokeStyle = layerStroke; ctx.lineWidth = 1.2; ctx.stroke();
+                });
+                // Skin spots when on skin layer
+                if (activeLayer === 'skin' && !revealedLayers['skin']) {
+                  ctx.globalAlpha = 0.4;
+                  for (var si = 0; si < 18; si++) {
+                    ctx.beginPath(); ctx.arc(cx+(Math.sin(si*2.3))*W*0.14, cy+(Math.cos(si*1.7))*H*0.20, 2+Math.abs(Math.sin(si))*3, 0, Math.PI*2);
+                    ctx.fillStyle = si%2?'#166534':'#14532d'; ctx.fill();
+                  }
+                  ctx.globalAlpha = 1;
+                }
+              } else if (spec.bodyShape === 'worm') {
+                // Earthworm — segmented tube
+                ctx.beginPath();
+                ctx.moveTo(cx-W*0.04, H*0.06); ctx.lineTo(cx+W*0.04, H*0.06);
+                ctx.quadraticCurveTo(cx+W*0.06, H*0.07, cx+W*0.05, H*0.10);
+                ctx.lineTo(cx+W*0.045, H*0.90);
+                ctx.quadraticCurveTo(cx+W*0.04, H*0.94, cx, H*0.95);
+                ctx.quadraticCurveTo(cx-W*0.04, H*0.94, cx-W*0.045, H*0.90);
+                ctx.lineTo(cx-W*0.05, H*0.10);
+                ctx.quadraticCurveTo(cx-W*0.06, H*0.07, cx-W*0.04, H*0.06);
+                ctx.closePath();
+                ctx.fillStyle = layerColor; ctx.fill(); ctx.strokeStyle = layerStroke; ctx.lineWidth = 1.5; ctx.stroke();
+                ctx.shadowBlur = 0;
+                // Segments
+                ctx.strokeStyle = layerStroke; ctx.globalAlpha = 0.4;
+                for (var seg = 0; seg < 30; seg++) {
+                  var sy = H*(0.08 + seg*0.028);
+                  ctx.beginPath(); ctx.moveTo(cx-W*0.048, sy); ctx.lineTo(cx+W*0.048, sy);
+                  ctx.lineWidth = 0.5; ctx.stroke();
+                }
+                ctx.globalAlpha = 1;
+                // Clitellum band
+                if (activeLayer === 'skin') {
+                  ctx.fillStyle = 'rgba(200,150,100,0.4)';
+                  ctx.fillRect(cx-W*0.05, H*0.22, W*0.10, H*0.06);
+                }
+              } else if (spec.bodyShape === 'pig') {
+                // Fetal pig — simplied quadruped
+                ctx.beginPath(); ctx.ellipse(cx, cy, W*0.22, H*0.16, 0, 0, Math.PI*2);
+                ctx.fillStyle = layerColor; ctx.fill(); ctx.strokeStyle = layerStroke; ctx.lineWidth = 1.5; ctx.stroke();
+                ctx.shadowBlur = 0;
+                // Head
+                ctx.beginPath(); ctx.ellipse(cx-W*0.22, cy-H*0.02, W*0.10, H*0.10, -0.2, 0, Math.PI*2);
+                ctx.fillStyle = layerColor; ctx.fill(); ctx.strokeStyle = layerStroke; ctx.stroke();
+                // Snout
+                ctx.beginPath(); ctx.ellipse(cx-W*0.32, cy, W*0.04, H*0.05, 0, 0, Math.PI*2);
+                ctx.fillStyle = layerColor; ctx.fill(); ctx.strokeStyle = layerStroke; ctx.stroke();
+                // Eye
+                ctx.beginPath(); ctx.arc(cx-W*0.24, cy-H*0.06, 3, 0, Math.PI*2); ctx.fillStyle = '#1a1a1a'; ctx.fill();
+                // Ear
+                ctx.beginPath(); ctx.ellipse(cx-W*0.18, cy-H*0.12, W*0.04, H*0.05, -0.5, 0, Math.PI*2);
+                ctx.fillStyle = layerColor; ctx.fill(); ctx.strokeStyle = layerStroke; ctx.stroke();
+                // Legs
+                [[-0.12,-0.01],[0.08,-0.01],[-0.14,0.01],[0.10,0.01]].forEach(function(lp) {
+                  ctx.beginPath();
+                  ctx.moveTo(cx+W*lp[0], cy+H*0.14+H*lp[1]);
+                  ctx.lineTo(cx+W*lp[0], cy+H*0.30);
+                  ctx.lineTo(cx+W*(lp[0]+0.03), cy+H*0.30);
+                  ctx.lineTo(cx+W*(lp[0]+0.03), cy+H*0.14+H*lp[1]);
+                  ctx.fillStyle = layerColor; ctx.fill(); ctx.strokeStyle = layerStroke; ctx.lineWidth = 1; ctx.stroke();
+                });
+                // Tail
+                ctx.beginPath(); ctx.moveTo(cx+W*0.22, cy-H*0.02);
+                ctx.quadraticCurveTo(cx+W*0.28, cy-H*0.10, cx+W*0.26, cy-H*0.14);
+                ctx.strokeStyle = layerStroke; ctx.lineWidth = 2; ctx.stroke();
+              } else if (spec.bodyShape === 'fish') {
+                // Fish — elongated with fins
+                ctx.beginPath();
+                ctx.moveTo(cx-W*0.30, cy); // nose
+                ctx.quadraticCurveTo(cx-W*0.15, cy-H*0.18, cx, cy-H*0.12);
+                ctx.quadraticCurveTo(cx+W*0.15, cy-H*0.10, cx+W*0.25, cy-H*0.06);
+                ctx.lineTo(cx+W*0.32, cy-H*0.14); ctx.lineTo(cx+W*0.32, cy+H*0.14); // tail
+                ctx.lineTo(cx+W*0.25, cy+H*0.06);
+                ctx.quadraticCurveTo(cx+W*0.15, cy+H*0.10, cx, cy+H*0.12);
+                ctx.quadraticCurveTo(cx-W*0.15, cy+H*0.18, cx-W*0.30, cy);
+                ctx.closePath();
+                ctx.fillStyle = layerColor; ctx.fill(); ctx.strokeStyle = layerStroke; ctx.lineWidth = 1.5; ctx.stroke();
+                ctx.shadowBlur = 0;
+                // Eye
+                ctx.beginPath(); ctx.arc(cx-W*0.22, cy-H*0.02, 5, 0, Math.PI*2);
+                ctx.fillStyle = '#fef9c3'; ctx.fill(); ctx.strokeStyle = '#854d0e'; ctx.lineWidth = 1; ctx.stroke();
+                ctx.beginPath(); ctx.arc(cx-W*0.22, cy-H*0.02, 2, 0, Math.PI*2); ctx.fillStyle = '#1a1a1a'; ctx.fill();
+                // Dorsal fin
+                ctx.beginPath(); ctx.moveTo(cx-W*0.05, cy-H*0.12);
+                ctx.lineTo(cx, cy-H*0.22); ctx.lineTo(cx+W*0.10, cy-H*0.12);
+                ctx.fillStyle = layerColor; ctx.globalAlpha = 0.6; ctx.fill(); ctx.strokeStyle = layerStroke; ctx.stroke();
+                ctx.globalAlpha = 1;
+                // Lateral line
+                ctx.beginPath(); ctx.moveTo(cx-W*0.22, cy); ctx.lineTo(cx+W*0.22, cy);
+                ctx.strokeStyle = layerStroke; ctx.setLineDash([3,2]); ctx.lineWidth = 0.8; ctx.stroke(); ctx.setLineDash([]);
+                // Pectoral fin
+                ctx.beginPath(); ctx.ellipse(cx-W*0.15, cy+H*0.06, W*0.05, H*0.03, 0.3, 0, Math.PI*2);
+                ctx.fillStyle = layerColor; ctx.globalAlpha = 0.5; ctx.fill(); ctx.strokeStyle = layerStroke; ctx.stroke(); ctx.globalAlpha = 1;
+              } else if (spec.bodyShape === 'crayfish') {
+                // Crayfish — crustacean
+                // Carapace (cephalothorax)
+                ctx.beginPath(); ctx.ellipse(cx-W*0.05, cy, W*0.18, H*0.12, 0, 0, Math.PI*2);
+                ctx.fillStyle = layerColor; ctx.fill(); ctx.strokeStyle = layerStroke; ctx.lineWidth = 1.5; ctx.stroke();
+                ctx.shadowBlur = 0;
+                // Abdomen segments
+                for (var ab = 0; ab < 6; ab++) {
+                  var abx = cx + W*(0.12 + ab*0.05);
+                  ctx.beginPath(); ctx.ellipse(abx, cy, W*0.025, H*0.08-ab*H*0.005, 0, 0, Math.PI*2);
+                  ctx.fillStyle = layerColor; ctx.fill(); ctx.strokeStyle = layerStroke; ctx.lineWidth = 1; ctx.stroke();
+                }
+                // Tail fan
+                ctx.beginPath(); ctx.moveTo(cx+W*0.38, cy);
+                ctx.lineTo(cx+W*0.44, cy-H*0.08); ctx.lineTo(cx+W*0.44, cy+H*0.08); ctx.closePath();
+                ctx.fillStyle = layerColor; ctx.fill(); ctx.strokeStyle = layerStroke; ctx.stroke();
+                // Claws
+                [cy-H*0.08, cy+H*0.08].forEach(function(cly) {
+                  ctx.beginPath(); ctx.moveTo(cx-W*0.22, cly);
+                  ctx.lineTo(cx-W*0.36, cly-H*0.02); ctx.lineTo(cx-W*0.34, cly);
+                  ctx.lineTo(cx-W*0.36, cly+H*0.02); ctx.closePath();
+                  ctx.fillStyle = layerColor; ctx.fill(); ctx.strokeStyle = layerStroke; ctx.lineWidth = 1.2; ctx.stroke();
+                });
+                // Eyes (stalked)
+                ctx.beginPath(); ctx.arc(cx-W*0.22, cy-H*0.14, 4, 0, Math.PI*2);
+                ctx.fillStyle = '#1a1a1a'; ctx.fill(); ctx.strokeStyle = layerStroke; ctx.stroke();
+                ctx.beginPath(); ctx.arc(cx-W*0.22, cy+H*0.14, 4, 0, Math.PI*2);
+                ctx.fillStyle = '#1a1a1a'; ctx.fill(); ctx.strokeStyle = layerStroke; ctx.stroke();
+                // Antennae
+                ctx.beginPath(); ctx.moveTo(cx-W*0.22, cy-H*0.12);
+                ctx.quadraticCurveTo(cx-W*0.35, cy-H*0.20, cx-W*0.40, cy-H*0.16);
+                ctx.strokeStyle = layerStroke; ctx.lineWidth = 0.8; ctx.stroke();
+              } else if (spec.bodyShape === 'eye') {
+                // Sheep eye — cross-section
+                ctx.beginPath(); ctx.arc(cx, cy, W*0.30, 0, Math.PI*2);
+                ctx.fillStyle = '#f1f5f9'; ctx.fill(); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 3; ctx.stroke();
+                ctx.shadowBlur = 0;
+                // Choroid (dark inner layer)
+                ctx.beginPath(); ctx.arc(cx, cy, W*0.27, 0, Math.PI*2);
+                ctx.fillStyle = '#1e1b4b'; ctx.fill();
+                // Retina (inner)
+                ctx.beginPath(); ctx.arc(cx, cy, W*0.25, 0, Math.PI*2);
+                ctx.fillStyle = '#fef3c7'; ctx.fill();
+                // Vitreous humor (clear)
+                ctx.beginPath(); ctx.arc(cx, cy, W*0.23, 0, Math.PI*2);
+                ctx.fillStyle = 'rgba(219,234,254,0.5)'; ctx.fill();
+                // Lens
+                ctx.beginPath(); ctx.ellipse(cx-W*0.12, cy, W*0.06, H*0.10, 0, 0, Math.PI*2);
+                ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fill(); ctx.strokeStyle = '#93c5fd'; ctx.lineWidth = 1.5; ctx.stroke();
+                // Cornea (front bulge)
+                ctx.beginPath(); ctx.arc(cx-W*0.28, cy, W*0.08, -Math.PI*0.4, Math.PI*0.4);
+                ctx.strokeStyle = '#60a5fa'; ctx.lineWidth = 2.5; ctx.stroke();
+                // Iris
+                ctx.beginPath(); ctx.arc(cx-W*0.16, cy, H*0.08, 0, Math.PI*2);
+                ctx.fillStyle = '#7c3aed'; ctx.globalAlpha = 0.6; ctx.fill(); ctx.globalAlpha = 1;
+                ctx.beginPath(); ctx.arc(cx-W*0.16, cy, H*0.03, 0, Math.PI*2);
+                ctx.fillStyle = '#0f172a'; ctx.fill(); // pupil
+                // Optic nerve
+                ctx.beginPath(); ctx.moveTo(cx+W*0.30, cy);
+                ctx.lineTo(cx+W*0.38, cy+H*0.05);
+                ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 4; ctx.stroke();
+                // Tapetum reflection
+                ctx.beginPath(); ctx.arc(cx+W*0.10, cy, W*0.08, -0.5, 0.5);
+                ctx.strokeStyle = 'rgba(34,211,238,0.3)'; ctx.lineWidth = 8; ctx.stroke();
+              } else if (spec.bodyShape === 'heart') {
+                // Sheep heart — anatomical shape
+                ctx.beginPath();
+                ctx.moveTo(cx, cy-H*0.25);
+                ctx.quadraticCurveTo(cx-W*0.22, cy-H*0.30, cx-W*0.25, cy-H*0.10);
+                ctx.quadraticCurveTo(cx-W*0.26, cy+H*0.05, cx-W*0.15, cy+H*0.18);
+                ctx.quadraticCurveTo(cx-W*0.05, cy+H*0.30, cx, cy+H*0.28);
+                ctx.quadraticCurveTo(cx+W*0.05, cy+H*0.30, cx+W*0.15, cy+H*0.18);
+                ctx.quadraticCurveTo(cx+W*0.26, cy+H*0.05, cx+W*0.25, cy-H*0.10);
+                ctx.quadraticCurveTo(cx+W*0.22, cy-H*0.30, cx, cy-H*0.25);
+                ctx.fillStyle = layerColor; ctx.fill(); ctx.strokeStyle = layerStroke; ctx.lineWidth = 2; ctx.stroke();
+                ctx.shadowBlur = 0;
+                // Septum line
+                ctx.beginPath(); ctx.moveTo(cx, cy-H*0.20); ctx.lineTo(cx, cy+H*0.25);
+                ctx.strokeStyle = layerStroke; ctx.globalAlpha = 0.3; ctx.lineWidth = 1; ctx.stroke(); ctx.globalAlpha = 1;
+                // Great vessels stubs
+                ctx.beginPath(); ctx.moveTo(cx-W*0.08, cy-H*0.25); ctx.lineTo(cx-W*0.10, cy-H*0.35);
+                ctx.lineTo(cx-W*0.04, cy-H*0.35); ctx.closePath();
+                ctx.fillStyle = '#ef4444'; ctx.fill(); // aorta stub
+                ctx.beginPath(); ctx.moveTo(cx+W*0.08, cy-H*0.25); ctx.lineTo(cx+W*0.10, cy-H*0.35);
+                ctx.lineTo(cx+W*0.04, cy-H*0.35); ctx.closePath();
+                ctx.fillStyle = '#3b82f6'; ctx.fill(); // pulm trunk stub
+                // Coronary artery
+                ctx.beginPath(); ctx.moveTo(cx-W*0.06, cy-H*0.18);
+                ctx.quadraticCurveTo(cx-W*0.15, cy, cx-W*0.10, cy+H*0.15);
+                ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.6; ctx.stroke(); ctx.globalAlpha = 1;
+              }
+
+              ctx.restore();
+
+              // ── Draw organ pins ──
+              organs.forEach(function (org) {
+                var px = org.x * W, py = org.y * H;
+                var isSel = d.selectedOrgan === org.id;
+                var pulse = isSel ? 1 + Math.sin(dissTick * 0.06) * 0.3 : 1;
+                ctx.beginPath(); ctx.arc(px, py, 5 * pulse, 0, Math.PI * 2);
+                ctx.fillStyle = isSel ? '#fbbf24' : 'rgba(255,255,255,0.9)'; ctx.fill();
+                ctx.strokeStyle = isSel ? '#f59e0b' : 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1.5; ctx.stroke();
+                if (isSel) { ctx.beginPath(); ctx.arc(px, py, 12 * pulse, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(251,191,36,0.6)'; ctx.lineWidth = 2; ctx.stroke(); }
+                ctx.font = '10px Inter, system-ui, sans-serif';
+                var tw = ctx.measureText(org.name).width + 10;
+                var lx = px + 12, ly = py - 8;
+                if (lx + tw > W - 10) lx = px - tw - 12;
+                ctx.beginPath(); ctx.moveTo(px + 6, py); ctx.lineTo(lx, ly + 6);
+                ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.setLineDash([2, 2]); ctx.lineWidth = 0.8; ctx.stroke(); ctx.setLineDash([]);
+                ctx.fillStyle = isSel ? 'rgba(251,191,36,0.9)' : 'rgba(30,41,59,0.85)';
+                if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(lx, ly, tw, 16, 4); ctx.fill(); } else { ctx.fillRect(lx, ly, tw, 16); }
+                ctx.strokeStyle = isSel ? '#f59e0b' : 'rgba(148,163,184,0.4)'; ctx.lineWidth = 0.6; ctx.stroke();
+                ctx.fillStyle = isSel ? '#1e293b' : '#e2e8f0'; ctx.fillText(org.name, lx + 5, ly + 11.5);
+              });
+              // Layer label
+              var activeLayerDef = spec.layers[currentLayerIdx];
+              if (activeLayerDef) { ctx.font = 'bold 13px Inter, system-ui, sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fillText(activeLayerDef.icon + ' ' + activeLayerDef.name + ' Layer', 14, H - 14); }
+              // Specimen label
+              ctx.font = '11px Inter, system-ui, sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillText(spec.icon + ' ' + spec.name, 14, 20);
+
+              canvas._dissAnim = requestAnimationFrame(drawDissectionFrame);
+            }
+            drawDissectionFrame();
+          };
+
+          var canvasClick = function (e) {
+            var canvas = e.target; var rect = canvas.getBoundingClientRect();
+            var mx = (e.clientX - rect.left) / rect.width, my = (e.clientY - rect.top) / rect.height;
+            var hit = null;
+            organs.forEach(function (org) { var dx = mx - org.x, dy = my - org.y; if (Math.sqrt(dx * dx + dy * dy) < 0.04) hit = org; });
+            upd('selectedOrgan', hit ? (hit.id === d.selectedOrgan ? null : hit.id) : null);
+          };
+
+          var SPEC_KEYS = Object.keys(SPECIMENS);
+
+
+          // ── Render ──
+          return React.createElement("div", { className: "space-y-3" },
+            // Header
+            React.createElement("div", { className: "flex items-center gap-3 mb-1" },
+              React.createElement("button", { onClick: function () { setStemLabTool(null); }, className: "text-lg hover:scale-110 transition-transform", 'aria-label': 'Back' }, "\u2B05"),
+              React.createElement("div", null,
+                React.createElement("h3", { className: "text-lg font-bold text-slate-800" }, "\uD83D\uDD2C Virtual Dissection Lab"),
+                React.createElement("p", { className: "text-xs text-slate-500" }, spec.icon + ' ' + spec.name)
+              ),
+              React.createElement("div", { className: "ml-auto flex gap-2" },
+                React.createElement("button", {
+                  onClick: function () { upd('quizMode', !d.quizMode); if (!d.quizMode) { upd('quizIdx', 0); upd('quizScore', 0); upd('quizTotal', 0); upd('quizFeedback', null); } },
+                  className: "px-3 py-1.5 rounded-lg text-xs font-bold " + (d.quizMode ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-700')
+                }, d.quizMode ? '\u23F9 End Quiz' : '\uD83E\uDDE0 Quiz'),
+                React.createElement("button", {
+                  onClick: function () { upd('revealedLayers', {}); upd('activeLayer', (spec.layers[0]||{}).id||'skin'); upd('selectedOrgan', null); },
+                  className: "px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700"
+                }, '\uD83D\uDD04 Reset')
+              )
+            ),
+
+            // Specimen selector
+            React.createElement("div", { className: "flex gap-1 bg-slate-50 rounded-xl p-1 overflow-x-auto" },
+              SPEC_KEYS.map(function (sk) {
+                var sp = SPECIMENS[sk];
+                var isActive = sk === specimen;
+                return React.createElement("button", {
+                  key: sk,
+                  onClick: function () { upd('specimen', sk); upd('activeLayer', (sp.layers[0]||{}).id||'skin'); upd('revealedLayers', {}); upd('selectedOrgan', null); upd('quizMode', false); },
+                  className: "px-3 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap " + (isActive ? 'bg-white shadow-md text-slate-800 ring-1 ring-slate-200' : 'text-slate-500 hover:bg-white/60 hover:text-slate-700')
+                }, sp.icon + ' ' + sp.name.split('(')[0].trim());
+              })
+            ),
+
+            // Layer bar
+            React.createElement("div", { className: "flex gap-1 bg-slate-100 rounded-xl p-1" },
+              spec.layers.map(function (layer) {
+                var isRevealed = revealedLayers[layer.id];
+                var isActive = layer.id === activeLayer;
+                return React.createElement("button", {
+                  key: layer.id,
+                  onClick: function () { if (!isRevealed) { upd('activeLayer', layer.id); upd('selectedOrgan', null); } },
+                  disabled: isRevealed && layer.id !== activeLayer,
+                  className: "flex-1 px-2 py-2 rounded-lg text-xs font-bold transition-all " + (isActive ? 'bg-white shadow-md text-slate-800' : isRevealed ? 'bg-slate-200 text-slate-400 line-through' : 'text-slate-600 hover:bg-white/50')
+                }, layer.icon + ' ' + layer.name);
+              })
+            ),
+
+            // Main: Canvas + sidebar
+            React.createElement("div", { className: "flex gap-3" },
+              // Canvas + peel button
+              React.createElement("div", { className: "flex-1" },
+                React.createElement("canvas", {
+                  ref: canvasRef, onClick: canvasClick, width: 500, height: 600,
+                  className: "w-full rounded-xl border border-slate-200 cursor-crosshair",
+                  style: { aspectRatio: '5/6', background: '#0f172a' }
+                }),
+                currentLayerIdx < spec.layers.length - 1 && React.createElement("button", {
+                  onClick: peelCurrentLayer,
+                  className: "w-full mt-2 py-3 rounded-xl text-sm font-bold bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600 shadow-md hover:shadow-lg transition-all"
+                }, '\u2702\uFE0F Peel ' + spec.layers[currentLayerIdx].name + ' \u2192 ' + spec.layers[Math.min(currentLayerIdx + 1, spec.layers.length - 1)].name)
+              ),
+
+              // Sidebar
+              React.createElement("div", { className: "w-72 space-y-3" },
+                // Selected organ detail
+                sel && React.createElement("div", { className: "bg-white rounded-xl border p-4" },
+                  React.createElement("h4", { className: "text-sm font-bold text-slate-800 mb-1" }, sel.name),
+                  React.createElement("p", { className: "text-xs text-slate-600 leading-relaxed mb-2" }, sel.fn),
+                  sel.clinical && React.createElement("div", { className: "bg-amber-50 rounded-lg p-2 border border-amber-200" },
+                    React.createElement("span", { className: "text-[10px] font-bold text-amber-700" }, '\uD83C\uDFEB Fun Fact'),
+                    React.createElement("p", { className: "text-[10px] text-amber-600 leading-relaxed mt-0.5" }, sel.clinical)
+                  )
+                ),
+
+                // Organ list
+                !sel && React.createElement("div", { className: "bg-white rounded-xl border p-3" },
+                  React.createElement("div", { className: "text-xs font-bold text-slate-700 mb-2" }, (spec.layers[currentLayerIdx]||{}).icon + ' ' + (spec.layers[currentLayerIdx]||{}).name + ' Structures (' + organs.length + ')'),
+                  React.createElement("div", { className: "space-y-1 max-h-80 overflow-y-auto" },
+                    organs.map(function (org) {
+                      return React.createElement("button", {
+                        key: org.id,
+                        onClick: function () { upd('selectedOrgan', org.id); },
+                        className: "w-full text-left px-2 py-1.5 rounded-lg text-xs hover:bg-slate-50 transition-all " + (d.selectedOrgan === org.id ? 'bg-amber-50 border border-amber-200 font-bold text-amber-800' : 'text-slate-600')
+                      }, org.name);
+                    })
+                  )
+                ),
+
+                // Quiz card
+                d.quizMode && quizQ && React.createElement("div", { className: "bg-gradient-to-br from-amber-50 to-yellow-50 rounded-xl border border-amber-200 p-4" },
+                  React.createElement("div", { className: "flex items-center gap-2 mb-2" },
+                    React.createElement("span", { className: "text-xs font-bold text-amber-800" }, '\uD83E\uDDE0 Identify:'),
+                    d.quizScore > 0 && React.createElement("span", { className: "text-[10px] font-bold text-green-600 ml-auto" }, '\u2B50 ' + d.quizScore + '/' + (d.quizTotal || 0))
+                  ),
+                  React.createElement("p", { className: "text-xs text-amber-700 mb-2 italic" }, '"' + quizQ.fn.split('.')[0] + '."'),
+                  React.createElement("div", { className: "grid grid-cols-2 gap-1" },
+                    quizOptions.map(function (opt) {
+                      var fb = d.quizFeedback;
+                      var isCorrect = fb && opt.id === quizQ.id;
+                      var isChosen = fb && fb.chosen === opt.id;
+                      var isWrong = isChosen && !isCorrect;
+                      return React.createElement("button", {
+                        key: opt.id, disabled: !!fb,
+                        onClick: function () {
+                          var correct = opt.id === quizQ.id;
+                          upd('quizFeedback', { correct: correct, chosen: opt.id });
+                          upd('quizScore', (d.quizScore || 0) + (correct ? 1 : 0));
+                          upd('quizTotal', (d.quizTotal || 0) + 1);
+                          if (correct) awardStemXP('dissection', 2, 'Correct quiz answer');
+                          addToast(correct ? '\u2705 Correct!' : '\u274C It was ' + quizQ.name, correct ? 'success' : 'error');
+                        },
+                        className: "px-2 py-1.5 rounded-lg text-[11px] font-bold border transition-all " + (isCorrect ? 'border-green-400 bg-green-50 text-green-700' : isWrong ? 'border-red-400 bg-red-50 text-red-600' : fb ? 'border-slate-200 bg-slate-50 text-slate-400' : 'border-amber-200 bg-white text-slate-700 hover:border-amber-400')
+                      }, opt.name);
+                    })
+                  ),
+                  d.quizFeedback && React.createElement("button", {
+                    onClick: function () { upd('quizIdx', (d.quizIdx || 0) + 1); upd('quizFeedback', null); },
+                    className: "w-full mt-2 py-1.5 rounded-lg text-xs font-bold bg-amber-600 text-white hover:bg-amber-700"
+                  }, 'Next Question \u2192')
+                ),
+
+                // Layer + specimen info
+                React.createElement("div", { className: "bg-slate-50 rounded-xl border p-3" },
+                  React.createElement("div", { className: "text-[10px] font-bold text-slate-500 mb-1" }, 'LAYER PROGRESS'),
+                  spec.layers.map(function (layer) {
+                    var done = !!revealedLayers[layer.id];
+                    return React.createElement("div", { key: layer.id, className: "flex items-center gap-2 py-0.5" },
+                      React.createElement("span", { className: "text-[10px] " + (done ? 'line-through text-slate-400' : 'text-slate-600') }, layer.icon + ' ' + layer.name),
+                      done && React.createElement("span", { className: "text-[9px] text-green-500 ml-auto" }, '\u2713')
+                    );
+                  }),
+                  React.createElement("div", { className: "mt-2 pt-2 border-t border-slate-200" },
+                    React.createElement("p", { className: "text-[10px] text-slate-500 leading-relaxed" }, spec.desc)
+                  )
+                )
+              )
+            )
+          );
+        })(),
+
+
 
         // ═══════════════════════════════════════════════════════
         // BRAIN ATLAS EXPLORER
