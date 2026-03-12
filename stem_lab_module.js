@@ -21540,6 +21540,7 @@
               organs.forEach(function (org) {
                 var px = org.x * W, py = org.y * H;
                 var isSel = d.selectedOrgan === org.id;
+                var isHov = !isSel && d.hoveredOrgan === org.id;
                 var pulse = isSel ? 1 + Math.sin(dissTick * 0.06) * 0.3 : 1;
                 // Outer glow
                 if (isSel) {
@@ -21552,12 +21553,13 @@
                 // Pin dot with gradient
                 ctx.beginPath(); ctx.arc(px, py, 5 * pulse, 0, Math.PI * 2);
                 var pinGrad = ctx.createRadialGradient(px-1, py-1, 1, px, py, 5 * pulse);
-                pinGrad.addColorStop(0, isSel ? '#fef08a' : '#ffffff');
-                pinGrad.addColorStop(1, isSel ? '#f59e0b' : '#94a3b8');
+                pinGrad.addColorStop(0, isSel ? '#fef08a' : isHov ? '#bfdbfe' : '#ffffff');
+                pinGrad.addColorStop(1, isSel ? '#f59e0b' : isHov ? '#3b82f6' : '#94a3b8');
                 ctx.fillStyle = pinGrad; ctx.fill();
                 ctx.strokeStyle = isSel ? '#f59e0b' : 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1.5; ctx.stroke();
-                // Selection ring
+                // Selection/hover ring
                 if (isSel) { ctx.beginPath(); ctx.arc(px, py, 12 * pulse, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(251,191,36,0.7)'; ctx.lineWidth = 2; ctx.setLineDash([3,3]); ctx.stroke(); ctx.setLineDash([]); }
+                if (isHov) { ctx.beginPath(); ctx.arc(px, py, 10, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(59,130,246,0.5)'; ctx.lineWidth = 1.5; ctx.stroke(); }
                 ctx.font = '10px Inter, system-ui, sans-serif';
                 var tw = ctx.measureText(org.name).width + 10;
                 var lx = px + 12, ly = py - 8;
@@ -21574,6 +21576,61 @@
               if (activeLayerDef) { ctx.font = 'bold 13px Inter, system-ui, sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fillText(activeLayerDef.icon + ' ' + activeLayerDef.name + ' Layer', 14, H - 14); }
               // Specimen label
               ctx.font = '11px Inter, system-ui, sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillText(spec.icon + ' ' + spec.name, 14, 20);
+              // Progress bar at top
+              if (totalOrgansInSpecimen > 0) {
+                var barW = W - 28;
+                ctx.fillStyle = 'rgba(30,41,59,0.6)';
+                ctx.fillRect(14, 28, barW, 4);
+                ctx.fillStyle = progressPct >= 100 ? '#22c55e' : '#3b82f6';
+                ctx.fillRect(14, 28, barW * (progressPct / 100), 4);
+                ctx.font = '9px Inter, system-ui, sans-serif';
+                ctx.fillStyle = 'rgba(255,255,255,0.35)';
+                ctx.fillText(exploredCount + '/' + totalOrgansInSpecimen + ' explored (' + progressPct + '%)', 14, 42);
+              }
+              // Hover tooltip
+              var hovOrg = d.hoveredOrgan ? organs.find(function(o) { return o.id === d.hoveredOrgan; }) : null;
+              if (hovOrg && d.selectedOrgan !== hovOrg.id) {
+                var hpx = hovOrg.x * W, hpy = hovOrg.y * H;
+                var hText = hovOrg.name + ': ' + hovOrg.fn.split('.')[0] + '.';
+                ctx.font = '10px Inter, system-ui, sans-serif';
+                var hLines = [];
+                var words = hText.split(' ');
+                var line = '';
+                for (var wi = 0; wi < words.length; wi++) {
+                  var testLine = line + words[wi] + ' ';
+                  if (ctx.measureText(testLine).width > 180 && line) { hLines.push(line.trim()); line = words[wi] + ' '; }
+                  else { line = testLine; }
+                }
+                if (line.trim()) hLines.push(line.trim());
+                if (hLines.length > 3) hLines = hLines.slice(0, 3);
+                var hBoxH = hLines.length * 14 + 10;
+                var hBoxW = 196;
+                var hbx = Math.min(hpx + 20, W - hBoxW - 10);
+                var hby = Math.max(hpy - hBoxH - 10, 50);
+                ctx.fillStyle = 'rgba(15,23,42,0.92)';
+                if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(hbx, hby, hBoxW, hBoxH, 6); ctx.fill(); } else { ctx.fillRect(hbx, hby, hBoxW, hBoxH); }
+                ctx.strokeStyle = 'rgba(59,130,246,0.4)'; ctx.lineWidth = 1; ctx.stroke();
+                ctx.fillStyle = '#e2e8f0';
+                for (var hi = 0; hi < hLines.length; hi++) {
+                  ctx.fillText(hLines[hi], hbx + 8, hby + 16 + hi * 14);
+                }
+              }
+              // Guided walkthrough prompt
+              if (guidedMode && currentGuided) {
+                ctx.fillStyle = 'rgba(147,51,234,0.85)';
+                var gpW = W - 28;
+                if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(14, H - 50, gpW, 32, 6); ctx.fill(); } else { ctx.fillRect(14, H - 50, gpW, 32); }
+                ctx.font = 'bold 11px Inter, system-ui, sans-serif';
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(currentGuided.prompt, 22, H - 30);
+                // Highlight guided organ with arrow
+                var gOrg = organs.find(function(o) { return o.id === currentGuided.organId; });
+                if (gOrg) {
+                  var gx = gOrg.x * W, gy = gOrg.y * H;
+                  ctx.beginPath(); ctx.arc(gx, gy, 16 + Math.sin(dissTick * 0.08) * 3, 0, Math.PI*2);
+                  ctx.strokeStyle = 'rgba(147,51,234,0.7)'; ctx.lineWidth = 2.5; ctx.setLineDash([4,3]); ctx.stroke(); ctx.setLineDash([]);
+                }
+              }
 
               canvas._dissAnim = requestAnimationFrame(drawDissectionFrame);
             }
@@ -21586,13 +21643,59 @@
             var hit = null;
             organs.forEach(function (org) { var dx = mx - org.x, dy = my - org.y; if (Math.sqrt(dx * dx + dy * dy) < 0.04) hit = org; });
             upd('selectedOrgan', hit ? (hit.id === d.selectedOrgan ? null : hit.id) : null);
+            // Track explored organs for progress
+            if (hit) {
+              var explored = Object.assign({}, d.exploredOrgans || {});
+              explored[specimen + '|' + hit.id] = true;
+              upd('exploredOrgans', explored);
+              // Advance guided walkthrough if correct organ clicked
+              if (guidedMode && currentGuided && hit.id === currentGuided.organId) {
+                upd('guidedStep', guidedStep + 1);
+                awardStemXP('dissection', 2, 'Found ' + hit.name + ' in guided tour');
+                if (addToast) addToast('\uD83D\uDCCD Found ' + hit.name + '! +2 XP', 'success');
+                if (guidedStep + 1 >= guidedSteps.length) {
+                  upd('guidedMode', false);
+                  awardStemXP('dissection', 10, 'Completed guided tour');
+                  if (addToast) addToast('\uD83C\uDF89 Tour complete! +10 XP bonus!', 'success');
+                }
+              }
+            }
           };
+
+          // Hover handler for canvas tooltips
+          var canvasHover = function (e) {
+            var canvas = e.target; var rect = canvas.getBoundingClientRect();
+            var mx = (e.clientX - rect.left) / rect.width, my = (e.clientY - rect.top) / rect.height;
+            var hit = null;
+            organs.forEach(function (org) { var dx = mx - org.x, dy = my - org.y; if (Math.sqrt(dx * dx + dy * dy) < 0.04) hit = org; });
+            upd('hoveredOrgan', hit ? hit.id : null);
+            canvas.style.cursor = hit ? 'pointer' : 'crosshair';
+          };
+
+          // Progress calculation
+          var exploredOrgans = d.exploredOrgans || {};
+          var totalOrgansInSpecimen = 0;
+          var exploredCount = 0;
+          spec.layers.forEach(function (layer) {
+            var layerOrgans = spec.organs[layer.id] || [];
+            totalOrgansInSpecimen += layerOrgans.length;
+            layerOrgans.forEach(function (org) {
+              if (exploredOrgans[specimen + '|' + org.id]) exploredCount++;
+            });
+          });
+          var progressPct = totalOrgansInSpecimen > 0 ? Math.round((exploredCount / totalOrgansInSpecimen) * 100) : 0;
+
+          // Guided walkthrough data
+          var guidedSteps = organs.map(function (org, i) {
+            return { organId: org.id, name: org.name, prompt: 'Step ' + (i + 1) + ' of ' + organs.length + ': Locate and click on the ' + org.name + '.' };
+          });
+          var currentGuided = guidedMode && guidedSteps[guidedStep % guidedSteps.length];
 
           var SPEC_KEYS = Object.keys(SPECIMENS);
 
 
           // ── Render ──
-          return React.createElement("div", { className: "space-y-3" },
+          return React.createElement("div", { className: "space-y-3 max-h-[calc(100vh-180px)] overflow-y-auto pr-1" },
             // Header
             React.createElement("div", { className: "flex items-center gap-3 mb-1" },
               React.createElement("button", { onClick: function () { setStemLabTool(null); }, className: "text-lg hover:scale-110 transition-transform", 'aria-label': 'Back' }, "\u2B05"),
@@ -21601,6 +21704,10 @@
                 React.createElement("p", { className: "text-xs text-slate-500" }, spec.icon + ' ' + spec.name)
               ),
               React.createElement("div", { className: "ml-auto flex gap-2" },
+                React.createElement("button", {
+                  onClick: function () { upd('guidedMode', !guidedMode); upd('guidedStep', 0); },
+                  className: "px-3 py-1.5 rounded-lg text-xs font-bold " + (guidedMode ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-700')
+                }, guidedMode ? '\u23F9 End Tour' : '\uD83D\uDCCD Tour'),
                 React.createElement("button", {
                   onClick: function () { upd('quizMode', !d.quizMode); if (!d.quizMode) { upd('quizIdx', 0); upd('quizScore', 0); upd('quizTotal', 0); upd('quizFeedback', null); } },
                   className: "px-3 py-1.5 rounded-lg text-xs font-bold " + (d.quizMode ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-700')
@@ -21644,7 +21751,7 @@
               // Canvas + peel button
               React.createElement("div", { className: "flex-1" },
                 React.createElement("canvas", {
-                  ref: canvasRef, onClick: canvasClick, width: 500, height: 600,
+                  ref: canvasRef, onClick: canvasClick, onMouseMove: canvasHover, width: 500, height: 600,
                   className: "w-full rounded-xl border border-slate-200 cursor-crosshair",
                   style: { aspectRatio: '5/6', background: '#0f172a' }
                 }),
@@ -21726,6 +21833,19 @@
                   React.createElement("div", { className: "mt-2 pt-2 border-t border-slate-200" },
                     React.createElement("p", { className: "text-[10px] text-slate-500 leading-relaxed" }, spec.desc)
                   )
+                ),
+
+                // Progress card
+                React.createElement("div", { className: "bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200 p-3" },
+                  React.createElement("div", { className: "flex items-center justify-between mb-1" },
+                    React.createElement("span", { className: "text-[10px] font-bold text-blue-700" }, '\uD83D\uDCCA Exploration'),
+                    React.createElement("span", { className: "text-[10px] font-bold " + (progressPct >= 100 ? 'text-green-600' : 'text-blue-600') }, progressPct + '%')
+                  ),
+                  React.createElement("div", { className: "w-full h-2 bg-blue-100 rounded-full overflow-hidden" },
+                    React.createElement("div", { className: "h-full rounded-full transition-all duration-500 " + (progressPct >= 100 ? 'bg-green-500' : 'bg-blue-500'), style: { width: progressPct + '%' } })
+                  ),
+                  React.createElement("div", { className: "mt-1 text-[9px] text-blue-500" }, exploredCount + ' of ' + totalOrgansInSpecimen + ' structures examined'),
+                  progressPct >= 100 && React.createElement("div", { className: "mt-1 text-[10px] font-bold text-green-600" }, '\u2B50 Specimen Complete!')
                 )
               )
             )
