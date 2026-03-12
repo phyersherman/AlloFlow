@@ -20828,6 +20828,16 @@
               for (var gx = 0; gx < W; gx += 30) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke(); }
               for (var gy = 0; gy < H; gy += 30) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke(); }
               ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+              // 3D depth shadow under body
+              ctx.globalAlpha = 0.08;
+              ctx.beginPath();
+              if (spec.bodyShape === 'frog') { ctx.ellipse(cx+3, cy+5, W*0.18, H*0.30, 0, 0, Math.PI*2); }
+              else if (spec.bodyShape === 'pig') { ctx.ellipse(cx+3, cy+5, W*0.30, H*0.14, 0, 0, Math.PI*2); }
+              else if (spec.bodyShape === 'fish') { ctx.ellipse(cx+3, cy+5, W*0.32, H*0.10, 0, 0, Math.PI*2); }
+              else if (spec.bodyShape === 'crayfish') { ctx.ellipse(cx+3, cy+5, W*0.32, H*0.08, 0, 0, Math.PI*2); }
+              else if (spec.bodyShape === 'worm') { ctx.ellipse(cx+2, H*0.50+5, W*0.05, H*0.42, 0, 0, Math.PI*2); }
+              ctx.fillStyle = '#000'; ctx.fill();
+              ctx.globalAlpha = 1;
               // Tissue texture overlay (stipple for organic feel)
               if (spec.bodyShape !== 'eye' && spec.bodyShape !== 'heart') {
                 ctx.globalAlpha = 0.03;
@@ -21025,6 +21035,38 @@
                     ctx.beginPath(); ctx.ellipse(cx + s*W*0.05, cy - H*0.10, W*0.008, H*0.03, s*0.3, 0, Math.PI*2);
                     ctx.fillStyle = '#fbbf24'; ctx.fill();
                   });
+                  // Bladder
+                  ctx.beginPath(); ctx.ellipse(cx, cy+H*0.15, W*0.025, H*0.018, 0, 0, Math.PI*2);
+                  ctx.fillStyle = 'rgba(186,230,253,0.4)'; ctx.fill();
+                  ctx.strokeStyle = '#93c5fd'; ctx.lineWidth = 0.5; ctx.stroke();
+                  // Spleen (small red organ near stomach)
+                  ctx.beginPath(); ctx.ellipse(cx+W*0.06, cy-H*0.03, W*0.012, H*0.008, 0.3, 0, Math.PI*2);
+                  ctx.fillStyle = '#7f1d1d'; ctx.fill();
+                  // Pancreas (thin, yellowish)
+                  ctx.beginPath(); ctx.moveTo(cx+W*0.02, cy-H*0.04);
+                  ctx.quadraticCurveTo(cx+W*0.05, cy-H*0.02, cx+W*0.08, cy-H*0.01);
+                  ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 2; ctx.globalAlpha = 0.4; ctx.stroke(); ctx.globalAlpha = 0.5;
+                  // Adrenal glands (on top of kidneys)
+                  [-1, 1].forEach(function(s) {
+                    ctx.beginPath(); ctx.ellipse(cx+s*W*0.06, cy+H*0.07, W*0.008, H*0.004, 0, 0, Math.PI*2);
+                    ctx.fillStyle = '#fbbf24'; ctx.fill();
+                  });
+                  // Peritoneum lining (body cavity membrane)
+                  ctx.globalAlpha = 0.04;
+                  ctx.beginPath();
+                  ctx.ellipse(cx, cy, W*0.14, H*0.25, 0, 0, Math.PI*2);
+                  ctx.strokeStyle = '#fef08a'; ctx.lineWidth = 1; ctx.setLineDash([2,3]); ctx.stroke(); ctx.setLineDash([]);
+                  ctx.globalAlpha = 0.5;
+                  ctx.font = '6px Inter, system-ui'; ctx.fillStyle = 'rgba(254,240,138,0.4)';
+                  ctx.fillText('peritoneum', cx+W*0.12, cy+H*0.22);
+                  // Mesentery (translucent membrane connecting organs)
+                  ctx.globalAlpha = 0.06;
+                  ctx.beginPath();
+                  ctx.moveTo(cx-W*0.05, cy-H*0.08);
+                  ctx.quadraticCurveTo(cx+W*0.08, cy, cx-W*0.03, cy+H*0.10);
+                  ctx.quadraticCurveTo(cx+W*0.06, cy+H*0.05, cx-W*0.05, cy-H*0.08);
+                  ctx.fillStyle = '#fde68a'; ctx.fill();
+                  ctx.globalAlpha = 0.5;
                   // Animated blood flow paths
                   var bloodT = (dissTick * 0.03) % 1;
                   // Arterial flow (red, from heart outward)
@@ -21319,6 +21361,18 @@
                 ctx.beginPath(); ctx.moveTo(cx-W*0.22, cy-H*0.10);
                 ctx.quadraticCurveTo(cx-W*0.25, cy-H*0.16, cx-W*0.20, cy-H*0.14);
                 ctx.fillStyle = layerColor; ctx.fill(); ctx.strokeStyle = layerStroke; ctx.lineWidth = 0.8; ctx.stroke();
+                // Hair follicle texture on skin layer
+                if (activeLayer === 'skin') {
+                  ctx.globalAlpha = 0.08;
+                  for (var hf = 0; hf < 40; hf++) {
+                    var hfx = cx - W*0.22 + (hf % 8) * W*0.06;
+                    var hfy = cy - H*0.10 + Math.floor(hf / 8) * H*0.05;
+                    ctx.beginPath(); ctx.moveTo(hfx, hfy);
+                    ctx.lineTo(hfx + Math.random() * 2, hfy - 3);
+                    ctx.strokeStyle = '#78716c'; ctx.lineWidth = 0.4; ctx.stroke();
+                  }
+                  ctx.globalAlpha = 1;
+                }
                 // Ear
                 ctx.beginPath(); ctx.ellipse(cx-W*0.18, cy-H*0.12, W*0.04, H*0.05, -0.5, 0, Math.PI*2);
                 ctx.fillStyle = layerColor; ctx.fill(); ctx.strokeStyle = layerStroke; ctx.stroke();
@@ -21676,6 +21730,19 @@
                 ctx.beginPath(); ctx.arc(cx+W*0.18, cy+H*0.03, 3, 0, Math.PI*2);
                 ctx.fillStyle = 'rgba(251,191,36,0.4)'; ctx.fill();
                 ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillText('optic disc', cx+W*0.20, cy+H*0.02);
+                // Iris sphincter muscle detail
+                ctx.globalAlpha = 0.15;
+                for (var ism = 0; ism < 12; ism++) {
+                  var ismA = (ism / 12) * Math.PI * 2;
+                  ctx.beginPath(); ctx.moveTo(cx-W*0.24 + Math.cos(ismA)*W*0.06, cy + Math.sin(ismA)*H*0.04);
+                  ctx.lineTo(cx-W*0.24 + Math.cos(ismA)*W*0.08, cy + Math.sin(ismA)*H*0.06);
+                  ctx.strokeStyle = '#7c3aed'; ctx.lineWidth = 0.5; ctx.stroke();
+                }
+                ctx.globalAlpha = 1;
+                // Macula lutea region
+                ctx.beginPath(); ctx.ellipse(cx+W*0.10, cy, W*0.03, H*0.02, 0, 0, Math.PI*2);
+                ctx.strokeStyle = 'rgba(251,191,36,0.2)'; ctx.lineWidth = 0.5; ctx.stroke();
+                ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fillText('macula', cx+W*0.12, cy+H*0.03);
               } else if (spec.bodyShape === 'heart') {
                 // Sheep heart — anatomical shape with beating animation
                 var heartPhase = (dissTick * 0.04) % (Math.PI * 2);
@@ -21713,6 +21780,14 @@
                 ctx.beginPath(); ctx.moveTo(cx+W*0.06, cy-H*0.18);
                 ctx.quadraticCurveTo(cx+W*0.18, cy-H*0.05, cx+W*0.12, cy+H*0.10);
                 ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 1.5; ctx.stroke();
+                // Coronary sinus (venous drainage)
+                ctx.beginPath(); ctx.moveTo(cx-W*0.12, cy+H*0.12);
+                ctx.quadraticCurveTo(cx, cy+H*0.18, cx+W*0.10, cy+H*0.12);
+                ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 1; ctx.stroke();
+                // Pericardium outline (outer membrane)
+                ctx.beginPath();
+                ctx.ellipse(cx, cy, W*0.28, H*0.30, 0, 0, Math.PI*2);
+                ctx.strokeStyle = 'rgba(148,163,184,0.2)'; ctx.lineWidth = 1; ctx.setLineDash([4,4]); ctx.stroke(); ctx.setLineDash([]);
                 ctx.globalAlpha = 1;
                 // Chamber shading (left side thicker wall)
                 ctx.beginPath();
@@ -21798,8 +21873,16 @@
                   ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.5;
                   // Mitral valve
                   ctx.beginPath(); ctx.moveTo(cx-W*0.15, cy-H*0.02); ctx.lineTo(cx-W*0.04, cy-H*0.02); ctx.stroke();
+                  ctx.font = '6px Inter, system-ui'; ctx.fillStyle = '#fbbf24';
+                  ctx.fillText('mitral (bicuspid)', cx-W*0.14, cy-H*0.035);
                   // Tricuspid valve
                   ctx.beginPath(); ctx.moveTo(cx+W*0.04, cy-H*0.02); ctx.lineTo(cx+W*0.15, cy-H*0.02); ctx.stroke();
+                  ctx.fillText('tricuspid', cx+W*0.05, cy-H*0.035);
+                  // Semilunar valves (above ventricles)
+                  ctx.beginPath(); ctx.arc(cx-W*0.08, cy-H*0.05, 3, 0, Math.PI); ctx.stroke();
+                  ctx.fillText('aortic', cx-W*0.10, cy-H*0.07);
+                  ctx.beginPath(); ctx.arc(cx+W*0.06, cy-H*0.05, 3, 0, Math.PI); ctx.stroke();
+                  ctx.fillText('pulmonary', cx+W*0.04, cy-H*0.07);
                   ctx.globalAlpha = 1;
                   // Animated blood flow through chambers
                   ctx.setLineDash([3, 5]); ctx.lineDashOffset = -dissTick * 0.4;
@@ -21875,6 +21958,288 @@
               ctx.fillStyle = 'rgba(255,255,255,0.25)';
               ctx.fillRect(W - 80, H - 18, 60, 2);
               ctx.font = '8px Inter, system-ui'; ctx.fillText('~5 cm', W - 72, H - 7);
+              // Excretory flow tracing overlay
+              if (d.traceExcretory && activeLayer === 'organs') {
+                ctx.setLineDash([4, 4]);
+                ctx.lineDashOffset = -dissTick * 0.4;
+                ctx.lineWidth = 2; ctx.globalAlpha = 0.65;
+                if (spec.bodyShape === 'frog') {
+                  ctx.strokeStyle = '#84cc16';
+                  // Kidneys → ureters → bladder → cloaca
+                  [-1, 1].forEach(function(s) {
+                    ctx.beginPath();
+                    ctx.moveTo(cx + s*W*0.06, cy+H*0.08); // kidney
+                    ctx.quadraticCurveTo(cx + s*W*0.03, cy+H*0.12, cx, cy+H*0.15); // ureter → bladder
+                    ctx.stroke();
+                  });
+                  ctx.beginPath(); ctx.moveTo(cx, cy+H*0.15); // bladder
+                  ctx.lineTo(cx, cy+H*0.22); // cloaca
+                  ctx.stroke();
+                  // Filtrate animation
+                  var filtT = (dissTick * 0.006) % 1;
+                  ctx.beginPath(); ctx.arc(cx + Math.cos(filtT*6)*W*0.03, cy+H*0.08+filtT*H*0.14, 2, 0, Math.PI*2);
+                  ctx.fillStyle = '#a3e635'; ctx.fill();
+                  ctx.font = '7px Inter, system-ui'; ctx.fillStyle = '#84cc16';
+                  ctx.fillText('kidneys', cx+W*0.08, cy+H*0.09);
+                  ctx.fillText('ureters', cx+W*0.04, cy+H*0.13);
+                  ctx.fillText('bladder', cx+W*0.03, cy+H*0.16);
+                  ctx.fillText('cloaca', cx+W*0.02, cy+H*0.23);
+                } else if (spec.bodyShape === 'worm') {
+                  ctx.strokeStyle = '#84cc16';
+                  // Nephridia along body
+                  for (var neph = 0; neph < 8; neph++) {
+                    var nephY = H*0.22 + neph * H*0.08;
+                    ctx.beginPath();
+                    ctx.moveTo(cx-W*0.04, nephY);
+                    ctx.quadraticCurveTo(cx-W*0.05, nephY+H*0.02, cx-W*0.045, nephY+H*0.04);
+                    ctx.stroke();
+                    // Nephridiopore
+                    ctx.beginPath(); ctx.arc(cx-W*0.045, nephY+H*0.04, 1.5, 0, Math.PI*2);
+                    ctx.fillStyle = '#84cc16'; ctx.fill();
+                  }
+                  ctx.font = '6px Inter, system-ui'; ctx.fillStyle = '#84cc16';
+                  ctx.fillText('nephridia', cx-W*0.09, H*0.35);
+                  ctx.fillText('nephridiopores', cx-W*0.10, H*0.37);
+                } else if (spec.bodyShape === 'pig') {
+                  ctx.strokeStyle = '#84cc16';
+                  ctx.beginPath();
+                  ctx.moveTo(cx+W*0.08, cy+H*0.08); // kidney
+                  ctx.quadraticCurveTo(cx+W*0.06, cy+H*0.12, cx+W*0.04, cy+H*0.14); // ureter
+                  ctx.lineTo(cx, cy+H*0.16); // bladder
+                  ctx.stroke();
+                  ctx.font = '7px Inter, system-ui'; ctx.fillStyle = '#84cc16';
+                  ctx.fillText('kidney', cx+W*0.09, cy+H*0.07);
+                  ctx.fillText('ureter', cx+W*0.07, cy+H*0.13);
+                  ctx.fillText('bladder', cx+W*0.01, cy+H*0.18);
+                }
+                ctx.setLineDash([]); ctx.lineDashOffset = 0;
+                ctx.globalAlpha = 1;
+              }
+              // Circulatory flow tracing overlay
+              if (d.traceCirculation && activeLayer === 'organs') {
+                ctx.setLineDash([5, 4]);
+                ctx.lineWidth = 2; ctx.globalAlpha = 0.6;
+                if (spec.bodyShape === 'frog') {
+                  // Heart → Arteries (red, oxygenated)
+                  ctx.lineDashOffset = -dissTick * 0.6;
+                  ctx.strokeStyle = '#ef4444';
+                  ctx.beginPath(); ctx.moveTo(cx, cy-H*0.12); // heart
+                  ctx.quadraticCurveTo(cx-W*0.08, cy-H*0.18, cx-W*0.04, cy-H*0.24); // carotid → head
+                  ctx.stroke();
+                  ctx.beginPath(); ctx.moveTo(cx, cy-H*0.12);
+                  ctx.quadraticCurveTo(cx+W*0.05, cy-H*0.05, cx+W*0.03, cy+H*0.06); // systemic → body
+                  ctx.stroke();
+                  ctx.beginPath(); ctx.moveTo(cx+W*0.03, cy+H*0.06);
+                  ctx.lineTo(cx+W*0.12, cy+H*0.30); // to legs
+                  ctx.stroke();
+                  ctx.beginPath(); ctx.moveTo(cx+W*0.03, cy+H*0.06);
+                  ctx.lineTo(cx-W*0.12, cy+H*0.30);
+                  ctx.stroke();
+                  // Veins (blue, deoxygenated) → back to heart
+                  ctx.lineDashOffset = dissTick * 0.6;
+                  ctx.strokeStyle = '#3b82f6';
+                  ctx.beginPath(); ctx.moveTo(cx-W*0.12, cy+H*0.32);
+                  ctx.quadraticCurveTo(cx-W*0.06, cy+H*0.15, cx-W*0.02, cy-H*0.10);
+                  ctx.stroke();
+                  ctx.beginPath(); ctx.moveTo(cx+W*0.12, cy+H*0.32);
+                  ctx.quadraticCurveTo(cx+W*0.06, cy+H*0.15, cx+W*0.02, cy-H*0.10);
+                  ctx.stroke();
+                  // Pulmonary loop
+                  ctx.strokeStyle = '#a855f7';
+                  ctx.beginPath(); ctx.moveTo(cx, cy-H*0.12);
+                  ctx.quadraticCurveTo(cx-W*0.10, cy-H*0.10, cx-W*0.08, cy-H*0.06);
+                  ctx.stroke();
+                  // Labels
+                  ctx.font = '7px Inter, system-ui';
+                  ctx.fillStyle = '#ef4444'; ctx.fillText('arteries (O\u2082)', cx-W*0.12, cy-H*0.20);
+                  ctx.fillStyle = '#3b82f6'; ctx.fillText('veins (CO\u2082)', cx+W*0.06, cy+H*0.20);
+                  ctx.fillStyle = '#a855f7'; ctx.fillText('pulmonary', cx-W*0.14, cy-H*0.08);
+                  // Blood cell animation
+                  var bcT = (dissTick * 0.008) % 1;
+                  ctx.beginPath(); ctx.arc(cx + bcT*W*0.15, cy-H*0.12+(bcT*H*0.42), 3, 0, Math.PI*2);
+                  ctx.fillStyle = '#ef4444'; ctx.fill();
+                } else if (spec.bodyShape === 'heart') {
+                  // Through chambers
+                  ctx.lineDashOffset = -dissTick * 0.5;
+                  ctx.strokeStyle = '#3b82f6'; // deoxygenated
+                  ctx.beginPath(); ctx.moveTo(cx+W*0.15, cy-H*0.25); // SVC
+                  ctx.lineTo(cx+W*0.10, cy-H*0.10); // RA
+                  ctx.lineTo(cx+W*0.08, cy+H*0.05); // RV
+                  ctx.stroke();
+                  ctx.beginPath(); ctx.moveTo(cx+W*0.08, cy+H*0.05);
+                  ctx.quadraticCurveTo(cx+W*0.15, cy-H*0.15, cx+W*0.20, cy-H*0.25); // pulmonary artery
+                  ctx.stroke();
+                  ctx.strokeStyle = '#ef4444'; // oxygenated
+                  ctx.beginPath(); ctx.moveTo(cx-W*0.15, cy-H*0.20); // pulmonary vein
+                  ctx.lineTo(cx-W*0.10, cy-H*0.10); // LA
+                  ctx.lineTo(cx-W*0.08, cy+H*0.05); // LV
+                  ctx.stroke();
+                  ctx.beginPath(); ctx.moveTo(cx-W*0.08, cy+H*0.05);
+                  ctx.quadraticCurveTo(cx-W*0.15, cy, cx, cy-H*0.28); // aorta
+                  ctx.stroke();
+                  ctx.font = '7px Inter, system-ui';
+                  ctx.fillStyle = '#3b82f6'; ctx.fillText('SVC', cx+W*0.16, cy-H*0.26);
+                  ctx.fillText('pulm. artery', cx+W*0.16, cy-H*0.16);
+                  ctx.fillStyle = '#ef4444'; ctx.fillText('pulm. vein', cx-W*0.20, cy-H*0.22);
+                  ctx.fillText('aorta', cx-W*0.04, cy-H*0.30);
+                }
+                ctx.setLineDash([]); ctx.lineDashOffset = 0;
+                ctx.globalAlpha = 1;
+              }
+              // Respiratory flow tracing overlay
+              if (d.traceRespiration && activeLayer === 'organs') {
+                ctx.setLineDash([4, 5]);
+                ctx.lineDashOffset = -dissTick * 0.7;
+                ctx.lineWidth = 2; ctx.globalAlpha = 0.7;
+                if (spec.bodyShape === 'frog') {
+                  ctx.strokeStyle = '#38bdf8';
+                  // Air path: nares → glottis → lungs
+                  ctx.beginPath();
+                  ctx.moveTo(cx, cy-H*0.28); // nostrils
+                  ctx.lineTo(cx, cy-H*0.20); // pharynx
+                  ctx.lineTo(cx, cy-H*0.15); // glottis
+                  ctx.stroke();
+                  // Left lung
+                  ctx.beginPath(); ctx.moveTo(cx, cy-H*0.15);
+                  ctx.quadraticCurveTo(cx-W*0.06, cy-H*0.12, cx-W*0.08, cy-H*0.06);
+                  ctx.stroke();
+                  // Right lung
+                  ctx.beginPath(); ctx.moveTo(cx, cy-H*0.15);
+                  ctx.quadraticCurveTo(cx+W*0.06, cy-H*0.12, cx+W*0.08, cy-H*0.06);
+                  ctx.stroke();
+                  // Air particles animation
+                  for (var ap = 0; ap < 5; ap++) {
+                    var apT = ((dissTick * 0.01 + ap * 0.2) % 1);
+                    var apY = cy - H*0.28 + apT * H*0.22;
+                    ctx.beginPath(); ctx.arc(cx + Math.sin(apT * 8) * W*0.01, apY, 2, 0, Math.PI*2);
+                    ctx.fillStyle = '#38bdf8'; ctx.fill();
+                  }
+                  // O2/CO2 labels
+                  ctx.font = '7px Inter, system-ui'; ctx.fillStyle = '#38bdf8';
+                  ctx.fillText('O\u2082 in', cx+W*0.02, cy-H*0.26);
+                  ctx.fillStyle = '#ef4444';
+                  ctx.fillText('CO\u2082 out', cx+W*0.02, cy-H*0.24);
+                  // Cutaneous respiration note
+                  ctx.fillStyle = 'rgba(56,189,248,0.4)'; ctx.font = '6px Inter, system-ui';
+                  ctx.fillText('\u2248 30% cutaneous', cx+W*0.10, cy+H*0.05);
+                } else if (spec.bodyShape === 'pig') {
+                  ctx.strokeStyle = '#38bdf8';
+                  ctx.beginPath();
+                  ctx.moveTo(cx-W*0.32, cy-H*0.01); // nostrils
+                  ctx.lineTo(cx-W*0.20, cy-H*0.02); // trachea
+                  ctx.stroke();
+                  // Bronchi split
+                  ctx.beginPath(); ctx.moveTo(cx-W*0.20, cy-H*0.02);
+                  ctx.quadraticCurveTo(cx-W*0.12, cy-H*0.06, cx-W*0.06, cy-H*0.08);
+                  ctx.stroke();
+                  ctx.beginPath(); ctx.moveTo(cx-W*0.20, cy-H*0.02);
+                  ctx.quadraticCurveTo(cx-W*0.12, cy+H*0.02, cx-W*0.06, cy+H*0.02);
+                  ctx.stroke();
+                  ctx.font = '7px Inter, system-ui'; ctx.fillStyle = '#38bdf8';
+                  ctx.fillText('trachea', cx-W*0.22, cy-H*0.05);
+                  ctx.fillText('L bronchus', cx-W*0.10, cy-H*0.10);
+                  ctx.fillText('R bronchus', cx-W*0.10, cy+H*0.05);
+                } else if (spec.bodyShape === 'fish') {
+                  ctx.strokeStyle = '#38bdf8';
+                  // Water flow through gills
+                  ctx.beginPath(); ctx.moveTo(cx-W*0.35, cy); // mouth intake
+                  ctx.lineTo(cx-W*0.22, cy); // through pharynx
+                  ctx.stroke();
+                  // Through gills and out operculum
+                  for (var gf = 0; gf < 3; gf++) {
+                    ctx.beginPath(); ctx.moveTo(cx-W*0.22, cy-H*0.02+gf*H*0.02);
+                    ctx.lineTo(cx-W*0.28, cy-H*0.03+gf*H*0.02);
+                    ctx.stroke();
+                  }
+                  ctx.font = '7px Inter, system-ui'; ctx.fillStyle = '#38bdf8';
+                  ctx.fillText('water in', cx-W*0.38, cy-H*0.02);
+                  ctx.fillText('O\u2082 exchange', cx-W*0.26, cy-H*0.06);
+                  ctx.fillText('water out', cx-W*0.30, cy+H*0.06);
+                }
+                ctx.setLineDash([]); ctx.lineDashOffset = 0;
+                ctx.globalAlpha = 1;
+              }
+              // Digestive tract tracing overlay
+              if (traceDigestion && activeLayer === 'organs') {
+                ctx.setLineDash([6, 4]);
+                ctx.lineDashOffset = -dissTick * 0.6;
+                ctx.lineWidth = 2.5; ctx.globalAlpha = 0.7;
+                if (spec.bodyShape === 'frog') {
+                  ctx.strokeStyle = '#f59e0b';
+                  ctx.beginPath();
+                  ctx.moveTo(cx, cy-H*0.26); // mouth
+                  ctx.lineTo(cx, cy-H*0.18); // esophagus
+                  ctx.quadraticCurveTo(cx+W*0.02, cy-H*0.12, cx+W*0.04, cy-H*0.05); // stomach
+                  ctx.quadraticCurveTo(cx+W*0.06, cy+H*0.02, cx+W*0.03, cy+H*0.05); // duodenum
+                  ctx.quadraticCurveTo(cx-W*0.02, cy+H*0.10, cx, cy+H*0.14); // intestines
+                  ctx.quadraticCurveTo(cx+W*0.03, cy+H*0.18, cx, cy+H*0.22); // large intestine
+                  ctx.stroke();
+                  // Food bolus moving along path
+                  var foodT = (dissTick * 0.005) % 1;
+                  var foodY = cy-H*0.26 + foodT * H*0.48;
+                  ctx.beginPath(); ctx.arc(cx + Math.sin(foodT * 10) * W*0.02, foodY, 4, 0, Math.PI*2);
+                  ctx.fillStyle = '#92400e'; ctx.fill();
+                  ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 1; ctx.stroke();
+                  // Labels
+                  ctx.font = '7px Inter, system-ui'; ctx.fillStyle = '#f59e0b';
+                  ctx.fillText('mouth', cx+W*0.02, cy-H*0.27);
+                  ctx.fillText('esophagus', cx+W*0.04, cy-H*0.17);
+                  ctx.fillText('stomach', cx+W*0.07, cy-H*0.06);
+                  ctx.fillText('sm. intestine', cx+W*0.06, cy+H*0.08);
+                  ctx.fillText('lg. intestine', cx+W*0.04, cy+H*0.18);
+                  ctx.fillText('cloaca', cx+W*0.02, cy+H*0.23);
+                } else if (spec.bodyShape === 'worm') {
+                  ctx.strokeStyle = '#f59e0b';
+                  ctx.beginPath();
+                  ctx.moveTo(cx, H*0.06); // mouth
+                  ctx.lineTo(cx, H*0.10); // pharynx
+                  ctx.lineTo(cx, H*0.28); // crop
+                  ctx.lineTo(cx, H*0.33); // gizzard
+                  ctx.lineTo(cx, H*0.88); // intestine
+                  ctx.lineTo(cx, H*0.94); // anus
+                  ctx.stroke();
+                  var wFoodT = (dissTick * 0.003) % 1;
+                  var wFoodY = H*0.06 + wFoodT * H*0.88;
+                  ctx.beginPath(); ctx.arc(cx, wFoodY, 3, 0, Math.PI*2);
+                  ctx.fillStyle = '#92400e'; ctx.fill();
+                  ctx.font = '7px Inter, system-ui'; ctx.fillStyle = '#f59e0b';
+                  ctx.fillText('mouth', cx+W*0.05, H*0.065);
+                  ctx.fillText('pharynx', cx+W*0.05, H*0.11);
+                  ctx.fillText('crop', cx+W*0.05, H*0.29);
+                  ctx.fillText('gizzard', cx+W*0.05, H*0.34);
+                  ctx.fillText('intestine', cx+W*0.05, H*0.60);
+                  ctx.fillText('anus', cx+W*0.05, H*0.945);
+                } else if (spec.bodyShape === 'pig') {
+                  ctx.strokeStyle = '#f59e0b';
+                  ctx.beginPath();
+                  ctx.moveTo(cx-W*0.30, cy); // mouth
+                  ctx.lineTo(cx-W*0.20, cy); // esophagus
+                  ctx.quadraticCurveTo(cx-W*0.05, cy-H*0.02, cx, cy+H*0.02); // stomach
+                  ctx.quadraticCurveTo(cx+W*0.08, cy+H*0.06, cx+W*0.10, cy+H*0.10); // intestines
+                  ctx.quadraticCurveTo(cx+W*0.12, cy+H*0.14, cx+W*0.16, cy+H*0.12); // rectum
+                  ctx.stroke();
+                  ctx.font = '7px Inter, system-ui'; ctx.fillStyle = '#f59e0b';
+                  ctx.fillText('mouth', cx-W*0.33, cy-H*0.02);
+                  ctx.fillText('esophagus', cx-W*0.18, cy-H*0.03);
+                  ctx.fillText('stomach', cx+W*0.02, cy-H*0.01);
+                  ctx.fillText('intestines', cx+W*0.09, cy+H*0.13);
+                } else if (spec.bodyShape === 'fish') {
+                  ctx.strokeStyle = '#f59e0b';
+                  ctx.beginPath();
+                  ctx.moveTo(cx-W*0.32, cy); // mouth
+                  ctx.lineTo(cx-W*0.18, cy); // pharynx
+                  ctx.quadraticCurveTo(cx-W*0.08, cy+H*0.02, cx, cy+H*0.03); // stomach
+                  ctx.lineTo(cx+W*0.10, cy+H*0.02); // pyloric caeca
+                  ctx.lineTo(cx+W*0.20, cy+H*0.04); // intestine
+                  ctx.stroke();
+                  ctx.font = '7px Inter, system-ui'; ctx.fillStyle = '#f59e0b';
+                  ctx.fillText('mouth', cx-W*0.35, cy-H*0.02);
+                  ctx.fillText('stomach', cx-W*0.04, cy+H*0.06);
+                  ctx.fillText('intestine', cx+W*0.12, cy+H*0.07);
+                }
+                ctx.setLineDash([]); ctx.lineDashOffset = 0;
+                ctx.globalAlpha = 1;
+              }
               // Cross-section indicators
               if (activeLayer === 'organs' && (spec.bodyShape === 'frog' || spec.bodyShape === 'pig' || spec.bodyShape === 'fish')) {
                 ctx.globalAlpha = 0.15; ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 0.5; ctx.setLineDash([4, 6]);
@@ -22055,7 +22420,15 @@
               React.createElement("div", null,
                 React.createElement("h3", { className: "text-lg font-bold text-slate-800" }, "\uD83D\uDD2C Virtual Dissection Lab"),
                 React.createElement("p", { className: "text-xs text-slate-500" }, spec.icon + ' ' + spec.name),
-                React.createElement("p", { className: "text-[9px] text-slate-400 mt-0.5" }, '\uD83D\uDD0E Scroll to zoom \u2022 Click organs to explore')
+                React.createElement("p", { className: "text-[9px] text-slate-400 mt-0.5" }, '\uD83D\uDD0E Scroll to zoom \u2022 Click organs to explore'),
+                React.createElement("div", { className: "flex gap-1 mt-0.5" },
+                  React.createElement("span", { className: "text-[9px] px-1.5 py-0.5 rounded-full " +
+                    (totalOrgansInSpecimen > 30 ? 'bg-red-100 text-red-600' :
+                     totalOrgansInSpecimen > 18 ? 'bg-amber-100 text-amber-600' :
+                     'bg-green-100 text-green-600')
+                  }, totalOrgansInSpecimen > 30 ? '\uD83D\uDD34 Advanced' : totalOrgansInSpecimen > 18 ? '\uD83D\uDFE1 Intermediate' : '\uD83D\uDFE2 Beginner'),
+                  React.createElement("span", { className: "text-[9px] text-slate-400" }, totalOrgansInSpecimen + ' structures \u2022 ' + spec.layers.length + ' layers')
+                )
               ),
               React.createElement("div", { className: "ml-auto flex gap-2" },
                 React.createElement("button", {
@@ -22127,7 +22500,36 @@
                   onClick: function () { upd('highContrast', !d.highContrast); },
                   className: "px-3 py-1.5 rounded-lg text-xs font-bold " + (d.highContrast ? 'bg-yellow-500 text-black' : 'bg-slate-100 text-slate-700'),
                   'aria-label': 'Toggle high contrast mode'
-                }, d.highContrast ? '\u2600 HC' : '\u2600 HC')
+                }, d.highContrast ? '\u2600 HC' : '\u2600 HC'),
+                React.createElement("button", {
+                  onClick: function () {
+                    if (!d.practicalMode) {
+                      upd('practicalMode', true);
+                      upd('practicalTimer', 120); // 2 minutes
+                      upd('practicalScore', 0);
+                      upd('practicalTotal', 0);
+                      upd('labelMode', 'hidden');
+                      upd('quizMode', true);
+                      upd('quizIdx', 0);
+                      upd('quizScore', 0);
+                      upd('quizTotal', 0);
+                      upd('quizFeedback', null);
+                      // Start countdown
+                      var tmr = setInterval(function () {
+                        var t = (d.practicalTimer || 120) - 1;
+                        if (t <= 0) { clearInterval(tmr); upd('practicalMode', false); upd('labelMode', 'show'); if (addToast) addToast('\u23F0 Time\'s up! Score: ' + (d.quizScore||0), 'info'); }
+                        upd('practicalTimer', t);
+                      }, 1000);
+                      upd('_practicalInterval', tmr);
+                    } else {
+                      clearInterval(d._practicalInterval);
+                      upd('practicalMode', false);
+                      upd('labelMode', 'show');
+                      upd('quizMode', false);
+                    }
+                  },
+                  className: "px-3 py-1.5 rounded-lg text-xs font-bold " + (d.practicalMode ? 'bg-red-600 text-white animate-pulse' : 'bg-orange-100 text-orange-700')
+                }, d.practicalMode ? '\u23F0 ' + Math.floor((d.practicalTimer||0)/60) + ':' + String((d.practicalTimer||0)%60).padStart(2,'0') : '\u23F1 Practical')
               )
             ),
 
@@ -22185,7 +22587,23 @@
                 currentLayerIdx < spec.layers.length - 1 && React.createElement("button", {
                   onClick: peelCurrentLayer,
                   className: "w-full mt-2 py-3 rounded-xl text-sm font-bold bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600 shadow-md hover:shadow-lg transition-all"
-                }, '\u2702\uFE0F Peel ' + spec.layers[currentLayerIdx].name + ' \u2192 ' + spec.layers[Math.min(currentLayerIdx + 1, spec.layers.length - 1)].name)
+                }, '\u2702\uFE0F Peel ' + spec.layers[currentLayerIdx].name + ' \u2192 ' + spec.layers[Math.min(currentLayerIdx + 1, spec.layers.length - 1)].name),
+                (activeLayer === 'organs') && React.createElement("button", {
+                  onClick: function () { upd('traceDigestion', !traceDigestion); upd('traceRespiration', false); },
+                  className: "w-full mt-1 py-2 rounded-xl text-xs font-bold " + (traceDigestion ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-700 border border-amber-200')
+                }, traceDigestion ? '\u23F9 Stop Trace' : '\uD83E\uDD62 Trace Digestive Path'),
+                (activeLayer === 'organs') && React.createElement("button", {
+                  onClick: function () { upd('traceRespiration', !d.traceRespiration); upd('traceDigestion', false); upd('traceCirculation', false); },
+                  className: "w-full mt-1 py-2 rounded-xl text-xs font-bold " + (d.traceRespiration ? 'bg-sky-500 text-white' : 'bg-sky-50 text-sky-700 border border-sky-200')
+                }, d.traceRespiration ? '\u23F9 Stop Trace' : '\uD83C\uDF2C\uFE0F Trace Respiratory Path'),
+                (activeLayer === 'organs') && React.createElement("button", {
+                  onClick: function () { upd('traceCirculation', !d.traceCirculation); upd('traceDigestion', false); upd('traceRespiration', false); upd('traceExcretory', false); },
+                  className: "w-full mt-1 py-2 rounded-xl text-xs font-bold " + (d.traceCirculation ? 'bg-red-500 text-white' : 'bg-red-50 text-red-700 border border-red-200')
+                }, d.traceCirculation ? '\u23F9 Stop Trace' : '\u2764\uFE0F Trace Circulatory Path'),
+                (activeLayer === 'organs') && React.createElement("button", {
+                  onClick: function () { upd('traceExcretory', !d.traceExcretory); upd('traceDigestion', false); upd('traceRespiration', false); upd('traceCirculation', false); },
+                  className: "w-full mt-1 py-2 rounded-xl text-xs font-bold " + (d.traceExcretory ? 'bg-lime-500 text-white' : 'bg-lime-50 text-lime-700 border border-lime-200')
+                }, d.traceExcretory ? '\u23F9 Stop Trace' : '\uD83D\uDCA7 Trace Excretory Path')
               ),
 
                 // Comparison panel
@@ -22271,6 +22689,28 @@
                   React.createElement("div", { className: "mt-2 flex gap-2 text-[9px] text-slate-400" },
                     React.createElement("span", null, '\uD83D\uDCCD x:' + Math.round(sel.x * 100) + '% y:' + Math.round(sel.y * 100) + '%'),
                     React.createElement("span", null, '\uD83C\uDFF7 ' + (sel.layer || activeLayer))
+                  ),
+                  // Action buttons
+                  React.createElement("div", { className: "mt-2 flex gap-1" },
+                    React.createElement("button", {
+                      onClick: function () {
+                        if (typeof window.aiChat === 'function') {
+                          window.aiChat('Explain the ' + sel.name + ' in a ' + spec.name + ' in simple terms for a biology student. Include: function, location, clinical significance, and one interesting fact.');
+                        } else if (addToast) {
+                          addToast('\uD83E\uDD16 AI: The ' + sel.name + ' ' + sel.fn.split('.')[0] + '.', 'info');
+                        }
+                      },
+                      className: "flex-1 px-2 py-1.5 rounded-lg text-[10px] font-bold bg-gradient-to-r from-violet-500 to-purple-500 text-white hover:from-violet-600 hover:to-purple-600"
+                    }, '\uD83E\uDD16 AI Explain'),
+                    React.createElement("button", {
+                      onClick: function () {
+                        var text = sel.name + '\n' + sel.fn;
+                        if (sel.clinical) text += '\n\nFun Fact: ' + sel.clinical;
+                        if (navigator.clipboard) navigator.clipboard.writeText(text);
+                        if (addToast) addToast('\uD83D\uDCCB Copied ' + sel.name + ' info!', 'success');
+                      },
+                      className: "px-2 py-1.5 rounded-lg text-[10px] font-bold bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    }, '\uD83D\uDCCB Copy')
                   )
                 ),
 
@@ -22306,6 +22746,7 @@
                       var isExplored = (d.exploredOrgans || {})[specimen + '|' + org.id];
                       return React.createElement("button", {
                         key: org.id,
+                        id: 'diss-organ-' + org.id,
                         onClick: function () { upd('selectedOrgan', org.id); },
                         className: "w-full text-left px-2 py-1.5 rounded-lg text-xs hover:bg-slate-50 transition-all flex items-center gap-1.5 " + (d.selectedOrgan === org.id ? 'bg-amber-50 border border-amber-200 font-bold text-amber-800' : 'text-slate-600')
                       },
@@ -22414,9 +22855,45 @@
                     )
                   )
                 ),
+                // Learning Objectives
+                React.createElement("div", { className: "bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl border border-emerald-200 p-3 mb-2" },
+                  React.createElement("div", {
+                    className: "text-[10px] font-bold text-emerald-700 mb-1 cursor-pointer",
+                    onClick: function () { upd('showObjectives', !d.showObjectives); }
+                  }, '\uD83C\uDF93 Learning Objectives ' + (d.showObjectives ? '\u25B2' : '\u25BC')),
+                  d.showObjectives && React.createElement("div", { className: "space-y-1" },
+                    (spec.objectives || [
+                      'Identify major organs and their functions',
+                      'Compare organ systems across body layers',
+                      'Trace the digestive pathway from ingestion to excretion',
+                      'Trace the respiratory pathway and gas exchange',
+                      'Locate and name all structures in each layer',
+                      'Explain how structure relates to function',
+                      'Compare homologous organs across specimens'
+                    ]).map(function (obj, oi) {
+                      var isComplete = (d.completedObjectives || {})[oi];
+                      return React.createElement("div", {
+                        key: oi,
+                        onClick: function () {
+                          var co = Object.assign({}, d.completedObjectives || {});
+                          co[oi] = !co[oi];
+                          upd('completedObjectives', co);
+                        },
+                        className: "flex items-start gap-1.5 text-[10px] cursor-pointer hover:bg-emerald-100 rounded px-1 py-0.5"
+                      },
+                        React.createElement("span", { className: isComplete ? 'text-emerald-600' : 'text-slate-300' }, isComplete ? '\u2705' : '\u2B1C'),
+                        React.createElement("span", { className: isComplete ? 'text-emerald-600 line-through' : 'text-slate-600' }, obj)
+                      );
+                    })
+                  )
+                ),
                 // Glossary panel
                 React.createElement("div", { className: "bg-gradient-to-br from-violet-50 to-purple-50 rounded-xl border border-violet-200 p-3" },
-                  React.createElement("div", { className: "text-[10px] font-bold text-violet-700 mb-1" }, '\uD83D\uDCDA Key Terms'),
+                  React.createElement("div", {
+                    className: "text-[10px] font-bold text-violet-700 mb-1 cursor-pointer",
+                    onClick: function () { upd('showGlossary', d.showGlossary === false ? true : (d.showGlossary === undefined ? false : !d.showGlossary)); }
+                  }, '\uD83D\uDCDA Key Terms ' + (d.showGlossary === false ? '\u25BC' : '\u25B2')),
+                  (d.showGlossary !== false) && React.createElement("div", { className: "space-y-1 max-h-40 overflow-y-auto" },
                   React.createElement("div", { className: "space-y-1 max-h-40 overflow-y-auto" },
                     [
                       { term: 'Dorsal', def: 'Back/upper surface of the organism' },
