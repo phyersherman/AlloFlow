@@ -2227,6 +2227,11 @@
                 color: 'rose', ready: true
               },
               {
+                id: 'dissection', icon: '\uD83D\uDD2C', label: 'Dissection Lab',
+                desc: 'Virtual frog dissection — peel back layers to explore organs, muscles, and skeleton.',
+                color: 'emerald', ready: true
+              },
+              {
                 id: 'brainAtlas', icon: '🧠', label: t('stem.tools_menu.brain_atlas'),
                 desc: 'Detailed cerebral regions, lobes, nuclei and clinical correlations. Lateral, medial, inferior & coronal views.',
                 color: 'purple', ready: true
