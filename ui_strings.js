@@ -5432,7 +5432,7 @@
     },
     "wave": {
       "u26a0_audio_not_supported_in": "\\u26A0 Audio not supported in this browser",
-        "ud83cudfaf_match_the_yellow_dashed": "\\uD83C\\uDFAF Match the yellow dashed wave!",
+        "ud83cudfaf_match_the_yellow_dashed": "\\uD83C\\uDFAF Match the yellow dashed wave!"
     },
     "func_graph": {
       "cell_sim": "Cell Sim"
@@ -5490,7 +5490,7 @@
     },
     "data_plot": {
       "correct": "? Correct! ",
-        "it": "? It\\",
+        "it": "? It\\"
     },
     "inequality": {
       "type_your_answer": "Type your answer..."
@@ -7303,7 +7303,7 @@
       "your_response": "Your Response",
       "your_role": "Your Role",
       "your_role_2": "Your Role:"
-    },
+    }
 
   ,
     "add_notes_hint": "Add notes above or use the mic to dictate",
