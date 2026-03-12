@@ -1,6 +1,6 @@
 # AlloFlow Architecture Guide
 
-*Last Updated: 2026-03-07*
+*Last Updated: 2026-03-11*
 
 ## Product Architecture: The 8 Core Pillars
 
@@ -223,12 +223,14 @@ const apiKey = typeof __firebase_config !== 'undefined'
 
 | Slot | Canvas Mode | Firebase Deploy |
 |---|---|---|
-| `default` | `gemini-2.5-flash` | `gemini-3-flash-preview` |
-| `fallback` | `gemini-2.5-flash` | `gemini-2.5-flash` |
-| `flash` | `gemini-2.5-flash` | `gemini-3-flash-preview` |
-| `tts` | `gemini-2.5-flash-preview-tts` | (same) |
-| `image` | `gemini-2.5-flash-image-preview` | (same) |
-| `safety` | `gemini-2.5-flash-lite` | (same) |
+| `default` | `gemini-3-flash-preview` | `gemini-3-flash-preview` |
+| `fallback` | `gemini-3-flash-preview` | `gemini-3-flash-preview` |
+| `flash` | `gemini-3-flash-preview` | `gemini-3-flash-preview` |
+| `tts` | `gemini-3-flash-preview` | `gemini-2.5-flash-preview-tts` |
+| `vision` | `gemini-3-flash-preview` | `gemini-3-flash-preview` |
+| `image` | `gemini-2.5-flash-image` | `gemini-3.1-flash-image-preview` |
+| `safety` | `gemini-2.5-flash-lite` | `gemini-2.5-flash-lite` |
+| `quality` | `gemini-2.5-pro` | `gemini-3.1-pro-preview` |
 
 ### Troubleshooting Canvas Gemini Failures
 
