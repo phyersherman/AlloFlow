@@ -32509,7 +32509,8 @@
                 className: 'text-slate-400 hover:text-white transition-colors text-lg'
               }, '\u2190'),
               React.createElement('h2', { className: 'text-xl font-bold text-slate-800' }, '\uD83D\uDCB0 Economics Lab'),
-              React.createElement('span', { className: 'text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full' }, '4 simulators')
+              React.createElement('span', { className: 'text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full' }, '5 simulators'),
+              React.createElement('span', { className: 'text-[9px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200' }, '\uD83D\uDCDA AI-Powered Learning')
             ),
             // Tab bar
             React.createElement('div', { className: 'flex gap-1 mb-4 bg-slate-100 rounded-xl p-1' },
@@ -32544,7 +32545,43 @@
               style: { height: '250px', background: '#0f172a' }
             }),
             // Controls (below canvas, based on active tab)
-            econTab === 'supplyDemand' && React.createElement('div', { className: 'mt-4 grid grid-cols-2 gap-4' },
+            econTab === 'supplyDemand' && React.createElement('div', { className: 'mt-4' },
+              // Educational Concept Panel
+              React.createElement('div', { className: 'bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200 mb-4' },
+                React.createElement('h4', { className: 'text-sm font-bold text-blue-800 mb-2' }, '\uD83D\uDCDA Key Concepts'),
+                React.createElement('div', { className: 'grid grid-cols-2 gap-3 text-[10px] text-slate-600 leading-relaxed' },
+                  React.createElement('div', null,
+                    React.createElement('span', { className: 'font-bold text-blue-700' }, 'Law of Demand: '),
+                    'As price \u2191, quantity demanded \u2193. Consumers buy less when prices rise. The demand curve slopes downward.'
+                  ),
+                  React.createElement('div', null,
+                    React.createElement('span', { className: 'font-bold text-red-600' }, 'Law of Supply: '),
+                    'As price \u2191, quantity supplied \u2191. Producers make more when prices are high. The supply curve slopes upward.'
+                  ),
+                  React.createElement('div', null,
+                    React.createElement('span', { className: 'font-bold text-amber-600' }, 'Equilibrium: '),
+                    'Where supply meets demand. This "E" point sets the market price (P*) and quantity (Q*) automatically.'
+                  ),
+                  React.createElement('div', null,
+                    React.createElement('span', { className: 'font-bold text-emerald-600' }, 'Shifts vs. Movements: '),
+                    'Changing the price moves ALONG a curve. External factors (technology, income, preferences) SHIFT the entire curve.'
+                  )
+                ),
+                // Dynamic educational feedback based on current slider values
+                (sdPriceFloor > 0 || sdPriceCeiling > 0 || sdTax > 0 || sdDemandShift !== 0 || sdSupplyShift !== 0) && React.createElement('div', { className: 'mt-3 bg-white rounded-lg p-3 border border-blue-100' },
+                  React.createElement('h5', { className: 'text-[10px] font-bold text-indigo-700 mb-1' }, '\uD83D\uDCA1 What\'s Happening Right Now:'),
+                  React.createElement('div', { className: 'text-[10px] text-slate-600 space-y-1' },
+                    sdDemandShift > 0 && React.createElement('p', null, '\u25B6 Demand shifted RIGHT \u2014 More people want this product (maybe income rose, or a trend made it popular). This raises both equilibrium price AND quantity.'),
+                    sdDemandShift < 0 && React.createElement('p', null, '\u25B6 Demand shifted LEFT \u2014 Fewer people want this product (substitute became cheaper, or preferences changed). Both price AND quantity fall.'),
+                    sdSupplyShift > 0 && React.createElement('p', null, '\u25B6 Supply shifted RIGHT \u2014 Producers can make more cheaply (new technology, lower input costs). Price falls, but quantity rises.'),
+                    sdSupplyShift < 0 && React.createElement('p', null, '\u25B6 Supply shifted LEFT \u2014 Production became harder (natural disaster, regulations). Price rises, but quantity falls.'),
+                    sdPriceFloor > 0 && React.createElement('p', null, '\u25B6 Price Floor at $' + sdPriceFloor + ' \u2014 Government sets a MINIMUM price (e.g., minimum wage). If above equilibrium: creates SURPLUS (quantity supplied > quantity demanded). Workers want jobs, but firms hire fewer.'),
+                    sdPriceCeiling > 0 && React.createElement('p', null, '\u25B6 Price Ceiling at $' + sdPriceCeiling + ' \u2014 Government sets a MAXIMUM price (e.g., rent control). If below equilibrium: creates SHORTAGE (quantity demanded > quantity supplied). Everyone wants it, but not enough is produced.'),
+                    sdTax > 0 && React.createElement('p', null, '\u25B6 Tax of $' + sdTax + ' \u2014 Government adds a per-unit tax. This creates a "tax wedge" between what buyers pay and sellers receive. Both sides bear some of the tax burden. This creates DEADWEIGHT LOSS \u2014 transactions that would have benefited both parties no longer happen.')
+                  )
+                )
+              ),
+              React.createElement('div', { className: 'grid grid-cols-2 gap-4' },
               React.createElement('div', { className: 'space-y-3 bg-blue-50 rounded-xl p-4 border border-blue-200' },
                 React.createElement('h4', { className: 'text-sm font-bold text-blue-700' }, '\uD83D\uDCC9 Curve Shifts'),
                 React.createElement('label', { className: 'block text-xs text-blue-600' }, 'Demand Shift: ' + sdDemandShift),
@@ -32570,6 +32607,7 @@
                 React.createElement('input', { type: 'range', min: 0, max: 30, value: sdTax,
                   onChange: function(e) { upd('sdTax', parseInt(e.target.value)); },
                   className: 'w-full accent-purple-500' })
+              )
               ),
               // AI Scenario Generator
               React.createElement('div', { className: 'col-span-2 bg-gradient-to-r from-violet-50 to-purple-50 rounded-xl p-4 border border-violet-200' },
@@ -32581,6 +32619,10 @@
                     React.createElement('div', { className: 'flex gap-2 mt-2 text-[10px]' },
                       React.createElement('span', { className: 'text-blue-600 font-bold' }, 'Demand: ' + (d.sdScenario.demandShift > 0 ? '+' : '') + d.sdScenario.demandShift),
                       React.createElement('span', { className: 'text-red-600 font-bold' }, 'Supply: ' + (d.sdScenario.supplyShift > 0 ? '+' : '') + d.sdScenario.supplyShift)
+                    ),
+                    d.sdScenario.lesson && React.createElement('div', { className: 'mt-2 bg-violet-100 rounded-lg px-3 py-2 text-[10px] text-violet-800 border border-violet-200' },
+                      React.createElement('span', { className: 'font-bold' }, '\uD83D\uDCDA Concept: '),
+                      d.sdScenario.lesson
                     )
                   ),
                   React.createElement('button', {
@@ -32601,7 +32643,7 @@
                 ) : React.createElement('button', {
                   onClick: function() {
                     upd('sdLoading', true);
-                    var prompt = 'You are an economics teacher. Generate a real-world supply and demand scenario for students.\n\nReturn ONLY valid JSON:\n{"title":"<short scenario title>","explanation":"<2-3 sentences explaining what happened and why it shifts supply/demand>","demandShift":<integer -5 to 5>,"supplyShift":<integer -5 to 5>,"priceFloor":<0 or number if relevant>,"priceCeiling":<0 or number if relevant>,"tax":<0 or number if relevant>}\n\nExamples: new iPhone launch (demand +3), oil embargo (supply -4), minimum wage law (price floor 40), rent control (price ceiling 30), sugar tax (tax 5). Be creative and educational.';
+                    var prompt = 'You are an economics teacher. Generate a real-world supply and demand scenario for students.\n\nReturn ONLY valid JSON:\n{"title":"<short scenario title>","explanation":"<2-3 sentences explaining what happened and why it shifts supply/demand>","demandShift":<integer -5 to 5>,"supplyShift":<integer -5 to 5>,"priceFloor":<0 or number if relevant>,"priceCeiling":<0 or number if relevant>,"tax":<0 or number if relevant>}\n\nExamples: new iPhone launch (demand +3), oil embargo (supply -4), minimum wage law (price floor 40), rent control (price ceiling 30), sugar tax (tax 5). Be creative.\n\nIMPORTANT: Include a "lesson" field with a 1-2 sentence economics concept (e.g., elasticity, substitute goods, complement goods, deadweight loss, consumer surplus, producer surplus, market failure, externalities, public goods).';
                     callGemini(prompt, true).then(function(result) {
                       try {
                         var cleaned = result.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
@@ -32625,7 +32667,11 @@
                   React.createElement('span', { className: 'text-3xl' }, d.lifeEvent.emoji || '\uD83C\uDFB2'),
                   React.createElement('div', null,
                     React.createElement('h4', { className: 'text-sm font-bold text-slate-800' }, d.lifeEvent.title || 'Life Event'),
-                    React.createElement('p', { className: 'text-xs text-slate-600 mt-1 leading-relaxed' }, d.lifeEvent.description)
+                    React.createElement('p', { className: 'text-xs text-slate-600 mt-1 leading-relaxed' }, d.lifeEvent.description),
+                    d.lifeEvent.lesson && React.createElement('div', { className: 'mt-2 bg-indigo-100 rounded-lg px-3 py-2 text-[10px] text-indigo-800 border border-indigo-200' },
+                      React.createElement('span', { className: 'font-bold' }, '\uD83D\uDCDA Economics Concept: '),
+                      d.lifeEvent.lesson
+                    )
                   )
                 ),
                 React.createElement('div', { className: 'grid gap-2' },
@@ -32682,7 +32728,7 @@
               !d.lifeEvent && React.createElement('button', {
                 onClick: function() {
                   upd('pfLoading', true);
-                  var prompt = 'You are a life simulation game engine. The player is ' + (d.pfAge || 22) + ' years old, earns $' + (d.pfSalary || 35000).toLocaleString() + '/year, has $' + (d.pfCash || 2000).toLocaleString() + ' in savings, $' + (d.pfDebt || 0).toLocaleString() + ' in debt, and ' + (d.pfHappiness || 70) + '% happiness.\n\nGenerate a realistic random life event with 3 choices. Return ONLY valid JSON:\n{"emoji":"<single emoji>","title":"<short title>","description":"<2-3 sentence scenario>","choices":[{"label":"<action description>","effect":{"cash":<number>,"debt":<number>,"salary":<number>,"happiness":<number>,"credit":<number -50 to 50>}}]}\n\nExamples of events: car breakdown, promotion opportunity, medical emergency, investment opportunity, wedding invitation, surprise inheritance, job offer in new city, appliance repair, apartment vacancy, side hustle opportunity, tax refund, parking ticket. Make effects realistic. Cash effects should be -5000 to +10000 range for most events. Salary changes should be -5000 to +15000 range. Happiness -20 to +20.';
+                  var prompt = 'You are a life simulation game engine. The player is ' + (d.pfAge || 22) + ' years old, earns $' + (d.pfSalary || 35000).toLocaleString() + '/year, has $' + (d.pfCash || 2000).toLocaleString() + ' in savings, $' + (d.pfDebt || 0).toLocaleString() + ' in debt, and ' + (d.pfHappiness || 70) + '% happiness.\n\nGenerate a realistic random life event with 3 choices. Return ONLY valid JSON:\n{"emoji":"<single emoji>","title":"<short title>","description":"<2-3 sentence scenario>","choices":[{"label":"<action description>","effect":{"cash":<number>,"debt":<number>,"salary":<number>,"happiness":<number>,"credit":<number -50 to 50>}}]}\n\nExamples of events: car breakdown, promotion opportunity, medical emergency, investment opportunity, wedding invitation, surprise inheritance, job offer in new city, appliance repair, apartment vacancy, side hustle opportunity, tax refund, parking ticket. Make effects realistic. Cash effects should be -5000 to +10000 range. Salary changes should be -5000 to +15000 range. Happiness -20 to +20. Credit -50 to +50.\n\nIMPORTANT: Include a "lesson" field in your JSON with a 1-2 sentence financial literacy lesson explaining the real-world economics behind this event (e.g., compound interest, opportunity cost, inflation, risk vs. reward, emergency funds, diversification). Format: {"emoji":"...","title":"...","description":"...","lesson":"<financial literacy concept>","choices":[...]}';
                   callGemini(prompt, true).then(function(result) {
                     try {
                       var cleaned = result.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
@@ -32779,7 +32825,11 @@
               d.smNewsEvent ? React.createElement('div', { className: 'bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl p-4 border border-amber-200 mb-3' },
                 React.createElement('h4', { className: 'text-sm font-bold text-amber-800' }, '\uD83D\uDCF0 ' + (d.smNewsEvent.headline || 'Breaking News')),
                 React.createElement('p', { className: 'text-xs text-amber-700 mt-1' }, d.smNewsEvent.analysis || ''),
-                React.createElement('div', { className: 'text-[10px] text-amber-600 mt-2 font-bold' }, 'Impact: ' + (d.smNewsEvent.impact > 0 ? '\u25B2 +' : '\u25BC ') + (d.smNewsEvent.impact * 100).toFixed(1) + '%')
+                React.createElement('div', { className: 'text-[10px] text-amber-600 mt-2 font-bold' }, 'Impact: ' + (d.smNewsEvent.impact > 0 ? '\u25B2 +' : '\u25BC ') + (d.smNewsEvent.impact * 100).toFixed(1) + '%'),
+                d.smNewsEvent.lesson && React.createElement('div', { className: 'mt-2 bg-amber-100 rounded-lg px-3 py-2 text-[10px] text-amber-800 border border-amber-200' },
+                  React.createElement('span', { className: 'font-bold' }, '\uD83D\uDCDA Investing Concept: '),
+                  d.smNewsEvent.lesson
+                )
               ) : null,
               // Buy/Sell + Next Day
               React.createElement('div', { className: 'flex gap-3 mb-3' },
@@ -32814,7 +32864,7 @@
                   onClick: function() {
                     upd('smLoading', true);
                     var co4 = smCompanies[smSelected];
-                    var prompt = 'You are a financial news AI for an educational stock market simulator. Generate a market news event. Currently tracking: ' + smCompanies.map(function(c){return c.ticker + ' (' + c.name + ', ' + c.sector + ') @ $' + c.price.toFixed(2);}).join(', ') + '.\n\nReturn ONLY valid JSON:\n{"headline":"<breaking news headline>","analysis":"<1-2 sentence market analysis>","impacts":[{"ticker":"<TICKER>","change":<decimal between -0.15 and 0.15>}]}\n\nGenerate realistic business news (earnings beats/misses, product launches, lawsuits, FDA approvals, partnerships, market trends). Impact 1-3 companies per event.';
+                    var prompt = 'You are a financial news AI for an educational stock market simulator. Generate a market news event. Currently tracking: ' + smCompanies.map(function(c){return c.ticker + ' (' + c.name + ', ' + c.sector + ') @ $' + c.price.toFixed(2);}).join(', ') + '.\n\nReturn ONLY valid JSON:\n{"headline":"<breaking news headline>","analysis":"<1-2 sentence market analysis>","impacts":[{"ticker":"<TICKER>","change":<decimal between -0.15 and 0.15>}]}\n\nGenerate realistic business news. Impact 1-3 companies.\n\nIMPORTANT: Include a "lesson" field with a 1-2 sentence investing/market concept explanation (e.g., diversification, P/E ratios, market sentiment, bull vs bear markets, risk tolerance, dollar-cost averaging, index funds, short selling, market capitalization, dividends).\n\nFormat: {"headline":"...","analysis":"...","lesson":"<investing concept>","impacts":[{"ticker":"...","change":<decimal>}]}';
                     callGemini(prompt, true).then(function(result) {
                       try {
                         var cleaned = result.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
@@ -32834,7 +32884,7 @@
                         });
                         upd('smCompanies', newCos);
                         upd('smDay', smDay + 1);
-                        upd('smNewsEvent', { headline: parsed.headline, analysis: parsed.analysis, impact: maxImpact });
+                        upd('smNewsEvent', { headline: parsed.headline, analysis: parsed.analysis, impact: maxImpact, lesson: parsed.lesson });
                         upd('smLoading', false);
                       } catch(e) {
                         console.error('[StockSim] Parse error:', e);
@@ -32938,7 +32988,11 @@
                     React.createElement('span', { className: 'text-2xl' }, d.enBizEvent.emoji || '\u26A1'),
                     React.createElement('div', null,
                       React.createElement('h4', { className: 'text-sm font-bold text-purple-800' }, d.enBizEvent.title),
-                      React.createElement('p', { className: 'text-xs text-purple-600 mt-1' }, d.enBizEvent.description)
+                      React.createElement('p', { className: 'text-xs text-purple-600 mt-1' }, d.enBizEvent.description),
+                      d.enBizEvent.lesson && React.createElement('div', { className: 'mt-2 bg-purple-100 rounded-lg px-3 py-2 text-[10px] text-purple-800 border border-purple-200' },
+                        React.createElement('span', { className: 'font-bold' }, '\uD83D\uDCDA Business Concept: '),
+                        d.enBizEvent.lesson
+                      )
                     )
                   ),
                   React.createElement('div', { className: 'grid gap-2' },
@@ -32970,7 +33024,7 @@
                   onClick: function() {
                     upd('enBizLoading', true);
                     var biz = d.enBusiness;
-                    var prompt = 'You are a business simulation game engine. The player runs "' + biz.businessName + '" (a ' + (d.enInput || 'business') + '). Day ' + (d.enBizDay || 1) + ', cash: $' + (d.enBizCash || 0) + ', reputation: ' + (d.enBizRep || 50) + '/100. They sell ' + biz.unitName + ' at $' + (d.enBizPrice || biz.suggestedPrice) + ' each. Daily fixed costs: $' + biz.dailyFixedCosts + ', unit cost: $' + biz.unitCost + '. They have ' + (d.enBizEmployees || 0) + ' employees (each costs $80/day but increases max customers by 20%).\n\nSimulate today and generate an event. Return ONLY valid JSON:\n{"customersToday":<number>,"revenue":<number>,"costs":<number>,"emoji":"<emoji>","title":"<event title>","description":"<what happened today + the event>","choices":[{"label":"<option>","effect":{"cash":<number>,"reputation":<number>,"employees":<number or 0>}}]}\n\nMake daily customers based on reputation (higher rep = more customers, max ' + biz.maxDailyCustomers + '). Include a realistic business challenge/opportunity as the event with 2-3 meaningful choices.';
+                    var prompt = 'You are a business simulation game engine. The player runs "' + biz.businessName + '" (a ' + (d.enInput || 'business') + '). Day ' + (d.enBizDay || 1) + ', cash: $' + (d.enBizCash || 0) + ', reputation: ' + (d.enBizRep || 50) + '/100. They sell ' + biz.unitName + ' at $' + (d.enBizPrice || biz.suggestedPrice) + ' each. Daily fixed costs: $' + biz.dailyFixedCosts + ', unit cost: $' + biz.unitCost + '. They have ' + (d.enBizEmployees || 0) + ' employees (each costs $80/day but increases max customers by 20%).\n\nSimulate today and generate an event. Return ONLY valid JSON:\n{"customersToday":<number>,"revenue":<number>,"costs":<number>,"emoji":"<emoji>","title":"<event title>","description":"<what happened today + the event>","choices":[{"label":"<option>","effect":{"cash":<number>,"reputation":<number>,"employees":<number or 0>}}]}\n\nMake daily customers based on reputation (higher rep = more customers, max ' + biz.maxDailyCustomers + '). Include a realistic challenge with 2-3 choices.\n\nIMPORTANT: Include a "lesson" field with a 1-2 sentence business/entrepreneurship concept (e.g., break-even analysis, profit margins, customer acquisition cost, cash flow management, competitive advantage, economies of scale, marketing ROI, supply chain, pivot strategy, unit economics, customer retention vs acquisition).';
                     callGemini(prompt, true).then(function(result) {
                       try {
                         var cleaned = result.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
