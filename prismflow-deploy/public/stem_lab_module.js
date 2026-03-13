@@ -32341,21 +32341,43 @@
               var canvas = canvasRef.current;
               var ctx = canvas.getContext('2d');
               var w = canvas.width = canvas.offsetWidth;
-              var h = canvas.height = Math.min(480, canvas.offsetWidth * 0.85);
-              ctx.fillStyle = '#0f172a'; ctx.fillRect(0, 0, w, h);
-              // Starfield
-              for (var si = 0; si < 80; si++) {
-                ctx.fillStyle = 'rgba(255,255,255,' + (0.15 + ((si * 31) % 8) * 0.08) + ')';
-                ctx.fillRect((si * 7919 + 12345) % w, (si * 6271 + 54321) % h, 1.5, 1.5);
+              var h = canvas.height = Math.min(520, canvas.offsetWidth * 0.9);
+              var animPhase = (Date.now() / 1000) % (Math.PI * 2);
+
+              // Season-tinted background
+              var seasonBGs = { bloom: '#0a1a0f', dry: '#1a0f0a', storm: '#0a0f1a', calm: '#0f172a' };
+              var bgCol = seasonBGs[(seasonCycle || {}).id] || '#0f172a';
+              ctx.fillStyle = bgCol; ctx.fillRect(0, 0, w, h);
+
+              // Enhanced starfield with twinkling
+              for (var si = 0; si < 120; si++) {
+                var sx = (si * 7919 + 12345) % w; var sy = (si * 6271 + 54321) % h;
+                var twinkle = 0.15 + Math.sin(animPhase + si * 0.5) * 0.15 + ((si * 31) % 8) * 0.06;
+                var starSize = si < 10 ? 2.5 : si < 30 ? 2 : 1.5;
+                ctx.fillStyle = si < 5 ? 'rgba(200,220,255,' + twinkle + ')' : 'rgba(255,255,255,' + twinkle + ')';
+                ctx.beginPath(); ctx.arc(sx, sy, starSize / 2, 0, Math.PI * 2); ctx.fill();
               }
-              var tileSize = Math.floor(Math.min((w - 40) / mapSize, (h - 50) / mapSize));
+
+              // Nebula glow (season-colored)
+              var nebulaColors = { bloom: 'rgba(34,197,94,0.03)', dry: 'rgba(234,179,8,0.03)', storm: 'rgba(59,130,246,0.04)', calm: 'rgba(139,92,246,0.03)' };
+              var nebCol = nebulaColors[(seasonCycle || {}).id] || 'rgba(139,92,246,0.03)';
+              var nebGrad = ctx.createRadialGradient(w * 0.3, h * 0.4, 0, w * 0.3, h * 0.4, w * 0.5);
+              nebGrad.addColorStop(0, nebCol); nebGrad.addColorStop(1, 'transparent');
+              ctx.fillStyle = nebGrad; ctx.fillRect(0, 0, w, h);
+
+              var tileSize = Math.floor(Math.min((w - 40) / mapSize, (h - 60) / mapSize));
               var offsetX = Math.floor((w - tileSize * mapSize) / 2);
-              var offsetY = 25;
-              // Title
-              ctx.font = 'bold 13px Inter, system-ui'; ctx.fillStyle = '#e2e8f0';
-              ctx.fillText('\uD83D\uDE80 KEPLER COLONY', offsetX, 17);
-              ctx.font = '10px Inter, system-ui'; ctx.fillStyle = '#64748b';
-              ctx.fillText('Turn ' + turn + ' | Pop: ' + settlers.length, w - 130, 17);
+              var offsetY = 30;
+
+              // Title bar with season + era badges
+              var seasonIcons = { bloom: '\uD83C\uDF3C', dry: '\uD83C\uDF35', storm: '\u26C8\uFE0F', calm: '\u2728' };
+              ctx.font = 'bold 14px Inter, system-ui'; ctx.fillStyle = '#e2e8f0';
+              ctx.fillText('\uD83D\uDE80 KEPLER COLONY', offsetX, 20);
+              ctx.font = '10px Inter, system-ui'; ctx.fillStyle = '#94a3b8';
+              ctx.fillText((seasonIcons[(seasonCycle || {}).id] || '\u2728') + ' ' + ((seasonDefs[(seasonCycle || {}).index] || {}).name || 'Calm'), w / 2 - 30, 20);
+              ctx.fillStyle = '#64748b';
+              ctx.fillText('T' + turn + ' | \uD83D\uDC65' + settlers.length + ' | \uD83C\uDFD7\uFE0F' + buildings.length, w - 135, 20);
+
               // Tiles
               var tiles = mapData.tiles;
               for (var ti = 0; ti < tiles.length; ti++) {
@@ -32363,61 +32385,206 @@
                 var tx = offsetX + tile.x * tileSize;
                 var ty = offsetY + tile.y * tileSize;
                 if (!tile.explored) {
-                  ctx.fillStyle = '#1e293b'; ctx.fillRect(tx, ty, tileSize - 1, tileSize - 1);
-                  ctx.fillStyle = '#334155'; ctx.font = (tileSize * 0.4) + 'px sans-serif';
-                  ctx.fillText('?', tx + tileSize * 0.35, ty + tileSize * 0.65);
+                  // Fog of war with gradient edge detection
+                  var nearExplored = false;
+                  for (var dx2 = -1; dx2 <= 1; dx2++) {
+                    for (var dy2 = -1; dy2 <= 1; dy2++) {
+                      if (dx2 === 0 && dy2 === 0) continue;
+                      var ni2 = (tile.y + dy2) * mapSize + (tile.x + dx2);
+                      if (ni2 >= 0 && ni2 < tiles.length && tiles[ni2].explored) nearExplored = true;
+                    }
+                  }
+                  if (nearExplored) {
+                    // Glowing fog edge
+                    var fogGrad = ctx.createRadialGradient(tx + tileSize/2, ty + tileSize/2, 0, tx + tileSize/2, ty + tileSize/2, tileSize);
+                    fogGrad.addColorStop(0, 'rgba(51,65,85,0.6)'); fogGrad.addColorStop(1, 'rgba(30,41,59,0.95)');
+                    ctx.fillStyle = fogGrad; ctx.fillRect(tx, ty, tileSize - 1, tileSize - 1);
+                    ctx.fillStyle = 'rgba(100,116,139,0.4)'; ctx.font = (tileSize * 0.35) + 'px sans-serif';
+                    ctx.fillText('?', tx + tileSize * 0.35, ty + tileSize * 0.65);
+                  } else {
+                    ctx.fillStyle = '#1e293b'; ctx.fillRect(tx, ty, tileSize - 1, tileSize - 1);
+                  }
                 } else {
-                  ctx.globalAlpha = 0.85; ctx.fillStyle = tile.color;
+                  // Gradient terrain fill
+                  var tGrad = ctx.createLinearGradient(tx, ty, tx + tileSize, ty + tileSize);
+                  tGrad.addColorStop(0, tile.color);
+                  tGrad.addColorStop(1, tile.type === 'ocean' ? '#1e40af' : tile.type === 'mountain' ? '#44403c' : tile.type === 'forest' ? '#14532d' : tile.type === 'volcanic' ? '#7f1d1d' : tile.type === 'ice' ? '#e0f2fe' : tile.type === 'radiation' ? '#3b0764' : tile.type === 'colony' ? '#1e3a5f' : tile.color);
+                  ctx.globalAlpha = 0.9; ctx.fillStyle = tGrad;
                   ctx.fillRect(tx, ty, tileSize - 1, tileSize - 1); ctx.globalAlpha = 1;
+
+                  // Terrain detail drawing
                   if (tile.type === 'ocean') {
-                    ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 0.5;
+                    var waveOff = Math.sin(animPhase + tile.x * 0.5) * 2;
+                    ctx.strokeStyle = 'rgba(147,197,253,0.35)'; ctx.lineWidth = 0.7;
                     for (var wi = 0; wi < 3; wi++) {
-                      ctx.beginPath(); ctx.moveTo(tx + 2, ty + tileSize * (0.3 + wi * 0.22));
-                      ctx.quadraticCurveTo(tx + tileSize/2, ty + tileSize * (0.2 + wi * 0.22), tx + tileSize - 3, ty + tileSize * (0.35 + wi * 0.22));
+                      ctx.beginPath(); ctx.moveTo(tx + 2, ty + tileSize * (0.3 + wi * 0.22) + waveOff);
+                      ctx.quadraticCurveTo(tx + tileSize/2, ty + tileSize * (0.2 + wi * 0.22) - waveOff, tx + tileSize - 3, ty + tileSize * (0.35 + wi * 0.22) + waveOff);
                       ctx.stroke();
                     }
                   } else if (tile.type === 'mountain') {
-                    ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 1; ctx.beginPath();
-                    ctx.moveTo(tx + tileSize * 0.2, ty + tileSize * 0.8);
-                    ctx.lineTo(tx + tileSize * 0.5, ty + tileSize * 0.2);
-                    ctx.lineTo(tx + tileSize * 0.8, ty + tileSize * 0.8); ctx.stroke();
+                    // Mountain range with snow caps
+                    ctx.fillStyle = 'rgba(120,113,108,0.5)'; ctx.beginPath();
+                    ctx.moveTo(tx + tileSize * 0.15, ty + tileSize * 0.82);
+                    ctx.lineTo(tx + tileSize * 0.35, ty + tileSize * 0.25);
+                    ctx.lineTo(tx + tileSize * 0.55, ty + tileSize * 0.6);
+                    ctx.lineTo(tx + tileSize * 0.7, ty + tileSize * 0.18);
+                    ctx.lineTo(tx + tileSize * 0.88, ty + tileSize * 0.82);
+                    ctx.closePath(); ctx.fill();
+                    // Snow cap
+                    ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.beginPath();
+                    ctx.moveTo(tx + tileSize * 0.3, ty + tileSize * 0.33);
+                    ctx.lineTo(tx + tileSize * 0.35, ty + tileSize * 0.25);
+                    ctx.lineTo(tx + tileSize * 0.4, ty + tileSize * 0.33); ctx.fill();
+                    ctx.beginPath();
+                    ctx.moveTo(tx + tileSize * 0.65, ty + tileSize * 0.26);
+                    ctx.lineTo(tx + tileSize * 0.7, ty + tileSize * 0.18);
+                    ctx.lineTo(tx + tileSize * 0.75, ty + tileSize * 0.26); ctx.fill();
                   } else if (tile.type === 'volcanic') {
-                    ctx.fillStyle = 'rgba(239,68,68,0.4)'; ctx.beginPath();
-                    ctx.arc(tx + tileSize/2, ty + tileSize/2, tileSize * 0.2, 0, Math.PI * 2); ctx.fill();
+                    // Lava glow with pulsing
+                    var lavaGlow = 0.3 + Math.sin(animPhase * 2 + tile.x) * 0.15;
+                    ctx.fillStyle = 'rgba(239,68,68,' + lavaGlow + ')'; ctx.beginPath();
+                    ctx.arc(tx + tileSize/2, ty + tileSize/2, tileSize * 0.22, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = 'rgba(251,191,36,' + (lavaGlow * 0.5) + ')'; ctx.beginPath();
+                    ctx.arc(tx + tileSize/2, ty + tileSize/2, tileSize * 0.12, 0, Math.PI * 2); ctx.fill();
                   } else if (tile.type === 'colony') {
-                    ctx.fillStyle = '#f8fafc'; ctx.fillRect(tx + 2, ty + 2, tileSize - 5, tileSize - 5);
+                    // Enhanced colony with building count + glow
+                    var colGlow = 0.15 + Math.sin(animPhase) * 0.05;
+                    ctx.fillStyle = 'rgba(59,130,246,' + colGlow + ')';
+                    ctx.fillRect(tx, ty, tileSize - 1, tileSize - 1);
+                    ctx.fillStyle = '#e0f2fe'; ctx.fillRect(tx + 3, ty + 3, tileSize - 7, tileSize - 7);
+                    // Dome
                     ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 2; ctx.beginPath();
-                    ctx.arc(tx + tileSize/2, ty + tileSize * 0.55, tileSize * 0.25, Math.PI, 0); ctx.stroke();
-                    ctx.moveTo(tx + tileSize * 0.25, ty + tileSize * 0.55);
-                    ctx.lineTo(tx + tileSize * 0.75, ty + tileSize * 0.55); ctx.stroke();
+                    ctx.arc(tx + tileSize/2, ty + tileSize * 0.5, tileSize * 0.22, Math.PI, 0); ctx.stroke();
+                    ctx.moveTo(tx + tileSize * 0.28, ty + tileSize * 0.5);
+                    ctx.lineTo(tx + tileSize * 0.72, ty + tileSize * 0.5); ctx.stroke();
+                    // Building count badge
+                    ctx.fillStyle = '#1e40af'; ctx.beginPath();
+                    ctx.arc(tx + tileSize * 0.82, ty + tileSize * 0.2, tileSize * 0.13, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = '#fff'; ctx.font = 'bold ' + (tileSize * 0.15) + 'px sans-serif';
+                    ctx.fillText(String(buildings.length), tx + tileSize * 0.75, ty + tileSize * 0.25);
+                    // Pop count
+                    ctx.fillStyle = '#166534'; ctx.beginPath();
+                    ctx.arc(tx + tileSize * 0.18, ty + tileSize * 0.2, tileSize * 0.13, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = '#fff'; ctx.font = (tileSize * 0.13) + 'px sans-serif';
+                    ctx.fillText(String(settlers.length), tx + tileSize * 0.1, ty + tileSize * 0.25);
                   } else if (tile.type === 'radiation') {
-                    ctx.strokeStyle = 'rgba(168,85,247,0.5)'; ctx.lineWidth = 0.5;
+                    // Pulsing radiation rings
+                    var radGlow = 0.3 + Math.sin(animPhase * 1.5 + tile.y) * 0.2;
+                    ctx.strokeStyle = 'rgba(168,85,247,' + radGlow + ')'; ctx.lineWidth = 0.8;
                     for (var ri = 0; ri < 3; ri++) { ctx.beginPath(); ctx.arc(tx + tileSize/2, ty + tileSize/2, tileSize * (0.08 + ri * 0.1), 0, Math.PI * 2); ctx.stroke(); }
                   } else if (tile.type === 'ice') {
-                    ctx.fillStyle = 'rgba(255,255,255,0.3)';
-                    ctx.fillRect(tx + tileSize * 0.3, ty + tileSize * 0.3, 3, 3);
-                    ctx.fillRect(tx + tileSize * 0.6, ty + tileSize * 0.5, 2, 2);
+                    // Ice crystal sparkles
+                    ctx.fillStyle = 'rgba(255,255,255,' + (0.3 + Math.sin(animPhase + ti) * 0.15) + ')';
+                    var icePositions = [[0.25,0.25],[0.55,0.35],[0.35,0.65],[0.7,0.6],[0.5,0.2]];
+                    icePositions.forEach(function(ip) { ctx.fillRect(tx + tileSize * ip[0], ty + tileSize * ip[1], 2.5, 2.5); });
+                  } else if (tile.type === 'forest') {
+                    // Tree canopy dots
+                    ctx.fillStyle = 'rgba(34,197,94,0.5)';
+                    var treePos = [[0.3,0.3],[0.6,0.25],[0.45,0.55],[0.2,0.65],[0.7,0.6]];
+                    treePos.forEach(function(tp2) { ctx.beginPath(); ctx.arc(tx + tileSize * tp2[0], ty + tileSize * tp2[1], tileSize * 0.08, 0, Math.PI * 2); ctx.fill(); });
                   }
-                  if (tile.hasAnomaly) { ctx.fillStyle = '#facc15'; ctx.font = 'bold ' + (tileSize * 0.3) + 'px sans-serif'; ctx.fillText('!', tx + tileSize * 0.75, ty + tileSize * 0.3); }
-                  // Draw outpost
+
+                  // Pulsing anomaly glow
+                  if (tile.hasAnomaly) {
+                    var anomGlow = 0.5 + Math.sin(animPhase * 3) * 0.3;
+                    ctx.fillStyle = 'rgba(250,204,21,' + (anomGlow * 0.2) + ')';
+                    ctx.beginPath(); ctx.arc(tx + tileSize * 0.78, ty + tileSize * 0.22, tileSize * 0.18, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = 'rgba(250,204,21,' + anomGlow + ')'; ctx.font = 'bold ' + (tileSize * 0.28) + 'px sans-serif';
+                    ctx.fillText('!', tx + tileSize * 0.72, ty + tileSize * 0.32);
+                  }
+
+                  // Enhanced outpost with flag
                   var tiKey = tile.x + ',' + tile.y;
                   if (tileImprovements[tiKey]) {
-                    ctx.fillStyle = '#f97316'; ctx.beginPath(); ctx.arc(tx + tileSize * 0.85, ty + tileSize * 0.85, tileSize * 0.08, 0, Math.PI * 2); ctx.fill();
-                    ctx.strokeStyle = '#fdba74'; ctx.lineWidth = 0.5; ctx.stroke();
+                    ctx.fillStyle = '#f97316'; ctx.beginPath();
+                    ctx.arc(tx + tileSize * 0.85, ty + tileSize * 0.82, tileSize * 0.1, 0, Math.PI * 2); ctx.fill();
+                    ctx.strokeStyle = '#fdba74'; ctx.lineWidth = 1; ctx.stroke();
+                    // Flag pole
+                    ctx.strokeStyle = '#fdba74'; ctx.lineWidth = 1; ctx.beginPath();
+                    ctx.moveTo(tx + tileSize * 0.85, ty + tileSize * 0.72); ctx.lineTo(tx + tileSize * 0.85, ty + tileSize * 0.82); ctx.stroke();
+                    ctx.fillStyle = '#fb923c'; ctx.fillRect(tx + tileSize * 0.85, ty + tileSize * 0.72, tileSize * 0.08, tileSize * 0.05);
                   }
+
+                  // Terrain emoji
                   ctx.font = (tileSize * 0.3) + 'px sans-serif'; ctx.fillText(tile.icon, tx + 2, ty + tileSize - 3);
                 }
+
+                // Selection highlight with animated corners
                 if (selectedTile && selectedTile.x === tile.x && selectedTile.y === tile.y) {
-                  ctx.strokeStyle = '#facc15'; ctx.lineWidth = 2; ctx.strokeRect(tx, ty, tileSize - 1, tileSize - 1);
+                  ctx.strokeStyle = '#facc15'; ctx.lineWidth = 2.5;
+                  ctx.strokeRect(tx + 1, ty + 1, tileSize - 3, tileSize - 3);
+                  // Corner accents
+                  ctx.strokeStyle = '#fef08a'; ctx.lineWidth = 2;
+                  var cs = tileSize * 0.2;
+                  ctx.beginPath(); ctx.moveTo(tx, ty + cs); ctx.lineTo(tx, ty); ctx.lineTo(tx + cs, ty); ctx.stroke();
+                  ctx.beginPath(); ctx.moveTo(tx + tileSize - cs - 1, ty); ctx.lineTo(tx + tileSize - 1, ty); ctx.lineTo(tx + tileSize - 1, ty + cs); ctx.stroke();
+                  ctx.beginPath(); ctx.moveTo(tx, ty + tileSize - cs - 1); ctx.lineTo(tx, ty + tileSize - 1); ctx.lineTo(tx + cs, ty + tileSize - 1); ctx.stroke();
+                  ctx.beginPath(); ctx.moveTo(tx + tileSize - cs - 1, ty + tileSize - 1); ctx.lineTo(tx + tileSize - 1, ty + tileSize - 1); ctx.lineTo(tx + tileSize - 1, ty + tileSize - cs - 1); ctx.stroke();
                 }
-                ctx.strokeStyle = 'rgba(100,116,139,0.2)'; ctx.lineWidth = 0.5; ctx.strokeRect(tx, ty, tileSize - 1, tileSize - 1);
+                // Grid lines
+                ctx.strokeStyle = 'rgba(100,116,139,0.15)'; ctx.lineWidth = 0.5; ctx.strokeRect(tx, ty, tileSize - 1, tileSize - 1);
               }
-              // Resource bar
-              var rbY = offsetY + mapSize * tileSize + 5;
-              var resData = [['\uD83C\uDF3E',resources.food,'#4ade80'],['\u26A1',resources.energy,'#facc15'],['\uD83D\uDCA7',resources.water,'#38bdf8'],['\uD83E\uDEA8',resources.materials,'#94a3b8'],['\uD83D\uDD2C',resources.science,'#a78bfa']];
-              ctx.font = 'bold 10px Inter, system-ui'; var rx = offsetX;
-              resData.forEach(function(rd) { ctx.fillStyle = rd[2]; ctx.fillText(rd[0] + ' ' + rd[1], rx, rbY + 10); rx += 75; });
-            }, [mapData, selectedTile, turn, resources, buildings, colonyPhase]);
+
+              // Weather particles
+              var wx2 = d.colonyWeather;
+              if (wx2) {
+                var mapArea = { x: offsetX, y: offsetY, w: mapSize * tileSize, h: mapSize * tileSize };
+                for (var pi = 0; pi < 30; pi++) {
+                  var px = mapArea.x + ((pi * 3571 + turn * 137 + Math.floor(animPhase * 10)) % mapArea.w);
+                  var py = mapArea.y + ((pi * 2971 + turn * 97) % mapArea.h);
+                  if (wx2.name === 'Dust Storm') {
+                    ctx.fillStyle = 'rgba(194,165,128,' + (0.2 + Math.sin(animPhase + pi) * 0.1) + ')';
+                    ctx.fillRect(px, py, 3 + Math.random() * 3, 1);
+                  } else if (wx2.name === 'Solar Flare') {
+                    ctx.fillStyle = 'rgba(250,204,21,' + (0.15 + Math.sin(animPhase * 2 + pi) * 0.1) + ')';
+                    ctx.beginPath(); ctx.arc(px, py, 1.5, 0, Math.PI * 2); ctx.fill();
+                  } else {
+                    ctx.fillStyle = 'rgba(147,197,253,' + (0.2 + Math.sin(animPhase + pi) * 0.1) + ')';
+                    ctx.fillRect(px, py, 1, 4);
+                  }
+                }
+              }
+
+              // Expedition progress on map (if active)
+              if (activeExpedition) {
+                ctx.fillStyle = 'rgba(6,182,212,0.15)';
+                ctx.fillRect(offsetX, offsetY + mapSize * tileSize - 8, mapSize * tileSize * ((activeExpedition.totalTurns - activeExpedition.turnsLeft) / activeExpedition.totalTurns), 6);
+                ctx.fillStyle = '#06b6d4'; ctx.font = '8px Inter, system-ui';
+                ctx.fillText('\u26F5 ' + activeExpedition.type + ' (' + activeExpedition.turnsLeft + 't)', offsetX + 2, offsetY + mapSize * tileSize - 1);
+              }
+
+              // Enhanced resource bar
+              var rbY = offsetY + mapSize * tileSize + 12;
+              // Background
+              ctx.fillStyle = 'rgba(15,23,42,0.8)';
+              ctx.fillRect(offsetX - 5, rbY - 5, mapSize * tileSize + 10, 22);
+              ctx.strokeStyle = 'rgba(100,116,139,0.3)'; ctx.lineWidth = 0.5;
+              ctx.strokeRect(offsetX - 5, rbY - 5, mapSize * tileSize + 10, 22);
+
+              var resData = [
+                ['\uD83C\uDF3E',resources.food,'#4ade80','#166534'],
+                ['\u26A1',resources.energy,'#facc15','#713f12'],
+                ['\uD83D\uDCA7',resources.water,'#38bdf8','#0c4a6e'],
+                ['\uD83E\uDEA8',resources.materials,'#94a3b8','#334155'],
+                ['\uD83D\uDD2C',resources.science,'#a78bfa','#4c1d95']
+              ];
+              var resW = Math.floor(mapSize * tileSize / 5);
+              ctx.font = 'bold 10px Inter, system-ui';
+              resData.forEach(function(rd, rdi) {
+                var rxPos = offsetX + rdi * resW;
+                // Tiny colored bg
+                ctx.fillStyle = rd[3]; ctx.fillRect(rxPos, rbY - 2, resW - 4, 16);
+                ctx.fillStyle = rd[2]; ctx.fillText(rd[0] + ' ' + rd[1], rxPos + 3, rbY + 9);
+              });
+
+              // Terraform + Equity mini bar
+              ctx.fillStyle = '#166534'; ctx.fillRect(offsetX, rbY + 18, Math.floor(mapSize * tileSize * terraform / 100), 3);
+              ctx.strokeStyle = '#14532d'; ctx.lineWidth = 0.5; ctx.strokeRect(offsetX, rbY + 18, mapSize * tileSize, 3);
+              ctx.fillStyle = '#64748b'; ctx.font = '7px Inter, system-ui';
+              ctx.fillText('\uD83C\uDF0D ' + terraform + '%', offsetX, rbY + 28);
+              ctx.fillText('\u2696\uFE0F ' + equity + '%', offsetX + 50, rbY + 28);
+              ctx.fillText('\uD83D\uDE42 ' + colonyHappiness + '%', offsetX + 100, rbY + 28);
+            }, [mapData, selectedTile, turn, resources, buildings, colonyPhase, d.colonyWeather, d.activeExpedition, d.colonySeason]);
 
             function handleMapClick(e) {
               if (!mapData || !canvasRef.current) return;
