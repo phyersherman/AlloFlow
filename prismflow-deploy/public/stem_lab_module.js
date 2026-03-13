@@ -2309,6 +2309,9 @@
                 color: 'rose', ready: true
               },
 
+            ,
+              { id: '_cat_Strategy', name: '\u2694\uFE0F Strategy Games', color: 'indigo', isCategory: true },
+              { id: 'spaceColony', name: 'Kepler Colony', icon: '\uD83D\uDE80', desc: 'Colonize an alien planet! Turn-based cooperative strategy where mastering science unlocks colony survival.', color: 'indigo', ready: true }
             ];
             // ── Tool search filter ──
             var _searchLower = _stemToolSearch.toLowerCase().trim();
@@ -32040,6 +32043,355 @@
 
         // ═══════════════════════════════════════════════════════════════
         // ██  CODING PLAYGROUND — Visual Block / Text Turtle Graphics  ██
+
+          // ══════════════════════════════════════════════════
+          // KEPLER COLONY — Educational Space Colonization
+          // ══════════════════════════════════════════════════
+          selectedTool && selectedTool.id === 'spaceColony' && (function() {
+            var d = labToolData || {};
+            var upd = function(k, v) { setLabToolData(function(n) { var o = Object.assign({}, n); o[k] = v; return o; }); };
+            var colony = d.colony || null;
+            var turn = d.colonyTurn || 0;
+            var resources = d.colonyRes || { food: 20, energy: 15, water: 15, materials: 10, science: 5 };
+            var buildings = d.colonyBuildings || [];
+            var settlers = d.colonySettlers || [];
+            var mapData = d.colonyMap || null;
+            var mapSize = 12;
+            var selectedTile = d.colonySelTile || null;
+            var colonyEvent = d.colonyEvent || null;
+            var scienceGate = d.scienceGate || null;
+            var gameLog = d.colonyLog || [];
+            var colonyPhase = d.colonyPhase || 'setup';
+
+            var terrainTypes = [
+              { type: 'plains', color: '#4ade80', name: 'Fertile Plains', icon: '\uD83C\uDF3F', res: 'food' },
+              { type: 'mountain', color: '#94a3b8', name: 'Mountains', icon: '\uD83C\uDFD4\uFE0F', res: 'materials' },
+              { type: 'volcanic', color: '#f97316', name: 'Volcanic', icon: '\uD83C\uDF0B', res: 'energy' },
+              { type: 'ice', color: '#a5f3fc', name: 'Ice Fields', icon: '\u2744\uFE0F', res: 'water' },
+              { type: 'desert', color: '#fbbf24', name: 'Desert', icon: '\uD83C\uDFDC\uFE0F', res: 'materials' },
+              { type: 'ocean', color: '#3b82f6', name: 'Ocean', icon: '\uD83C\uDF0A', res: 'water' },
+              { type: 'radiation', color: '#a855f7', name: 'Radiation Zone', icon: '\u2622\uFE0F', res: 'science' }
+            ];
+
+            function generateMap() {
+              var tiles = [];
+              var s = Math.floor(Math.random() * 99999);
+              for (var y = 0; y < mapSize; y++) {
+                for (var x = 0; x < mapSize; x++) {
+                  s = (s * 9301 + 49297) % 233280;
+                  var r = s / 233280;
+                  var tIdx = r < 0.25 ? 0 : r < 0.40 ? 1 : r < 0.50 ? 2 : r < 0.62 ? 3 : r < 0.72 ? 4 : r < 0.88 ? 5 : 6;
+                  var t2 = terrainTypes[tIdx];
+                  tiles.push({ x: x, y: y, type: t2.type, color: t2.color, name: t2.name, icon: t2.icon, res: t2.res, explored: false, hasAnomaly: r > 0.92 });
+                }
+              }
+              var cx = Math.floor(mapSize / 2); var cy = Math.floor(mapSize / 2);
+              tiles[cy * mapSize + cx] = { x: cx, y: cy, type: 'colony', color: '#f1f5f9', name: 'Colony Base', icon: '\uD83C\uDFE0', res: 'none', explored: true, hasAnomaly: false };
+              for (var dy = -2; dy <= 2; dy++) for (var dx = -2; dx <= 2; dx++) {
+                var ni = (cy+dy) * mapSize + (cx+dx);
+                if (ni >= 0 && ni < tiles.length) tiles[ni].explored = true;
+              }
+              return { tiles: tiles, colonyPos: { x: cx, y: cy } };
+            }
+
+            var defaultSettlers = [
+              { name: 'Dr. Elena Vasquez', role: 'Botanist', icon: '\uD83C\uDF31', specialty: 'biology', morale: 80, health: 100 },
+              { name: 'Cmdr. James Chen', role: 'Engineer', icon: '\u2699\uFE0F', specialty: 'physics', morale: 85, health: 100 },
+              { name: 'Dr. Aisha Okafor', role: 'Geologist', icon: '\u26CF\uFE0F', specialty: 'geology', morale: 75, health: 100 },
+              { name: 'Dr. Yuki Tanaka', role: 'Medic', icon: '\uD83E\uDE7A', specialty: 'biology', morale: 90, health: 100 },
+              { name: 'Prof. Raj Patel', role: 'Physicist', icon: '\u269B\uFE0F', specialty: 'physics', morale: 70, health: 100 },
+              { name: 'Dr. Marta Schmidt', role: 'Chemist', icon: '\uD83E\uDDEA', specialty: 'chemistry', morale: 82, health: 100 }
+            ];
+
+            var buildingDefs = [
+              { id: 'hydroponics', name: 'Hydroponics Bay', icon: '\uD83C\uDF31', cost: { materials: 15, energy: 5 }, production: { food: 3 }, gate: 'biology', gateQ: 'What process do plants use to convert light energy into chemical energy?', gateA: 'photosynthesis', desc: 'Grows food using nutrient-rich water.' },
+              { id: 'solar', name: 'Solar Array', icon: '\u2600\uFE0F', cost: { materials: 10, science: 5 }, production: { energy: 3 }, gate: 'physics', gateQ: 'What particles of light does a solar panel absorb to generate electricity?', gateA: 'photon', desc: 'Converts stellar radiation into power.' },
+              { id: 'waterReclaim', name: 'Water Reclaimer', icon: '\uD83D\uDCA7', cost: { materials: 12, energy: 5 }, production: { water: 3 }, gate: 'chemistry', gateQ: 'What is the chemical formula for water?', gateA: 'h2o', desc: 'Extracts and purifies water.' },
+              { id: 'mine', name: 'Mining Rig', icon: '\u26CF\uFE0F', cost: { energy: 10, water: 5 }, production: { materials: 3 }, gate: 'geology', gateQ: 'Name one of the three main types of rocks (igneous, sedimentary, or metamorphic)', gateA: ['igneous', 'sedimentary', 'metamorphic'], desc: 'Extracts minerals from planetary crust.' },
+              { id: 'lab', name: 'Research Lab', icon: '\uD83D\uDD2C', cost: { materials: 20, energy: 10 }, production: { science: 3 }, gate: 'math', gateQ: 'What is the value of pi to 2 decimal places?', gateA: '3.14', desc: 'Conducts scientific research.' },
+              { id: 'medbay', name: 'Med Bay', icon: '\uD83C\uDFE5', cost: { materials: 15, science: 10 }, production: {}, gate: 'biology', gateQ: 'What are the basic structural units of all living organisms?', gateA: 'cell', desc: 'Treats injuries and boosts settler health.' },
+              { id: 'atmo', name: 'Atmospheric Processor', icon: '\uD83C\uDF2C\uFE0F', cost: { materials: 25, energy: 15, science: 10 }, production: { water: 1, food: 1 }, gate: 'chemistry', gateQ: 'What gas makes up about 78% of Earth\'s atmosphere?', gateA: 'nitrogen', desc: 'Converts alien atmosphere toward breathability.' },
+              { id: 'fusion', name: 'Fusion Reactor', icon: '\u2622\uFE0F', cost: { materials: 30, science: 20 }, production: { energy: 10 }, gate: 'physics', gateQ: 'In E=mc\u00B2, what does the \'m\' stand for?', gateA: 'mass', desc: 'Massive energy from hydrogen fusion.' }
+            ];
+
+            // Canvas Map Rendering
+            var canvasRef = React.useRef(null);
+            React.useEffect(function() {
+              if (!canvasRef.current || !mapData) return;
+              var canvas = canvasRef.current;
+              var ctx = canvas.getContext('2d');
+              var w = canvas.width = canvas.offsetWidth;
+              var h = canvas.height = Math.min(480, canvas.offsetWidth * 0.85);
+              ctx.fillStyle = '#0f172a'; ctx.fillRect(0, 0, w, h);
+              // Starfield
+              for (var si = 0; si < 80; si++) {
+                ctx.fillStyle = 'rgba(255,255,255,' + (0.15 + ((si * 31) % 8) * 0.08) + ')';
+                ctx.fillRect((si * 7919 + 12345) % w, (si * 6271 + 54321) % h, 1.5, 1.5);
+              }
+              var tileSize = Math.floor(Math.min((w - 40) / mapSize, (h - 50) / mapSize));
+              var offsetX = Math.floor((w - tileSize * mapSize) / 2);
+              var offsetY = 25;
+              // Title
+              ctx.font = 'bold 13px Inter, system-ui'; ctx.fillStyle = '#e2e8f0';
+              ctx.fillText('\uD83D\uDE80 KEPLER COLONY', offsetX, 17);
+              ctx.font = '10px Inter, system-ui'; ctx.fillStyle = '#64748b';
+              ctx.fillText('Turn ' + turn + ' | Pop: ' + settlers.length, w - 130, 17);
+              // Tiles
+              var tiles = mapData.tiles;
+              for (var ti = 0; ti < tiles.length; ti++) {
+                var tile = tiles[ti];
+                var tx = offsetX + tile.x * tileSize;
+                var ty = offsetY + tile.y * tileSize;
+                if (!tile.explored) {
+                  ctx.fillStyle = '#1e293b'; ctx.fillRect(tx, ty, tileSize - 1, tileSize - 1);
+                  ctx.fillStyle = '#334155'; ctx.font = (tileSize * 0.4) + 'px sans-serif';
+                  ctx.fillText('?', tx + tileSize * 0.35, ty + tileSize * 0.65);
+                } else {
+                  ctx.globalAlpha = 0.85; ctx.fillStyle = tile.color;
+                  ctx.fillRect(tx, ty, tileSize - 1, tileSize - 1); ctx.globalAlpha = 1;
+                  if (tile.type === 'ocean') {
+                    ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 0.5;
+                    for (var wi = 0; wi < 3; wi++) {
+                      ctx.beginPath(); ctx.moveTo(tx + 2, ty + tileSize * (0.3 + wi * 0.22));
+                      ctx.quadraticCurveTo(tx + tileSize/2, ty + tileSize * (0.2 + wi * 0.22), tx + tileSize - 3, ty + tileSize * (0.35 + wi * 0.22));
+                      ctx.stroke();
+                    }
+                  } else if (tile.type === 'mountain') {
+                    ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 1; ctx.beginPath();
+                    ctx.moveTo(tx + tileSize * 0.2, ty + tileSize * 0.8);
+                    ctx.lineTo(tx + tileSize * 0.5, ty + tileSize * 0.2);
+                    ctx.lineTo(tx + tileSize * 0.8, ty + tileSize * 0.8); ctx.stroke();
+                  } else if (tile.type === 'volcanic') {
+                    ctx.fillStyle = 'rgba(239,68,68,0.4)'; ctx.beginPath();
+                    ctx.arc(tx + tileSize/2, ty + tileSize/2, tileSize * 0.2, 0, Math.PI * 2); ctx.fill();
+                  } else if (tile.type === 'colony') {
+                    ctx.fillStyle = '#f8fafc'; ctx.fillRect(tx + 2, ty + 2, tileSize - 5, tileSize - 5);
+                    ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 2; ctx.beginPath();
+                    ctx.arc(tx + tileSize/2, ty + tileSize * 0.55, tileSize * 0.25, Math.PI, 0); ctx.stroke();
+                    ctx.moveTo(tx + tileSize * 0.25, ty + tileSize * 0.55);
+                    ctx.lineTo(tx + tileSize * 0.75, ty + tileSize * 0.55); ctx.stroke();
+                  } else if (tile.type === 'radiation') {
+                    ctx.strokeStyle = 'rgba(168,85,247,0.5)'; ctx.lineWidth = 0.5;
+                    for (var ri = 0; ri < 3; ri++) { ctx.beginPath(); ctx.arc(tx + tileSize/2, ty + tileSize/2, tileSize * (0.08 + ri * 0.1), 0, Math.PI * 2); ctx.stroke(); }
+                  } else if (tile.type === 'ice') {
+                    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                    ctx.fillRect(tx + tileSize * 0.3, ty + tileSize * 0.3, 3, 3);
+                    ctx.fillRect(tx + tileSize * 0.6, ty + tileSize * 0.5, 2, 2);
+                  }
+                  if (tile.hasAnomaly) { ctx.fillStyle = '#facc15'; ctx.font = 'bold ' + (tileSize * 0.3) + 'px sans-serif'; ctx.fillText('!', tx + tileSize * 0.75, ty + tileSize * 0.3); }
+                  ctx.font = (tileSize * 0.3) + 'px sans-serif'; ctx.fillText(tile.icon, tx + 2, ty + tileSize - 3);
+                }
+                if (selectedTile && selectedTile.x === tile.x && selectedTile.y === tile.y) {
+                  ctx.strokeStyle = '#facc15'; ctx.lineWidth = 2; ctx.strokeRect(tx, ty, tileSize - 1, tileSize - 1);
+                }
+                ctx.strokeStyle = 'rgba(100,116,139,0.2)'; ctx.lineWidth = 0.5; ctx.strokeRect(tx, ty, tileSize - 1, tileSize - 1);
+              }
+              // Resource bar
+              var rbY = offsetY + mapSize * tileSize + 5;
+              var resData = [['\uD83C\uDF3E',resources.food,'#4ade80'],['\u26A1',resources.energy,'#facc15'],['\uD83D\uDCA7',resources.water,'#38bdf8'],['\uD83E\uDEA8',resources.materials,'#94a3b8'],['\uD83D\uDD2C',resources.science,'#a78bfa']];
+              ctx.font = 'bold 10px Inter, system-ui'; var rx = offsetX;
+              resData.forEach(function(rd) { ctx.fillStyle = rd[2]; ctx.fillText(rd[0] + ' ' + rd[1], rx, rbY + 10); rx += 75; });
+            }, [mapData, selectedTile, turn, resources, buildings, colonyPhase]);
+
+            function handleMapClick(e) {
+              if (!mapData || !canvasRef.current) return;
+              var rect = canvasRef.current.getBoundingClientRect();
+              var w = canvasRef.current.width; var h = canvasRef.current.height;
+              var tileSize = Math.floor(Math.min((w - 40) / mapSize, (h - 50) / mapSize));
+              var offsetX = Math.floor((w - tileSize * mapSize) / 2);
+              var tileX = Math.floor((e.clientX - rect.left - offsetX) / tileSize);
+              var tileY = Math.floor((e.clientY - rect.top - 25) / tileSize);
+              if (tileX >= 0 && tileX < mapSize && tileY >= 0 && tileY < mapSize) {
+                var tile = mapData.tiles[tileY * mapSize + tileX];
+                upd('colonySelTile', { x: tileX, y: tileY, tile: tile });
+              }
+            }
+
+            return React.createElement('div', { className: 'bg-gradient-to-b from-slate-900 to-indigo-950 rounded-2xl p-4 border border-slate-700' },
+              React.createElement('div', { className: 'flex items-center justify-between mb-4' },
+                React.createElement('div', { className: 'flex items-center gap-2' },
+                  React.createElement('button', { onClick: function() { upd('selectedTool', null); }, className: 'text-slate-400 hover:text-white text-lg' }, '\u2190'),
+                  React.createElement('h2', { className: 'text-xl font-bold text-white' }, '\uD83D\uDE80 Kepler Colony'),
+                  React.createElement('span', { className: 'text-[9px] text-indigo-400 bg-indigo-900 px-2 py-0.5 rounded-full' }, 'Turn-Based Strategy')
+                ),
+                colony && React.createElement('div', { className: 'flex gap-3 text-[10px]' },
+                  React.createElement('span', { className: 'text-green-400' }, '\uD83C\uDF3E ' + resources.food),
+                  React.createElement('span', { className: 'text-yellow-400' }, '\u26A1 ' + resources.energy),
+                  React.createElement('span', { className: 'text-cyan-400' }, '\uD83D\uDCA7 ' + resources.water),
+                  React.createElement('span', { className: 'text-slate-300' }, '\uD83E\uDEA8 ' + resources.materials),
+                  React.createElement('span', { className: 'text-purple-400' }, '\uD83D\uDD2C ' + resources.science),
+                  React.createElement('span', { className: 'text-amber-300 font-bold' }, 'Turn ' + turn)
+                )
+              ),
+              // SETUP
+              colonyPhase === 'setup' && React.createElement('div', { className: 'text-center py-10' },
+                React.createElement('div', { className: 'text-6xl mb-4' }, '\uD83D\uDE80'),
+                React.createElement('h3', { className: 'text-2xl font-bold text-white mb-2' }, 'Welcome to Kepler-442b'),
+                React.createElement('p', { className: 'text-slate-400 text-sm max-w-lg mx-auto mb-6' },
+                  'You have arrived at a habitable exoplanet 1,206 light-years from Earth. Build a self-sustaining colony by mastering real science. Every building requires passing a science challenge. Your 6 settlers are counting on you!'
+                ),
+                React.createElement('div', { className: 'grid grid-cols-3 gap-3 max-w-md mx-auto mb-6 text-slate-300 text-[10px]' },
+                  [['\uD83C\uDF0D','Explore','Reveal the alien planet tile by tile'],['\uD83D\uDD2C','Learn','Pass science challenges to build'],['\uD83E\uDD1D','Cooperate','6 specialists with unique skills']].map(function(item) {
+                    return React.createElement('div', { key: item[1], className: 'bg-slate-800 rounded-xl p-3 border border-slate-700 text-center' },
+                      React.createElement('div', { className: 'text-2xl mb-1' }, item[0]),
+                      React.createElement('div', { className: 'font-bold' }, item[1]),
+                      item[2]
+                    );
+                  })
+                ),
+                React.createElement('button', {
+                  onClick: function() {
+                    upd('colonyMap', generateMap()); upd('colonyPhase', 'playing'); upd('colonyTurn', 1);
+                    upd('colonyRes', { food: 20, energy: 15, water: 15, materials: 10, science: 5 });
+                    upd('colonyBuildings', []); upd('colonySettlers', JSON.parse(JSON.stringify(defaultSettlers)));
+                    upd('colonyLog', ['Turn 1: Colony established on Kepler-442b. 6 settlers ready.']);
+                    upd('colony', { name: 'Kepler-442b' });
+                    if (addToast) addToast('\uD83D\uDE80 Colony established!', 'success');
+                    if (typeof addXP === 'function') addXP(10, 'Kepler Colony: Mission launched');
+                  },
+                  className: 'px-8 py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl text-lg font-bold hover:shadow-lg hover:shadow-indigo-500/30 transition-all'
+                }, '\uD83D\uDE80 Launch Colony Mission')
+              ),
+              // PLAYING
+              colonyPhase === 'playing' && mapData && React.createElement('div', null,
+                React.createElement('canvas', { ref: canvasRef, onClick: handleMapClick, className: 'w-full rounded-xl border border-slate-700 cursor-pointer mb-3', style: { maxHeight: '480px' } }),
+                // Selected tile
+                selectedTile && React.createElement('div', { className: 'bg-slate-800 rounded-xl p-3 border border-slate-700 mb-3' },
+                  React.createElement('div', { className: 'flex items-center justify-between' },
+                    React.createElement('div', null,
+                      React.createElement('span', { className: 'text-sm font-bold text-white' }, selectedTile.tile.icon + ' ' + selectedTile.tile.name),
+                      React.createElement('span', { className: 'text-[10px] text-slate-400 ml-2' }, '(' + selectedTile.x + ',' + selectedTile.y + ')' + (selectedTile.tile.res !== 'none' ? ' +' + selectedTile.tile.res : '') + (selectedTile.tile.hasAnomaly ? ' \u26A0\uFE0F Anomaly!' : ''))
+                    ),
+                    !selectedTile.tile.explored && React.createElement('button', {
+                      onClick: function() {
+                        var nm = JSON.parse(JSON.stringify(mapData));
+                        for (var dy2 = -1; dy2 <= 1; dy2++) for (var dx2 = -1; dx2 <= 1; dx2++) {
+                          var ni2 = (selectedTile.y+dy2) * mapSize + (selectedTile.x+dx2);
+                          if (ni2 >= 0 && ni2 < nm.tiles.length) nm.tiles[ni2].explored = true;
+                        }
+                        upd('colonyMap', nm);
+                        var nr = Object.assign({}, resources); nr.energy = Math.max(0, nr.energy - 2); upd('colonyRes', nr);
+                        if (addToast) addToast('Explored ' + selectedTile.tile.name + '!', 'info');
+                      },
+                      className: 'px-3 py-1 bg-indigo-600 text-white rounded-lg text-[10px] font-bold'
+                    }, '\uD83D\uDDFA Explore (-2\u26A1)')
+                  )
+                ),
+                // Actions
+                React.createElement('div', { className: 'grid grid-cols-3 gap-2 mb-3' },
+                  React.createElement('button', {
+                    onClick: function() {
+                      var nt = turn + 1; var nr2 = Object.assign({}, resources);
+                      buildings.forEach(function(b) { var def = buildingDefs.find(function(bd) { return bd.id === b; }); if (def) Object.keys(def.production).forEach(function(k) { nr2[k] = (nr2[k]||0) + def.production[k]; }); });
+                      nr2.food = Math.max(0, nr2.food - settlers.length);
+                      nr2.water = Math.max(0, nr2.water - Math.ceil(settlers.length * 0.5));
+                      upd('colonyRes', nr2); upd('colonyTurn', nt); upd('colonyEventLoading', true);
+                      var ctx2 = 'Colony on Kepler-442b, turn ' + nt + '. Resources: food=' + nr2.food + ' energy=' + nr2.energy + ' water=' + nr2.water + ' materials=' + nr2.materials + ' science=' + nr2.science + '. Buildings: ' + (buildings.length > 0 ? buildings.join(', ') : 'none') + '. ' + settlers.length + ' settlers.';
+                      callGemini('You are the AI game master for an educational space colony on an alien planet. ' + ctx2 + '\n\nGenerate a planet event. Include a REAL science concept. Return ONLY valid JSON:\n{"emoji":"<emoji>","title":"<event>","description":"<2-3 sentences>","lesson":"<real science concept, 2-3 sentences>","choices":[{"label":"<choice>","effects":{"food":<n>,"energy":<n>,"water":<n>,"materials":<n>,"science":<n>,"morale":<n>},"outcome":"<result>"},{"label":"<choice>","effects":{"food":<n>,"energy":<n>,"water":<n>,"materials":<n>,"science":<n>,"morale":<n>},"outcome":"<result>"}]}\n\nEvents: alien microbes, geologic discoveries, meteor showers, equipment failures, resource finds, atmospheric anomalies, alien ruins. Effects: -5 to +10 resources, -15 to +15 morale. One choice should reward scientific knowledge.', true).then(function(result) {
+                        try { var cl = result.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim(); var s2=cl.indexOf('{'); if(s2>0) cl=cl.substring(s2); var e2=cl.lastIndexOf('}'); if(e2>0) cl=cl.substring(0,e2+1);
+                          var parsed = JSON.parse(cl); upd('colonyEvent', parsed); upd('colonyEventLoading', false);
+                          var nl2 = gameLog.slice(); nl2.push('Turn ' + nt + ': ' + (parsed.emoji||'') + ' ' + parsed.title); upd('colonyLog', nl2);
+                        } catch(err) { upd('colonyEventLoading', false); if (addToast) addToast('Event failed to generate', 'error'); }
+                      }).catch(function() { upd('colonyEventLoading', false); });
+                      if (typeof addXP === 'function') addXP(5, 'Kepler Colony: Turn ' + nt);
+                    },
+                    disabled: d.colonyEventLoading, className: 'py-3 rounded-xl text-xs font-bold ' + (d.colonyEventLoading ? 'bg-slate-700 text-slate-500' : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white')
+                  }, d.colonyEventLoading ? '\u23F3 Processing...' : '\u27A1\uFE0F Next Turn'),
+                  React.createElement('button', { onClick: function() { upd('showBuild', !d.showBuild); }, className: 'py-3 rounded-xl text-xs font-bold bg-amber-600 text-white' }, '\uD83C\uDFD7 Build (' + buildings.length + '/' + buildingDefs.length + ')'),
+                  React.createElement('button', { onClick: function() { upd('showSettlers', !d.showSettlers); }, className: 'py-3 rounded-xl text-xs font-bold bg-teal-600 text-white' }, '\uD83D\uDC65 Crew (' + settlers.length + ')')
+                ),
+                // Event
+                colonyEvent && React.createElement('div', { className: 'bg-gradient-to-r from-slate-800 to-indigo-900 rounded-xl p-4 border border-indigo-700 mb-3' },
+                  React.createElement('h3', { className: 'text-sm font-bold text-white mb-1' }, (colonyEvent.emoji||'') + ' ' + colonyEvent.title),
+                  React.createElement('p', { className: 'text-xs text-slate-300' }, colonyEvent.description),
+                  colonyEvent.lesson && React.createElement('div', { className: 'mt-2 bg-indigo-950 rounded-lg px-3 py-2 text-[10px] text-indigo-300 border border-indigo-800' }, React.createElement('span', { className: 'font-bold text-indigo-200' }, '\uD83D\uDCDA Science: '), colonyEvent.lesson),
+                  React.createElement('div', { className: 'grid gap-2 mt-3' }, (colonyEvent.choices||[]).map(function(ch, ci2) {
+                    return React.createElement('button', { key: ci2, onClick: function() {
+                      var ef2 = ch.effects || {}; var nr3 = Object.assign({}, resources);
+                      Object.keys(ef2).forEach(function(k) { if (k === 'morale') { upd('colonySettlers', settlers.map(function(s3) { return Object.assign({}, s3, { morale: Math.max(0, Math.min(100, s3.morale + (ef2.morale||0))) }); })); } else if (nr3[k] !== undefined) nr3[k] = Math.max(0, nr3[k] + ef2[k]); });
+                      upd('colonyRes', nr3); upd('colonyEvent', null);
+                      var nl3 = gameLog.slice(); nl3.push('  \u2192 ' + ch.label + ': ' + ch.outcome); upd('colonyLog', nl3);
+                      if (addToast) addToast(ch.outcome, ef2.morale > 0 ? 'success' : ef2.morale < 0 ? 'warning' : 'info');
+                      if (typeof addXP === 'function') addXP(15, 'Kepler Colony: Decision made');
+                    }, className: 'w-full text-left p-3 rounded-xl border-2 border-slate-600 bg-slate-800 hover:border-indigo-400 transition-all text-xs text-slate-200' },
+                      React.createElement('div', { className: 'font-bold text-white' }, ch.label),
+                      React.createElement('div', { className: 'text-[9px] text-slate-400 mt-1 flex gap-2 flex-wrap' },
+                        Object.keys(ch.effects||{}).filter(function(ek) { return ch.effects[ek] !== 0; }).map(function(ek) { return React.createElement('span', { key: ek, className: ch.effects[ek] > 0 ? 'text-green-400' : 'text-red-400' }, ek + ':' + (ch.effects[ek]>0?'+':'') + ch.effects[ek]); })
+                      )
+                    );
+                  }))
+                ),
+                // Build panel
+                d.showBuild && React.createElement('div', { className: 'bg-slate-800 rounded-xl p-3 border border-slate-700 mb-3' },
+                  React.createElement('h4', { className: 'text-sm font-bold text-amber-400 mb-2' }, '\uD83C\uDFD7 Buildings'),
+                  React.createElement('div', { className: 'grid grid-cols-2 gap-2' }, buildingDefs.map(function(bd) {
+                    var isBuilt = buildings.indexOf(bd.id) >= 0;
+                    var canAff = !isBuilt && Object.keys(bd.cost).every(function(k) { return resources[k] >= bd.cost[k]; });
+                    return React.createElement('div', { key: bd.id, className: 'p-2 rounded-xl border-2 ' + (isBuilt ? 'border-green-600 bg-green-900/30' : canAff ? 'border-slate-600 bg-slate-900' : 'border-slate-700 bg-slate-900/50 opacity-50') },
+                      React.createElement('div', { className: 'flex items-center justify-between' },
+                        React.createElement('span', null, React.createElement('span', { className: 'text-base' }, bd.icon), React.createElement('span', { className: 'text-[10px] font-bold text-white ml-1' }, bd.name), isBuilt && React.createElement('span', { className: 'text-green-400 ml-1 text-[9px]' }, '\u2705')),
+                        canAff && React.createElement('button', { onClick: function() { upd('scienceGate', { building: bd.id, question: bd.gateQ, answer: bd.gateA, domain: bd.gate }); upd('scienceGateInput', ''); }, className: 'px-2 py-1 bg-amber-500 text-slate-900 rounded-lg text-[9px] font-bold' }, '\uD83D\uDD13 Build')
+                      ),
+                      React.createElement('div', { className: 'text-[8px] text-slate-400 mt-1' }, bd.desc),
+                      React.createElement('div', { className: 'flex gap-1 mt-1 text-[8px] flex-wrap' },
+                        Object.keys(bd.cost).map(function(ck) { return React.createElement('span', { key: ck, className: resources[ck] >= bd.cost[ck] ? 'text-green-400' : 'text-red-400' }, ck + ':' + bd.cost[ck]); }),
+                        React.createElement('span', { className: 'text-slate-500' }, '|'),
+                        Object.keys(bd.production).map(function(pk) { return React.createElement('span', { key: pk, className: 'text-cyan-400' }, '+' + bd.production[pk] + ' ' + pk); })
+                      ),
+                      React.createElement('div', { className: 'text-[8px] text-indigo-400 mt-0.5' }, '\uD83D\uDD12 ' + bd.gate)
+                    );
+                  }))
+                ),
+                // Science gate
+                scienceGate && React.createElement('div', { className: 'bg-gradient-to-r from-purple-900 to-indigo-900 rounded-xl p-4 border-2 border-purple-500 mb-3' },
+                  React.createElement('h4', { className: 'text-sm font-bold text-purple-200 mb-2' }, '\uD83D\uDD2C Science Challenge: ' + scienceGate.domain.toUpperCase()),
+                  React.createElement('p', { className: 'text-xs text-purple-100 mb-3' }, scienceGate.question),
+                  React.createElement('div', { className: 'flex gap-2' },
+                    React.createElement('input', { type: 'text', value: d.scienceGateInput || '', onChange: function(e) { upd('scienceGateInput', e.target.value); },
+                      onKeyDown: function(e) { if (e.key === 'Enter') document.getElementById('kepler-gate-btn').click(); },
+                      placeholder: 'Type your answer...', className: 'flex-1 px-3 py-2 bg-purple-950 border-2 border-purple-600 rounded-xl text-xs text-white outline-none focus:border-purple-400' }),
+                    React.createElement('button', { id: 'kepler-gate-btn', onClick: function() {
+                      var inp = (d.scienceGateInput||'').trim().toLowerCase();
+                      var correct = Array.isArray(scienceGate.answer) ? scienceGate.answer.some(function(a) { return inp.indexOf(a.toLowerCase()) >= 0; }) : inp.indexOf(scienceGate.answer.toLowerCase()) >= 0;
+                      if (correct) {
+                        var bdef2 = buildingDefs.find(function(bd2) { return bd2.id === scienceGate.building; });
+                        var nr4 = Object.assign({}, resources); Object.keys(bdef2.cost).forEach(function(k) { nr4[k] -= bdef2.cost[k]; }); upd('colonyRes', nr4);
+                        var nb = buildings.slice(); nb.push(scienceGate.building); upd('colonyBuildings', nb); upd('scienceGate', null);
+                        var nl4 = gameLog.slice(); nl4.push('Built ' + bdef2.icon + ' ' + bdef2.name + '!'); upd('colonyLog', nl4);
+                        if (addToast) addToast('\u2705 ' + bdef2.name + ' built! Science mastery verified!', 'success');
+                        if (typeof addXP === 'function') addXP(30, 'Built ' + bdef2.name);
+                      } else { if (addToast) addToast('\u274C Incorrect! Study and try again.', 'error'); upd('scienceGateInput', ''); }
+                    }, className: 'px-4 py-2 bg-purple-500 text-white rounded-xl text-xs font-bold' }, '\u2705 Submit'),
+                    React.createElement('button', { onClick: function() { upd('scienceGate', null); }, className: 'px-3 py-2 bg-slate-700 text-slate-300 rounded-xl text-xs' }, '\u2715')
+                  ),
+                  React.createElement('div', { className: 'text-[9px] text-purple-300 mt-2' }, '\uD83D\uDCA1 This is real science! Research online if unsure.')
+                ),
+                // Settlers
+                d.showSettlers && React.createElement('div', { className: 'bg-slate-800 rounded-xl p-3 border border-slate-700 mb-3' },
+                  React.createElement('h4', { className: 'text-sm font-bold text-teal-400 mb-2' }, '\uD83D\uDC65 Colony Crew'),
+                  React.createElement('div', { className: 'grid grid-cols-3 gap-2' }, settlers.map(function(st, si2) {
+                    return React.createElement('div', { key: si2, className: 'bg-slate-900 rounded-xl p-2 border border-slate-700 text-center' },
+                      React.createElement('div', { className: 'text-xl' }, st.icon),
+                      React.createElement('div', { className: 'text-[9px] font-bold text-white mt-1' }, st.name),
+                      React.createElement('div', { className: 'text-[8px] text-slate-400' }, st.role),
+                      React.createElement('div', { className: 'mt-1 grid grid-cols-2 gap-1 text-[7px]' },
+                        React.createElement('div', null, 'Morale', React.createElement('div', { className: 'w-full bg-slate-700 rounded-full h-1 mt-0.5' }, React.createElement('div', { className: 'h-1 rounded-full ' + (st.morale > 60 ? 'bg-green-500' : 'bg-amber-500'), style: { width: st.morale + '%' } }))),
+                        React.createElement('div', null, 'Health', React.createElement('div', { className: 'w-full bg-slate-700 rounded-full h-1 mt-0.5' }, React.createElement('div', { className: 'h-1 rounded-full bg-cyan-500', style: { width: st.health + '%' } })))
+                      )
+                    );
+                  }))
+                ),
+                // Log
+                React.createElement('div', { className: 'bg-slate-800 rounded-xl p-2 border border-slate-700 max-h-28 overflow-y-auto' },
+                  React.createElement('h4', { className: 'text-[9px] font-bold text-slate-500 uppercase mb-1' }, '\uD83D\uDCDC Log'),
+                  gameLog.slice(-6).reverse().map(function(log, li) { return React.createElement('div', { key: li, className: 'text-[8px] text-slate-400 py-0.5 border-b border-slate-700/50' }, log); })
+                ),
+                React.createElement('button', { onClick: function() { upd('colonyPhase', 'setup'); upd('colony', null); upd('colonyMap', null); upd('colonyTurn', 0); upd('colonyEvent', null); upd('scienceGate', null); upd('colonyLog', []); if (addToast) addToast('Colony reset', 'info'); },
+                  className: 'mt-2 w-full py-2 rounded-xl text-[9px] text-slate-500 bg-slate-800 border border-slate-700' }, '\u267B Abandon & Start New')
+              )
+            );
+          })(),
+
         // ═══════════════════════════════════════════════════════════════
         stemLabTab === 'explore' && stemLabTool === 'economicsLab' && (() => {
           var d = labToolData || {};
