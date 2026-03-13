@@ -29796,11 +29796,11 @@
                     React.createElement('div', { className: 'p-1 rounded text-center ' + (terraform >= 100 ? 'bg-emerald-900/50 text-emerald-400' : 'text-slate-500') },
                       '\uD83C\uDF0D Terraform: ' + terraform + '/100%'
                     ),
-                    React.createElement('div', { className: 'p-1 rounded text-center ' + (settlers.length >= 12 ? 'bg-teal-900/50 text-teal-400' : 'text-slate-500') },
-                      '\uD83D\uDC65 Population: ' + settlers.length + '/12'
+                    React.createElement('div', { className: 'p-1 rounded text-center ' + (settlers.length >= 50 ? 'bg-teal-900/50 text-teal-400' : 'text-slate-500') },
+                      '\uD83D\uDC65 Population: ' + settlers.length + '/50'
                     ),
-                    React.createElement('div', { className: 'p-1 rounded text-center ' + (researchQueue.length >= 5 ? 'bg-violet-900/50 text-violet-400' : 'text-slate-500') },
-                      '\uD83E\uDDEC Research: ' + researchQueue.length + '/5'
+                    React.createElement('div', { className: 'p-1 rounded text-center ' + (researchQueue.length >= 10 ? 'bg-violet-900/50 text-violet-400' : 'text-slate-500') },
+                      '\uD83E\uDDEC Research: ' + researchQueue.length + '/10'
                     )
                   ),
                   terraform >= 100 && React.createElement('div', { className: 'mt-2 text-center' },
@@ -29819,7 +29819,10 @@
                     React.createElement('span', { className: stats.questionsAnswered > 0 && stats.correct / stats.questionsAnswered >= 0.7 ? 'text-green-400' : 'text-amber-400' },
                       '\uD83C\uDFAF ' + (stats.questionsAnswered > 0 ? Math.round(stats.correct / stats.questionsAnswered * 100) : 0) + '% accuracy'),
                     React.createElement('span', { className: 'text-cyan-400' }, '\uD83C\uDFD7 ' + stats.buildingsConstructed + ' built'),
-                    React.createElement('span', { className: 'text-purple-400' }, '\u2728 ' + stats.anomaliesExplored + ' anomalies'),
+                    React.createElement('span', { className: 'text-purple-400' }, '\u2728 ' + stats.anomaliesExplored + ' anom'),
+                    React.createElement('span', { className: colonyHappiness > 60 ? 'text-green-400' : colonyHappiness > 30 ? 'text-amber-400' : 'text-red-400' },
+                      (colonyHappiness > 80 ? '\uD83D\uDE04' : colonyHappiness > 60 ? '\uD83D\uDE42' : colonyHappiness > 30 ? '\uD83D\uDE10' : '\uD83D\uDE21') + ' ' + colonyHappiness + '%'),
+                    alienContact && React.createElement('span', { className: alienRelations > 20 ? 'text-green-400' : alienRelations < -20 ? 'text-red-400' : 'text-amber-400' }, '\uD83D\uDC7E ' + (alienRelations > 0 ? '+' : '') + alienRelations),
                     React.createElement('span', { className: 'text-amber-400' }, gameMode === 'mcq' ? '\uD83D\uDCCB MCQ' : '\u270D\uFE0F FR')
                   )
                 ),
@@ -32149,7 +32152,12 @@
               { id: 'gravimetrics', name: 'Gravimetrics', icon: '\uD83C\uDF0C', cost: 20, desc: 'Map gravity wells. All exploration reveals +1 tile radius.', bonus: { exploreRadius: 2 }, era: 'expansion', domain: 'physics' },
               { id: 'nanotech', name: 'Nanotechnology', icon: '\uD83E\uDDF2', cost: 25, desc: 'Self-repairing buildings. Effectiveness never drops below 75%.', bonus: { minEfficiency: 75 }, era: 'prosperity', domain: 'chemistry' },
               { id: 'terraAI', name: 'Terraform AI', icon: '\uD83E\uDD16', cost: 30, desc: 'AI-guided terraforming. +3% terraform/turn base.', bonus: { terraformBonus: 3 }, era: 'prosperity', domain: 'math' },
-              { id: 'warpComms', name: 'Subspace Comms', icon: '\uD83D\uDCE1', cost: 40, desc: 'FTL communication with Earth. +10 science/turn.', bonus: { science: 10 }, era: 'transcendence', domain: 'physics' }
+              { id: 'warpComms', name: 'Subspace Comms', icon: '\uD83D\uDCE1', cost: 40, desc: 'FTL communication with Earth. +10 science/turn.', bonus: { science: 10 }, era: 'transcendence', domain: 'physics' },
+              { id: 'bioengine', name: 'Bioengineering', icon: '\uD83E\uDDEC', cost: 18, desc: 'Genetically adapted crops for alien soil. +5 food/turn.', bonus: { food: 5 }, era: 'expansion', domain: 'biology' },
+              { id: 'quantumComp', name: 'Quantum Computing', icon: '\uD83D\uDDA5\uFE0F', cost: 35, desc: 'Quantum processors for colony AI. +5 science/turn.', bonus: { science: 5 }, era: 'prosperity', domain: 'physics' },
+              { id: 'plasmaDrill', name: 'Plasma Mining', icon: '\u26CF\uFE0F', cost: 22, desc: 'Superheated plasma drills. +5 materials/turn.', bonus: { materials: 5 }, era: 'expansion', domain: 'chemistry' },
+              { id: 'cryonics', name: 'Cryogenic Storage', icon: '\u2744\uFE0F', cost: 28, desc: 'Preserve food indefinitely. +3 food, +3 water/turn.', bonus: { food: 3, water: 3 }, era: 'prosperity', domain: 'biology' },
+              { id: 'dysonSwarm', name: 'Dyson Swarm', icon: '\u2600\uFE0F', cost: 50, desc: 'Orbital solar collectors. +15 energy/turn.', bonus: { energy: 15 }, era: 'transcendence', domain: 'physics' }
             ];
 
             var greatScientists = d.colonyGreatSci || [];
@@ -32163,6 +32171,21 @@
             ];
 
             var popGrowthAccum = d.colonyPopGrowth || 0;
+
+            // Diplomacy — alien species
+            var alienContact = d.alienContact || null;
+            var alienRelations = d.alienRelations || 0; // -100 to 100
+            var alienDefs = {
+              name: 'The Keth\u2019ora',
+              icon: '\uD83D\uDC7E',
+              desc: 'Silicon-based lifeforms indigenous to Kepler-442b. Communicate through bioluminescent patterns.',
+              trades: [
+                { give: { materials: 10 }, get: { science: 8 }, name: 'Knowledge Exchange' },
+                { give: { food: 8 }, get: { materials: 12 }, name: 'Organic Trade' },
+                { give: { energy: 10 }, get: { water: 15 }, name: 'Ice Mining Rights' }
+              ]
+            };
+            var colonyHappiness = d.colonyHappiness || 70;
             var buildingEff = d.buildingEff || {}; // { buildingId: 100, ... } effectiveness %
             var lastMaintTurn = d.lastMaintTurn || 0;
             var maintChallenge = d.maintChallenge || null;
@@ -32239,7 +32262,16 @@
               { id: 'fusion', name: 'Fusion Reactor', icon: '\u2622\uFE0F', tier: 3, requires: ['lab', 'solar'], cost: { materials: 30, science: 20 }, production: { energy: 10 }, gate: 'physics', gateQ: 'In E=mc\u00B2, what does the \'m\' stand for?', gateA: 'mass', desc: 'Fuses hydrogen isotopes for massive energy. The ultimate power source.' },
               // Tier 4 — Victory building
               { id: 'biodome', name: 'Biodome', icon: '\uD83C\uDF0D', tier: 4, requires: ['atmo', 'fusion', 'medbay'], cost: { materials: 50, energy: 30, science: 25, water: 20 }, production: { food: 5, water: 2 }, gate: 'ecology', gateQ: 'What is the term for a self-sustaining ecological system that recycles nutrients and energy?', gateA: ['ecosystem', 'biosphere', 'closed ecosystem'], desc: 'Self-sustaining biosphere. Build this to achieve COLONY VICTORY!' },
-              { id: 'comms', name: 'Deep Space Comms', icon: '\uD83D\uDCE1', tier: 4, requires: ['fusion', 'lab'], cost: { materials: 40, energy: 25, science: 30 }, production: { science: 5 }, gate: 'physics', gateQ: 'What is the speed of light in km/s (approximately)?', gateA: ['300000', '3e5', '300,000'], desc: 'Contacts Earth! Signal takes 1,206 years to arrive. Massive science boost.' }
+              { id: 'comms', name: 'Deep Space Comms', icon: '\uD83D\uDCE1', tier: 4, requires: ['fusion', 'lab'], cost: { materials: 40, energy: 25, science: 30 }, production: { science: 5 }, gate: 'physics', gateQ: 'What is the speed of light in km/s (approximately)?', gateA: ['300000', '3e5', '300,000'], desc: 'Contacts Earth! Signal takes 1,206 years to arrive. Massive science boost.' },
+              // Tier 2 Additions
+              { id: 'greenhouse', name: 'Greenhouse Dome', icon: '\uD83C\uDFE1', tier: 2, requires: ['hydroponics', 'waterReclaim'], cost: { materials: 18, water: 10 }, production: { food: 4 }, gate: 'biology', gateQ: 'What is the greenhouse effect?', gateA: ['trap', 'heat', 'warm'], desc: 'Large-scale food production. +0.5% terraform/turn.' },
+              { id: 'refinery', name: 'Material Refinery', icon: '\uD83C\uDFED', tier: 2, requires: ['mine', 'solar'], cost: { energy: 15, materials: 10 }, production: { materials: 5 }, gate: 'chemistry', gateQ: 'What is smelting?', gateA: ['melt', 'extract', 'ore'], desc: 'Refines raw ore into construction-grade materials.' },
+              // Tier 3 Additions
+              { id: 'cloning', name: 'Cloning Lab', icon: '\uD83E\uDDEC', tier: 3, requires: ['medbay', 'lab'], cost: { materials: 30, science: 20, energy: 15 }, production: { food: 2 }, gate: 'biology', gateQ: 'What is the name of the first cloned mammal?', gateA: ['dolly'], desc: 'Accelerates population growth. Clones food organisms.' },
+              { id: 'shield', name: 'Planetary Shield', icon: '\uD83D\uDEE1\uFE0F', tier: 3, requires: ['fusion', 'atmo'], cost: { materials: 35, energy: 25, science: 15 }, production: { energy: 2 }, gate: 'physics', gateQ: 'What protects Earth from solar radiation?', gateA: ['magnetic', 'magnetosphere', 'field'], desc: 'Deflects solar flares & meteors. Reduces weather damage.' },
+              { id: 'oceanSeeder', name: 'Ocean Seeder', icon: '\uD83C\uDF0A', tier: 3, requires: ['waterReclaim', 'atmo'], cost: { materials: 25, water: 15, science: 10 }, production: { water: 4, food: 2 }, gate: 'biology', gateQ: 'What process do phytoplankton use to produce oxygen?', gateA: ['photosynthesis'], desc: 'Seeds alien oceans with microbes. +1.5% terraform/turn.' },
+              // Tier 4 Addition
+              { id: 'spaceport', name: 'Spaceport', icon: '\uD83D\uDE80', tier: 4, requires: ['comms', 'fusion', 'shield'], cost: { materials: 60, energy: 40, science: 35 }, production: { materials: 5, science: 3 }, gate: 'physics', gateQ: 'What is escape velocity from Earth in km/s (approximately)?', gateA: ['11', '11.2'], desc: 'Launches supply missions. Attracts settlers from other colonies.' }
             ];
 
             // Canvas Map Rendering
@@ -32527,9 +32559,11 @@
                       });
                       nr2.food = Math.max(0, nr2.food - settlers.length);
                       // Terraforming progress
-                      var tfGain = buildings.indexOf('atmo') >= 0 ? 5 : 0;
-                      tfGain += buildings.indexOf('biodome') >= 0 ? 10 : 0;
-                      tfGain += buildings.indexOf('hydroponics') >= 0 ? 1 : 0;
+                      var tfGain = buildings.indexOf('atmo') >= 0 ? 2 : 0;
+                      tfGain += buildings.indexOf('biodome') >= 0 ? 3 : 0;
+                      tfGain += buildings.indexOf('hydroponics') >= 0 ? 0.5 : 0;
+                      tfGain += buildings.indexOf('greenhouse') >= 0 ? 1 : 0;
+                      tfGain += buildings.indexOf('oceanSeeder') >= 0 ? 1.5 : 0;
                       var newTf = Math.min(100, (d.colonyTerraform || 0) + tfGain);
                       upd('colonyTerraform', newTf);
                       // Med Bay heals settlers
@@ -32545,7 +32579,11 @@
                       var wIdx = Math.floor(Math.random() * weatherTypes.length);
                       var wx = weatherTypes[wIdx];
                       upd('colonyWeather', wx);
-                      if (wx) { nr2[wx.res] = Math.max(0, nr2[wx.res] + wx.penalty); }
+                      if (wx) {
+                        var weatherPenalty = wx.penalty;
+                        if (buildings.indexOf('shield') >= 0) weatherPenalty = Math.ceil(weatherPenalty / 2);
+                        nr2[wx.res] = Math.max(0, nr2[wx.res] + weatherPenalty);
+                      }
                       // Colony milestones
                       var milestones = [
                         { id: 'first_build', check: buildings.length >= 1, text: '\uD83C\uDFD7 First Construction!', xp: 15 },
@@ -32553,6 +32591,12 @@
                         { id: 'tier3', check: buildings.indexOf('atmo') >= 0 || buildings.indexOf('fusion') >= 0, text: '\u2622\uFE0F Advanced Tech!', xp: 40 },
                         { id: 'self_sustain', check: nr2.food >= 30 && nr2.energy >= 30 && nr2.water >= 30, text: '\uD83C\uDF3E Self-Sustaining!', xp: 30 },
                         { id: 'full_colony', check: buildings.length >= 8, text: '\uD83C\uDFD9\uFE0F Full Colony!', xp: 50 },
+                        { id: 'pop20', check: settlers.length >= 20, text: '\uD83D\uDC65 20 Settlers!', xp: 40 },
+                        { id: 'pop35', check: settlers.length >= 35, text: '\uD83C\uDFD8\uFE0F Thriving Town!', xp: 60 },
+                        { id: 'pop50', check: settlers.length >= 50, text: '\uD83C\uDFD9\uFE0F Population Victory!', xp: 100 },
+                        { id: 'research5', check: researchQueue.length >= 5, text: '\uD83E\uDDEC Half Researched!', xp: 40 },
+                        { id: 'research10', check: researchQueue.length >= 10, text: '\uD83C\uDF1F Research Victory!', xp: 100 },
+                        { id: 'allbuildings', check: buildings.length >= 16, text: '\uD83C\uDFD7\uFE0F Master Builder!', xp: 80 },
                         { id: 'terraform25', check: newTf >= 25, text: '\uD83C\uDF27\uFE0F First Clouds!', xp: 20 },
                         { id: 'terraform50', check: newTf >= 50, text: '\uD83C\uDF31 Microorganisms!', xp: 30 },
                         { id: 'terraform75', check: newTf >= 75, text: '\uD83C\uDF24\uFE0F Atmosphere Forming!', xp: 40 },
@@ -32607,9 +32651,11 @@
                       // Population growth — food surplus attracts new settlers (Civ-inspired)
                       var foodSurplus = nr2.food - settlers.length * 2; // need 2x population in food
                       var growthRate = 0.15 + (activePolicy && activePolicy === 'agrarian' ? 0.075 : 0);
+                      if (buildings.indexOf('spaceport') >= 0) growthRate += 0.1;
+                      if (buildings.indexOf('cloning') >= 0) growthRate += 0.05;
                       if (foodSurplus > 0) {
                         var newPG = (d.colonyPopGrowth || 0) + growthRate;
-                        if (newPG >= 1.0 && settlers.length < 12) {
+                        if (newPG >= 1.0 && settlers.length < 50) {
                           // New settler arrives!
                           var newRoles = [
                             { name: 'Lt. Alex Rivera', role: 'Pilot', icon: '\u2708\uFE0F', specialty: 'physics' },
@@ -32617,7 +32663,25 @@
                             { name: 'Prof. Dimitri Volkov', role: 'Mathematician', icon: '\uD83D\uDCCA', specialty: 'math' },
                             { name: 'Eng. Fatima Hassan', role: 'Architect', icon: '\uD83C\uDFD7\uFE0F', specialty: 'geology' },
                             { name: 'Dr. Li Wei', role: 'Astronomer', icon: '\uD83D\uDD2D', specialty: 'physics' },
-                            { name: 'Dr. Amara Osei', role: 'Biochemist', icon: '\uD83E\uDDEA', specialty: 'chemistry' }
+                            { name: 'Dr. Amara Osei', role: 'Biochemist', icon: '\uD83E\uDDEA', specialty: 'chemistry' },
+                            { name: 'Sgt. Kofi Mensah', role: 'Security', icon: '\uD83D\uDEE1\uFE0F', specialty: 'geology' },
+                            { name: 'Dr. Lucia Torres', role: 'Physician', icon: '\u2695\uFE0F', specialty: 'biology' },
+                            { name: 'Dr. Hans Mueller', role: 'Climatologist', icon: '\uD83C\uDF0A', specialty: 'chemistry' },
+                            { name: 'Eng. Priya Nair', role: 'Roboticist', icon: '\uD83E\uDD16', specialty: 'physics' },
+                            { name: 'Dr. Jun Sato', role: 'Volcanologist', icon: '\uD83C\uDF0B', specialty: 'geology' },
+                            { name: 'Prof. Anya Petrov', role: 'Astrophysicist', icon: '\u2B50', specialty: 'physics' },
+                            { name: 'Dr. Maria Santos', role: 'Ecologist', icon: '\uD83C\uDF3F', specialty: 'biology' },
+                            { name: 'Eng. David Park', role: 'Structural Eng.', icon: '\uD83C\uDFD7\uFE0F', specialty: 'math' },
+                            { name: 'Dr. Fatou Diallo', role: 'Geneticist', icon: '\uD83E\uDDEC', specialty: 'biology' },
+                            { name: 'Lt. Ivan Kozlov', role: 'Navigator', icon: '\uD83E\uDDED', specialty: 'math' },
+                            { name: 'Dr. Aiko Tanabe', role: 'Microbiologist', icon: '\uD83E\uDDA0', specialty: 'biology' },
+                            { name: 'Eng. Omar Ali', role: 'Energy Eng.', icon: '\u26A1', specialty: 'physics' },
+                            { name: 'Dr. Elena Popova', role: 'Hydrologist', icon: '\uD83D\uDCA7', specialty: 'chemistry' },
+                            { name: 'Prof. Chen Guang', role: 'Seismologist', icon: '\uD83C\uDF0D', specialty: 'geology' },
+                            { name: 'Dr. Sofia Romano', role: 'Botanist II', icon: '\uD83C\uDF3A', specialty: 'biology' },
+                            { name: 'Eng. James Okafor', role: 'Systems Eng.', icon: '\u2699\uFE0F', specialty: 'math' },
+                            { name: 'Dr. Mei Lin', role: 'Pharmacologist', icon: '\uD83D\uDC8A', specialty: 'chemistry' },
+                            { name: 'Lt. Rosa Martinez', role: 'Comms Officer', icon: '\uD83D\uDCE1', specialty: 'physics' }
                           ];
                           var available = newRoles.filter(function(nr7) { return !settlers.some(function(s5) { return s5.name === nr7.name; }); });
                           if (available.length > 0) {
@@ -32635,9 +32699,9 @@
 
                       // Era progression
                       var newEra = era;
-                      if (era === 'survival' && buildings.length >= 3) newEra = 'expansion';
-                      else if (era === 'expansion' && buildings.length >= 6 && newTf >= 50) newEra = 'prosperity';
-                      else if (era === 'prosperity' && buildings.length >= 10 && newTf >= 75) newEra = 'transcendence';
+                      if (era === 'survival' && buildings.length >= 4 && settlers.length >= 8) newEra = 'expansion';
+                      else if (era === 'expansion' && buildings.length >= 8 && newTf >= 30 && researchQueue.length >= 3) newEra = 'prosperity';
+                      else if (era === 'prosperity' && buildings.length >= 14 && newTf >= 60 && settlers.length >= 25) newEra = 'transcendence';
                       if (newEra !== era) {
                         upd('colonyEra', newEra);
                         var eraInfo = eraData[newEra];
@@ -32645,6 +32709,37 @@
                         if (d.colonyTTS) colonySpeak('New era reached! The colony has entered the ' + eraInfo.name + ' era.', 'narrator');
                         var nl14 = gameLog.slice(); nl14.push('\uD83C\uDF1F ERA: ' + eraInfo.name + '!'); upd('colonyLog', nl14);
                         if (typeof addXP === 'function') addXP(40, 'Era: ' + eraInfo.name);
+                      }
+
+                      // Alien first contact (turn 10+, once)
+                      if (nt >= 10 && !d.alienContact && Math.random() < 0.3) {
+                        upd('alienContact', true); upd('alienRelations', 0);
+                        var nl18 = gameLog.slice(); nl18.push('\uD83D\uDC7E FIRST CONTACT: The Keth\u2019ora detected!'); upd('colonyLog', nl18);
+                        if (addToast) addToast('\uD83D\uDC7E First Contact! An alien species has been detected!', 'success');
+                        if (d.colonyTTS) colonySpeak('Alert! Alien life detected. The indigenous Kethora species has made contact. They communicate through bioluminescent patterns.', 'narrator');
+                        if (typeof addXP === 'function') addXP(50, 'First Contact!');
+                      }
+
+                      // Happiness mechanic
+                      var newHappy = d.colonyHappiness || 70;
+                      if (nr2.food > settlers.length * 2) newHappy = Math.min(100, newHappy + 2);
+                      else if (nr2.food < settlers.length) newHappy = Math.max(0, newHappy - 5);
+                      if (buildings.indexOf('medbay') >= 0) newHappy = Math.min(100, newHappy + 1);
+                      var avgMorale = settlers.reduce(function(sum, s6) { return sum + s6.morale; }, 0) / Math.max(1, settlers.length);
+                      if (avgMorale < 50) newHappy = Math.max(0, newHappy - 3);
+                      if (wx) newHappy = Math.max(0, newHappy - 2);
+                      upd('colonyHappiness', newHappy);
+
+                      // Happiness affects production (Civ-style)
+                      if (newHappy < 30) {
+                        // Unrest — 50% production penalty
+                        nr2.food = Math.max(0, Math.floor(nr2.food * 0.8));
+                        nr2.materials = Math.max(0, Math.floor(nr2.materials * 0.8));
+                        if (addToast) addToast('\uD83D\uDE21 Colony unrest! Production reduced!', 'warning');
+                      } else if (newHappy > 80) {
+                        // Golden age — bonus production
+                        nr2.science += 2;
+                        nr2.food += 1;
                       }
 
                       // Great Scientist arrival (every 15 turns + high science)
@@ -32673,6 +32768,10 @@
                         }
                       }
 
+                      // Alien alliance bonuses
+                      if (alienContact && alienRelations >= 50) {
+                        nr2.science += 3; nr2.water += 2;
+                      }
                       // Apply research bonuses
                       researchQueue.forEach(function(rid) {
                         var rdef = researchDefs.find(function(rd) { return rd.id === rid; });
@@ -32706,7 +32805,7 @@
                   React.createElement('button', { onClick: function() { upd('showSettlers', !d.showSettlers); }, className: 'py-3 rounded-xl text-xs font-bold bg-teal-600 text-white' }, '\uD83D\uDC65 ' + settlers.length),
                   React.createElement('button', { onClick: function() { upd('showPolicy', !d.showPolicy); }, className: 'py-3 rounded-xl text-xs font-bold ' + (activePolicy ? 'bg-emerald-700' : 'bg-slate-700') + ' text-white' }, '\uD83C\uDFDB\uFE0F Gov'),
                   React.createElement('button', { onClick: function() { upd('showResearch', !d.showResearch); }, className: 'py-3 rounded-xl text-xs font-bold bg-violet-700 text-white' }, '\uD83E\uDDEC ' + researchQueue.length),
-                  React.createElement('button', { onClick: function() { upd('showGreatSci', !d.showGreatSci); }, className: 'py-3 rounded-xl text-xs font-bold bg-yellow-700 text-white' }, '\uD83C\uDFC6 ' + greatScientists.length)
+                  React.createElement('button', { onClick: function() { upd('showGreatSci', !d.showGreatSci); }, className: 'py-3 rounded-xl text-xs font-bold bg-yellow-700 text-white' }, '\uD83C\uDFC6 ' + greatScientists.length + '/' + greatSciDefs.length)
                 ),
                 // Event
                 colonyEvent && React.createElement('div', { className: 'bg-gradient-to-r from-slate-800 to-indigo-900 rounded-xl p-4 border border-indigo-700 mb-3' },
@@ -33000,7 +33099,7 @@
                 // Research Panel
                 d.showResearch && React.createElement('div', { className: 'bg-slate-800 rounded-xl p-3 border border-violet-700 mb-3' },
                   React.createElement('h4', { className: 'text-sm font-bold text-violet-400 mb-2' }, '\uD83E\uDDEC Research Tree'),
-                  React.createElement('p', { className: 'text-[9px] text-slate-400 mb-2' }, 'Spend science points to unlock permanent bonuses. Each unlocks via a science challenge.'),
+                  React.createElement('p', { className: 'text-[9px] text-slate-400 mb-2' }, 'Spend science to unlock permanent bonuses. Complete all 10 for Research Victory! (' + researchQueue.length + '/10)'),
                   React.createElement('div', { className: 'grid grid-cols-1 gap-2' },
                     researchDefs.map(function(rd2) {
                       var isResearched = researchQueue.indexOf(rd2.id) >= 0;
