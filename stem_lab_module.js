@@ -32054,16 +32054,12 @@
           var sdPriceCeiling = d.sdPriceCeiling || 0;
           var sdTax = d.sdTax || 0;
 
-          // ── Personal Finance State ──
-          var pfIncome = d.pfIncome || 3000;
-          var pfRent = d.pfRent || 900;
-          var pfFood = d.pfFood || 400;
-          var pfTransport = d.pfTransport || 200;
-          var pfEntertain = d.pfEntertain || 150;
-          var pfSavings = d.pfSavings || 300;
-          var pfPrincipal = d.pfPrincipal || 1000;
-          var pfRate = d.pfRate || 7;
-          var pfYears = d.pfYears || 20;
+          // ── Personal Finance Life Sim State ──
+          var pfAge = d.pfAge || 22;
+          var pfCash = d.pfCash || 2000;
+          var pfDebt = d.pfDebt || 0;
+          var pfSalary = d.pfSalary || 35000;
+          var pfHappiness = d.pfHappiness || 70;
 
           // ── Stock Market State ──
           var smCash = d.smCash !== undefined ? d.smCash : 10000;
@@ -32200,7 +32196,7 @@
             }
 
             else if (econTab === 'personalFinance') {
-              // ── Budget Pie Chart ──
+              // ── Life Sim Net Worth Chart ──
               ctx.fillStyle = '#0f172a'; ctx.fillRect(0, 0, W, H);
               var pieX = W * 0.25, pieY = H * 0.45, pieR = Math.min(W*0.2, H*0.35);
               var expenses = [
@@ -32425,7 +32421,7 @@
               }
             }
           }, [econTab, sdDemandShift, sdSupplyShift, sdPriceFloor, sdPriceCeiling, sdTax,
-              pfIncome, pfRent, pfFood, pfTransport, pfEntertain, pfSavings, pfPrincipal, pfRate, pfYears,
+              d.pfAge, d.pfCash, d.pfDebt, d.pfSalary, d.pfHappiness, d.pfHistory,
               smCompanies, smSelected, smCash, smPortfolio, smNews,
               enDay, enCash, enPrice, enCups, enAdBudget, enWeather, enHistory]);
 
@@ -32491,41 +32487,104 @@
               )
             ),
 
-            econTab === 'personalFinance' && React.createElement('div', { className: 'mt-4 grid grid-cols-2 gap-4' },
-              React.createElement('div', { className: 'space-y-2 bg-blue-50 rounded-xl p-4 border border-blue-200' },
-                React.createElement('h4', { className: 'text-sm font-bold text-blue-700' }, '\uD83D\uDCB5 Monthly Budget'),
-                React.createElement('label', { className: 'block text-xs text-slate-600' }, 'Income: $' + pfIncome),
-                React.createElement('input', { type: 'range', min: 1000, max: 10000, step: 100, value: pfIncome,
-                  onChange: function(e) { upd('pfIncome', parseInt(e.target.value)); }, className: 'w-full' }),
-                ['pfRent', 'pfFood', 'pfTransport', 'pfEntertain', 'pfSavings'].map(function(key, ki) {
-                  var labels = ['Rent/Housing', 'Food', 'Transport', 'Entertainment', 'Savings'];
-                  var colors = ['text-red-600', 'text-amber-600', 'text-blue-600', 'text-purple-600', 'text-green-600'];
-                  var val = d[key] || 0;
-                  return React.createElement('div', { key: key },
-                    React.createElement('label', { className: 'block text-xs ' + colors[ki] }, labels[ki] + ': $' + val),
-                    React.createElement('input', { type: 'range', min: 0, max: 3000, step: 50, value: val,
-                      onChange: function(e) { upd(key, parseInt(e.target.value)); }, className: 'w-full' })
+            econTab === 'personalFinance' && React.createElement('div', { className: 'mt-4' },
+              // Life Sim Event Display
+              d.lifeEvent ? React.createElement('div', { className: 'bg-gradient-to-br from-indigo-50 to-blue-50 rounded-2xl p-5 border border-indigo-200 mb-4 shadow-sm' },
+                React.createElement('div', { className: 'flex items-start gap-3 mb-4' },
+                  React.createElement('span', { className: 'text-3xl' }, d.lifeEvent.emoji || '\uD83C\uDFB2'),
+                  React.createElement('div', null,
+                    React.createElement('h4', { className: 'text-sm font-bold text-slate-800' }, d.lifeEvent.title || 'Life Event'),
+                    React.createElement('p', { className: 'text-xs text-slate-600 mt-1 leading-relaxed' }, d.lifeEvent.description)
+                  )
+                ),
+                React.createElement('div', { className: 'grid gap-2' },
+                  (d.lifeEvent.choices || []).map(function(choice, ci) {
+                    return React.createElement('button', {
+                      key: ci,
+                      onClick: function() {
+                        var eff = choice.effect || {};
+                        upd('pfCash', (d.pfCash || 2000) + (eff.cash || 0));
+                        upd('pfDebt', Math.max(0, (d.pfDebt || 0) + (eff.debt || 0)));
+                        upd('pfSalary', Math.max(0, (d.pfSalary || 35000) + (eff.salary || 0)));
+                        upd('pfHappiness', Math.min(100, Math.max(0, (d.pfHappiness || 70) + (eff.happiness || 0))));
+                        var h = (d.pfHistory || []).slice(-29);
+                        h.push({ age: d.pfAge || 22, cash: (d.pfCash || 2000) + (eff.cash || 0), debt: Math.max(0, (d.pfDebt || 0) + (eff.debt || 0)), event: d.lifeEvent.title, choice: choice.label });
+                        upd('pfHistory', h);
+                        upd('pfAge', (d.pfAge || 22) + 1);
+                        upd('lifeEvent', null);
+                        upd('pfLoading', false);
+                        if (addToast) addToast((eff.cash >= 0 ? '\uD83D\uDCB0 +$' : '\uD83D\uDCC9 -$') + Math.abs(eff.cash || 0).toLocaleString() + ' | ' + choice.label, eff.cash >= 0 ? 'success' : 'warning');
+                      },
+                      className: 'w-full text-left p-3 rounded-xl border-2 border-indigo-100 hover:border-indigo-400 bg-white hover:bg-indigo-50 transition-all text-xs group'
+                    },
+                      React.createElement('div', { className: 'font-bold text-slate-700 group-hover:text-indigo-700' }, choice.label),
+                      React.createElement('div', { className: 'text-slate-400 mt-0.5 flex gap-3 flex-wrap' },
+                        choice.effect && choice.effect.cash ? React.createElement('span', { className: choice.effect.cash >= 0 ? 'text-green-600' : 'text-red-500' }, (choice.effect.cash >= 0 ? '+' : '') + '$' + choice.effect.cash.toLocaleString()) : null,
+                        choice.effect && choice.effect.debt ? React.createElement('span', { className: 'text-orange-500' }, 'Debt ' + (choice.effect.debt > 0 ? '+' : '') + '$' + choice.effect.debt.toLocaleString()) : null,
+                        choice.effect && choice.effect.salary ? React.createElement('span', { className: 'text-blue-500' }, 'Salary ' + (choice.effect.salary > 0 ? '+' : '') + '$' + choice.effect.salary.toLocaleString()) : null,
+                        choice.effect && choice.effect.happiness ? React.createElement('span', { className: choice.effect.happiness >= 0 ? 'text-pink-500' : 'text-slate-500' }, (choice.effect.happiness > 0 ? '+' : '') + choice.effect.happiness + ' happiness') : null
+                      )
+                    );
+                  })
+                )
+              ) : null,
+              // Stats bar
+              React.createElement('div', { className: 'grid grid-cols-4 gap-3 mb-4' },
+                [
+                  { label: 'Age', val: (d.pfAge || 22), icon: '\uD83C\uDF82', color: 'indigo' },
+                  { label: 'Cash', val: '$' + (d.pfCash || 2000).toLocaleString(), icon: '\uD83D\uDCB5', color: (d.pfCash || 2000) >= 0 ? 'green' : 'red' },
+                  { label: 'Debt', val: '$' + (d.pfDebt || 0).toLocaleString(), icon: '\uD83D\uDCB3', color: (d.pfDebt || 0) > 0 ? 'red' : 'green' },
+                  { label: 'Happiness', val: (d.pfHappiness || 70) + '%', icon: '\u2764\uFE0F', color: (d.pfHappiness || 70) > 50 ? 'pink' : 'slate' }
+                ].map(function(s) {
+                  return React.createElement('div', { key: s.label, className: 'bg-white rounded-xl p-3 border border-slate-200 text-center' },
+                    React.createElement('div', { className: 'text-lg' }, s.icon),
+                    React.createElement('div', { className: 'text-[10px] text-slate-400 font-bold uppercase tracking-wide' }, s.label),
+                    React.createElement('div', { className: 'text-sm font-bold text-' + s.color + '-600' }, s.val)
                   );
                 })
               ),
-              React.createElement('div', { className: 'space-y-2 bg-green-50 rounded-xl p-4 border border-green-200' },
-                React.createElement('h4', { className: 'text-sm font-bold text-green-700' }, '\uD83D\uDCC8 Compound Interest'),
-                React.createElement('label', { className: 'block text-xs text-slate-600' }, 'Principal: $' + pfPrincipal),
-                React.createElement('input', { type: 'range', min: 100, max: 50000, step: 100, value: pfPrincipal,
-                  onChange: function(e) { upd('pfPrincipal', parseInt(e.target.value)); }, className: 'w-full' }),
-                React.createElement('label', { className: 'block text-xs text-slate-600' }, 'Rate: ' + pfRate + '%'),
-                React.createElement('input', { type: 'range', min: 1, max: 15, step: 0.5, value: pfRate,
-                  onChange: function(e) { upd('pfRate', parseFloat(e.target.value)); }, className: 'w-full' }),
-                React.createElement('label', { className: 'block text-xs text-slate-600' }, 'Years: ' + pfYears),
-                React.createElement('input', { type: 'range', min: 1, max: 40, value: pfYears,
-                  onChange: function(e) { upd('pfYears', parseInt(e.target.value)); }, className: 'w-full' }),
-                React.createElement('div', { className: 'mt-2 p-2 bg-white rounded-lg text-center' },
-                  React.createElement('div', { className: 'text-lg font-bold text-green-600' },
-                    '$' + Math.round(pfPrincipal * Math.pow(1 + pfRate/100, pfYears)).toLocaleString()
-                  ),
-                  React.createElement('div', { className: 'text-[10px] text-slate-400' }, 'Future value after ' + pfYears + ' years')
-                )
-              )
+              React.createElement('div', { className: 'text-xs text-slate-400 text-center mb-2' }, 'Salary: $' + (d.pfSalary || 35000).toLocaleString() + '/yr | Net Worth: $' + ((d.pfCash || 2000) - (d.pfDebt || 0)).toLocaleString()),
+              // Next Year / Generate Event button
+              !d.lifeEvent && React.createElement('button', {
+                onClick: function() {
+                  upd('pfLoading', true);
+                  var prompt = 'You are a life simulation game engine. The player is ' + (d.pfAge || 22) + ' years old, earns $' + (d.pfSalary || 35000).toLocaleString() + '/year, has $' + (d.pfCash || 2000).toLocaleString() + ' in savings, $' + (d.pfDebt || 0).toLocaleString() + ' in debt, and ' + (d.pfHappiness || 70) + '% happiness.\n\nGenerate a realistic random life event with 3 choices. Return ONLY valid JSON:\n{"emoji":"<single emoji>","title":"<short title>","description":"<2-3 sentence scenario>","choices":[{"label":"<action description>","effect":{"cash":<number>,"debt":<number>,"salary":<number>,"happiness":<number>}}]}\n\nExamples of events: car breakdown, promotion opportunity, medical emergency, investment opportunity, wedding invitation, surprise inheritance, job offer in new city, appliance repair, apartment vacancy, side hustle opportunity, tax refund, parking ticket. Make effects realistic. Cash effects should be -5000 to +10000 range for most events. Salary changes should be -5000 to +15000 range. Happiness -20 to +20.';
+                  callGemini(prompt, true).then(function(result) {
+                    try {
+                      var cleaned = result.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+                      var start = cleaned.indexOf('{');
+                      if (start > 0) cleaned = cleaned.substring(start);
+                      var end = cleaned.lastIndexOf('}');
+                      if (end > 0) cleaned = cleaned.substring(0, end + 1);
+                      var parsed = JSON.parse(cleaned);
+                      upd('lifeEvent', parsed);
+                      upd('pfLoading', false);
+                    } catch(e) {
+                      console.error('[EconLab] Parse error:', e);
+                      upd('pfLoading', false);
+                      if (addToast) addToast('Failed to generate event. Try again!', 'error');
+                    }
+                  }).catch(function(e) { upd('pfLoading', false); if (addToast) addToast('AI error: ' + e.message, 'error'); });
+                },
+                disabled: d.pfLoading,
+                className: 'w-full py-4 rounded-2xl text-sm font-bold shadow-lg transition-all ' + (d.pfLoading ? 'bg-slate-300 text-slate-500' : 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:from-indigo-700 hover:to-blue-700 hover:shadow-xl hover:scale-[1.02]')
+              }, d.pfLoading ? '\u23F3 Generating life event...' : '\u2728 Next Year (Age ' + ((d.pfAge || 22) + 1) + ')'),
+              // History log
+              (d.pfHistory || []).length > 0 && React.createElement('div', { className: 'mt-4 bg-white rounded-xl border border-slate-200 p-3 max-h-40 overflow-y-auto' },
+                React.createElement('h4', { className: 'text-xs font-bold text-slate-500 mb-2' }, '\uD83D\uDCDC Life History'),
+                (d.pfHistory || []).slice().reverse().map(function(h, hi) {
+                  return React.createElement('div', { key: hi, className: 'flex justify-between text-[10px] py-1 border-b border-slate-50' },
+                    React.createElement('span', { className: 'text-slate-400' }, 'Age ' + h.age),
+                    React.createElement('span', { className: 'text-slate-600 flex-1 px-2 truncate' }, h.event + ' \u2192 ' + h.choice),
+                    React.createElement('span', { className: h.cash >= (d.pfHistory[Math.max(0,d.pfHistory.length-hi-2)] || {}).cash ? 'text-green-600 font-bold' : 'text-red-500 font-bold' }, '$' + (h.cash || 0).toLocaleString())
+                  );
+                })
+              ),
+              // Reset button
+              React.createElement('button', {
+                onClick: function() { upd('pfAge', 22); upd('pfCash', 2000); upd('pfDebt', 0); upd('pfSalary', 35000); upd('pfHappiness', 70); upd('pfHistory', []); upd('lifeEvent', null); if (addToast) addToast('\u267B Starting over at age 22!', 'info'); },
+                className: 'mt-2 w-full py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-500 border border-slate-200'
+              }, '\u267B New Life')
             ),
 
             econTab === 'stockMarket' && React.createElement('div', { className: 'mt-4' },
@@ -32538,11 +32597,17 @@
                     className: 'flex-1 py-2 px-2 rounded-lg text-xs font-bold transition-all border-2 ' +
                       (smSelected === ci ? 'text-white shadow-md' : 'bg-slate-50 text-slate-600 border-slate-200'),
                     style: smSelected === ci ? { background: c.color, borderColor: c.color } : {}
-                  }, c.ticker);
+                  }, c.ticker + ' $' + c.price.toFixed(0));
                 })
               ),
-              // Buy/Sell controls
-              React.createElement('div', { className: 'flex gap-3' },
+              // AI News Event display
+              d.smNewsEvent ? React.createElement('div', { className: 'bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl p-4 border border-amber-200 mb-3' },
+                React.createElement('h4', { className: 'text-sm font-bold text-amber-800' }, '\uD83D\uDCF0 ' + (d.smNewsEvent.headline || 'Breaking News')),
+                React.createElement('p', { className: 'text-xs text-amber-700 mt-1' }, d.smNewsEvent.analysis || ''),
+                React.createElement('div', { className: 'text-[10px] text-amber-600 mt-2 font-bold' }, 'Impact: ' + (d.smNewsEvent.impact > 0 ? '\u25B2 +' : '\u25BC ') + (d.smNewsEvent.impact * 100).toFixed(1) + '%')
+              ) : null,
+              // Buy/Sell + Next Day
+              React.createElement('div', { className: 'flex gap-3 mb-3' },
                 React.createElement('button', {
                   onClick: function() {
                     var co2 = smCompanies[smSelected];
@@ -32552,12 +32617,10 @@
                       newPort[co2.ticker] = (newPort[co2.ticker] || 0) + 1;
                       upd('smPortfolio', newPort);
                       if (addToast) addToast('Bought 1 ' + co2.ticker + ' @ $' + co2.price.toFixed(2), 'success');
-                    } else {
-                      if (addToast) addToast('Not enough cash!', 'error');
-                    }
+                    } else { if (addToast) addToast('Not enough cash!', 'error'); }
                   },
-                  className: 'flex-1 py-3 rounded-xl text-sm font-bold bg-gradient-to-r from-green-500 to-emerald-500 text-white'
-                }, '\u25B2 Buy 1 Share ($' + (smCompanies[smSelected] ? smCompanies[smSelected].price.toFixed(2) : '0') + ')'),
+                  className: 'flex-1 py-3 rounded-xl text-xs font-bold bg-gradient-to-r from-green-500 to-emerald-500 text-white'
+                }, '\u25B2 Buy 1 ($' + (smCompanies[smSelected] ? smCompanies[smSelected].price.toFixed(2) : '0') + ')'),
                 React.createElement('button', {
                   onClick: function() {
                     var co3 = smCompanies[smSelected];
@@ -32568,110 +32631,202 @@
                       if (newPort2[co3.ticker] <= 0) delete newPort2[co3.ticker];
                       upd('smPortfolio', newPort2);
                       if (addToast) addToast('Sold 1 ' + co3.ticker + ' @ $' + co3.price.toFixed(2), 'info');
-                    } else {
-                      if (addToast) addToast('No shares to sell!', 'error');
-                    }
+                    } else { if (addToast) addToast('No shares to sell!', 'error'); }
                   },
-                  className: 'flex-1 py-3 rounded-xl text-sm font-bold bg-gradient-to-r from-red-500 to-rose-500 text-white'
-                }, '\u25BC Sell 1 Share'),
+                  className: 'flex-1 py-3 rounded-xl text-xs font-bold bg-gradient-to-r from-red-500 to-rose-500 text-white'
+                }, '\u25BC Sell 1'),
                 React.createElement('button', {
                   onClick: function() {
-                    // Advance day: random price changes + news
-                    var newsOptions = [
-                      { text: 'TechNova announces breakthrough AI product', ticker: 'TNVA', effect: 0.08 },
-                      { text: 'GreenLeaf wins government contract', ticker: 'GLEF', effect: 0.12 },
-                      { text: 'MediCore drug trial disappoints', ticker: 'MDCH', effect: -0.10 },
-                      { text: 'UrbanBite expands to 3 new cities', ticker: 'UBTF', effect: 0.06 },
-                      { text: 'CloudPeak faces regulatory scrutiny', ticker: 'CPAI', effect: -0.07 },
-                      { text: 'Market rallies on strong jobs report', ticker: 'ALL', effect: 0.04 },
-                      { text: 'Interest rates raised by Fed', ticker: 'ALL', effect: -0.03 }
-                    ];
-                    var news = newsOptions[Math.floor(Math.random() * newsOptions.length)];
-                    var newCos = smCompanies.map(function(c) {
-                      var change = (Math.random() - 0.48) * 0.06;
-                      if (news.ticker === c.ticker || news.ticker === 'ALL') change += news.effect;
-                      var newPrice = Math.max(1, c.price * (1 + change));
-                      var newHist = c.history.slice(-29);
-                      newHist.push(Math.round(newPrice * 100) / 100);
-                      return Object.assign({}, c, { price: Math.round(newPrice * 100) / 100, history: newHist });
-                    });
-                    upd('smCompanies', newCos);
-                    upd('smDay', smDay + 1);
-                    upd('smNews', news.text);
+                    upd('smLoading', true);
+                    var co4 = smCompanies[smSelected];
+                    var prompt = 'You are a financial news AI for an educational stock market simulator. Generate a market news event. Currently tracking: ' + smCompanies.map(function(c){return c.ticker + ' (' + c.name + ', ' + c.sector + ') @ $' + c.price.toFixed(2);}).join(', ') + '.\n\nReturn ONLY valid JSON:\n{"headline":"<breaking news headline>","analysis":"<1-2 sentence market analysis>","impacts":[{"ticker":"<TICKER>","change":<decimal between -0.15 and 0.15>}]}\n\nGenerate realistic business news (earnings beats/misses, product launches, lawsuits, FDA approvals, partnerships, market trends). Impact 1-3 companies per event.';
+                    callGemini(prompt, true).then(function(result) {
+                      try {
+                        var cleaned = result.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+                        var start = cleaned.indexOf('{'); if (start > 0) cleaned = cleaned.substring(start);
+                        var end = cleaned.lastIndexOf('}'); if (end > 0) cleaned = cleaned.substring(0, end + 1);
+                        var parsed = JSON.parse(cleaned);
+                        var maxImpact = 0;
+                        var newCos = smCompanies.map(function(c) {
+                          var impact = 0;
+                          (parsed.impacts || []).forEach(function(imp) { if (imp.ticker === c.ticker) impact = imp.change; });
+                          var rnd = (Math.random() - 0.48) * 0.03;
+                          var newPrice = Math.max(1, c.price * (1 + impact + rnd));
+                          newPrice = Math.round(newPrice * 100) / 100;
+                          if (Math.abs(impact) > Math.abs(maxImpact)) maxImpact = impact;
+                          var newHist = c.history.slice(-29); newHist.push(newPrice);
+                          return Object.assign({}, c, { price: newPrice, history: newHist });
+                        });
+                        upd('smCompanies', newCos);
+                        upd('smDay', smDay + 1);
+                        upd('smNewsEvent', { headline: parsed.headline, analysis: parsed.analysis, impact: maxImpact });
+                        upd('smLoading', false);
+                      } catch(e) {
+                        console.error('[StockSim] Parse error:', e);
+                        var fallbackCos = smCompanies.map(function(c) {
+                          var rnd = (Math.random() - 0.48) * 0.06;
+                          var np = Math.max(1, Math.round(c.price * (1 + rnd) * 100) / 100);
+                          var nh = c.history.slice(-29); nh.push(np);
+                          return Object.assign({}, c, { price: np, history: nh });
+                        });
+                        upd('smCompanies', fallbackCos); upd('smDay', smDay + 1);
+                        upd('smLoading', false);
+                        if (addToast) addToast('Market moved (AI unavailable)', 'warning');
+                      }
+                    }).catch(function(e) { upd('smLoading', false); if (addToast) addToast('AI error', 'error'); });
                   },
-                  className: 'py-3 px-6 rounded-xl text-sm font-bold bg-gradient-to-r from-amber-500 to-yellow-500 text-white'
-                }, '\u23ED Next Day')
-              )
-            ),
-
-            econTab === 'entrepreneur' && React.createElement('div', { className: 'mt-4 grid grid-cols-2 gap-4' },
-              React.createElement('div', { className: 'space-y-3 bg-amber-50 rounded-xl p-4 border border-amber-200' },
-                React.createElement('h4', { className: 'text-sm font-bold text-amber-700' }, '\uD83C\uDF4B Set Up Your Day'),
-                React.createElement('label', { className: 'block text-xs text-slate-600' }, 'Price per cup: $' + enPrice.toFixed(2)),
-                React.createElement('input', { type: 'range', min: 0.25, max: 5.00, step: 0.25, value: enPrice,
-                  onChange: function(e) { upd('enPrice', parseFloat(e.target.value)); }, className: 'w-full accent-amber-500' }),
-                React.createElement('label', { className: 'block text-xs text-slate-600' }, 'Cups to prepare: ' + enCups),
-                React.createElement('input', { type: 'range', min: 5, max: 100, step: 5, value: enCups,
-                  onChange: function(e) { upd('enCups', parseInt(e.target.value)); }, className: 'w-full accent-amber-500' }),
-                React.createElement('label', { className: 'block text-xs text-slate-600' }, 'Advertising: $' + enAdBudget.toFixed(2)),
-                React.createElement('input', { type: 'range', min: 0, max: 10, step: 0.50, value: enAdBudget,
-                  onChange: function(e) { upd('enAdBudget', parseFloat(e.target.value)); }, className: 'w-full accent-amber-500' })
+                  disabled: d.smLoading,
+                  className: 'py-3 px-6 rounded-xl text-xs font-bold transition-all ' + (d.smLoading ? 'bg-slate-300 text-slate-500' : 'bg-gradient-to-r from-amber-500 to-yellow-500 text-white')
+                }, d.smLoading ? '\u23F3...' : '\u23ED Day ' + (smDay + 1))
               ),
-              React.createElement('div', { className: 'space-y-3' },
-                React.createElement('button', {
-                  onClick: function() {
-                    // Simulate a day
-                    var weathers = ['sunny', 'sunny', 'sunny', 'partly_cloudy', 'cloudy', 'rainy'];
-                    var newWeather = weathers[Math.floor(Math.random() * weathers.length)];
-                    var weatherMult = newWeather === 'sunny' ? 1.3 : newWeather === 'partly_cloudy' ? 1.0 : newWeather === 'cloudy' ? 0.7 : 0.3;
-                    var priceSensitivity = Math.max(0, 1 - (enPrice - 1.0) * 0.4);
-                    var adBoost = 1 + enAdBudget * 0.1;
-                    var baseDemand = 25;
-                    var demand = Math.round(baseDemand * weatherMult * priceSensitivity * adBoost);
-                    var sold = Math.min(demand, enCups);
-                    var revenue = sold * enPrice;
-                    var costPerCup = 0.45;
-                    var costs = enCups * costPerCup + enAdBudget;
-                    var profit = revenue - costs;
-                    var newCash = enCash + profit;
-                    var newHistory = (enHistory || []).slice(-19);
-                    newHistory.push({ day: enDay, sold: sold, revenue: revenue, costs: costs, profit: profit, weather: newWeather });
-                    upd('enDay', enDay + 1);
-                    upd('enCash', Math.round(newCash * 100) / 100);
-                    upd('enWeather', newWeather);
-                    upd('enHistory', newHistory);
-                    if (addToast) addToast(
-                      (profit >= 0 ? '\uD83D\uDCB0' : '\uD83D\uDCC9') +
-                      ' Sold ' + sold + '/' + enCups + ' cups | Revenue $' + revenue.toFixed(2) +
-                      ' | Costs $' + costs.toFixed(2) + ' | Profit: ' + (profit >= 0 ? '+' : '') + '$' + profit.toFixed(2),
-                      profit >= 0 ? 'success' : 'warning'
-                    );
-                  },
-                  className: 'w-full py-4 rounded-xl text-sm font-bold bg-gradient-to-r from-amber-500 to-yellow-500 text-white shadow-lg'
-                }, '\u2600\uFE0F Open for Business! (Day ' + enDay + ')'),
-                React.createElement('button', {
-                  onClick: function() {
-                    upd('enDay', 1); upd('enCash', 20); upd('enHistory', []);
-                    upd('enPrice', 1.00); upd('enCups', 30); upd('enAdBudget', 0);
-                    upd('enWeather', 'sunny');
-                    if (addToast) addToast('\u267B Starting fresh with $20!', 'info');
-                  },
-                  className: 'w-full py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200'
-                }, '\u267B Reset Business'),
-                enHistory.length > 0 && React.createElement('div', { className: 'bg-white rounded-xl border border-slate-200 p-3' },
-                  React.createElement('h4', { className: 'text-xs font-bold text-slate-700 mb-2' }, 'Recent Days'),
-                  enHistory.slice(-5).reverse().map(function(h, hi) {
-                    return React.createElement('div', { key: hi, className: 'flex justify-between text-[10px] py-0.5 border-b border-slate-50' },
-                      React.createElement('span', { className: 'text-slate-500' }, 'Day ' + h.day + ' ' + (h.weather === 'sunny' ? '\u2600' : h.weather === 'rainy' ? '\uD83C\uDF27' : '\u2601')),
-                      React.createElement('span', { className: 'text-slate-600' }, h.sold + ' sold'),
-                      React.createElement('span', { className: h.profit >= 0 ? 'text-green-600 font-bold' : 'text-red-600 font-bold' },
-                        (h.profit >= 0 ? '+' : '') + '$' + h.profit.toFixed(2))
-                    );
+              // Portfolio summary
+              React.createElement('div', { className: 'bg-white rounded-xl border border-slate-200 p-3 text-xs' },
+                React.createElement('div', { className: 'flex justify-between mb-2' },
+                  React.createElement('span', { className: 'font-bold text-slate-700' }, '\uD83D\uDCBC Cash: $' + smCash.toFixed(2)),
+                  React.createElement('span', { className: 'font-bold text-amber-600' }, 'Day ' + smDay),
+                  React.createElement('span', { className: 'font-bold text-green-600' }, 'Total: $' + (smCash + smCompanies.reduce(function(s,c){ return s + (smPortfolio[c.ticker]||0)*c.price; },0)).toFixed(2))
+                ),
+                Object.keys(smPortfolio).length > 0 && React.createElement('div', { className: 'flex gap-2 flex-wrap' },
+                  Object.keys(smPortfolio).map(function(ticker) {
+                    var c = smCompanies.find(function(x){return x.ticker===ticker;});
+                    return smPortfolio[ticker] > 0 ? React.createElement('span', { key: ticker, className: 'bg-slate-100 px-2 py-1 rounded text-[10px] font-bold' }, ticker + ': ' + smPortfolio[ticker] + ' ($' + (smPortfolio[ticker]*c.price).toFixed(0) + ')') : null;
                   })
                 )
               )
-            )
-          );
+            ),
+
+            econTab === 'entrepreneur' && React.createElement('div', { className: 'mt-4' },
+              // Business setup (if no business yet)
+              !d.enBusiness ? React.createElement('div', { className: 'text-center py-8' },
+                React.createElement('div', { className: 'text-5xl mb-4' }, '\uD83D\uDE80'),
+                React.createElement('h3', { className: 'text-lg font-bold text-slate-800 mb-2' }, 'Start Your Business'),
+                React.createElement('p', { className: 'text-xs text-slate-500 mb-4 max-w-sm mx-auto' }, 'Type any business idea and AI will generate your startup costs, daily expenses, and pricing. Then run it day by day!'),
+                React.createElement('input', {
+                  type: 'text',
+                  value: d.enInput || '',
+                  onChange: function(e) { upd('enInput', e.target.value); },
+                  placeholder: 'e.g. food truck, dog walking, tutoring, bakery, app development...',
+                  className: 'w-full max-w-md px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none transition-all mb-3',
+                  onKeyDown: function(e) { if (e.key === 'Enter' && (d.enInput || '').trim()) { document.getElementById('econ-start-biz').click(); } }
+                }),
+                React.createElement('button', {
+                  id: 'econ-start-biz',
+                  onClick: function() {
+                    if (!(d.enInput || '').trim()) return;
+                    upd('enLoading', true);
+                    var prompt = 'You are a business simulation game engine for students. The player wants to start a "' + d.enInput.trim() + '" business.\n\nGenerate realistic startup details. Return ONLY valid JSON:\n{"businessName":"<creative name>","emoji":"<single emoji>","startupCost":<number 500-50000>,"dailyFixedCosts":<number 10-500>,"unitCost":<number, cost per unit/customer served>,"unitName":"<what 1 unit is, e.g. meal, walk, lesson, item>","suggestedPrice":<number>,"maxDailyCustomers":<number 5-200>,"description":"<1 sentence pitch>","riskFactors":["<risk 1>","<risk 2>","<risk 3>"]}\n\nMake the numbers realistic for a small business startup.';
+                    callGemini(prompt, true).then(function(result) {
+                      try {
+                        var cleaned = result.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+                        var s2 = cleaned.indexOf('{'); if (s2 > 0) cleaned = cleaned.substring(s2);
+                        var e2 = cleaned.lastIndexOf('}'); if (e2 > 0) cleaned = cleaned.substring(0, e2 + 1);
+                        var biz = JSON.parse(cleaned);
+                        upd('enBusiness', biz);
+                        upd('enBizCash', 10000 - (biz.startupCost || 5000));
+                        upd('enBizDay', 1);
+                        upd('enBizRep', 50);
+                        upd('enBizPrice', biz.suggestedPrice || 10);
+                        upd('enBizHistory', []);
+                        upd('enBizEvent', null);
+                        upd('enLoading', false);
+                        if (addToast) addToast('\uD83C\uDF89 ' + biz.businessName + ' is open! Starting capital: $' + (10000 - biz.startupCost).toLocaleString(), 'success');
+                      } catch(e3) { upd('enLoading', false); if (addToast) addToast('Failed to create business. Try again!', 'error'); console.error('[BizSim]', e3); }
+                    }).catch(function(e4) { upd('enLoading', false); if (addToast) addToast('AI error', 'error'); });
+                  },
+                  disabled: d.enLoading || !(d.enInput || '').trim(),
+                  className: 'w-full max-w-md py-3 rounded-xl text-sm font-bold shadow-lg transition-all ' + (d.enLoading ? 'bg-slate-300 text-slate-500' : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:shadow-xl')
+                }, d.enLoading ? '\u23F3 AI is building your business...' : '\uD83D\uDE80 Launch Business')
+              ) :
+              // Active business view
+              React.createElement('div', null,
+                // Business header
+                React.createElement('div', { className: 'flex items-center gap-3 mb-3 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-4 border border-amber-200' },
+                  React.createElement('span', { className: 'text-3xl' }, d.enBusiness.emoji || '\uD83C\uDFEA'),
+                  React.createElement('div', { className: 'flex-1' },
+                    React.createElement('h4', { className: 'text-sm font-bold text-amber-800' }, d.enBusiness.businessName),
+                    React.createElement('p', { className: 'text-[10px] text-amber-600' }, d.enBusiness.description)
+                  ),
+                  React.createElement('div', { className: 'text-right' },
+                    React.createElement('div', { className: 'text-lg font-bold ' + ((d.enBizCash || 0) >= 0 ? 'text-green-600' : 'text-red-500') }, '$' + (d.enBizCash || 0).toLocaleString()),
+                    React.createElement('div', { className: 'text-[10px] text-slate-400' }, 'Day ' + (d.enBizDay || 1) + ' | Rep: ' + (d.enBizRep || 50) + '/100')
+                  )
+                ),
+                // AI Event display
+                d.enBizEvent ? React.createElement('div', { className: 'bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl p-4 border border-purple-200 mb-3' },
+                  React.createElement('div', { className: 'flex items-start gap-2 mb-3' },
+                    React.createElement('span', { className: 'text-2xl' }, d.enBizEvent.emoji || '\u26A1'),
+                    React.createElement('div', null,
+                      React.createElement('h4', { className: 'text-sm font-bold text-purple-800' }, d.enBizEvent.title),
+                      React.createElement('p', { className: 'text-xs text-purple-600 mt-1' }, d.enBizEvent.description)
+                    )
+                  ),
+                  React.createElement('div', { className: 'grid gap-2' },
+                    (d.enBizEvent.choices || []).map(function(ch, chi) {
+                      return React.createElement('button', {
+                        key: chi,
+                        onClick: function() {
+                          var ef = ch.effect || {};
+                          upd('enBizCash', (d.enBizCash || 0) + (ef.cash || 0));
+                          upd('enBizRep', Math.min(100, Math.max(0, (d.enBizRep || 50) + (ef.reputation || 0))));
+                          upd('enBizEvent', null);
+                          if (addToast) addToast(ch.label + ' \u2192 ' + (ef.cash >= 0 ? '+$' : '-$') + Math.abs(ef.cash || 0), ef.cash >= 0 ? 'success' : 'warning');
+                        },
+                        className: 'w-full text-left p-3 rounded-xl border-2 border-purple-100 hover:border-purple-400 bg-white hover:bg-purple-50 transition-all text-xs'
+                      },
+                        React.createElement('div', { className: 'font-bold text-slate-700' }, ch.label),
+                        React.createElement('div', { className: 'text-slate-400 mt-0.5 flex gap-3' },
+                          ch.effect && ch.effect.cash ? React.createElement('span', { className: ch.effect.cash >= 0 ? 'text-green-500' : 'text-red-500' }, (ch.effect.cash >= 0 ? '+' : '') + '$' + ch.effect.cash) : null,
+                          ch.effect && ch.effect.reputation ? React.createElement('span', { className: 'text-purple-500' }, (ch.effect.reputation > 0 ? '+' : '') + ch.effect.reputation + ' rep') : null
+                        )
+                      );
+                    })
+                  )
+                ) : null,
+                // Run Day button
+                !d.enBizEvent && React.createElement('button', {
+                  onClick: function() {
+                    upd('enBizLoading', true);
+                    var biz = d.enBusiness;
+                    var prompt = 'You are a business simulation game engine. The player runs "' + biz.businessName + '" (a ' + (d.enInput || 'business') + '). Day ' + (d.enBizDay || 1) + ', cash: $' + (d.enBizCash || 0) + ', reputation: ' + (d.enBizRep || 50) + '/100. They sell ' + biz.unitName + ' at $' + (d.enBizPrice || biz.suggestedPrice) + ' each. Daily fixed costs: $' + biz.dailyFixedCosts + ', unit cost: $' + biz.unitCost + '.\n\nSimulate today and generate an event. Return ONLY valid JSON:\n{"customersToday":<number>,"revenue":<number>,"costs":<number>,"emoji":"<emoji>","title":"<event title>","description":"<what happened today + the event>","choices":[{"label":"<option>","effect":{"cash":<number>,"reputation":<number>}}]}\n\nMake daily customers based on reputation (higher rep = more customers, max ' + biz.maxDailyCustomers + '). Include a realistic business challenge/opportunity as the event with 2-3 meaningful choices.';
+                    callGemini(prompt, true).then(function(result) {
+                      try {
+                        var cleaned = result.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+                        var s3 = cleaned.indexOf('{'); if (s3 > 0) cleaned = cleaned.substring(s3);
+                        var e3 = cleaned.lastIndexOf('}'); if (e3 > 0) cleaned = cleaned.substring(0, e3 + 1);
+                        var dayResult = JSON.parse(cleaned);
+                        var dailyProfit = (dayResult.revenue || 0) - (dayResult.costs || 0);
+                        upd('enBizCash', (d.enBizCash || 0) + dailyProfit);
+                        upd('enBizDay', (d.enBizDay || 1) + 1);
+                        var h2 = (d.enBizHistory || []).slice(-29);
+                        h2.push({ day: d.enBizDay || 1, revenue: dayResult.revenue, costs: dayResult.costs, profit: dailyProfit, customers: dayResult.customersToday });
+                        upd('enBizHistory', h2);
+                        upd('enBizEvent', dayResult);
+                        upd('enBizLoading', false);
+                      } catch(e4) { upd('enBizLoading', false); if (addToast) addToast('Day sim failed. Try again!', 'error'); console.error('[BizSim]', e4); }
+                    }).catch(function(e5) { upd('enBizLoading', false); if (addToast) addToast('AI error', 'error'); });
+                  },
+                  disabled: d.enBizLoading,
+                  className: 'w-full py-4 rounded-2xl text-sm font-bold shadow-lg mb-3 transition-all ' + (d.enBizLoading ? 'bg-slate-300 text-slate-500' : 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:shadow-xl hover:scale-[1.02]')
+                }, d.enBizLoading ? '\u23F3 Simulating day...' : '\u2600\uFE0F Open for Business! (Day ' + (d.enBizDay || 1) + ')'),
+                // Stats + History
+                (d.enBizHistory || []).length > 0 && React.createElement('div', { className: 'bg-white rounded-xl border border-slate-200 p-3' },
+                  React.createElement('h4', { className: 'text-xs font-bold text-slate-500 mb-2' }, '\uD83D\uDCC8 Business History'),
+                  (d.enBizHistory || []).slice(-7).reverse().map(function(dh, dhi) {
+                    return React.createElement('div', { key: dhi, className: 'flex justify-between text-[10px] py-1 border-b border-slate-50' },
+                      React.createElement('span', { className: 'text-slate-400' }, 'Day ' + dh.day),
+                      React.createElement('span', { className: 'text-slate-500' }, dh.customers + ' customers'),
+                      React.createElement('span', { className: 'text-blue-500' }, 'Rev $' + (dh.revenue || 0).toFixed(0)),
+                      React.createElement('span', { className: dh.profit >= 0 ? 'text-green-600 font-bold' : 'text-red-500 font-bold' }, (dh.profit >= 0 ? '+' : '') + '$' + (dh.profit || 0).toFixed(0))
+                    );
+                  })
+                ),
+                // Close business
+                React.createElement('button', {
+                  onClick: function() { upd('enBusiness', null); upd('enInput', ''); if (addToast) addToast('Business closed. Start a new one!', 'info'); },
+                  className: 'mt-2 w-full py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-500 border border-slate-200'
+                }, '\u267B Close Business & Start New')
+              )
+            ));
         })(), stemLabTab === 'explore' && stemLabTool === 'codingPlayground' && (() => {
           // ── State from labToolData ──
           var d = (labToolData && labToolData._codingPlayground) || {};
