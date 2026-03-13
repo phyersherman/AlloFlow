@@ -32228,6 +32228,43 @@
 
             // Cultural Knowledge Traditions
             var traditions = d.colonyTraditions || [];
+
+            // Colony Radio
+            var radioMessage = d.colonyRadio || null;
+
+            // Colony Name
+            var colonyName = d.colonyName || 'New Kepler';
+
+            // Achievements
+            var achievements = d.colonyAchievements || {};
+            var achievementDefs = [
+              { id: 'firstBuild', name: 'Foundation Stone', icon: '\uD83C\uDFD7\uFE0F', desc: 'Build your first structure.', check: function() { return buildings.length >= 1; } },
+              { id: 'fiveBuild', name: 'Growing Pains', icon: '\uD83C\uDFD8\uFE0F', desc: 'Build 5 structures.', check: function() { return buildings.length >= 5; } },
+              { id: 'tenBuild', name: 'City Planner', icon: '\uD83C\uDFD9\uFE0F', desc: 'Build 10 structures.', check: function() { return buildings.length >= 10; } },
+              { id: 'allBuild', name: 'Master Builder', icon: '\uD83C\uDFDF\uFE0F', desc: 'Build all 16 structures.', check: function() { return buildings.length >= 16; } },
+              { id: 'pop10', name: 'Small Town', icon: '\uD83D\uDC65', desc: 'Reach 10 settlers.', check: function() { return settlers.length >= 10; } },
+              { id: 'pop25', name: 'Borough', icon: '\uD83C\uDFD8\uFE0F', desc: 'Reach 25 settlers.', check: function() { return settlers.length >= 25; } },
+              { id: 'pop50', name: 'Metropolis', icon: '\uD83C\uDFD9\uFE0F', desc: 'Win by population!', check: function() { return settlers.length >= 50; } },
+              { id: 'tf25', name: 'Green Shoots', icon: '\uD83C\uDF31', desc: '25% terraformed.', check: function() { return terraform >= 25; } },
+              { id: 'tf50', name: 'Halfway Home', icon: '\uD83C\uDF0D', desc: '50% terraformed.', check: function() { return terraform >= 50; } },
+              { id: 'tf100', name: 'New Earth', icon: '\uD83C\uDF0E', desc: '100% terraformed! Victory!', check: function() { return terraform >= 100; } },
+              { id: 'res3', name: 'Curious Mind', icon: '\uD83D\uDD2C', desc: 'Complete 3 research techs.', check: function() { return researchQueue.length >= 3; } },
+              { id: 'res7', name: 'Renaissance', icon: '\uD83D\uDCDA', desc: 'Complete 7 research techs.', check: function() { return researchQueue.length >= 7; } },
+              { id: 'res10', name: 'Omniscient', icon: '\uD83E\uDDE0', desc: 'Complete all 10! Victory!', check: function() { return researchQueue.length >= 10; } },
+              { id: 'explore15', name: 'Cartographer', icon: '\uD83D\uDDFA\uFE0F', desc: 'Explore 15 tiles.', check: function() { return stats.tilesExplored >= 15; } },
+              { id: 'exploreAll', name: 'World Walker', icon: '\uD83C\uDF0F', desc: 'Explore all tiles.', check: function() { return stats.tilesExplored >= mapSize * mapSize; } },
+              { id: 'science100', name: 'Knowledge Hoard', icon: '\uD83D\uDCDA', desc: 'Accumulate 100+ science.', check: function() { return resources.science >= 100; } },
+              { id: 'journal10', name: 'Studious', icon: '\uD83D\uDCD6', desc: '10 science journal entries.', check: function() { return scienceJournal.length >= 10; } },
+              { id: 'journal25', name: 'Scholar', icon: '\uD83C\uDF93', desc: '25 science journal entries.', check: function() { return scienceJournal.length >= 25; } },
+              { id: 'tradition3', name: 'Cultural Mosaic', icon: '\uD83C\uDF10', desc: 'Adopt 3 cultural traditions.', check: function() { return traditions.length >= 3; } },
+              { id: 'equityHigh', name: 'Just Society', icon: '\u2696\uFE0F', desc: 'Maintain equity above 85%.', check: function() { return equity >= 85; } },
+              { id: 'happyMax', name: 'Utopia', icon: '\uD83D\uDE04', desc: 'Reach 100% happiness.', check: function() { return colonyHappiness >= 100; } },
+              { id: 'alienFriend', name: 'Diplomat', icon: '\uD83D\uDC7E', desc: 'Allied with the Keth\u2019ora.', check: function() { return alienRelations >= 50; } },
+              { id: 'wonder1', name: 'Wonderous', icon: '\uD83C\uDFDB\uFE0F', desc: 'Complete a Wonder.', check: function() { return wonders.terraformEngine || wonders.arkVault || wonders.quantumGate; } },
+              { id: 'mentor5', name: 'Awakener', icon: '\uD83E\uDD16', desc: 'Activate 5 Digital Mentors.', check: function() { return greatScientists.length >= 5; } },
+              { id: 'turn50', name: 'Endurance', icon: '\u23F0', desc: 'Survive 50 turns.', check: function() { return turn >= 50; } },
+              { id: 'perfect10', name: 'Perfect 10', icon: '\uD83C\uDFAF', desc: 'Answer 10 questions correctly in a row.', check: function() { return stats.streak >= 10; } }
+            ];
             var traditionDefs = [
               { id: 'ubuntu', name: 'Ubuntu Philosophy', origin: 'Southern African', icon: '\uD83E\uDD1D', desc: '"I am because we are." Community-centered decision making. +10 equity, +5 happiness.',
                 bonus: { equity: 10, happiness: 5 }, value: 'collectivism', fact: 'Ubuntu is a Nguni Bantu concept meaning shared humanity. Archbishop Desmond Tutu described it as knowing you belong in a greater whole.' },
@@ -32372,7 +32409,7 @@
               // Title bar with season + era badges
               var seasonIcons = { bloom: '\uD83C\uDF3C', dry: '\uD83C\uDF35', storm: '\u26C8\uFE0F', calm: '\u2728' };
               ctx.font = 'bold 14px Inter, system-ui'; ctx.fillStyle = '#e2e8f0';
-              ctx.fillText('\uD83D\uDE80 KEPLER COLONY', offsetX, 20);
+              ctx.fillText('\uD83D\uDE80 ' + colonyName.toUpperCase(), offsetX, 20);
               ctx.font = '10px Inter, system-ui'; ctx.fillStyle = '#94a3b8';
               ctx.fillText((seasonIcons[(seasonCycle || {}).id] || '\u2728') + ' ' + ((seasonDefs[(seasonCycle || {}).index] || {}).name || 'Calm'), w / 2 - 30, 20);
               ctx.fillStyle = '#64748b';
@@ -32503,6 +32540,17 @@
                     ctx.strokeStyle = '#fdba74'; ctx.lineWidth = 1; ctx.beginPath();
                     ctx.moveTo(tx + tileSize * 0.85, ty + tileSize * 0.72); ctx.lineTo(tx + tileSize * 0.85, ty + tileSize * 0.82); ctx.stroke();
                     ctx.fillStyle = '#fb923c'; ctx.fillRect(tx + tileSize * 0.85, ty + tileSize * 0.72, tileSize * 0.08, tileSize * 0.05);
+                    // Trade route lines to adjacent outposts
+                    [[1,0],[0,1]].forEach(function(dd2) {
+                      var adjK2 = (tile.x + dd2[0]) + ',' + (tile.y + dd2[1]);
+                      if (tileImprovements[adjK2]) {
+                        ctx.strokeStyle = 'rgba(251,191,36,0.4)'; ctx.lineWidth = 1.5;
+                        ctx.setLineDash([3,3]); ctx.beginPath();
+                        ctx.moveTo(tx + tileSize/2, ty + tileSize/2);
+                        ctx.lineTo(tx + tileSize/2 + dd2[0] * tileSize, ty + tileSize/2 + dd2[1] * tileSize);
+                        ctx.stroke(); ctx.setLineDash([]);
+                      }
+                    });
                   }
 
                   // Terrain emoji
@@ -33027,6 +33075,46 @@
                         nr2.food += 1;
                       }
 
+                      // Achievement check
+                      var newAch = Object.assign({}, achievements);
+                      var achChanged = false;
+                      achievementDefs.forEach(function(ad) {
+                        if (!newAch[ad.id] && ad.check()) {
+                          newAch[ad.id] = { turn: nt, ts: Date.now() };
+                          achChanged = true;
+                          if (addToast) addToast(ad.icon + ' Achievement: ' + ad.name + '!', 'success');
+                          if (d.colonyTTS) colonySpeak('Achievement unlocked. ' + ad.name + '. ' + ad.desc, 'narrator');
+                          var nl31 = gameLog.slice(); nl31.push(ad.icon + ' Achievement: ' + ad.name); upd('colonyLog', nl31);
+                          if (typeof addXP === 'function') addXP(20, 'Achievement: ' + ad.name);
+                        }
+                      });
+                      if (achChanged) upd('colonyAchievements', newAch);
+
+                      // Streak tracking
+                      var ns9 = Object.assign({}, stats);
+                      if (!ns9.streak) ns9.streak = 0;
+                      upd('colonyStats', ns9);
+
+                      // Colony Radio — AI broadcast every 8 turns
+                      if (nt > 3 && nt % 8 === 0) {
+                        callGemini('You are the radio host for a space colony called "' + colonyName + '" on planet Kepler-442b. Give a brief radio news broadcast (3-4 sentences) reporting on recent colony events. Turn: ' + nt + '. Population: ' + settlers.length + '. Buildings: ' + buildings.length + '. Terraform: ' + terraform + '%. Era: ' + era + '. Season: ' + ((seasonDefs[(seasonCycle || {}).index] || {}).name || 'Calm') + '. Recent events from log: ' + gameLog.slice(-5).join('; ') + '. Make it feel like a real news broadcast — upbeat, informative, with a sign-off. Grade level: ' + (gradeDifficultyMap[gradeLevel] || 'medium') + '.', true).then(function(broadcast) {
+                          upd('colonyRadio', broadcast);
+                          if (d.colonyTTS) colonySpeak(broadcast, 'narrator');
+                        });
+                      }
+
+                      // Settler celebrations (happiness > 85) or protests (happiness < 25)
+                      if (newHappy > 85 && nt % 10 === 0) {
+                        var nl32 = gameLog.slice(); nl32.push('\uD83C\uDF89 Colony Celebration! Settlers throw a festival!'); upd('colonyLog', nl32);
+                        if (addToast) addToast('\uD83C\uDF89 Colony Celebration! +5 happiness, +10 XP!', 'success');
+                        newHappy = Math.min(100, newHappy + 5); upd('colonyHappiness', newHappy);
+                        if (typeof addXP === 'function') addXP(10, 'Colony Festival');
+                      } else if (newHappy < 25 && nt % 7 === 0) {
+                        var nl33 = gameLog.slice(); nl33.push('\u270A Settler Protest! Demanding better conditions!'); upd('colonyLog', nl33);
+                        if (addToast) addToast('\u270A Settler Protest! Productivity drops!', 'warning');
+                        nr2.food = Math.max(0, nr2.food - 3); nr2.materials = Math.max(0, nr2.materials - 3);
+                      }
+
                       // Great Scientist arrival (every 15 turns + high science)
                       if (nt % 15 === 0 && nr2.science >= 10 && greatScientists.length < greatSciDefs.length) {
                         var availGS = greatSciDefs.filter(function(gs) { return !greatScientists.some(function(g) { return g.name === gs.name; }); });
@@ -33058,11 +33146,23 @@
                         }
                       }
 
-                      // Tile improvement bonuses (outposts)
-                      Object.keys(tileImprovements).forEach(function(tKey2) {
+                      // Tile improvement bonuses (outposts) + trade routes
+                      var outpostKeys = Object.keys(tileImprovements);
+                      var tradeRoutes = 0;
+                      outpostKeys.forEach(function(tKey2) {
                         var imp = tileImprovements[tKey2];
                         if (imp && imp.res && nr2[imp.res] !== undefined) nr2[imp.res] += 1;
+                        // Check for adjacent outposts = trade route
+                        var coords = tKey2.split(','); var ox = parseInt(coords[0]); var oy = parseInt(coords[1]);
+                        [[1,0],[-1,0],[0,1],[0,-1]].forEach(function(dd) {
+                          var adjKey = (ox + dd[0]) + ',' + (oy + dd[1]);
+                          if (tileImprovements[adjKey] && adjKey > tKey2) tradeRoutes++;
+                        });
                       });
+                      // Trade route bonus: +1 of each resource per route
+                      if (tradeRoutes > 0) {
+                        nr2.food += tradeRoutes; nr2.materials += tradeRoutes; nr2.science += tradeRoutes;
+                      }
 
                       // Expedition progress
                       if (activeExpedition) {
@@ -33179,6 +33279,7 @@
                 ),
                 React.createElement('div', { className: 'grid grid-cols-4 gap-1 mb-3' },
                   React.createElement('button', { onClick: function() { upd('showWonders', !d.showWonders); }, className: 'py-2 rounded-xl text-[10px] font-bold bg-gradient-to-r from-amber-800 to-amber-700 text-amber-200' }, '\uD83C\uDFDB\uFE0F Wonders'),
+                  React.createElement('button', { onClick: function() { upd('showAchievements', !d.showAchievements); }, className: 'py-2 rounded-xl text-[10px] font-bold bg-gradient-to-r from-rose-800 to-rose-700 text-rose-200' }, '\uD83C\uDFC5 ' + Object.keys(achievements).length + '/' + achievementDefs.length),
                   React.createElement('button', { onClick: function() { upd('showExpeditions', !d.showExpeditions); }, className: 'py-2 rounded-xl text-[10px] font-bold bg-gradient-to-r from-cyan-800 to-cyan-700 text-cyan-200' }, '\u26F5 Expeditions'),
                   React.createElement('button', { onClick: function() { upd('showJournal', !d.showJournal); }, className: 'py-2 rounded-xl text-[10px] font-bold bg-gradient-to-r from-green-800 to-green-700 text-green-200' }, '\uD83D\uDCD6 ' + scienceJournal.length),
                   selectedTile && selectedTile.tile.explored && selectedTile.tile.type !== 'colony' && React.createElement('button', {
