@@ -21837,6 +21837,35 @@
                 ctx.ellipse(cx, cy, W*0.28, H*0.30, 0, 0, Math.PI*2);
                 ctx.strokeStyle = 'rgba(148,163,184,0.2)'; ctx.lineWidth = 1; ctx.setLineDash([4,4]); ctx.stroke(); ctx.setLineDash([]);
                 ctx.globalAlpha = 1;
+                // ECG waveform display (bottom of canvas)
+                var ecgY = H - 35; var ecgW = W * 0.6; var ecgX = (W - ecgW) / 2;
+                ctx.fillStyle = 'rgba(15,23,42,0.7)';
+                ctx.fillRect(ecgX-5, ecgY-20, ecgW+10, 35);
+                ctx.strokeStyle = 'rgba(34,197,94,0.15)'; ctx.lineWidth = 0.3;
+                // Grid lines
+                for (var eg = 0; eg < 6; eg++) { ctx.beginPath(); ctx.moveTo(ecgX, ecgY-15+eg*5); ctx.lineTo(ecgX+ecgW, ecgY-15+eg*5); ctx.stroke(); }
+                // ECG trace
+                ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 1.5; ctx.beginPath();
+                for (var ep = 0; ep < ecgW; ep++) {
+                  var et = ((ep + dissTick * 2) % ecgW) / ecgW;
+                  var ey = ecgY;
+                  // P wave
+                  if (et > 0.05 && et < 0.15) ey -= Math.sin((et-0.05)*10*Math.PI) * 4;
+                  // QRS complex
+                  else if (et > 0.20 && et < 0.22) ey += (et-0.20)*200;
+                  else if (et > 0.22 && et < 0.26) ey -= 15 - (et-0.22)*375;
+                  else if (et > 0.26 && et < 0.28) ey += (et-0.26)*150;
+                  // T wave
+                  else if (et > 0.35 && et < 0.50) ey -= Math.sin((et-0.35)*6.67*Math.PI) * 5;
+                  ep === 0 ? ctx.moveTo(ecgX + ep, ey) : ctx.lineTo(ecgX + ep, ey);
+                }
+                ctx.stroke();
+                // BPM display
+                var bpm = 72 + Math.floor(Math.sin(dissTick * 0.02) * 5);
+                ctx.font = 'bold 10px Inter, system-ui'; ctx.fillStyle = '#22c55e';
+                ctx.fillText(bpm + ' BPM', ecgX + ecgW + 8, ecgY);
+                ctx.font = '6px Inter, system-ui'; ctx.fillStyle = 'rgba(34,197,94,0.5)';
+                ctx.fillText('P', ecgX+ecgW*0.10, ecgY-18); ctx.fillText('QRS', ecgX+ecgW*0.23, ecgY-18); ctx.fillText('T', ecgX+ecgW*0.42, ecgY-18);
                 // Chamber shading (left side thicker wall)
                 ctx.beginPath();
                 ctx.moveTo(cx-W*0.04, cy-H*0.15);
@@ -22023,6 +22052,39 @@
               // Layer label
               var activeLayerDef = spec.layers[currentLayerIdx];
               if (activeLayerDef) { ctx.font = 'bold 13px Inter, system-ui, sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fillText(activeLayerDef.icon + ' ' + activeLayerDef.name + ' Layer', 14, H - 14); }
+              // Annotation drawing overlay
+              if (d.annotations && d.annotations.length > 0) {
+                ctx.strokeStyle = '#ec4899'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+                d.annotations.forEach(function (ann) {
+                  if (ann.prevX !== undefined) {
+                    ctx.beginPath(); ctx.moveTo(ann.prevX, ann.prevY);
+                    ctx.lineTo(ann.x, ann.y); ctx.stroke();
+                  }
+                  ctx.beginPath(); ctx.arc(ann.x, ann.y, 2, 0, Math.PI*2);
+                  ctx.fillStyle = '#ec4899'; ctx.fill();
+                });
+              }
+              // Clear annotations button hint
+              if (d.annotateMode && d.annotations && d.annotations.length > 0) {
+                ctx.font = '8px Inter, system-ui'; ctx.fillStyle = 'rgba(236,72,153,0.6)';
+                ctx.fillText('Dbl-click to clear', 10, H-5);
+              }
+              // Ruler tool overlay
+              if (d.rulerMode && d.rulerStart && d.rulerEnd) {
+                ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 1.5; ctx.setLineDash([]);
+                ctx.beginPath(); ctx.moveTo(d.rulerStart.x, d.rulerStart.y);
+                ctx.lineTo(d.rulerEnd.x, d.rulerEnd.y); ctx.stroke();
+                // Endpoints
+                ctx.beginPath(); ctx.arc(d.rulerStart.x, d.rulerStart.y, 3, 0, Math.PI*2); ctx.fillStyle = '#fbbf24'; ctx.fill();
+                ctx.beginPath(); ctx.arc(d.rulerEnd.x, d.rulerEnd.y, 3, 0, Math.PI*2); ctx.fill();
+                // Distance
+                var rdx = d.rulerEnd.x - d.rulerStart.x;
+                var rdy = d.rulerEnd.y - d.rulerStart.y;
+                var rDist = Math.sqrt(rdx*rdx + rdy*rdy);
+                var rCm = (rDist / W * (spec.bodyShape === 'worm' ? 15 : spec.bodyShape === 'pig' ? 25 : spec.bodyShape === 'fish' ? 20 : spec.bodyShape === 'crayfish' ? 12 : spec.bodyShape === 'frog' ? 8 : 3)).toFixed(1);
+                ctx.font = 'bold 10px Inter, system-ui'; ctx.fillStyle = '#fbbf24';
+                ctx.fillText(rCm + ' cm', (d.rulerStart.x + d.rulerEnd.x)/2 + 5, (d.rulerStart.y + d.rulerEnd.y)/2 - 5);
+              }
               // Scale bar
               ctx.fillStyle = 'rgba(255,255,255,0.25)';
               ctx.fillRect(W - 80, H - 18, 60, 2);
@@ -22487,6 +22549,25 @@
             drawDissectionFrame();
           };
 
+          // Keyboard shortcuts
+          React.useEffect(function () {
+            function handleKey(e) {
+              if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                var oi = organs.findIndex(function(o) { return o.id === d.selectedOrgan; });
+                if (oi < organs.length - 1) upd('selectedOrgan', organs[oi + 1].id);
+              } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                var oi2 = organs.findIndex(function(o) { return o.id === d.selectedOrgan; });
+                if (oi2 > 0) upd('selectedOrgan', organs[oi2 - 1].id);
+              } else if (e.key === 'Escape') {
+                upd('selectedOrgan', null);
+              } else if (e.key === 'r' || e.key === 'R') {
+                upd('dissZoom', 1); upd('dissPanX', 0); upd('dissPanY', 0);
+              }
+            }
+            window.addEventListener('keydown', handleKey);
+            return function () { window.removeEventListener('keydown', handleKey); };
+          }, [d.selectedOrgan, organs]);
+
           // Simple sound effects via Web Audio API
           var audioCtx = null;
           function playDissectSound(type) {
@@ -22509,6 +22590,27 @@
             organs.forEach(function (org) { var dx = mx - org.x, dy = my - org.y; if (Math.sqrt(dx * dx + dy * dy) < 0.04) hit = org; });
             upd('selectedOrgan', hit ? (hit.id === d.selectedOrgan ? null : hit.id) : null);
             if (hit) playDissectSound('pin');
+            // Annotation mode: add to drawing
+            if (d.annotateMode) {
+              var annots = d.annotations || [];
+              annots.push({ x: mx, y: my, type: 'dot' });
+              upd('annotations', annots);
+              if (annots.length > 1) {
+                // Connect to previous dot
+                annots[annots.length - 1].prevX = annots[annots.length - 2].x;
+                annots[annots.length - 1].prevY = annots[annots.length - 2].y;
+                upd('annotations', annots.slice());
+              }
+            }
+            // Ruler mode: set start/end points
+            if (d.rulerMode) {
+              if (!d.rulerStart || d.rulerEnd) {
+                upd('rulerStart', { x: mx, y: my });
+                upd('rulerEnd', null);
+              } else {
+                upd('rulerEnd', { x: mx, y: my });
+              }
+            }
             // Track explored organs for progress
             if (hit) {
               var explored = Object.assign({}, d.exploredOrgans || {});
@@ -22575,7 +22677,8 @@
                      totalOrgansInSpecimen > 18 ? 'bg-amber-100 text-amber-600' :
                      'bg-green-100 text-green-600')
                   }, totalOrgansInSpecimen > 30 ? '\uD83D\uDD34 Advanced' : totalOrgansInSpecimen > 18 ? '\uD83D\uDFE1 Intermediate' : '\uD83D\uDFE2 Beginner'),
-                  React.createElement("span", { className: "text-[9px] text-slate-400" }, totalOrgansInSpecimen + ' structures \u2022 ' + spec.layers.length + ' layers')
+                  React.createElement("span", { className: "text-[9px] text-slate-400" }, totalOrgansInSpecimen + ' structures \u2022 ' + spec.layers.length + ' layers'),
+                  React.createElement("span", { className: "text-[8px] text-slate-300 ml-1" }, '\u2328 \u2190\u2192 nav \u2022 Esc clear \u2022 R reset')
                 )
               ),
               React.createElement("div", { className: "ml-auto flex gap-2" },
@@ -22591,6 +22694,13 @@
                   onClick: function () { upd('labelMode', d.labelMode === 'hidden' ? 'show' : 'hidden'); },
                   className: "px-3 py-1.5 rounded-lg text-xs font-bold " + (d.labelMode === 'hidden' ? 'bg-rose-600 text-white' : 'bg-rose-100 text-rose-700')
                 }, d.labelMode === 'hidden' ? '\uD83D\uDC41 Show Labels' : '\uD83C\uDFF7 Hide Labels'),
+                React.createElement("button", {
+                  onClick: function () {
+                    upd('printMode', !d.printMode);
+                    if (!d.printMode) { upd('annotations', []); upd('rulerStart', null); upd('rulerEnd', null); }
+                  },
+                  className: "px-3 py-1.5 rounded-lg text-xs font-bold " + (d.printMode ? 'bg-slate-600 text-white' : 'bg-slate-100 text-slate-700')
+                }, d.printMode ? '\u23F9 Normal' : '\uD83D\uDDA8 Clean'),
                 spec.bodyShape !== 'eye' && spec.bodyShape !== 'heart' && React.createElement("button", {
                   onClick: function () { upd('viewAngle', d.viewAngle === 'dorsal' ? 'ventral' : 'dorsal'); },
                   className: "px-3 py-1.5 rounded-lg text-xs font-bold " + (d.viewAngle === 'dorsal' ? 'bg-teal-600 text-white' : 'bg-teal-100 text-teal-700')
@@ -22599,6 +22709,14 @@
                   onClick: function () { upd('quizMode', !d.quizMode); if (!d.quizMode) { upd('quizIdx', 0); upd('quizScore', 0); upd('quizTotal', 0); upd('quizFeedback', null); } },
                   className: "px-3 py-1.5 rounded-lg text-xs font-bold " + (d.quizMode ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-700')
                 }, d.quizMode ? '\u23F9 End Quiz' : '\uD83E\uDDE0 Quiz'),
+                React.createElement("button", {
+                  onClick: function () { upd('rulerMode', !d.rulerMode); upd('annotateMode', false); },
+                  className: "px-3 py-1.5 rounded-lg text-xs font-bold " + (d.rulerMode ? 'bg-amber-500 text-white' : 'bg-amber-100 text-amber-700')
+                }, d.rulerMode ? '\uD83D\uDCCF On' : '\uD83D\uDCCF Ruler'),
+                React.createElement("button", {
+                  onClick: function () { upd('annotateMode', !d.annotateMode); upd('rulerMode', false); },
+                  className: "px-3 py-1.5 rounded-lg text-xs font-bold " + (d.annotateMode ? 'bg-pink-500 text-white' : 'bg-pink-100 text-pink-700')
+                }, d.annotateMode ? '\u270F\uFE0F Drawing' : '\u270F\uFE0F Draw'),
                 React.createElement("button", {
                   onClick: function () {
                     var canvas = canvasRef.current;
@@ -22863,6 +22981,13 @@
                       }, '\u25B6')
                     )
                   ),
+                  // Organ weight estimate
+                  (function() {
+                    var weightMap = {heart:'250-350g',liver:'1.4-1.5kg',brain:'1.3-1.4kg',kidney:'120-170g',lung:'0.5-0.6kg',stomach:'150g',spleen:'170g',pancreas:'80g',eye:'7.5g',thyroid:'20-25g',adrenal:'4-5g',gallbladder:'30-50ml'};
+                    var w = null; var sn = sel.name.toLowerCase();
+                    Object.keys(weightMap).forEach(function(k) { if (sn.indexOf(k) >= 0) w = weightMap[k]; });
+                    return w ? React.createElement("span", { className: "inline-block px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-100 text-slate-500 border border-slate-200 mr-1 mb-1" }, '\u2696\uFE0F ' + w + ' (human)') : null;
+                  })(),
                   // System badge
                   (function() {
                     var sn = sel.name.toLowerCase();
