@@ -32447,7 +32447,8 @@
                   React.createElement('span', { className: 'text-slate-300' }, '\uD83E\uDEA8 ' + resources.materials),
                   React.createElement('span', { className: 'text-purple-400' }, '\uD83D\uDD2C ' + resources.science),
                   React.createElement('span', { className: 'text-amber-300 font-bold' }, 'Turn ' + turn),
-                  React.createElement('span', { className: 'text-[9px] px-1.5 py-0.5 rounded-full', style: { backgroundColor: currentEra.color + '33', color: currentEra.color } }, currentEra.icon + ' ' + currentEra.name)
+                  React.createElement('span', { className: 'text-[9px] px-1.5 py-0.5 rounded-full', style: { backgroundColor: currentEra.color + '33', color: currentEra.color } }, currentEra.icon + ' ' + currentEra.name),
+                  React.createElement('span', { className: 'text-[9px] text-cyan-300' }, (seasonDefs[seasonCycle.index] || {}).icon + ' ' + (seasonDefs[seasonCycle.index] || {}).name + ' (' + seasonCycle.turnsLeft + 't)')
                 )
               ),
               // SETUP
@@ -32618,9 +32619,16 @@
                         var def = buildingDefs.find(function(bd) { return bd.id === b; });
                         if (def) {
                           var eff = (buildingEff[b] !== undefined ? buildingEff[b] : 100) / 100;
+                          // Season multipliers
+                          var sMult = activeSeason.effect.allMult || 1;
                           // Nanotech research: min 75% efficiency
                           if (researchQueue.indexOf('nanotech') >= 0 && eff < 0.75) eff = 0.75;
-                          Object.keys(def.production).forEach(function(k) { nr2[k] = (nr2[k]||0) + Math.round(def.production[k] * eff); });
+                          Object.keys(def.production).forEach(function(k) {
+                            var val2 = Math.round(def.production[k] * eff * sMult);
+                            if (k === 'food' && activeSeason.effect.foodMult) val2 = Math.round(val2 * activeSeason.effect.foodMult);
+                            if (k === 'water' && activeSeason.effect.waterMult) val2 = Math.round(val2 * activeSeason.effect.waterMult);
+                            nr2[k] = (nr2[k]||0) + val2;
+                          });
                         }
                       });
                       nr2.food = Math.max(0, nr2.food - settlers.length);
@@ -32777,6 +32785,17 @@
                         if (typeof addXP === 'function') addXP(40, 'Era: ' + eraInfo.name);
                       }
 
+                      // Colony Charter (generated once at turn 20 from colony values)
+                      if (nt === 20 && !d.colonyCharter) {
+                        callGemini('Generate a founding charter for a space colony on planet Kepler-442b. The colony has these values: collectivism=' + colonyValues.collectivism + ', innovation=' + colonyValues.innovation + ', ecology=' + colonyValues.ecology + ', tradition=' + colonyValues.tradition + ', openness=' + colonyValues.openness + '. Equity: ' + equity + '. They have adopted these cultural traditions: ' + (traditions.length > 0 ? traditions.join(', ') : 'none yet') + '. Write a brief founding charter (4-5 sentences) that reflects these values. It should feel like a real historical document — inspirational, specific, and grounded in the colony\u2019s unique blend of cultures and science. Do NOT use bullet points. Write it as flowing prose.', true).then(function(charter) {
+                          upd('colonyCharter', charter);
+                          if (d.colonyTTS) colonySpeak('The colony charter has been drafted. A founding document for a new civilization.', 'narrator');
+                          var nl29 = gameLog.slice(); nl29.push('\uD83D\uDCDC Colony Charter drafted!'); upd('colonyLog', nl29);
+                          if (addToast) addToast('\uD83D\uDCDC Colony Charter drafted from your values!', 'success');
+                          if (typeof addXP === 'function') addXP(30, 'Colony Charter');
+                        });
+                      }
+
                       // Alien first contact (turn 10+, once)
                       if (nt >= 10 && !d.alienContact && Math.random() < 0.3) {
                         upd('alienContact', true); upd('alienRelations', 0);
@@ -32856,6 +32875,11 @@
                           if (typeof addXP === 'function') addXP(30, 'Mentor: ' + gs2.name);
                         }
                       }
+
+                      // Season bonuses
+                      if (activeSeason.effect.materialBonus) nr2.materials += activeSeason.effect.materialBonus;
+                      if (activeSeason.effect.energyBonus) nr2.energy += activeSeason.effect.energyBonus;
+                      if (activeSeason.effect.heal) settlers.forEach(function(s9) { s9.health = Math.min(100, s9.health + activeSeason.effect.heal); });
 
                       // Apply policy bonuses to resources
                       if (activePolicy) {
@@ -32989,7 +33013,7 @@
                 React.createElement('div', { className: 'grid grid-cols-4 gap-1 mb-3' },
                   React.createElement('button', { onClick: function() { upd('showWonders', !d.showWonders); }, className: 'py-2 rounded-xl text-[10px] font-bold bg-gradient-to-r from-amber-800 to-amber-700 text-amber-200' }, '\uD83C\uDFDB\uFE0F Wonders'),
                   React.createElement('button', { onClick: function() { upd('showExpeditions', !d.showExpeditions); }, className: 'py-2 rounded-xl text-[10px] font-bold bg-gradient-to-r from-cyan-800 to-cyan-700 text-cyan-200' }, '\u26F5 Expeditions'),
-                  React.createElement('button', { onClick: function() { upd('showJournal', !d.showJournal); }, className: 'py-2 rounded-xl text-[10px] font-bold bg-gradient-to-r from-green-800 to-green-700 text-green-200' }, '\uD83D\uDCD6 Journal (' + scienceJournal.length + ')'),
+                  React.createElement('button', { onClick: function() { upd('showJournal', !d.showJournal); }, className: 'py-2 rounded-xl text-[10px] font-bold bg-gradient-to-r from-green-800 to-green-700 text-green-200' }, '\uD83D\uDCD6 ' + scienceJournal.length),
                   selectedTile && selectedTile.tile.explored && selectedTile.tile.type !== 'colony' && React.createElement('button', {
                     onClick: function() {
                       var tKey = selectedTile.x + ',' + selectedTile.y;
@@ -33064,7 +33088,14 @@
                           upd('dilemmaResult', { outcome: ch2.outcome, lesson: d.activeDilemma.lesson, equity: ch2.equity, values: ch2.values });
                           upd('activeDilemma', null);
                           if (addToast) addToast(ch2.outcome, ch2.equity >= 0 ? 'info' : 'warning');
-                          if (d.colonyTTS) colonySpeak(ch2.outcome, 'narrator');
+                          // AI narrates the full consequence
+                          var valShiftDesc = Object.keys(ch2.values || {}).filter(function(vk4) { return ch2.values[vk4] !== 0; }).map(function(vk4) { return vk4 + (ch2.values[vk4] > 0 ? ' rose' : ' fell'); }).join(', ');
+                          callGemini('You are the narrator for a space colony on Kepler-442b. The colony council just decided: "' + ch2.text + '" in response to the dilemma "' + d.activeDilemma.title + '". The outcome is: ' + ch2.outcome + '. Colony value shifts: ' + valShiftDesc + '. Equity changed by ' + (ch2.equity || 0) + '. Narrate the consequences in 3-4 dramatic, reflective sentences. Include how this affects daily life in the colony and what it reveals about the colonists\u2019 values. Be thoughtful, not preachy. Target audience: ' + (gradeDifficultyMap[gradeLevel] || 'medium') + '.', true).then(function(narration) {
+                            upd('dilemmaNarration', narration);
+                            if (d.colonyTTS) colonySpeak(narration, 'narrator');
+                          }).catch(function() {
+                            if (d.colonyTTS) colonySpeak(ch2.outcome, 'narrator');
+                          });
                           var nl27 = gameLog.slice(); nl27.push('\uD83C\uDFDB\uFE0F Decision: ' + ch2.text.substring(0, 50)); upd('colonyLog', nl27);
                           if (typeof addXP === 'function') addXP(15, 'Governance: ' + d.activeDilemma.title);
                         },
@@ -33087,10 +33118,21 @@
                 d.dilemmaResult && React.createElement('div', { className: 'bg-indigo-950 rounded-xl p-3 border border-indigo-700 mb-3' },
                   React.createElement('div', { className: 'flex justify-between items-center mb-1' },
                     React.createElement('span', { className: 'text-[10px] font-bold text-indigo-300' }, '\uD83C\uDFDB\uFE0F Decision Made'),
-                    React.createElement('button', { onClick: function() { upd('dilemmaResult', null); }, className: 'text-indigo-500 text-xs' }, '\u2715')
+                    React.createElement('button', { onClick: function() { upd('dilemmaResult', null); upd('dilemmaNarration', null); }, className: 'text-indigo-500 text-xs' }, '\u2715')
                   ),
-                  React.createElement('p', { className: 'text-[9px] text-indigo-200' }, d.dilemmaResult.outcome),
-                  d.dilemmaResult.lesson && React.createElement('div', { className: 'mt-1 text-[9px] text-indigo-300 bg-indigo-900/50 rounded-lg px-2 py-1' }, '\uD83D\uDCDA ' + d.dilemmaResult.lesson)
+                  React.createElement('p', { className: 'text-[9px] text-indigo-200 mb-1' }, d.dilemmaResult.outcome),
+                  d.dilemmaNarration && React.createElement('div', { className: 'bg-indigo-900/30 rounded-lg p-2 mt-1 border-l-2 border-indigo-500' },
+                    React.createElement('p', { className: 'text-[9px] text-indigo-100 italic leading-relaxed' }, '\uD83C\uDFA4 ' + d.dilemmaNarration)
+                  ),
+                  d.dilemmaResult.lesson && React.createElement('div', { className: 'mt-1 text-[9px] text-indigo-300 bg-indigo-900/50 rounded-lg px-2 py-1' }, '\uD83D\uDCDA ' + d.dilemmaResult.lesson),
+                  d.dilemmaResult.values && React.createElement('div', { className: 'mt-1 flex gap-1 flex-wrap text-[8px]' },
+                    Object.keys(d.dilemmaResult.values).filter(function(vk5) { return d.dilemmaResult.values[vk5] !== 0; }).map(function(vk5) {
+                      return React.createElement('span', { key: vk5, className: d.dilemmaResult.values[vk5] > 0 ? 'text-green-400 bg-green-900/30 px-1 rounded' : 'text-red-400 bg-red-900/30 px-1 rounded' },
+                        vk5 + (d.dilemmaResult.values[vk5] > 0 ? '\u2191' : '\u2193'));
+                    }),
+                    d.dilemmaResult.equity !== 0 && React.createElement('span', { className: d.dilemmaResult.equity > 0 ? 'text-cyan-400 bg-cyan-900/30 px-1 rounded' : 'text-red-400 bg-red-900/30 px-1 rounded' },
+                      '\u2696\uFE0F' + (d.dilemmaResult.equity > 0 ? '\u2191' : '\u2193'))
+                  )
                 ),
                 d.dilemmaLoading && React.createElement('div', { className: 'bg-indigo-900/50 rounded-xl p-3 border border-indigo-700 mb-3 text-center text-indigo-300 text-xs' }, '\uD83C\uDFDB\uFE0F Colony council deliberating...'),
                 // Disaster Event
@@ -33333,7 +33375,12 @@
                             }
                             ns3.buildingsConstructed++; upd('colonyStats', ns3);
                             if (addToast) addToast('\u2705 ' + bdef3.name + ' built! Science verified!', 'success');
-                            if (d.colonyTTS) colonySpeak('Construction complete. ' + bdef3.name + ' is now operational.', 'narrator');
+                            callGemini('You are narrating a space colony game. The colony just built a ' + bdef3.name + ' (' + bdef3.desc + '). Narrate the construction completion in 2 dramatic sentences. Include a real science fact. Target: ' + (gradeDifficultyMap[gradeLevel] || 'medium') + '.', true).then(function(buildNarr) {
+                              upd('buildNarration', buildNarr);
+                              if (d.colonyTTS) colonySpeak(buildNarr, 'narrator');
+                            }).catch(function() {
+                              if (d.colonyTTS) colonySpeak('Construction complete. ' + bdef3.name + ' is now operational.', 'narrator');
+                            });
                             if (typeof addXP === 'function') addXP(30, 'Built ' + bdef3.name);
                           } else {
                             if (addToast) addToast('\u274C Wrong! The correct answer was: ' + scienceGate.options[scienceGate.correctIndex], 'error');
@@ -33372,6 +33419,14 @@
                       upd('scienceGate', null);
                     }, className: 'px-4 py-2 bg-purple-500 text-white rounded-xl text-xs font-bold' }, '\u2705 Submit'),
                     React.createElement('button', { onClick: function() { upd('scienceGate', null); }, className: 'px-3 py-2 bg-slate-700 text-slate-300 rounded-xl text-xs' }, '\u2715')
+                  ),
+                  // Build narration
+                  d.buildNarration && React.createElement('div', { className: 'bg-green-950 rounded-xl p-3 border border-green-700 mb-3' },
+                    React.createElement('div', { className: 'flex justify-between items-center mb-1' },
+                      React.createElement('span', { className: 'text-[10px] font-bold text-green-300' }, '\uD83C\uDFD7\uFE0F Construction Report'),
+                      React.createElement('button', { onClick: function() { upd('buildNarration', null); }, className: 'text-green-500 text-xs' }, '\u2715')
+                    ),
+                    React.createElement('p', { className: 'text-[9px] text-green-100 italic leading-relaxed' }, '\uD83C\uDFA4 ' + d.buildNarration)
                   ),
                   // Gate explanation
                   d.gateExplanation && React.createElement('div', { className: 'mt-2 bg-purple-950 rounded-lg px-3 py-2 text-[10px] border ' + (d.gateExplanation.correct ? 'text-green-300 border-green-800' : 'text-red-300 border-red-800') },
@@ -33475,7 +33530,12 @@
                               nj7.push({ turn: turn, source: 'Tradition: ' + td3.name + ' (' + td3.origin + ')', fact: td3.fact });
                               upd('scienceJournal', nj7);
                               if (addToast) addToast(td3.icon + ' ' + td3.name + ' adopted!', 'success');
-                              if (d.colonyTTS) colonySpeak('Cultural tradition adopted. ' + td3.name + ' from ' + td3.origin + ' tradition. ' + td3.fact, 'narrator');
+                              callGemini('The space colony on Kepler-442b has adopted the ' + td3.name + ' cultural tradition from ' + td3.origin + ' heritage. Fact: ' + td3.fact + '. Narrate how the colony integrates this wisdom into daily life in 2-3 thoughtful sentences. Be respectful and authentic. Target: ' + (gradeDifficultyMap[gradeLevel] || 'medium') + '.', true).then(function(tradNarr) {
+                              upd('tradNarration', tradNarr);
+                              if (d.colonyTTS) colonySpeak(tradNarr, 'narrator');
+                            }).catch(function() {
+                              if (d.colonyTTS) colonySpeak('Cultural tradition adopted. ' + td3.name + '. ' + td3.fact, 'narrator');
+                            });
                               var nl28 = gameLog.slice(); nl28.push(td3.icon + ' Tradition: ' + td3.name); upd('colonyLog', nl28);
                               if (typeof addXP === 'function') addXP(20, 'Tradition: ' + td3.name);
                             }
@@ -33489,6 +33549,10 @@
                 ),
                 // Colony Values radar
                 d.showPolicy && React.createElement('div', { className: 'bg-slate-800/80 rounded-xl p-3 border border-slate-700 mb-3' },
+                  d.colonyCharter && React.createElement('div', { className: 'bg-amber-950/30 rounded-lg p-2 mb-2 border border-amber-800' },
+                    React.createElement('h5', { className: 'text-[9px] font-bold text-amber-300 mb-1' }, '\uD83D\uDCDC Colony Charter'),
+                    React.createElement('p', { className: 'text-[8px] text-amber-200 italic leading-relaxed' }, d.colonyCharter)
+                  ),
                   React.createElement('h4', { className: 'text-[10px] font-bold text-slate-300 mb-2' }, '\uD83C\uDFAD Colony Identity'),
                   React.createElement('div', { className: 'grid grid-cols-5 gap-1 text-center' },
                     Object.keys(colonyValues).map(function(vk3) {
