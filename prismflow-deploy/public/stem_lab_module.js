@@ -32583,6 +32583,10 @@
                 onClick: function() { upd('showQuiz', !(d.showQuiz)); },
                 className: 'text-[9px] text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200 cursor-pointer font-bold'
               }, '\u270D\uFE0F Quiz Me'),
+              React.createElement('button', {
+                onClick: function() { upd('showAdvisor', !(d.showAdvisor)); },
+                className: 'text-[9px] text-sky-600 bg-sky-50 px-2 py-0.5 rounded-full border border-sky-200 cursor-pointer font-bold'
+              }, '\uD83E\uDDD1\u200D\uD83C\uDFEB Ask Tutor'),
               React.createElement('select', {
                 value: d.econDifficulty || 'medium',
                 onChange: function(e) { upd('econDifficulty', e.target.value); if (addToast) addToast('Difficulty: ' + e.target.value.toUpperCase(), 'info'); },
@@ -32709,6 +32713,57 @@
                 }, d.quizLoading ? '\u23F3 Generating...' : '\uD83C\uDFB2 Generate Quiz Question')
               )
             ),
+            // AI Economic Advisor
+            d.showAdvisor && React.createElement('div', { className: 'bg-gradient-to-r from-sky-50 to-cyan-50 rounded-xl p-4 border border-sky-200 mb-4' },
+              React.createElement('div', { className: 'flex justify-between items-center mb-3' },
+                React.createElement('h4', { className: 'text-sm font-bold text-sky-800' }, '\uD83E\uDDD1\u200D\uD83C\uDFEB AI Economics Tutor'),
+                React.createElement('button', { onClick: function() { upd('showAdvisor', false); }, className: 'text-sky-400 hover:text-sky-600 text-xs' }, '\u2715')
+              ),
+              d.advisorAnswer && React.createElement('div', { className: 'bg-white rounded-lg p-3 border border-sky-100 mb-3 text-xs text-slate-700 leading-relaxed whitespace-pre-line max-h-48 overflow-y-auto' },
+                d.advisorAnswer
+              ),
+              React.createElement('div', { className: 'flex gap-2' },
+                React.createElement('input', {
+                  type: 'text',
+                  value: d.advisorInput || '',
+                  onChange: function(e) { upd('advisorInput', e.target.value); },
+                  onKeyDown: function(e) { if (e.key === 'Enter' && (d.advisorInput || '').trim()) { document.getElementById('econ-advisor-ask').click(); } },
+                  placeholder: 'Ask any economics question...',
+                  className: 'flex-1 px-3 py-2 border-2 border-sky-200 rounded-xl text-xs focus:border-sky-400 outline-none'
+                }),
+                React.createElement('button', {
+                  id: 'econ-advisor-ask',
+                  onClick: function() {
+                    if (!(d.advisorInput || '').trim()) return;
+                    upd('advisorLoading', true);
+                    var context = 'Student is using an economics simulator with: Supply & Demand (equilibrium, shifts, price controls), Personal Finance Life Sim (age ' + (d.pfAge || 22) + ', salary $' + (d.pfSalary || 35000) + ', credit ' + (d.pfCredit || 650) + '), Stock Market (day ' + (d.smDay || 0) + '), Business Sim (day ' + (d.enBizDay || 0) + '), and National Economy (GDP ' + (d.macroGDP || 2.1) + '%, inflation ' + (d.macroInflation || 3.2) + '%, interest ' + (d.macroInterest || 5.25) + '%).';
+                    var prompt = 'You are a friendly economics tutor for students. ' + context + '\n\nStudent asks: "' + d.advisorInput.trim() + '"\n\nProvide a clear, educational answer. Use real-world examples. If relevant, explain how this connects to what the student is experiencing in their simulation. Keep the answer concise but thorough (3-5 paragraphs max). Use simple language appropriate for students.';
+                    callGemini(prompt, true).then(function(result) {
+                      upd('advisorAnswer', result);
+                      upd('advisorLoading', false);
+                      upd('advisorInput', '');
+                      // Add to glossary
+                      var gl = (d.econGlossary || []).slice();
+                      var exists = gl.some(function(g) { return g.concept === d.advisorInput.trim().substring(0, 50); });
+                      if (!exists && gl.length < 100) { gl.push({ tab: 'Advisor', concept: d.advisorInput.trim().substring(0, 50), explanation: result.substring(0, 200) + '...' }); upd('econGlossary', gl); }
+                      if (typeof addXP === 'function') addXP(10, 'Asked an economics question');
+                    }).catch(function() { upd('advisorLoading', false); });
+                  },
+                  disabled: d.advisorLoading || !(d.advisorInput || '').trim(),
+                  className: 'px-4 py-2 rounded-xl text-xs font-bold ' + (d.advisorLoading ? 'bg-slate-300 text-slate-500' : 'bg-sky-500 text-white')
+                }, d.advisorLoading ? '\u23F3' : '\uD83D\uDCAC Ask')
+              ),
+              // Quick question suggestions
+              !d.advisorAnswer && React.createElement('div', { className: 'flex flex-wrap gap-1 mt-2' },
+                ['What is inflation?', 'How do interest rates work?', 'What causes a recession?', 'Why diversify investments?', 'What is GDP?', 'How do taxes work?'].map(function(q) {
+                  return React.createElement('button', {
+                    key: q,
+                    onClick: function() { upd('advisorInput', q); },
+                    className: 'text-[9px] px-2 py-1 rounded-full bg-sky-100 text-sky-600 hover:bg-sky-200'
+                  }, q);
+                })
+              )
+            ),
             // Macro indicators banner (always visible)
             (d.macroHistory || []).length > 0 && React.createElement('div', { className: 'flex gap-2 mb-2 bg-slate-800 rounded-lg px-3 py-1.5 text-[9px] font-mono text-slate-300 overflow-x-auto' },
               React.createElement('span', { className: 'text-slate-500' }, '\uD83C\uDFDB\uFE0F MACRO |'),
@@ -32788,6 +32843,34 @@
                   onChange: function(e) { upd('sdTax', parseInt(e.target.value)); },
                   className: 'w-full accent-purple-500' })
               )
+              ),
+              // Elasticity Education
+              React.createElement('div', { className: 'col-span-2 bg-gradient-to-r from-cyan-50 to-teal-50 rounded-xl p-3 border border-cyan-200 mb-2' },
+                React.createElement('h4', { className: 'text-[10px] font-bold text-cyan-700 mb-1' }, '\uD83D\uDCCF Price Elasticity of Demand'),
+                React.createElement('div', { className: 'text-[9px] text-slate-600 leading-relaxed' },
+                  React.createElement('p', null, '\uD83D\uDCDA ',
+                    React.createElement('strong', null, 'Elasticity'), ' measures how much quantity demanded changes when price changes. ',
+                    React.createElement('strong', null, 'Elastic'), ' goods (luxury items, products with substitutes) see big demand drops from small price increases. ',
+                    React.createElement('strong', null, 'Inelastic'), ' goods (necessities like medicine, gasoline) have stable demand regardless of price.'
+                  ),
+                  React.createElement('div', { className: 'grid grid-cols-3 gap-2 mt-2' },
+                    React.createElement('div', { className: 'bg-white rounded-lg p-2 text-center border border-cyan-100' },
+                      React.createElement('div', { className: 'text-lg' }, '\uD83D\uDC8E'),
+                      React.createElement('div', { className: 'text-[9px] font-bold text-cyan-700' }, 'Elastic (>1)'),
+                      React.createElement('div', { className: 'text-[8px] text-slate-400' }, 'Luxury goods, restaurants, vacations')
+                    ),
+                    React.createElement('div', { className: 'bg-white rounded-lg p-2 text-center border border-cyan-100' },
+                      React.createElement('div', { className: 'text-lg' }, '\u2696\uFE0F'),
+                      React.createElement('div', { className: 'text-[9px] font-bold text-cyan-700' }, 'Unit Elastic (=1)'),
+                      React.createElement('div', { className: 'text-[8px] text-slate-400' }, 'Revenue unchanged by price')
+                    ),
+                    React.createElement('div', { className: 'bg-white rounded-lg p-2 text-center border border-cyan-100' },
+                      React.createElement('div', { className: 'text-lg' }, '\uD83D\uDC8A'),
+                      React.createElement('div', { className: 'text-[9px] font-bold text-cyan-700' }, 'Inelastic (<1)'),
+                      React.createElement('div', { className: 'text-[8px] text-slate-400' }, 'Medicine, gasoline, utilities')
+                    )
+                  )
+                )
               ),
               // AI Scenario Generator
               React.createElement('div', { className: 'col-span-2 bg-gradient-to-r from-violet-50 to-purple-50 rounded-xl p-4 border border-violet-200' },
@@ -32875,6 +32958,14 @@
                         var h = (d.pfHistory || []).slice(-29);
                         h.push({ age: d.pfAge || 22, cash: (d.pfCash || 2000) + (eff.cash || 0), debt: Math.max(0, (d.pfDebt || 0) + (eff.debt || 0)), event: d.lifeEvent.title, choice: choice.label });
                         upd('pfHistory', h);
+                        // Apply housing costs
+                        var housingCost = { renting: 12000, owning: 21600, frugal: 6000 };
+                        var hCost = housingCost[d.pfHousing || 'renting'] || 12000;
+                        // If owning, build equity (30% of payment goes to equity)
+                        if ((d.pfHousing || 'renting') === 'owning') {
+                          upd('pfEquity', (d.pfEquity || 0) + Math.round(hCost * 0.3));
+                        }
+                        upd('pfCash', (d.pfCash || 2000) + (eff.cash || 0) - hCost);
                         // Apply investment returns
                         if ((d.pfInvestPct || 0) > 0 && d.pfInvestType) {
                           var investAmt = (d.pfSalary || 35000) * (d.pfInvestPct || 0) / 100;
@@ -32930,7 +33021,7 @@
               !d.lifeEvent && React.createElement('button', {
                 onClick: function() {
                   upd('pfLoading', true);
-                  var prompt = 'You are a life simulation game engine (difficulty: ' + (d.econDifficulty || 'medium') + '). The player is ' + (d.pfAge || 22) + ' years old, earns $' + (d.pfSalary || 35000).toLocaleString() + '/year, has $' + (d.pfCash || 2000).toLocaleString() + ' in savings, $' + (d.pfDebt || 0).toLocaleString() + ' in debt, and ' + (d.pfHappiness || 70) + '% happiness.\n\nGenerate a realistic random life event with 3 choices. Return ONLY valid JSON:\n{"emoji":"<single emoji>","title":"<short title>","description":"<2-3 sentence scenario>","choices":[{"label":"<action description>","effect":{"cash":<number>,"debt":<number>,"salary":<number>,"happiness":<number>,"credit":<number -50 to 50>,"career":<optional string or null>,"insurance":<optional true/false or null>}}]}\n\nExamples of events: car breakdown, promotion opportunity, medical emergency, investment opportunity, wedding invitation, surprise inheritance, job offer in new city, appliance repair, apartment vacancy, side hustle opportunity, tax refund, parking ticket. Make effects realistic. Cash effects should be -5000 to +10000 range. Salary changes should be -5000 to +15000 range. Happiness -20 to +20. Credit -50 to +50.\n\nIMPORTANT: Include a "lesson" field in your JSON with a 1-2 sentence financial literacy lesson explaining the real-world economics behind this event (e.g., compound interest, opportunity cost, inflation, risk vs. reward, emergency funds, diversification). Format: {"emoji":"...","title":"...","description":"...","lesson":"<financial literacy concept>","choices":[...]}';
+                  var prompt = 'You are a life simulation game engine (difficulty: ' + (d.econDifficulty || 'medium') + '). The player is ' + (d.pfAge || 22) + ' years old, earns $' + (d.pfSalary || 35000).toLocaleString() + '/year, has $' + (d.pfCash || 2000).toLocaleString() + ' in savings, $' + (d.pfDebt || 0).toLocaleString() + ' in debt, and ' + (d.pfHappiness || 70) + '% happiness.\n\nGenerate a realistic random life event with 3 choices. Return ONLY valid JSON:\n{"emoji":"<single emoji>","title":"<short title>","description":"<2-3 sentence scenario>","choices":[{"label":"<action description>","effect":{"cash":<number>,"debt":<number>,"salary":<number>,"happiness":<number>,"credit":<number -50 to 50>,"career":<optional string or null>,"insurance":<optional true/false or null>}}]}\n\nEvent categories to rotate through: CAREER (promotion, job offer, layoff, interview, raise negotiation, networking opportunity, career pivot, sabbatical), FINANCIAL (tax refund, bank error, stock tip, loan offer, credit card fraud, inheritance, gambling opportunity, unexpected bill), HOUSING (lease renewal, repair needed, roommate issue, property tax, home improvement, neighbor dispute), HEALTH (medical bill, gym membership, insurance claim, dental work, mental health day), EDUCATION (online course, certification, student loan, scholarship, mentorship), SOCIAL (wedding, baby shower, charity request, family emergency, holiday spending, friend opening business), MARKET (inflation spike, stock crash, crypto opportunity, interest rate change). Tailor to player age bracket and career stage. Make effects realistic. Cash effects should be -5000 to +10000 range. Salary changes should be -5000 to +15000 range. Happiness -20 to +20. Credit -50 to +50.\n\nIMPORTANT: Include a "lesson" field in your JSON with a 1-2 sentence financial literacy lesson explaining the real-world economics behind this event (e.g., compound interest, opportunity cost, inflation, risk vs. reward, emergency funds, diversification). Format: {"emoji":"...","title":"...","description":"...","lesson":"<financial literacy concept>","choices":[...]}';
                   callGemini(prompt, true).then(function(result) {
                     try {
                       var cleaned = result.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
@@ -32951,6 +33042,33 @@
                 disabled: d.pfLoading,
                 className: 'w-full py-4 rounded-2xl text-sm font-bold shadow-lg transition-all ' + (d.pfLoading ? 'bg-slate-300 text-slate-500' : 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:from-indigo-700 hover:to-blue-700 hover:shadow-xl hover:scale-[1.02]')
               }, d.pfLoading ? '\u23F3 Generating life event...' : '\u2728 Next Year (Age ' + ((d.pfAge || 22) + 1) + ')'),
+              // Housing decision
+              React.createElement('div', { className: 'bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl p-3 border border-orange-200 mt-3 mb-1' },
+                React.createElement('h4', { className: 'text-[10px] font-bold text-orange-700 mb-2' }, '\uD83C\uDFE0 Housing Strategy'),
+                React.createElement('div', { className: 'flex gap-2' },
+                  [
+                    { id: 'renting', label: '\uD83C\uDFE2 Rent', desc: 'Lower monthly cost, flexibility', cost: '-$1,000/mo' },
+                    { id: 'owning', label: '\uD83C\uDFE0 Own', desc: 'Build equity, but mortgage + maintenance', cost: '-$1,800/mo' },
+                    { id: 'frugal', label: '\uD83D\uDECB\uFE0F Roommate', desc: 'Cheapest option, save more', cost: '-$500/mo' }
+                  ].map(function(h) {
+                    return React.createElement('button', {
+                      key: h.id,
+                      onClick: function() { upd('pfHousing', h.id); },
+                      className: 'flex-1 p-2 rounded-lg text-center transition-all border-2 ' +
+                        ((d.pfHousing || 'renting') === h.id ? 'border-orange-400 bg-orange-100' : 'border-slate-200 bg-white hover:border-orange-300')
+                    },
+                      React.createElement('div', { className: 'text-[10px] font-bold text-slate-700' }, h.label),
+                      React.createElement('div', { className: 'text-[8px] text-slate-400' }, h.desc),
+                      React.createElement('div', { className: 'text-[9px] font-bold text-orange-600 mt-1' }, h.cost)
+                    );
+                  })
+                ),
+                React.createElement('div', { className: 'text-[9px] text-orange-600 mt-2 bg-white rounded-lg p-2 border border-orange-100' },
+                  (d.pfHousing || 'renting') === 'renting' && '\uD83D\uDCDA Renting means paying a landlord monthly. Pros: flexibility to move, no maintenance costs, lower upfront cost. Cons: no equity buildup, rent may increase annually, no tax deductions.',
+                  (d.pfHousing || 'renting') === 'owning' && '\uD83D\uDCDA Homeownership builds equity (ownership stake). Your mortgage payment partly goes to principal (equity) and partly to interest (bank profit). Pros: equity buildup, tax deductions, stable payments. Cons: maintenance, property tax, less flexibility.',
+                  (d.pfHousing || 'renting') === 'frugal' && '\uD83D\uDCDA Sharing housing dramatically cuts your largest expense. The "Pay Yourself First" principle: living below your means lets you invest the difference. Many millionaires built wealth by keeping housing costs under 25% of income.'
+                )
+              ),
               // Investment allocation
               React.createElement('div', { className: 'bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-3 border border-green-200 mt-3 mb-3' },
                 React.createElement('h4', { className: 'text-[10px] font-bold text-green-700 mb-2' }, '\uD83D\uDCCA Investment Allocation (% of annual salary invested)'),
@@ -33052,6 +33170,23 @@
                     style: smSelected === ci ? { background: c.color, borderColor: c.color } : {}
                   }, c.ticker + ' $' + c.price.toFixed(0) + (c.history && c.history.length > 1 ? ' ' + (c.price >= c.history[c.history.length-2] ? '\u25B2' : '\u25BC') : ''));
                 })
+              ),
+              // Selected company detail
+              smCompanies[smSelected] && React.createElement('div', { className: 'bg-gradient-to-r from-slate-50 to-gray-50 rounded-xl p-3 border border-slate-200 mb-3' },
+                React.createElement('div', { className: 'flex justify-between items-center' },
+                  React.createElement('div', null,
+                    React.createElement('h4', { className: 'text-sm font-bold text-slate-800' }, smCompanies[smSelected].name + ' (' + smCompanies[smSelected].ticker + ')'),
+                    React.createElement('span', { className: 'text-[10px] text-slate-500' }, smCompanies[smSelected].sector + (smCompanies[smSelected].description ? ' \u2014 ' + smCompanies[smSelected].description : ''))
+                  ),
+                  React.createElement('div', { className: 'text-right' },
+                    React.createElement('div', { className: 'text-lg font-bold', style: { color: smCompanies[smSelected].color } }, '$' + smCompanies[smSelected].price.toFixed(2)),
+                    smCompanies[smSelected].history && smCompanies[smSelected].history.length > 1 && React.createElement('div', {
+                      className: 'text-[10px] font-bold ' + (smCompanies[smSelected].price >= smCompanies[smSelected].history[smCompanies[smSelected].history.length - 2] ? 'text-green-600' : 'text-red-500')
+                    }, (smCompanies[smSelected].price >= smCompanies[smSelected].history[smCompanies[smSelected].history.length - 2] ? '\u25B2 +' : '\u25BC ') +
+                      ((smCompanies[smSelected].price / smCompanies[smSelected].history[smCompanies[smSelected].history.length - 2] - 1) * 100).toFixed(1) + '%'),
+                    React.createElement('div', { className: 'text-[9px] text-slate-400' }, 'Held: ' + (smPortfolio[smCompanies[smSelected].ticker] || 0) + ' shares ($' + ((smPortfolio[smCompanies[smSelected].ticker] || 0) * smCompanies[smSelected].price).toFixed(0) + ')')
+                  )
+                )
               ),
               // AI News Event display
               d.smNewsEvent ? React.createElement('div', { className: 'bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl p-4 border border-amber-200 mb-3' },
