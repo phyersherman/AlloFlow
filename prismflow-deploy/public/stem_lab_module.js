@@ -21951,7 +21951,12 @@
                   // Mitral valve
                   ctx.beginPath(); ctx.moveTo(cx-W*0.15, cy-H*0.02); ctx.lineTo(cx-W*0.04, cy-H*0.02); ctx.stroke();
                   ctx.font = '6px Inter, system-ui'; ctx.fillStyle = '#fbbf24';
-                  ctx.fillText('mitral (bicuspid)', cx-W*0.14, cy-H*0.035);
+                  // Animated valve movement
+                  var valveOpen = Math.sin(dissTick * 0.05);
+                  var vOff = Math.max(0, valveOpen) * 3;
+                  ctx.beginPath(); ctx.moveTo(cx-W*0.10, cy-H*0.02-vOff); ctx.lineTo(cx-W*0.10, cy-H*0.02+vOff);
+                  ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 2; ctx.stroke();
+                  ctx.fillText('mitral (bicuspid)' + (valveOpen > 0 ? ' OPEN' : ' CLOSED'), cx-W*0.14, cy-H*0.035);
                   // Tricuspid valve
                   ctx.beginPath(); ctx.moveTo(cx+W*0.04, cy-H*0.02); ctx.lineTo(cx+W*0.15, cy-H*0.02); ctx.stroke();
                   ctx.fillText('tricuspid', cx+W*0.05, cy-H*0.035);
@@ -22089,6 +22094,52 @@
               ctx.fillStyle = 'rgba(255,255,255,0.25)';
               ctx.fillRect(W - 80, H - 18, 60, 2);
               ctx.font = '8px Inter, system-ui'; ctx.fillText('~5 cm', W - 72, H - 7);
+              // Endocrine system overlay
+              if (d.showEndocrine) {
+                ctx.globalAlpha = 0.6; ctx.font = '6px Inter, system-ui';
+                var glands = [];
+                if (spec.bodyShape === 'frog') {
+                  glands = [
+                    { name: 'pituitary', x: cx, y: cy-H*0.24, hormone: 'GH, TSH, FSH', color: '#ec4899' },
+                    { name: 'thyroid', x: cx-W*0.03, y: cy-H*0.18, hormone: 'T3, T4 (metabolism)', color: '#f472b6' },
+                    { name: 'parathyroid', x: cx+W*0.03, y: cy-H*0.17, hormone: 'PTH (calcium)', color: '#fb7185' },
+                    { name: 'adrenals', x: cx+W*0.06, y: cy+H*0.07, hormone: 'cortisol, adrenaline', color: '#fbbf24' },
+                    { name: 'pancreas (islets)', x: cx+W*0.04, y: cy-H*0.02, hormone: 'insulin, glucagon', color: '#34d399' },
+                    { name: 'gonads', x: cx, y: cy+H*0.12, hormone: 'estrogen/testosterone', color: '#a78bfa' }
+                  ];
+                } else if (spec.bodyShape === 'pig') {
+                  glands = [
+                    { name: 'pituitary', x: cx-W*0.26, y: cy-H*0.06, hormone: 'master gland', color: '#ec4899' },
+                    { name: 'thyroid', x: cx-W*0.16, y: cy-H*0.06, hormone: 'T3, T4', color: '#f472b6' },
+                    { name: 'thymus', x: cx-W*0.08, y: cy-H*0.08, hormone: 'thymosin (immunity)', color: '#fbbf24' },
+                    { name: 'adrenals', x: cx+W*0.09, y: cy+H*0.065, hormone: 'cortisol', color: '#fbbf24' },
+                    { name: 'pancreas', x: cx+W*0.02, y: cy+H*0.04, hormone: 'insulin', color: '#34d399' }
+                  ];
+                }
+                glands.forEach(function (gl) {
+                  // Gland marker (pulsing circle)
+                  var glPulse = 1 + Math.sin(dissTick * 0.04) * 0.2;
+                  ctx.beginPath(); ctx.arc(gl.x, gl.y, 5 * glPulse, 0, Math.PI*2);
+                  var glGrad = ctx.createRadialGradient(gl.x, gl.y, 0, gl.x, gl.y, 5*glPulse);
+                  glGrad.addColorStop(0, gl.color); glGrad.addColorStop(1, gl.color.slice(0,-1) + ',0)');
+                  ctx.fillStyle = glGrad; ctx.fill();
+                  // Hormone arrows radiating out
+                  ctx.strokeStyle = gl.color; ctx.lineWidth = 0.5;
+                  for (var ha = 0; ha < 4; ha++) {
+                    var hAngle = ha * Math.PI / 2 + dissTick * 0.02;
+                    var hLen = 8 + Math.sin(dissTick * 0.05 + ha) * 3;
+                    ctx.beginPath(); ctx.moveTo(gl.x + Math.cos(hAngle)*6, gl.y + Math.sin(hAngle)*6);
+                    ctx.lineTo(gl.x + Math.cos(hAngle)*hLen, gl.y + Math.sin(hAngle)*hLen);
+                    ctx.stroke();
+                  }
+                  // Labels
+                  ctx.fillStyle = gl.color;
+                  ctx.fillText(gl.name, gl.x + 8, gl.y - 3);
+                  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+                  ctx.fillText(gl.hormone, gl.x + 8, gl.y + 5);
+                });
+                ctx.globalAlpha = 1;
+              }
               // Nervous system tracing overlay
               if (d.traceNervous) {
                 ctx.setLineDash([3, 5]);
@@ -22881,9 +22932,13 @@
                   className: "w-full mt-1 py-2 rounded-xl text-xs font-bold " + (d.traceExcretory ? 'bg-lime-500 text-white' : 'bg-lime-50 text-lime-700 border border-lime-200')
                 }, d.traceExcretory ? '\u23F9 Stop Trace' : '\uD83D\uDCA7 Trace Excretory Path'),
                 React.createElement("button", {
-                  onClick: function () { upd('traceNervous', !d.traceNervous); upd('traceDigestion', false); upd('traceRespiration', false); upd('traceCirculation', false); upd('traceExcretory', false); },
+                  onClick: function () { upd('traceNervous', !d.traceNervous); upd('traceDigestion', false); upd('traceRespiration', false); upd('traceCirculation', false); upd('traceExcretory', false); upd('showEndocrine', false); },
                   className: "w-full mt-1 py-2 rounded-xl text-xs font-bold " + (d.traceNervous ? 'bg-purple-500 text-white' : 'bg-purple-50 text-purple-700 border border-purple-200')
-                }, d.traceNervous ? '\u23F9 Stop Trace' : '\u26A1 Trace Nervous System')
+                }, d.traceNervous ? '\u23F9 Stop Trace' : '\u26A1 Trace Nervous System'),
+                React.createElement("button", {
+                  onClick: function () { upd('showEndocrine', !d.showEndocrine); upd('traceNervous', false); upd('traceDigestion', false); upd('traceRespiration', false); upd('traceCirculation', false); upd('traceExcretory', false); },
+                  className: "w-full mt-1 py-2 rounded-xl text-xs font-bold " + (d.showEndocrine ? 'bg-pink-500 text-white' : 'bg-pink-50 text-pink-700 border border-pink-200')
+                }, d.showEndocrine ? '\u23F9 Hide Glands' : '\uD83E\uDDE0 Endocrine System')
               ),
 
                 // Flashcard panel
@@ -23008,6 +23063,24 @@
                     React.createElement("span", null, '\uD83D\uDCCD x:' + Math.round(sel.x * 100) + '% y:' + Math.round(sel.y * 100) + '%'),
                     React.createElement("span", null, '\uD83C\uDFF7 ' + (sel.layer || activeLayer))
                   ),
+                  // Related organs info
+                  (function() {
+                    var relMap = {
+                      heart: ['lungs', 'aorta', 'blood vessels'],
+                      lungs: ['heart', 'trachea', 'diaphragm'],
+                      liver: ['gallbladder', 'stomach', 'intestine'],
+                      stomach: ['esophagus', 'liver', 'intestine'],
+                      brain: ['spinal cord', 'nerves', 'eyes'],
+                      kidneys: ['bladder', 'ureters', 'adrenals']
+                    };
+                    var sn = sel.name.toLowerCase();
+                    var related = null;
+                    Object.keys(relMap).forEach(function(k) { if (sn.indexOf(k) >= 0) related = relMap[k]; });
+                    return related ? React.createElement("div", { className: "text-[9px] text-slate-400 mt-1" },
+                      React.createElement("span", { className: "font-bold" }, '\uD83D\uDD17 Related: '),
+                      related.join(', ')
+                    ) : null;
+                  })(),
                   // Action buttons
                   React.createElement("div", { className: "mt-2 flex gap-1" },
                     React.createElement("button", {
@@ -23154,6 +23227,9 @@
                   React.createElement("div", { className: "mt-1 text-[9px] text-blue-500" }, exploredCount + ' of ' + totalOrgansInSpecimen + ' structures examined'),
                   progressPct >= 100 && React.createElement("div", { className: "mt-1" },
                   React.createElement("div", { className: "text-[10px] font-bold text-green-600" }, '\u2B50 Specimen Complete!'),
+                  React.createElement("div", { className: "text-[9px] text-emerald-500 mt-0.5" },
+                    '\uD83C\uDFC6 ' + Object.keys(d.exploredOrgans || {}).length + '/' + totalOrgansInSpecimen + ' identified'
+                  ),
                   React.createElement("button", {
                     onClick: function () {
                       var cert = '\u2728 CERTIFICATE OF COMPLETION \u2728\n';
