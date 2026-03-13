@@ -29775,7 +29775,37 @@
             }
             // Award XP
             if (choice.xp && typeof awardStemXP === 'function') awardStemXP('aquarium', choice.xp, 'AI Event: ' + aiEvent.title);
-            // Log the resolved event
+            // Terraforming Progress
+                React.createElement('div', { className: 'bg-gradient-to-r from-emerald-900/50 to-teal-900/50 rounded-xl p-3 border border-emerald-700 mb-3' },
+                  React.createElement('div', { className: 'flex justify-between items-center mb-1' },
+                    React.createElement('h4', { className: 'text-[10px] font-bold text-emerald-400' }, '\uD83C\uDF0D Terraforming Progress'),
+                    React.createElement('span', { className: 'text-xs font-bold ' + (terraform >= 100 ? 'text-green-400' : 'text-emerald-300') }, terraform + '%')
+                  ),
+                  React.createElement('div', { className: 'w-full bg-slate-700 rounded-full h-3 overflow-hidden' },
+                    React.createElement('div', { className: 'h-3 rounded-full transition-all bg-gradient-to-r ' + (terraform >= 100 ? 'from-green-400 to-emerald-400' : terraform >= 50 ? 'from-emerald-500 to-teal-500' : 'from-indigo-500 to-emerald-600'), style: { width: terraform + '%' } })
+                  ),
+                  React.createElement('div', { className: 'text-[8px] text-slate-400 mt-1' },
+                    terraform >= 100 ? '\uD83C\uDF89 VICTORY! The planet is habitable! Your colony is self-sustaining!' :
+                    terraform >= 75 ? 'Atmosphere thickening, water cycles forming. Almost habitable!' :
+                    terraform >= 50 ? 'Microorganisms detected in soil. Oxygen levels rising.' :
+                    terraform >= 25 ? 'Ice caps melting. First clouds forming in the sky.' :
+                    'Raw alien world. Build Atmospheric Processor (+5%/turn) and Biodome (+10%/turn) to terraform.'
+                  ),
+                  terraform >= 100 && React.createElement('div', { className: 'mt-2 text-center' },
+                    React.createElement('div', { className: 'text-3xl mb-1' }, '\uD83C\uDF89\uD83C\uDF0D\uD83D\uDE80'),
+                    React.createElement('div', { className: 'text-sm font-bold text-green-400' }, 'COLONY VICTORY!'),
+                    React.createElement('div', { className: 'text-[10px] text-green-300' }, 'Turn ' + turn + ' | ' + buildings.length + ' buildings | All ' + settlers.length + ' settlers survived')
+                  )
+                ),
+                // Weather indicator
+                weather && React.createElement('div', { className: 'bg-slate-800 rounded-xl p-2 border border-amber-700 mb-3 flex items-center gap-2' },
+                  React.createElement('span', { className: 'text-lg' }, weather.icon),
+                  React.createElement('div', null,
+                    React.createElement('span', { className: 'text-[10px] font-bold text-amber-400' }, '\u26A0\uFE0F ' + weather.name),
+                    React.createElement('span', { className: 'text-[9px] text-slate-400 ml-2' }, weather.effect + ' (' + weather.penalty + ' ' + weather.res + ')')
+                  )
+                ),
+                // Log the resolved event
             var historyEntry = { title: aiEvent.title, icon: aiEvent.icon, choice: choice.label, outcome: choice.outcome, day: simDay, xp: choice.xp || 0 };
             updates.aiEventHistory = aiEventHistory.concat([historyEntry]).slice(-20);
             // Mark event as resolved (show outcome)
@@ -32062,6 +32092,8 @@
             var scienceGate = d.scienceGate || null;
             var gameLog = d.colonyLog || [];
             var colonyPhase = d.colonyPhase || 'setup';
+            var terraform = d.colonyTerraform || 0;
+            var weather = d.colonyWeather || null;
 
             var terrainTypes = [
               { type: 'plains', color: '#4ade80', name: 'Fertile Plains', icon: '\uD83C\uDF3F', res: 'food' },
@@ -32104,14 +32136,20 @@
             ];
 
             var buildingDefs = [
-              { id: 'hydroponics', name: 'Hydroponics Bay', icon: '\uD83C\uDF31', cost: { materials: 15, energy: 5 }, production: { food: 3 }, gate: 'biology', gateQ: 'What process do plants use to convert light energy into chemical energy?', gateA: 'photosynthesis', desc: 'Grows food using nutrient-rich water.' },
-              { id: 'solar', name: 'Solar Array', icon: '\u2600\uFE0F', cost: { materials: 10, science: 5 }, production: { energy: 3 }, gate: 'physics', gateQ: 'What particles of light does a solar panel absorb to generate electricity?', gateA: 'photon', desc: 'Converts stellar radiation into power.' },
-              { id: 'waterReclaim', name: 'Water Reclaimer', icon: '\uD83D\uDCA7', cost: { materials: 12, energy: 5 }, production: { water: 3 }, gate: 'chemistry', gateQ: 'What is the chemical formula for water?', gateA: 'h2o', desc: 'Extracts and purifies water.' },
-              { id: 'mine', name: 'Mining Rig', icon: '\u26CF\uFE0F', cost: { energy: 10, water: 5 }, production: { materials: 3 }, gate: 'geology', gateQ: 'Name one of the three main types of rocks (igneous, sedimentary, or metamorphic)', gateA: ['igneous', 'sedimentary', 'metamorphic'], desc: 'Extracts minerals from planetary crust.' },
-              { id: 'lab', name: 'Research Lab', icon: '\uD83D\uDD2C', cost: { materials: 20, energy: 10 }, production: { science: 3 }, gate: 'math', gateQ: 'What is the value of pi to 2 decimal places?', gateA: '3.14', desc: 'Conducts scientific research.' },
-              { id: 'medbay', name: 'Med Bay', icon: '\uD83C\uDFE5', cost: { materials: 15, science: 10 }, production: {}, gate: 'biology', gateQ: 'What are the basic structural units of all living organisms?', gateA: 'cell', desc: 'Treats injuries and boosts settler health.' },
-              { id: 'atmo', name: 'Atmospheric Processor', icon: '\uD83C\uDF2C\uFE0F', cost: { materials: 25, energy: 15, science: 10 }, production: { water: 1, food: 1 }, gate: 'chemistry', gateQ: 'What gas makes up about 78% of Earth\'s atmosphere?', gateA: 'nitrogen', desc: 'Converts alien atmosphere toward breathability.' },
-              { id: 'fusion', name: 'Fusion Reactor', icon: '\u2622\uFE0F', cost: { materials: 30, science: 20 }, production: { energy: 10 }, gate: 'physics', gateQ: 'In E=mc\u00B2, what does the \'m\' stand for?', gateA: 'mass', desc: 'Massive energy from hydrogen fusion.' }
+              // Tier 1 — No prerequisites
+              { id: 'hydroponics', name: 'Hydroponics Bay', icon: '\uD83C\uDF31', tier: 1, requires: [], cost: { materials: 15, energy: 5 }, production: { food: 3 }, gate: 'biology', gateQ: 'What process do plants use to convert light energy into chemical energy?', gateA: 'photosynthesis', desc: 'Grows food using nutrient-rich water. Photosynthesis converts CO\u2082 and water into glucose using light.' },
+              { id: 'solar', name: 'Solar Array', icon: '\u2600\uFE0F', tier: 1, requires: [], cost: { materials: 10, science: 5 }, production: { energy: 3 }, gate: 'physics', gateQ: 'What particles of light does a solar panel absorb to generate electricity?', gateA: 'photon', desc: 'Converts stellar radiation into power via the photoelectric effect.' },
+              { id: 'waterReclaim', name: 'Water Reclaimer', icon: '\uD83D\uDCA7', tier: 1, requires: [], cost: { materials: 12, energy: 5 }, production: { water: 3 }, gate: 'chemistry', gateQ: 'What is the chemical formula for water?', gateA: 'h2o', desc: 'Extracts water from ice and atmosphere via distillation and filtration.' },
+              { id: 'mine', name: 'Mining Rig', icon: '\u26CF\uFE0F', tier: 1, requires: [], cost: { energy: 10, water: 5 }, production: { materials: 3 }, gate: 'geology', gateQ: 'Name one of the three main types of rocks (igneous, sedimentary, or metamorphic)', gateA: ['igneous', 'sedimentary', 'metamorphic'], desc: 'Drills into planetary crust to extract minerals and metals.' },
+              // Tier 2 — Requires 2 Tier 1 buildings
+              { id: 'lab', name: 'Research Lab', icon: '\uD83D\uDD2C', tier: 2, requires: ['solar', 'mine'], cost: { materials: 20, energy: 10 }, production: { science: 3 }, gate: 'math', gateQ: 'What is the value of pi to 2 decimal places?', gateA: '3.14', desc: 'Conducts experiments and data analysis. Requires stable power and materials.' },
+              { id: 'medbay', name: 'Med Bay', icon: '\uD83C\uDFE5', tier: 2, requires: ['hydroponics', 'waterReclaim'], cost: { materials: 15, science: 10 }, production: {}, gate: 'biology', gateQ: 'What are the basic structural units of all living organisms?', gateA: 'cell', desc: 'Heals settlers (+10 health/turn). Needs food & water infrastructure first.' },
+              // Tier 3 — Requires Tier 2 buildings
+              { id: 'atmo', name: 'Atmospheric Processor', icon: '\uD83C\uDF2C\uFE0F', tier: 3, requires: ['lab', 'waterReclaim'], cost: { materials: 25, energy: 15, science: 10 }, production: { water: 1, food: 1 }, gate: 'chemistry', gateQ: 'What gas makes up about 78% of Earth\'s atmosphere?', gateA: 'nitrogen', desc: 'Converts alien atmosphere. +5% terraforming per turn.' },
+              { id: 'fusion', name: 'Fusion Reactor', icon: '\u2622\uFE0F', tier: 3, requires: ['lab', 'solar'], cost: { materials: 30, science: 20 }, production: { energy: 10 }, gate: 'physics', gateQ: 'In E=mc\u00B2, what does the \'m\' stand for?', gateA: 'mass', desc: 'Fuses hydrogen isotopes for massive energy. The ultimate power source.' },
+              // Tier 4 — Victory building
+              { id: 'biodome', name: 'Biodome', icon: '\uD83C\uDF0D', tier: 4, requires: ['atmo', 'fusion', 'medbay'], cost: { materials: 50, energy: 30, science: 25, water: 20 }, production: { food: 5, water: 2 }, gate: 'ecology', gateQ: 'What is the term for a self-sustaining ecological system that recycles nutrients and energy?', gateA: ['ecosystem', 'biosphere', 'closed ecosystem'], desc: 'Self-sustaining biosphere. Build this to achieve COLONY VICTORY!' },
+              { id: 'comms', name: 'Deep Space Comms', icon: '\uD83D\uDCE1', tier: 4, requires: ['fusion', 'lab'], cost: { materials: 40, energy: 25, science: 30 }, production: { science: 5 }, gate: 'physics', gateQ: 'What is the speed of light in km/s (approximately)?', gateA: ['300000', '3e5', '300,000'], desc: 'Contacts Earth! Signal takes 1,206 years to arrive. Massive science boost.' }
             ];
 
             // Canvas Map Rendering
@@ -32260,8 +32298,35 @@
                   React.createElement('div', { className: 'flex items-center justify-between' },
                     React.createElement('div', null,
                       React.createElement('span', { className: 'text-sm font-bold text-white' }, selectedTile.tile.icon + ' ' + selectedTile.tile.name),
-                      React.createElement('span', { className: 'text-[10px] text-slate-400 ml-2' }, '(' + selectedTile.x + ',' + selectedTile.y + ')' + (selectedTile.tile.res !== 'none' ? ' +' + selectedTile.tile.res : '') + (selectedTile.tile.hasAnomaly ? ' \u26A0\uFE0F Anomaly!' : ''))
+                      React.createElement('span', { className: 'text-[10px] text-slate-400 ml-2' }, '(' + selectedTile.x + ',' + selectedTile.y + ')' + (selectedTile.tile.res !== 'none' ? ' +' + selectedTile.tile.res : '') + (selectedTile.tile.hasAnomaly ? ' \u26A0\uFE0F Anomaly detected!' : ''))
                     ),
+                    selectedTile.tile.hasAnomaly && selectedTile.tile.explored && !d.anomalyLoading && React.createElement('button', {
+                      onClick: function() {
+                        upd('anomalyLoading', true);
+                        var tName = selectedTile.tile.name;
+                        callGemini('You are the AI game master for a space colony on alien planet Kepler-442b. Settlers are exploring an anomaly on a ' + tName + ' tile. Generate a discovery event. This should be a fascinating alien ruin, geological wonder, or xenobiological find. Include real science. Return ONLY valid JSON:\n{"emoji":"<emoji>","title":"<discovery name>","description":"<3-4 sentences describing the find>","lesson":"<real science behind this type of discovery, 2-3 sentences>","reward":{"food":<0-8>,"energy":<0-8>,"water":<0-8>,"materials":<0-8>,"science":<3-15>},"terraformBonus":<0-5>}', true).then(function(result) {
+                          try {
+                            var cl = result.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
+                            var s2 = cl.indexOf('{'); if (s2 > 0) cl = cl.substring(s2);
+                            var e2 = cl.lastIndexOf('}'); if (e2 > 0) cl = cl.substring(0, e2 + 1);
+                            var parsed = JSON.parse(cl);
+                            upd('anomalyResult', parsed); upd('anomalyLoading', false);
+                            // Apply rewards
+                            var nr5 = Object.assign({}, resources);
+                            Object.keys(parsed.reward || {}).forEach(function(k) { if (nr5[k] !== undefined) nr5[k] += parsed.reward[k]; });
+                            upd('colonyRes', nr5);
+                            if (parsed.terraformBonus) upd('colonyTerraform', Math.min(100, (d.colonyTerraform || 0) + parsed.terraformBonus));
+                            // Remove anomaly
+                            var nm2 = JSON.parse(JSON.stringify(mapData));
+                            nm2.tiles[selectedTile.y * mapSize + selectedTile.x].hasAnomaly = false;
+                            upd('colonyMap', nm2);
+                            var nl5 = gameLog.slice(); nl5.push('\u2728 Anomaly: ' + parsed.title); upd('colonyLog', nl5);
+                            if (typeof addXP === 'function') addXP(25, 'Kepler Colony: Anomaly explored');
+                          } catch(err) { upd('anomalyLoading', false); }
+                        }).catch(function() { upd('anomalyLoading', false); });
+                      },
+                      className: 'px-3 py-1 bg-purple-600 text-white rounded-lg text-[10px] font-bold'
+                    }, d.anomalyLoading ? '\u23F3' : '\u2728 Investigate Anomaly'),
                     !selectedTile.tile.explored && React.createElement('button', {
                       onClick: function() {
                         var nm = JSON.parse(JSON.stringify(mapData));
@@ -32277,6 +32342,23 @@
                     }, '\uD83D\uDDFA Explore (-2\u26A1)')
                   )
                 ),
+                // Anomaly Result
+                d.anomalyResult && React.createElement('div', { className: 'bg-gradient-to-r from-purple-900 to-violet-900 rounded-xl p-3 border border-purple-600 mb-3' },
+                  React.createElement('div', { className: 'flex justify-between items-center mb-1' },
+                    React.createElement('h4', { className: 'text-sm font-bold text-purple-200' }, (d.anomalyResult.emoji || '\u2728') + ' ' + d.anomalyResult.title),
+                    React.createElement('button', { onClick: function() { upd('anomalyResult', null); }, className: 'text-purple-400 text-xs' }, '\u2715')
+                  ),
+                  React.createElement('p', { className: 'text-xs text-purple-100 leading-relaxed' }, d.anomalyResult.description),
+                  d.anomalyResult.lesson && React.createElement('div', { className: 'mt-2 bg-purple-950 rounded-lg px-3 py-2 text-[10px] text-purple-300 border border-purple-800' },
+                    React.createElement('span', { className: 'font-bold text-purple-200' }, '\uD83D\uDCDA Science: '), d.anomalyResult.lesson
+                  ),
+                  React.createElement('div', { className: 'flex gap-2 mt-2 text-[9px] flex-wrap' },
+                    Object.keys(d.anomalyResult.reward || {}).filter(function(k) { return d.anomalyResult.reward[k] > 0; }).map(function(k) {
+                      return React.createElement('span', { key: k, className: 'text-green-400 bg-green-900/30 px-2 py-0.5 rounded-full' }, '+' + d.anomalyResult.reward[k] + ' ' + k);
+                    }),
+                    d.anomalyResult.terraformBonus > 0 && React.createElement('span', { className: 'text-emerald-400 bg-emerald-900/30 px-2 py-0.5 rounded-full' }, '+' + d.anomalyResult.terraformBonus + '% terraform')
+                  )
+                ),
                 // Actions
                 React.createElement('div', { className: 'grid grid-cols-3 gap-2 mb-3' },
                   React.createElement('button', {
@@ -32284,9 +32366,29 @@
                       var nt = turn + 1; var nr2 = Object.assign({}, resources);
                       buildings.forEach(function(b) { var def = buildingDefs.find(function(bd) { return bd.id === b; }); if (def) Object.keys(def.production).forEach(function(k) { nr2[k] = (nr2[k]||0) + def.production[k]; }); });
                       nr2.food = Math.max(0, nr2.food - settlers.length);
+                      // Terraforming progress
+                      var tfGain = buildings.indexOf('atmo') >= 0 ? 5 : 0;
+                      tfGain += buildings.indexOf('biodome') >= 0 ? 10 : 0;
+                      tfGain += buildings.indexOf('hydroponics') >= 0 ? 1 : 0;
+                      var newTf = Math.min(100, (d.colonyTerraform || 0) + tfGain);
+                      upd('colonyTerraform', newTf);
+                      // Med Bay heals settlers
+                      if (buildings.indexOf('medbay') >= 0) {
+                        upd('colonySettlers', settlers.map(function(s4) { return Object.assign({}, s4, { health: Math.min(100, s4.health + 5) }); }));
+                      }
+                      // Weather hazard (random)
+                      var weatherTypes = [null, null, null, null, // 4/7 = calm
+                        { name: 'Dust Storm', icon: '\uD83C\uDF2A\uFE0F', effect: 'Materials production halved', res: 'materials', penalty: -2 },
+                        { name: 'Solar Flare', icon: '\u2604\uFE0F', effect: 'Energy surge! Equipment overloaded', res: 'energy', penalty: -3 },
+                        { name: 'Ice Rain', icon: '\uD83C\uDF28\uFE0F', effect: 'Frozen pipes, water loss', res: 'water', penalty: -2 }
+                      ];
+                      var wIdx = Math.floor(Math.random() * weatherTypes.length);
+                      var wx = weatherTypes[wIdx];
+                      upd('colonyWeather', wx);
+                      if (wx) { nr2[wx.res] = Math.max(0, nr2[wx.res] + wx.penalty); }
                       nr2.water = Math.max(0, nr2.water - Math.ceil(settlers.length * 0.5));
                       upd('colonyRes', nr2); upd('colonyTurn', nt); upd('colonyEventLoading', true);
-                      var ctx2 = 'Colony on Kepler-442b, turn ' + nt + '. Resources: food=' + nr2.food + ' energy=' + nr2.energy + ' water=' + nr2.water + ' materials=' + nr2.materials + ' science=' + nr2.science + '. Buildings: ' + (buildings.length > 0 ? buildings.join(', ') : 'none') + '. ' + settlers.length + ' settlers.';
+                      var ctx2 = 'Colony on Kepler-442b, turn ' + nt + '. Resources: food=' + nr2.food + ' energy=' + nr2.energy + ' water=' + nr2.water + ' materials=' + nr2.materials + ' science=' + nr2.science + '. Buildings: ' + (buildings.length > 0 ? buildings.join(', ') : 'none') + '. ' + settlers.length + ' settlers. Terraforming: ' + newTf + '%. ' + (wx ? 'Current weather: ' + wx.name + '. ' : 'Weather: calm. ') + 'Tech tier reached: ' + (buildings.indexOf('biodome') >= 0 ? 4 : buildings.indexOf('atmo') >= 0 || buildings.indexOf('fusion') >= 0 ? 3 : buildings.indexOf('lab') >= 0 || buildings.indexOf('medbay') >= 0 ? 2 : buildings.length > 0 ? 1 : 0) + '.';
                       callGemini('You are the AI game master for an educational space colony on an alien planet. ' + ctx2 + '\n\nGenerate a planet event. Include a REAL science concept. Return ONLY valid JSON:\n{"emoji":"<emoji>","title":"<event>","description":"<2-3 sentences>","lesson":"<real science concept, 2-3 sentences>","choices":[{"label":"<choice>","effects":{"food":<n>,"energy":<n>,"water":<n>,"materials":<n>,"science":<n>,"morale":<n>},"outcome":"<result>"},{"label":"<choice>","effects":{"food":<n>,"energy":<n>,"water":<n>,"materials":<n>,"science":<n>,"morale":<n>},"outcome":"<result>"}]}\n\nEvents: alien microbes, geologic discoveries, meteor showers, equipment failures, resource finds, atmospheric anomalies, alien ruins. Effects: -5 to +10 resources, -15 to +15 morale. One choice should reward scientific knowledge.', true).then(function(result) {
                         try { var cl = result.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim(); var s2=cl.indexOf('{'); if(s2>0) cl=cl.substring(s2); var e2=cl.lastIndexOf('}'); if(e2>0) cl=cl.substring(0,e2+1);
                           var parsed = JSON.parse(cl); upd('colonyEvent', parsed); upd('colonyEventLoading', false);
@@ -32326,7 +32428,8 @@
                   React.createElement('h4', { className: 'text-sm font-bold text-amber-400 mb-2' }, '\uD83C\uDFD7 Buildings'),
                   React.createElement('div', { className: 'grid grid-cols-2 gap-2' }, buildingDefs.map(function(bd) {
                     var isBuilt = buildings.indexOf(bd.id) >= 0;
-                    var canAff = !isBuilt && Object.keys(bd.cost).every(function(k) { return resources[k] >= bd.cost[k]; });
+                    var hasPrereqs = (bd.requires || []).every(function(r) { return buildings.indexOf(r) >= 0; });
+                    var canAff = !isBuilt && hasPrereqs && Object.keys(bd.cost).every(function(k) { return resources[k] >= bd.cost[k]; });
                     return React.createElement('div', { key: bd.id, className: 'p-2 rounded-xl border-2 ' + (isBuilt ? 'border-green-600 bg-green-900/30' : canAff ? 'border-slate-600 bg-slate-900' : 'border-slate-700 bg-slate-900/50 opacity-50') },
                       React.createElement('div', { className: 'flex items-center justify-between' },
                         React.createElement('span', null, React.createElement('span', { className: 'text-base' }, bd.icon), React.createElement('span', { className: 'text-[10px] font-bold text-white ml-1' }, bd.name), isBuilt && React.createElement('span', { className: 'text-green-400 ml-1 text-[9px]' }, '\u2705')),
@@ -32338,7 +32441,8 @@
                         React.createElement('span', { className: 'text-slate-500' }, '|'),
                         Object.keys(bd.production).map(function(pk) { return React.createElement('span', { key: pk, className: 'text-cyan-400' }, '+' + bd.production[pk] + ' ' + pk); })
                       ),
-                      React.createElement('div', { className: 'text-[8px] text-indigo-400 mt-0.5' }, '\uD83D\uDD12 ' + bd.gate)
+                      React.createElement('div', { className: 'text-[8px] text-indigo-400 mt-0.5' }, '\uD83D\uDD12 ' + bd.gate + (bd.tier > 1 ? ' | Tier ' + bd.tier : '')),
+                      !isBuilt && bd.requires && bd.requires.length > 0 && !hasPrereqs && React.createElement('div', { className: 'text-[8px] text-red-400 mt-0.5' }, '\u26D4 Requires: ' + bd.requires.join(', '))
                     );
                   }))
                 ),
@@ -32376,10 +32480,57 @@
                       React.createElement('div', { className: 'text-[8px] text-slate-400' }, st.role),
                       React.createElement('div', { className: 'mt-1 grid grid-cols-2 gap-1 text-[7px]' },
                         React.createElement('div', null, 'Morale', React.createElement('div', { className: 'w-full bg-slate-700 rounded-full h-1 mt-0.5' }, React.createElement('div', { className: 'h-1 rounded-full ' + (st.morale > 60 ? 'bg-green-500' : 'bg-amber-500'), style: { width: st.morale + '%' } }))),
-                        React.createElement('div', null, 'Health', React.createElement('div', { className: 'w-full bg-slate-700 rounded-full h-1 mt-0.5' }, React.createElement('div', { className: 'h-1 rounded-full bg-cyan-500', style: { width: st.health + '%' } })))
+                        React.createElement('div', null, 'Health', React.createElement('div', { className: 'w-full bg-slate-700 rounded-full h-1 mt-0.5' }, React.createElement('div', { className: 'h-1 rounded-full bg-cyan-500', style: { width: st.health + '%' } }))),
+                        React.createElement('button', {
+                          onClick: function() {
+                            upd('talkSettler', si2);
+                            upd('settlerChatLoading', true);
+                            callGemini('You are ' + st.name + ', a ' + st.role + ' (specialty: ' + st.specialty + ') on the Kepler-442b space colony. Morale: ' + st.morale + '%, Health: ' + st.health + '%. Colony has ' + buildings.length + ' buildings, turn ' + turn + '. Resources: food=' + resources.food + ' energy=' + resources.energy + '. Give a brief in-character update (2-3 sentences) about your work, mood, and a science fact related to your specialty. Be personable and educational.', true).then(function(result) {
+                              upd('settlerChat', result); upd('settlerChatLoading', false);
+                              if (typeof addXP === 'function') addXP(5, 'Talked to ' + st.name);
+                            }).catch(function() { upd('settlerChatLoading', false); });
+                          },
+                          className: 'mt-1 col-span-2 px-2 py-0.5 rounded bg-indigo-800 text-indigo-300 text-[7px] hover:bg-indigo-700'
+                        }, '\uD83D\uDCAC Talk'))
                       )
                     );
                   }))
+                ),
+                // Settler Chat
+                d.settlerChat && d.talkSettler !== undefined && React.createElement('div', { className: 'bg-indigo-900/50 rounded-xl p-3 border border-indigo-700 mb-3' },
+                  React.createElement('div', { className: 'flex justify-between items-center mb-1' },
+                    React.createElement('span', { className: 'text-[10px] font-bold text-indigo-300' },
+                      (settlers[d.talkSettler] ? settlers[d.talkSettler].icon + ' ' + settlers[d.talkSettler].name : '') + ' says:'
+                    ),
+                    React.createElement('button', { onClick: function() { upd('settlerChat', null); }, className: 'text-indigo-400 text-xs' }, '\u2715')
+                  ),
+                  React.createElement('p', { className: 'text-[10px] text-indigo-200 leading-relaxed italic' },
+                    d.settlerChatLoading ? '\u23F3 Thinking...' : d.settlerChat
+                  )
+                ),
+                // Resource Conversion
+                React.createElement('div', { className: 'bg-slate-800 rounded-xl p-2 border border-slate-700 mb-3' },
+                  React.createElement('div', { className: 'flex items-center justify-between mb-1' },
+                    React.createElement('h4', { className: 'text-[9px] font-bold text-slate-500 uppercase' }, '\u267B Resource Converter'),
+                    React.createElement('span', { className: 'text-[8px] text-slate-600' }, 'Trade 5 of one for 3 of another')
+                  ),
+                  React.createElement('div', { className: 'flex gap-1 flex-wrap' },
+                    [['food','energy'],['energy','materials'],['materials','science'],['water','food'],['science','energy']].map(function(pair) {
+                      var from = pair[0]; var to = pair[1];
+                      var icons = { food: '\uD83C\uDF3E', energy: '\u26A1', water: '\uD83D\uDCA7', materials: '\uD83E\uDEA8', science: '\uD83D\uDD2C' };
+                      return React.createElement('button', {
+                        key: from + to,
+                        onClick: function() {
+                          if (resources[from] >= 5) {
+                            var nr6 = Object.assign({}, resources); nr6[from] -= 5; nr6[to] += 3; upd('colonyRes', nr6);
+                            if (addToast) addToast(icons[from] + ' 5 ' + from + ' \u2192 ' + icons[to] + ' 3 ' + to, 'info');
+                          }
+                        },
+                        disabled: resources[from] < 5,
+                        className: 'px-2 py-1 rounded-lg text-[8px] border ' + (resources[from] >= 5 ? 'border-slate-600 bg-slate-900 text-slate-300 hover:border-indigo-500' : 'border-slate-700 bg-slate-900/50 text-slate-600')
+                      }, icons[from] + '\u2192' + icons[to]);
+                    })
+                  )
                 ),
                 // Log
                 React.createElement('div', { className: 'bg-slate-800 rounded-xl p-2 border border-slate-700 max-h-28 overflow-y-auto' },
