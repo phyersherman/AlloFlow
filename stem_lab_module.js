@@ -32546,7 +32546,16 @@
               React.createElement('button', {
                 onClick: function() { upd('showQuiz', !(d.showQuiz)); },
                 className: 'text-[9px] text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200 cursor-pointer font-bold'
-              }, '\u270D\uFE0F Quiz Me')
+              }, '\u270D\uFE0F Quiz Me'),
+              React.createElement('select', {
+                value: d.econDifficulty || 'medium',
+                onChange: function(e) { upd('econDifficulty', e.target.value); if (addToast) addToast('Difficulty: ' + e.target.value.toUpperCase(), 'info'); },
+                className: 'text-[9px] bg-slate-100 border border-slate-200 rounded-full px-2 py-0.5 text-slate-600 outline-none cursor-pointer'
+              },
+                React.createElement('option', { value: 'easy' }, '\uD83C\uDF31 Easy'),
+                React.createElement('option', { value: 'medium' }, '\u2699\uFE0F Medium'),
+                React.createElement('option', { value: 'hard' }, '\uD83D\uDD25 Hard')
+              )
             ),
             // Tab bar
             React.createElement('div', { className: 'flex gap-1 mb-4 bg-slate-100 rounded-xl p-1' },
@@ -32619,6 +32628,7 @@
                         if (isAnswered) return;
                         upd('quizAnswer', oi);
                         upd('quizScore', (d.quizScore || 0) + (oi === d.quizQuestion.correctIndex ? 1 : 0));
+                        if (oi === d.quizQuestion.correctIndex && typeof addXP === 'function') addXP(20, 'Economics Quiz: Correct answer!');
                         upd('quizTotal', (d.quizTotal || 0) + 1);
                       },
                       className: 'w-full text-left p-3 rounded-xl border-2 text-xs transition-all ' +
@@ -32824,12 +32834,15 @@
                         upd('pfSalary', Math.max(0, (d.pfSalary || 35000) + (eff.salary || 0)));
                         upd('pfHappiness', Math.min(100, Math.max(0, (d.pfHappiness || 70) + (eff.happiness || 0))));
                         upd('pfCredit', Math.min(850, Math.max(300, (d.pfCredit || 650) + (eff.credit || 0))));
+                        if (eff.career) upd('pfCareer', eff.career);
+                        if (eff.insurance !== undefined && eff.insurance !== null) upd('pfInsurance', eff.insurance);
                         var h = (d.pfHistory || []).slice(-29);
                         h.push({ age: d.pfAge || 22, cash: (d.pfCash || 2000) + (eff.cash || 0), debt: Math.max(0, (d.pfDebt || 0) + (eff.debt || 0)), event: d.lifeEvent.title, choice: choice.label });
                         upd('pfHistory', h);
                         upd('pfAge', (d.pfAge || 22) + 1);
                         upd('lifeEvent', null);
                         upd('pfLoading', false);
+                        if (typeof addXP === 'function') addXP(15, 'Life Sim: Made a financial decision');
                         if (addToast) addToast((eff.cash >= 0 ? '\uD83D\uDCB0 +$' : '\uD83D\uDCC9 -$') + Math.abs(eff.cash || 0).toLocaleString() + ' | ' + choice.label, eff.cash >= 0 ? 'success' : 'warning');
                         // Auto-add lesson to glossary
                         if (d.lifeEvent && d.lifeEvent.lesson) {
@@ -32868,12 +32881,12 @@
                   );
                 })
               ),
-              React.createElement('div', { className: 'text-xs text-slate-400 text-center mb-2' }, 'Salary: $' + (d.pfSalary || 35000).toLocaleString() + '/yr | Net Worth: $' + ((d.pfCash || 2000) - (d.pfDebt || 0)).toLocaleString() + ' | Credit: ' + (d.pfCredit || 650)),
+              React.createElement('div', { className: 'text-xs text-slate-400 text-center mb-2' }, (d.pfCareer ? '\uD83D\uDCBC ' + d.pfCareer + ' | ' : '') + 'Salary: $' + (d.pfSalary || 35000).toLocaleString() + '/yr | Net Worth: $' + ((d.pfCash || 2000) - (d.pfDebt || 0)).toLocaleString() + ' | Credit: ' + (d.pfCredit || 650) + (d.pfInsurance ? ' | \uD83D\uDEE1\uFE0F Insured' : ' | \u26A0\uFE0F No Insurance')),
               // Next Year / Generate Event button
               !d.lifeEvent && React.createElement('button', {
                 onClick: function() {
                   upd('pfLoading', true);
-                  var prompt = 'You are a life simulation game engine. The player is ' + (d.pfAge || 22) + ' years old, earns $' + (d.pfSalary || 35000).toLocaleString() + '/year, has $' + (d.pfCash || 2000).toLocaleString() + ' in savings, $' + (d.pfDebt || 0).toLocaleString() + ' in debt, and ' + (d.pfHappiness || 70) + '% happiness.\n\nGenerate a realistic random life event with 3 choices. Return ONLY valid JSON:\n{"emoji":"<single emoji>","title":"<short title>","description":"<2-3 sentence scenario>","choices":[{"label":"<action description>","effect":{"cash":<number>,"debt":<number>,"salary":<number>,"happiness":<number>,"credit":<number -50 to 50>}}]}\n\nExamples of events: car breakdown, promotion opportunity, medical emergency, investment opportunity, wedding invitation, surprise inheritance, job offer in new city, appliance repair, apartment vacancy, side hustle opportunity, tax refund, parking ticket. Make effects realistic. Cash effects should be -5000 to +10000 range. Salary changes should be -5000 to +15000 range. Happiness -20 to +20. Credit -50 to +50.\n\nIMPORTANT: Include a "lesson" field in your JSON with a 1-2 sentence financial literacy lesson explaining the real-world economics behind this event (e.g., compound interest, opportunity cost, inflation, risk vs. reward, emergency funds, diversification). Format: {"emoji":"...","title":"...","description":"...","lesson":"<financial literacy concept>","choices":[...]}';
+                  var prompt = 'You are a life simulation game engine (difficulty: ' + (d.econDifficulty || 'medium') + '). The player is ' + (d.pfAge || 22) + ' years old, earns $' + (d.pfSalary || 35000).toLocaleString() + '/year, has $' + (d.pfCash || 2000).toLocaleString() + ' in savings, $' + (d.pfDebt || 0).toLocaleString() + ' in debt, and ' + (d.pfHappiness || 70) + '% happiness.\n\nGenerate a realistic random life event with 3 choices. Return ONLY valid JSON:\n{"emoji":"<single emoji>","title":"<short title>","description":"<2-3 sentence scenario>","choices":[{"label":"<action description>","effect":{"cash":<number>,"debt":<number>,"salary":<number>,"happiness":<number>,"credit":<number -50 to 50>,"career":<optional string or null>,"insurance":<optional true/false or null>}}]}\n\nExamples of events: car breakdown, promotion opportunity, medical emergency, investment opportunity, wedding invitation, surprise inheritance, job offer in new city, appliance repair, apartment vacancy, side hustle opportunity, tax refund, parking ticket. Make effects realistic. Cash effects should be -5000 to +10000 range. Salary changes should be -5000 to +15000 range. Happiness -20 to +20. Credit -50 to +50.\n\nIMPORTANT: Include a "lesson" field in your JSON with a 1-2 sentence financial literacy lesson explaining the real-world economics behind this event (e.g., compound interest, opportunity cost, inflation, risk vs. reward, emergency funds, diversification). Format: {"emoji":"...","title":"...","description":"...","lesson":"<financial literacy concept>","choices":[...]}';
                   callGemini(prompt, true).then(function(result) {
                     try {
                       var cleaned = result.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
@@ -32907,7 +32920,7 @@
               ),
               // Reset button
               React.createElement('button', {
-                onClick: function() { upd('pfAge', 22); upd('pfCash', 2000); upd('pfDebt', 0); upd('pfSalary', 35000); upd('pfHappiness', 70); upd('pfCredit', 650); upd('pfHistory', []); upd('lifeEvent', null); if (addToast) addToast('\u267B Starting over at age 22!', 'info'); },
+                onClick: function() { upd('pfAge', 22); upd('pfCash', 2000); upd('pfDebt', 0); upd('pfSalary', 35000); upd('pfHappiness', 70); upd('pfCredit', 650); upd('pfCareer', null); upd('pfInsurance', false); upd('pfHistory', []); upd('lifeEvent', null); if (addToast) addToast('\u267B Starting over at age 22!', 'info'); },
                 className: 'mt-2 w-full py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-500 border border-slate-200'
               }, '\u267B New Life')
             ),
@@ -32987,10 +33000,25 @@
                       newPort[co2.ticker] = (newPort[co2.ticker] || 0) + 1;
                       upd('smPortfolio', newPort);
                       if (addToast) addToast('Bought 1 ' + co2.ticker + ' @ $' + co2.price.toFixed(2), 'success');
+                      if (typeof addXP === 'function') addXP(5, 'Stock Market: Executed trade');
                     } else { if (addToast) addToast('Not enough cash!', 'error'); }
                   },
                   className: 'flex-1 py-3 rounded-xl text-xs font-bold bg-gradient-to-r from-green-500 to-emerald-500 text-white'
                 }, '\u25B2 Buy 1 ($' + (smCompanies[smSelected] ? smCompanies[smSelected].price.toFixed(2) : '0') + ')'),
+                React.createElement('button', {
+                  onClick: function() {
+                    var co5 = smCompanies[smSelected];
+                    var cost10 = co5.price * 10;
+                    if (smCash >= cost10) {
+                      upd('smCash', smCash - cost10);
+                      var newPort3 = Object.assign({}, smPortfolio);
+                      newPort3[co5.ticker] = (newPort3[co5.ticker] || 0) + 10;
+                      upd('smPortfolio', newPort3);
+                      if (addToast) addToast('Bought 10 ' + co5.ticker + ' @ $' + co5.price.toFixed(2) + ' = $' + cost10.toFixed(2), 'success');
+                    } else { if (addToast) addToast('Need $' + cost10.toFixed(2) + ' (have $' + smCash.toFixed(2) + ')', 'error'); }
+                  },
+                  className: 'py-3 px-2 rounded-xl text-[10px] font-bold bg-gradient-to-r from-green-600 to-emerald-600 text-white'
+                }, '\u25B2\u25B2 Buy 10'),
                 React.createElement('button', {
                   onClick: function() {
                     var co3 = smCompanies[smSelected];
@@ -33007,9 +33035,25 @@
                 }, '\u25BC Sell 1'),
                 React.createElement('button', {
                   onClick: function() {
+                    var co6 = smCompanies[smSelected];
+                    var held = smPortfolio[co6.ticker] || 0;
+                    if (held > 0) {
+                      var sellAmt = Math.min(held, 10);
+                      upd('smCash', smCash + co6.price * sellAmt);
+                      var newPort4 = Object.assign({}, smPortfolio);
+                      newPort4[co6.ticker] = held - sellAmt;
+                      if (newPort4[co6.ticker] <= 0) delete newPort4[co6.ticker];
+                      upd('smPortfolio', newPort4);
+                      if (addToast) addToast('Sold ' + sellAmt + ' ' + co6.ticker + ' @ $' + co6.price.toFixed(2), 'info');
+                    }
+                  },
+                  className: 'py-3 px-2 rounded-xl text-[10px] font-bold bg-gradient-to-r from-red-600 to-rose-600 text-white'
+                }, '\u25BC\u25BC Sell ' + Math.min(smPortfolio[smCompanies[smSelected] ? smCompanies[smSelected].ticker : ''] || 0, 10)),
+                React.createElement('button', {
+                  onClick: function() {
                     upd('smLoading', true);
                     var co4 = smCompanies[smSelected];
-                    var prompt = 'You are a financial news AI for an educational stock market simulator. Generate a market news event. Currently tracking: ' + smCompanies.map(function(c){return c.ticker + ' (' + c.name + ', ' + c.sector + ') @ $' + c.price.toFixed(2);}).join(', ') + '.\n\nReturn ONLY valid JSON:\n{"headline":"<breaking news headline>","analysis":"<1-2 sentence market analysis>","impacts":[{"ticker":"<TICKER>","change":<decimal between -0.15 and 0.15>}]}\n\nGenerate realistic business news. Impact 1-3 companies.\n\nIMPORTANT: Include a "lesson" field with a 1-2 sentence investing/market concept explanation (e.g., diversification, P/E ratios, market sentiment, bull vs bear markets, risk tolerance, dollar-cost averaging, index funds, short selling, market capitalization, dividends).\n\nFormat: {"headline":"...","analysis":"...","lesson":"<investing concept>","impacts":[{"ticker":"...","change":<decimal>}]}';
+                    var prompt = 'You are a financial news AI (difficulty: ' + (d.econDifficulty || 'medium') + ') for an educational stock market simulator. Generate a market news event. Currently tracking: ' + smCompanies.map(function(c){return c.ticker + ' (' + c.name + ', ' + c.sector + ') @ $' + c.price.toFixed(2);}).join(', ') + '.\n\nReturn ONLY valid JSON:\n{"headline":"<breaking news headline>","analysis":"<1-2 sentence market analysis>","impacts":[{"ticker":"<TICKER>","change":<decimal between -0.15 and 0.15>}]}\n\nGenerate realistic business news. Impact 1-3 companies.\n\nIMPORTANT: Include a "lesson" field with a 1-2 sentence investing/market concept explanation (e.g., diversification, P/E ratios, market sentiment, bull vs bear markets, risk tolerance, dollar-cost averaging, index funds, short selling, market capitalization, dividends).\n\nFormat: {"headline":"...","analysis":"...","lesson":"<investing concept>","impacts":[{"ticker":"...","change":<decimal>}]}';
                     callGemini(prompt, true).then(function(result) {
                       try {
                         var cleaned = result.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
@@ -33066,6 +33110,27 @@
                     var c = smCompanies.find(function(x){return x.ticker===ticker;});
                     return smPortfolio[ticker] > 0 ? React.createElement('span', { key: ticker, className: 'bg-slate-100 px-2 py-1 rounded text-[10px] font-bold' }, ticker + ': ' + smPortfolio[ticker] + ' ($' + (smPortfolio[ticker]*c.price).toFixed(0) + ')') : null;
                   })
+                ),
+                // Portfolio Analytics
+                smDay > 0 && React.createElement('div', { className: 'mt-3 bg-slate-50 rounded-xl p-3 border border-slate-200' },
+                  React.createElement('h4', { className: 'text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2' }, '\uD83D\uDCC8 Portfolio Analytics'),
+                  React.createElement('div', { className: 'grid grid-cols-3 gap-2 text-center' },
+                    React.createElement('div', { className: 'bg-white rounded-lg p-2 border border-slate-100' },
+                      React.createElement('div', { className: 'text-[9px] text-slate-400' }, 'Total P&L'),
+                      React.createElement('div', { className: 'text-sm font-bold ' + (smTotalVal - 10000 >= 0 ? 'text-green-600' : 'text-red-500') },
+                        (smTotalVal - 10000 >= 0 ? '+' : '') + '$' + (smTotalVal - 10000).toFixed(0))
+                    ),
+                    React.createElement('div', { className: 'bg-white rounded-lg p-2 border border-slate-100' },
+                      React.createElement('div', { className: 'text-[9px] text-slate-400' }, 'Return %'),
+                      React.createElement('div', { className: 'text-sm font-bold ' + (smTotalVal >= 10000 ? 'text-green-600' : 'text-red-500') },
+                        (smTotalVal >= 10000 ? '+' : '') + ((smTotalVal / 10000 - 1) * 100).toFixed(1) + '%')
+                    ),
+                    React.createElement('div', { className: 'bg-white rounded-lg p-2 border border-slate-100' },
+                      React.createElement('div', { className: 'text-[9px] text-slate-400' }, 'Holdings'),
+                      React.createElement('div', { className: 'text-sm font-bold text-slate-700' },
+                        Object.keys(smPortfolio).filter(function(t) { return smPortfolio[t] > 0; }).length + ' stocks')
+                    )
+                  )
                 ),
                 // Reset Market button
                 React.createElement('button', {
@@ -33132,6 +33197,32 @@
                     React.createElement('div', { className: 'text-[10px] text-slate-400' }, 'Day ' + (d.enBizDay || 1) + ' | Rep: ' + (d.enBizRep || 50) + '/100 | Staff: ' + (d.enBizEmployees || 0))
                   )
                 ),
+                // Price adjustment + stats
+                React.createElement('div', { className: 'grid grid-cols-3 gap-2 mb-3' },
+                  React.createElement('div', { className: 'bg-amber-50 rounded-xl p-3 border border-amber-200' },
+                    React.createElement('label', { className: 'block text-[10px] font-bold text-amber-700 mb-1' }, '\uD83D\uDCB2 Price per ' + (d.enBusiness.unitName || 'unit') + ': $' + (d.enBizPrice || d.enBusiness.suggestedPrice || 10).toFixed(2)),
+                    React.createElement('input', {
+                      type: 'range', min: 1, max: (d.enBusiness.suggestedPrice || 10) * 3, step: 0.5,
+                      value: d.enBizPrice || d.enBusiness.suggestedPrice || 10,
+                      onChange: function(e) { upd('enBizPrice', parseFloat(e.target.value)); },
+                      className: 'w-full accent-amber-500'
+                    }),
+                    React.createElement('div', { className: 'text-[9px] text-amber-600 mt-0.5' }, 'Suggested: $' + (d.enBusiness.suggestedPrice || 10))
+                  ),
+                  React.createElement('div', { className: 'bg-blue-50 rounded-xl p-3 border border-blue-200 text-center' },
+                    React.createElement('div', { className: 'text-[9px] text-blue-500 font-bold' }, 'Profit Margin'),
+                    React.createElement('div', { className: 'text-lg font-bold ' + (((d.enBizPrice || d.enBusiness.suggestedPrice || 10) - (d.enBusiness.unitCost || 5)) / (d.enBizPrice || d.enBusiness.suggestedPrice || 10) * 100 > 30 ? 'text-green-600' : 'text-amber-600') },
+                      (((d.enBizPrice || d.enBusiness.suggestedPrice || 10) - (d.enBusiness.unitCost || 5)) / (d.enBizPrice || d.enBusiness.suggestedPrice || 10) * 100).toFixed(0) + '%'),
+                    React.createElement('div', { className: 'text-[9px] text-blue-400' }, 'Cost: $' + (d.enBusiness.unitCost || 5))
+                  ),
+                  React.createElement('div', { className: 'bg-purple-50 rounded-xl p-3 border border-purple-200 text-center' },
+                    React.createElement('div', { className: 'text-[9px] text-purple-500 font-bold' }, 'Break-Even'),
+                    React.createElement('div', { className: 'text-lg font-bold text-purple-700' },
+                      Math.ceil((d.enBusiness.dailyFixedCosts || 50) / Math.max(0.01, (d.enBizPrice || d.enBusiness.suggestedPrice || 10) - (d.enBusiness.unitCost || 5)))),
+                    React.createElement('div', { className: 'text-[9px] text-purple-400' }, d.enBusiness.unitName + 's/day')
+                  )
+                  )
+                ),
                 // AI Event display
                 d.enBizEvent ? React.createElement('div', { className: 'bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl p-4 border border-purple-200 mb-3' },
                   React.createElement('div', { className: 'flex items-start gap-2 mb-3' },
@@ -33174,7 +33265,7 @@
                   onClick: function() {
                     upd('enBizLoading', true);
                     var biz = d.enBusiness;
-                    var prompt = 'You are a business simulation game engine. The player runs "' + biz.businessName + '" (a ' + (d.enInput || 'business') + '). Day ' + (d.enBizDay || 1) + ', cash: $' + (d.enBizCash || 0) + ', reputation: ' + (d.enBizRep || 50) + '/100. They sell ' + biz.unitName + ' at $' + (d.enBizPrice || biz.suggestedPrice) + ' each. Daily fixed costs: $' + biz.dailyFixedCosts + ', unit cost: $' + biz.unitCost + '. They have ' + (d.enBizEmployees || 0) + ' employees (each costs $80/day but increases max customers by 20%).\n\nSimulate today and generate an event. Return ONLY valid JSON:\n{"customersToday":<number>,"revenue":<number>,"costs":<number>,"emoji":"<emoji>","title":"<event title>","description":"<what happened today + the event>","choices":[{"label":"<option>","effect":{"cash":<number>,"reputation":<number>,"employees":<number or 0>}}]}\n\nMake daily customers based on reputation (higher rep = more customers, max ' + biz.maxDailyCustomers + '). Include a realistic challenge with 2-3 choices.\n\nIMPORTANT: Include a "lesson" field with a 1-2 sentence business/entrepreneurship concept (e.g., break-even analysis, profit margins, customer acquisition cost, cash flow management, competitive advantage, economies of scale, marketing ROI, supply chain, pivot strategy, unit economics, customer retention vs acquisition).';
+                    var prompt = 'You are a business simulation game engine (difficulty: ' + (d.econDifficulty || 'medium') + '). The player runs "' + biz.businessName + '" (a ' + (d.enInput || 'business') + '). Day ' + (d.enBizDay || 1) + ', cash: $' + (d.enBizCash || 0) + ', reputation: ' + (d.enBizRep || 50) + '/100. They sell ' + biz.unitName + ' at $' + (d.enBizPrice || biz.suggestedPrice) + ' each. Daily fixed costs: $' + biz.dailyFixedCosts + ', unit cost: $' + biz.unitCost + '. They have ' + (d.enBizEmployees || 0) + ' employees (each costs $80/day but increases max customers by 20%).\n\nSimulate today and generate an event. Return ONLY valid JSON:\n{"customersToday":<number>,"revenue":<number>,"costs":<number>,"emoji":"<emoji>","title":"<event title>","description":"<what happened today + the event>","choices":[{"label":"<option>","effect":{"cash":<number>,"reputation":<number>,"employees":<number or 0>}}]}\n\nMake daily customers based on reputation (higher rep = more customers, max ' + biz.maxDailyCustomers + '). Include a realistic challenge with 2-3 choices.\n\nIMPORTANT: Include a "lesson" field with a 1-2 sentence business/entrepreneurship concept (e.g., break-even analysis, profit margins, customer acquisition cost, cash flow management, competitive advantage, economies of scale, marketing ROI, supply chain, pivot strategy, unit economics, customer retention vs acquisition).';
                     callGemini(prompt, true).then(function(result) {
                       try {
                         var cleaned = result.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
@@ -33184,6 +33275,7 @@
                         var dailyProfit = (dayResult.revenue || 0) - (dayResult.costs || 0);
                         upd('enBizCash', (d.enBizCash || 0) + dailyProfit);
                         upd('enBizDay', (d.enBizDay || 1) + 1);
+                        if (typeof addXP === 'function') addXP(10, 'Business Sim: Completed a day');
                         var h2 = (d.enBizHistory || []).slice(-29);
                         h2.push({ day: d.enBizDay || 1, revenue: dayResult.revenue, costs: dayResult.costs, profit: dailyProfit, customers: dayResult.customersToday });
                         upd('enBizHistory', h2);
