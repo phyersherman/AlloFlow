@@ -21055,6 +21055,15 @@
                   ctx.beginPath(); ctx.ellipse(cx, cy+H*0.15, W*0.025, H*0.018, 0, 0, Math.PI*2);
                   ctx.fillStyle = 'rgba(186,230,253,0.4)'; ctx.fill();
                   ctx.strokeStyle = '#93c5fd'; ctx.lineWidth = 0.5; ctx.stroke();
+                  // Stomach churning animation
+                  if (activeLayer === 'organs') {
+                    ctx.globalAlpha = 0.12;
+                    var churnPhase = Math.sin(dissTick * 0.04);
+                    ctx.beginPath();
+                    ctx.ellipse(cx-W*0.02, cy-H*0.04, W*0.02 + churnPhase*W*0.005, H*0.015 - churnPhase*H*0.003, 0, 0, Math.PI*2);
+                    ctx.fillStyle = '#fbbf24'; ctx.fill();
+                    ctx.globalAlpha = 0.5;
+                  }
                   // Spleen (small red organ near stomach)
                   ctx.beginPath(); ctx.ellipse(cx+W*0.06, cy-H*0.03, W*0.012, H*0.008, 0.3, 0, Math.PI*2);
                   ctx.fillStyle = '#7f1d1d'; ctx.fill();
@@ -22600,6 +22609,31 @@
             drawDissectionFrame();
           };
 
+          // Auto-save progress to localStorage
+          React.useEffect(function () {
+            var saveKey = 'dissection_progress_' + (spec ? spec.id : '');
+            var saveData = {
+              exploredOrgans: d.exploredOrgans || {},
+              quizScore: d.quizScore || 0,
+              completedObjectives: d.completedObjectives || {},
+              currentLayerIdx: d.currentDissLayer || 0,
+              timeSpent: d.timeSpent || 0
+            };
+            try { localStorage.setItem(saveKey, JSON.stringify(saveData)); } catch(e) {}
+          }, [d.exploredOrgans, d.quizScore, d.completedObjectives, d.currentDissLayer, d.timeSpent]);
+          // Load progress on mount
+          React.useEffect(function () {
+            var saveKey = 'dissection_progress_' + (spec ? spec.id : '');
+            try {
+              var saved = localStorage.getItem(saveKey);
+              if (saved) {
+                var data = JSON.parse(saved);
+                if (data.exploredOrgans) upd('exploredOrgans', data.exploredOrgans);
+                if (data.quizScore) upd('quizScore', data.quizScore);
+                if (data.completedObjectives) upd('completedObjectives', data.completedObjectives);
+              }
+            } catch(e) {}
+          }, [spec ? spec.id : '']);
           // Keyboard shortcuts
           React.useEffect(function () {
             function handleKey(e) {
@@ -22745,6 +22779,21 @@
                   onClick: function () { upd('labelMode', d.labelMode === 'hidden' ? 'show' : 'hidden'); },
                   className: "px-3 py-1.5 rounded-lg text-xs font-bold " + (d.labelMode === 'hidden' ? 'bg-rose-600 text-white' : 'bg-rose-100 text-rose-700')
                 }, d.labelMode === 'hidden' ? '\uD83D\uDC41 Show Labels' : '\uD83C\uDFF7 Hide Labels'),
+                React.createElement("button", {
+                  onClick: function () {
+                    var el = document.getElementById('dissection-lab-canvas');
+                    if (el && el.requestFullscreen) el.requestFullscreen();
+                  },
+                  className: "px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700"
+                }, '\u26F6 Full'),
+                React.createElement("button", {
+                  onClick: function () {
+                    var speeds = [0.5, 1, 2, 3];
+                    var si = speeds.indexOf(d.animSpeed || 1);
+                    upd('animSpeed', speeds[(si + 1) % 4]);
+                  },
+                  className: "px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700"
+                }, '\u23E9 ' + (d.animSpeed || 1) + 'x'),
                 React.createElement("button", {
                   onClick: function () {
                     upd('printMode', !d.printMode);
@@ -23036,6 +23085,39 @@
                       }, '\u25B6')
                     )
                   ),
+                  // Embryological origin badge
+                  (function() {
+                    var devMap = {
+                      heart: 'Mesoderm', liver: 'Endoderm', brain: 'Ectoderm', kidney: 'Mesoderm',
+                      lung: 'Endoderm', stomach: 'Endoderm', intestine: 'Endoderm', spleen: 'Mesoderm',
+                      skin: 'Ectoderm', bone: 'Mesoderm', muscle: 'Mesoderm', nerve: 'Ectoderm',
+                      eye: 'Ectoderm (lens) + mesoderm', retina: 'Ectoderm', pancreas: 'Endoderm',
+                      blood: 'Mesoderm', thyroid: 'Endoderm'
+                    };
+                    var sn = sel.name.toLowerCase(); var dev = null;
+                    Object.keys(devMap).forEach(function(k) { if (sn.indexOf(k) >= 0) dev = devMap[k]; });
+                    var dColors = { Ectoderm: 'bg-blue-50 text-blue-600 border-blue-200', Mesoderm: 'bg-red-50 text-red-600 border-red-200', Endoderm: 'bg-yellow-50 text-yellow-600 border-yellow-200' };
+                    var dcKey = dev ? (dev.indexOf('Ecto') >= 0 ? 'Ectoderm' : dev.indexOf('Meso') >= 0 ? 'Mesoderm' : 'Endoderm') : null;
+                    return dev ? React.createElement("span", { className: "inline-block px-2 py-0.5 rounded-full text-[9px] font-bold mr-1 mb-1 border " + (dColors[dcKey] || 'bg-slate-50 text-slate-600 border-slate-200') }, '\uD83E\uDDEC ' + dev) : null;
+                  })(),
+                  // Tissue type badge
+                  (function() {
+                    var tissueMap = {
+                      heart: 'Cardiac muscle', liver: 'Epithelial', brain: 'Nervous', kidney: 'Epithelial',
+                      lung: 'Epithelial', stomach: 'Smooth muscle', intestine: 'Epithelial', spleen: 'Lymphoid',
+                      bone: 'Connective', cartilage: 'Connective', skin: 'Epithelial', muscle: 'Skeletal muscle',
+                      nerve: 'Nervous', tendon: 'Connective', blood: 'Connective (fluid)', pancreas: 'Glandular',
+                      eye: 'Mixed', lens: 'Epithelial', retina: 'Nervous', esophagus: 'Smooth muscle'
+                    };
+                    var sn = sel.name.toLowerCase(); var tissue = null;
+                    Object.keys(tissueMap).forEach(function(k) { if (sn.indexOf(k) >= 0) tissue = tissueMap[k]; });
+                    var tColors = { 'Cardiac muscle': 'bg-red-100 text-red-600', 'Epithelial': 'bg-emerald-100 text-emerald-600',
+                      'Nervous': 'bg-purple-100 text-purple-600', 'Smooth muscle': 'bg-rose-100 text-rose-600',
+                      'Lymphoid': 'bg-amber-100 text-amber-600', 'Connective': 'bg-blue-100 text-blue-600',
+                      'Skeletal muscle': 'bg-red-100 text-red-600', 'Glandular': 'bg-teal-100 text-teal-600',
+                      'Mixed': 'bg-slate-100 text-slate-600', 'Connective (fluid)': 'bg-blue-100 text-blue-600' };
+                    return tissue ? React.createElement("span", { className: "inline-block px-2 py-0.5 rounded-full text-[9px] font-bold mr-1 mb-1 " + (tColors[tissue] || 'bg-slate-100 text-slate-600') }, '\uD83E\uDDA0 ' + tissue) : null;
+                  })(),
                   // Organ weight estimate
                   (function() {
                     var weightMap = {heart:'250-350g',liver:'1.4-1.5kg',brain:'1.3-1.4kg',kidney:'120-170g',lung:'0.5-0.6kg',stomach:'150g',spleen:'170g',pancreas:'80g',eye:'7.5g',thyroid:'20-25g',adrenal:'4-5g',gallbladder:'30-50ml'};
@@ -23063,6 +23145,26 @@
                     React.createElement("span", null, '\uD83D\uDCCD x:' + Math.round(sel.x * 100) + '% y:' + Math.round(sel.y * 100) + '%'),
                     React.createElement("span", null, '\uD83C\uDFF7 ' + (sel.layer || activeLayer))
                   ),
+                  // Clinical correlations
+                  (function() {
+                    var clinMap = {
+                      heart: '\u26A0 Myocardial infarction, arrhythmia, heart murmur',
+                      liver: '\u26A0 Hepatitis, cirrhosis, fatty liver disease',
+                      lung: '\u26A0 Pneumonia, asthma, COPD, pulmonary embolism',
+                      brain: '\u26A0 Stroke (CVA), concussion, meningitis',
+                      kidney: '\u26A0 Renal calculi (stones), UTI, nephritis',
+                      stomach: '\u26A0 Gastric ulcer, GERD, H. pylori infection',
+                      pancreas: '\u26A0 Pancreatitis, diabetes mellitus',
+                      spleen: '\u26A0 Splenomegaly, splenic rupture (trauma)',
+                      gallbladder: '\u26A0 Cholelithiasis (gallstones), cholecystitis',
+                      thyroid: '\u26A0 Hypothyroidism, hyperthyroidism, goiter',
+                      eye: '\u26A0 Cataracts, glaucoma, retinal detachment',
+                      retina: '\u26A0 Macular degeneration, diabetic retinopathy'
+                    };
+                    var sn = sel.name.toLowerCase(); var clin = null;
+                    Object.keys(clinMap).forEach(function(k) { if (sn.indexOf(k) >= 0) clin = clinMap[k]; });
+                    return clin ? React.createElement("div", { className: "text-[9px] text-amber-500 mt-1 italic border-l-2 border-amber-300 pl-2" }, clin) : null;
+                  })(),
                   // Related organs info
                   (function() {
                     var relMap = {
